@@ -7,14 +7,25 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestCreateObservableWithCOnstructor tests if the constructor method returns an <*Observable>
+// TestCreateObservableWithCOnstructor tests if the constructor method returns an Observable
 func TestCreateObservableWithConstructor(t *testing.T) {
 	testStream := NewObservable("myStream")
 	assert.IsType(t, &Observable{}, testStream)
 }
 
+// TestCreateObservableWithEmpty tests if Empty creates an empty Observable that terminates right away.
+func TestCreateObservableWithEmpty(t *testing.T) {
+	msg := "Sumpin's"
+	observable := Empty()
+	observable.Subscribe(&Observer{
+		OnCompleted: func(e *Event) { msg = msg + " brewin'" },
+	})
+	assert.Equal(t, "Sumpin's brewin'", msg)
+}
+
 // TestCreateObservableWithJust tests if Just method returns an <*Observable>
 func TestCreateObservableWithJust(t *testing.T) {
+	
 	// Provided a URL string
 	url := "http://api.com/api/v1.0/user"
 
@@ -41,13 +52,12 @@ func TestCreateObservableWithFrom(t *testing.T) {
 	assert.IsType(t, &Observable{}, observable)
 }
 
-
 func TestCreateObservableWithStart(t *testing.T) {
 
 	// Provided a "directive" function which return an event that emits
 	// a slice of integer numbers from 0 to 20.
-	directive := func() Event {
-		ev := Event{ Value: []int{} }
+	directive := func() *Event {
+		ev := &Event{ Value: []int{} }
 		for i:=0; i<=20; i++ {
 			<-time.After(1000)
 			ev.Value = append(ev.Value.([]int), i)
@@ -61,12 +71,12 @@ func TestCreateObservableWithStart(t *testing.T) {
 	assert.IsType(t, &Observable{}, observable)
 	nums := []int{}
 	obs := &Observer{
-		OnNext: func(ev Event) {
+		OnNext: func(ev *Event) {
 			for _, num := range ev.Value.([]int) {
 				nums = append(nums, num * 2)
 			}
 		},
-		OnCompleted: func(ev Event) {
+		OnCompleted: func(ev *Event) {
 			nums = append(nums, 666)
 		},
 	}
@@ -89,8 +99,8 @@ func TestSubscribeToJustObservable1(t *testing.T) {
 
 	observable := Just(url)
 	obs := &Observer{
-		OnNext: func(e Event) { urlWithUserID = e.Value.(string) },
-		OnCompleted: func(e Event) { urlWithUserID = urlWithUserID + "?id=999" },
+		OnNext: func(e *Event) { urlWithUserID = e.Value.(string) },
+		OnCompleted: func(e *Event) { urlWithUserID = urlWithUserID + "?id=999" },
 	}
 	observable.Subscribe(obs)
 	assert.Exactly(t, expected, urlWithUserID)
@@ -105,16 +115,16 @@ func TestSubscribeToJustObservable2(t *testing.T) {
 	// Create an Observer object.
 	observer := &Observer{
 		// While there is more events down the stream (in this case, just one), add 1 to the value emitted.
-		OnNext: func(e Event) {
+		OnNext: func(e *Event) {
 			num := e.Value.(int) + 1
 			nums = append(nums, num)
 		},
 			
 		// If an error is encountered at any time, panic.
-		OnError: func(e Event) { panic(e.Error) },
+		OnError: func(e *Event) { panic(e.Error) },
 			
 		// When the stream comes to an end, append 0 to the slice.
-		OnCompleted: func(e Event) { nums = append(nums, 0) },
+		OnCompleted: func(e *Event) { nums = append(nums, 0) },
 	}
 	
 	// Start listening to stream
@@ -130,12 +140,12 @@ func TestSubscribeToFromObservable(t *testing.T) {
 	numObservable := From(nums)
 	observer := &Observer{
 		// While there is more events down the stream (in this case, just one), add 1 to the value emitted.
-		OnNext: func(e Event) {
+		OnNext: func(e *Event) {
 			numCopy = append(numCopy, e.Value.(int) + 1)
 		},
 			
 		// When the stream comes to an end, append 0 to the slice.
-		OnCompleted: func(e Event) {
+		OnCompleted: func(e *Event) {
 			numCopy = append(numCopy, 0)
 		},
 
