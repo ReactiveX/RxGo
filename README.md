@@ -21,14 +21,43 @@ package main
 import (
 	"fmt"
 	"grx"
+)
+
+func main() {
+	// Create an observable (stream) from a single item.
+	observable := grx.Just(1)
+	score := 9
+
+	// Create a stream observer
+	observer := &Observer{
+		OnNext: func(e Event) { 
+			score = score + e.Value.(int) 
+		},
+	}
+
+	// Start the stream and keep watching
+	observable.Subscribe(observer)
+	fmt.Println(score) // 10
+}
+
+```
+
+A slightly longer one:
+
+```go
+
+package main
+import (
+	"fmt"
+	"grx"
 	"reflect"
 )
 
 func main() {
-	nums := []int{1, 2, 3}
+	nums := []interface{}{1, 2, 3}
 	xnums := []int{}
 
-	// Create an observable (stream) from a slice of integers.
+	// Create an observable from a slice of integers.
 	numStream := grx.From(nums)
 
 	// Create an Observer object.
@@ -37,7 +66,7 @@ func main() {
 		// While there is more events down the stream, times two to the value emitted and append to xnums.
 		OnNext: func(e Event) { xnums = append(xnums, e.Value.(int) * 2) },
 		
-		// If an event emits an error, panic (in this case there is no way an error can occur).
+		// If an event emits an error, panic (in this case it's not possible to get an error).
 		OnError: func(e Event) { panic(e.Error) },
 		
 		// If the observable is about to end (on last event), append 0 to xnums.
