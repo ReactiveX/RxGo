@@ -4,25 +4,23 @@ Reactive extension for Go.
 ## Why?
 I started `GRX` as a study into Reactive Programming, or specifically [ReactiveX](http://reactivex.io)'s interpretation of Reactive Programming.
 
-## Who?
-If you want to learn or use Reactive Programming, and you want to do it in Go, this might interest you. If you do not mind those concurrency primitives such as goroutines, channels, and syncs being abstracted away in favor of the [Stream mantra](https://camo.githubusercontent.com/e581baffb3db3e4f749350326af32de8d5ba4363/687474703a2f2f692e696d6775722e636f6d2f4149696d5138432e6a7067), you may find this interesting.
+## Is this for you?
+If you are someone who wants to learn or use Reactive Programming in Go, and you are open-mind about concurrency primitives such as goroutines, channels, and syncs being abstracted in favor of the [Stream mantra](https://camo.githubusercontent.com/e581baffb3db3e4f749350326af32de8d5ba4363/687474703a2f2f692e696d6775722e636f6d2f4149696d5138432e6a7067), you may find this interesting.
 
 ## What is Reactive Programming?
-**Reactive** is a yet-to-be-refined programming *paradigm*--or way of doing things--like the MVC was decades ago. One can say that a chat application (like Slack) or a real-time game server is "reactive". Then you might ask, "what's new?" Nothing is. It is the unique way of looking an it that is.
+**Reactive** is a yet-to-be-refined programming *paradigm*--or way of doing things--like the MVC was decades ago. One can say that a chat application (like Slack) or a real-time game server is "reactive". Then you might ask, "what's new?" Nothing is, really. It is the way of looking at the problem and programming that is.
 
-When you write code, it is hard to break the procedural perception (code being executed/interpreted from the first line all the way down). Even with an event-driven language like JavaScript, it still is. This is simply because humans' perception of reading from top to bottom.
+## The Procedural Perception
+When you write code, it is hard to break the procedural perception (code being executed/interpreted from the first line all the way down). With an event-driven code in language like JavaScript, the callbacks become hard to maintain and make sense. This is simply because it is natural to humans' perception to read from top to bottom.
 
-If you have programmed in visual flow-based language like [Max/MSP](https://cycling74.com/products/max/#.WAGV0dwgd0I) or [Pure Data](https://puredata.info/), the difference becomes clear. In such systems, data flows around the system via cords, which connect units, patches, or functions (whatever you'd like to call them). The idea is the system is always updated live, and a change in anything within the system will be propagated accordingly without the need to refresh or recompile.
+However, if you have programmed in a visual flow-based language like [Max/MSP](https://cycling74.com/products/max/#.WAGV0dwgd0I) or [Pure Data](https://puredata.info/), you already have programmed a "reactive" system, so to speak. In such systems, data flows around the system via cords, which connect units, patches, or functions (whatever you'd like to call them) which are self-contained, take one or more inputs, process it, and return one or more outputs. The idea is the system is always updated live, and a change in **anything** within the system will be propagated accordingly without the need to refresh or recompile.
 
 > If you are interested in this flow-based interpretation of Reactive Programming in Go, check out [go-flow](https://github.com/trustmaster/goflow).
 
 ## ReactiveX
-This package is based on [ReactiveX](http://reactivex.io)'s Observable/Stream Pattern, which consists of concepts like event streams or observables, observers, events, and etc.
+This package is based on [ReactiveX](http://reactivex.io)'s Observable/Stream Pattern, which consists of concepts like event streams or observables, observers, events, and etc. What is considered Reactive Programming is still murky, but ReactiveX is by far the most interesting one.
 
-## 'Nuf said, show me the code
-Not before I warn you that this is a work in progress. How long I keep working on this depends on the stars and forks from you!
-
-**Here's some basic examples.**
+## Usage
 
 ```go
 
@@ -52,14 +50,13 @@ func main() {
         // Block/wait here a bit for score to update.
         <-time.After(100)
 
-
 	fmt.Println(score) // 10
 }
 
 ```
 
-An *Observable* is a synchronous stream of Events which can emit a value, error,
-or notify as completed. Below is what `Just(item interface{})` just did:
+An `Observable` is a synchronous stream of `Event`s which can emit a `Value`, `Error`,
+or notify as `Completed`. Below is what an `Observable` created looks like:
 
 ```bash
 
@@ -67,16 +64,16 @@ or notify as completed. Below is what `Just(item interface{})` just did:
 
 (*)-------------(e)--------------|>
  |               |               |
-Start        Event *e*      Terminated
-             with val=1
+Start        Event with     Terminated
+             value = 1
 
 ```
 
-An `Observer` watches over an `Observable` with `OnNext`, `OnError`, and `OnCompleted` methods, which get called by each `Event` it encounters. `OnNext` is called zero or more times to handle each event that emits a value. `OnError` and `OnCompleted` are called, respectively, when an event emits an error and a completed signal.
+An `Observer` watches over an `Observable` with `OnNext`, `OnError`, and `OnCompleted` methods, which get called for each `Event` it encounters. `OnNext` is called zero or more times to handle each `Event` that emits a value. `OnError` or `OnCompleted` is called, respectively, when an `Event` emits an error or a completed signal.
 
-These are done while you do something else. When you subscribe an Observer to an Observable, it is asynchronous and you can forget about it.
+These are done while you're doing something else. When you subscribe an `Observer` to an `Observable`, it is asynchronous. Thus, that is why in our code we waited with `<-time.After()` before printing the score. It didn't block.
 
-Here is another example:
+Here is another example, this time creating an `Observable` from a slice with `From` operator:
 
 ```go
 
@@ -97,18 +94,12 @@ func main() {
 
 	// Create an Observer object.
 	observer := &Observer{
-
-		// Function to call for every Event with a value
 		OnNext: func(e Event) {
                         xnums = append(xnums, e.Value.(int) * 2)
                 },
-
-		// If an event emits an error, panic
 		OnError: func(e Event) {
                         panic(e.Error)
                 },
-
-		// If the observable is about to end (last event), append 0 to xnums.
 		OnCompleted: func(e Event) {
                         xnums = append(xnums, 0)
                 },
@@ -137,3 +128,5 @@ Start   Event with   Event with    Event with  Terminated
         value = 1    value = 2     value = 3
 
 ```
+
+One of the concepts being ReactiveX's stream (or at least what I think) is to abstract all the concurrency primitives in a language, and instead having the user to focus on events and streams, not threads, coroutines, goroutines, etc.
