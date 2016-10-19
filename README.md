@@ -1,11 +1,11 @@
 # Go Reactive Extension (GRX)
-Reactive extension for Go.
+Simple Reactive Extension for Go.
 
 ## Why?
-I started `GRX` as a study into Reactive Programming, or specifically [ReactiveX](http://reactivex.io)'s interpretation of Reactive Programming.
+I started `GRX` as I studied Reactive Programming, or specifically [ReactiveX](http://reactivex.io)'s interpretation of Reactive Programming.
 
 ## Is this for you?
-If you are someone who wants to learn or use Reactive Programming in Go, and you are open-mind about concurrency primitives such as goroutines, channels, and syncs being abstracted in favor of the [Stream mantra](https://camo.githubusercontent.com/e581baffb3db3e4f749350326af32de8d5ba4363/687474703a2f2f692e696d6775722e636f6d2f4149696d5138432e6a7067), you may find this interesting.
+If you are someone who wants to learn or use Reactive Programming in Go, and you are open-mind about concurrency primitives such as goroutines, channels, and syncs being abstracted in favor of the [Stream mantra](https://camo.githubusercontent.com/e581baffb3db3e4f749350326af32de8d5ba4363/687474703a2f2f692e696d6775722e636f6d2f4149696d5138432e6a7067), you may find this interesting. 
 
 ## What is Reactive Programming?
 **Reactive** is a yet-to-be-refined programming *paradigm*--or way of doing things--like the MVC was decades ago. One can say that a chat application (like Slack) or a real-time game server is "reactive". Then you might ask, "what's new?" Nothing is, really. It is the way of looking at the problem and programming that is.
@@ -28,7 +28,7 @@ package main
 import (
 	"fmt"
 	"grx"
-        "time"
+	"time"
 )
 
 func main() {
@@ -47,8 +47,8 @@ func main() {
 	// Subscribe the observer to watch over the stream
 	observable.Subscribe(observer)
 
-        // Block/wait here a bit for score to update.
-        <-time.After(100)
+	// Block/wait here a bit for score to update.
+	<-time.After(100)
 
 	fmt.Println(score) // 10
 }
@@ -82,7 +82,7 @@ import (
 	"fmt"
 	"grx"
 	"reflect"
-        "time"
+	"time"
 )
 
 func main() {
@@ -94,22 +94,22 @@ func main() {
 
 	// Create an Observer object.
 	observer := &Observer{
-		OnNext: func(e Event) {
-                        xnums = append(xnums, e.Value.(int) * 2)
-                },
-		OnError: func(e Event) {
-                        panic(e.Error)
-                },
-		OnCompleted: func(e Event) {
-                        xnums = append(xnums, 0)
-                },
+		OnNext: func(e *Event) {
+			xnums = append(xnums, e.Value.(int) * 2)
+		},
+		OnError: func(e *Event) {
+			panic(e.Error)
+		},
+		OnCompleted: func(e *Event) {
+            xnums = append(xnums, 0)
+		},
 	}
 
 	// Start watching the stream
 	numStream.Subscribe(observer)
 
-        // Block/wait for Observer to interact with the stream
-        <-time.After(100)
+	// Block/wait for Observer to interact with the stream
+	<-time.After(100)
 
 	fmt.Println(reflect.DeepEqual(xnums, []int{2, 4, 6, 0})) // true
 }
@@ -130,3 +130,28 @@ Start   Event with   Event with    Event with  Terminated
 ```
 
 One of the concepts being ReactiveX's stream (or at least what I think) is to abstract all the concurrency primitives in a language, and instead having the user to focus on events and streams, not threads, coroutines, goroutines, etc.
+
+Most Observable methods and operators will return the Observable itself, making it chainable.
+
+```go
+
+f1 := func() *Event {
+	time.Sleep(time.Second * 2)
+	return &Event{Value: 1}
+}
+
+f2 := func() *Event {
+	time.Sleep(time.Second)
+	return &Event{Value: 2}
+}
+
+observer := &Observer{
+	OnNext: func(e *Event) {fmt.Println(e.Value)},
+}
+
+observable := grx.Start(f1, f2).Subscribe(observer)
+
+// 2 printed
+// 1 printed
+
+```

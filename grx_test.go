@@ -3,6 +3,7 @@ package grx
 import (
 	"testing"
 	"time"
+	"net/http"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -18,7 +19,9 @@ func TestCreateObservableWithEmpty(t *testing.T) {
 	msg := "Sumpin's"
 	observable := Empty()
 	observable.Subscribe(&Observer{
-		OnCompleted: func(e *Event) { msg = msg + " brewin'" },
+		OnCompleted: func(e *Event) {
+			msg += " brewin'"
+		},
 	})
 	assert.Equal(t, "Sumpin's brewin'", msg)
 }
@@ -59,7 +62,6 @@ func TestCreateObservableWithStart(t *testing.T) {
 	directive := func() *Event {
 		ev := &Event{ Value: []int{} }
 		for i:=0; i<=20; i++ {
-			<-time.After(1000)
 			ev.Value = append(ev.Value.([]int), i)
 		}
 		return ev
@@ -155,6 +157,70 @@ func TestSubscribeToFromObservable(t *testing.T) {
 	numObservable.Subscribe(observer)
 	assert.Exactly(t, []int{2, 3, 4, 5, 6, 7, 0}, numCopy)
 }
+
+func TestStartMethodWithFakeExternalCalls(t *testing.T) {
+
+	fakeResponses := []*http.Response{}
+
+	// Fake directives that returns an Event containing an HTTP response.
+	directive1 := func() *Event {
+		res := &http.Response{
+			Status: "404 NOT FOUND",
+			StatusCode: 404,
+			Proto: "HTTP/1.0",
+			ProtoMajor: 1,
+		}
+		time.Sleep(time.Second * 2)
+		return &Event{Value: res}
+	}
+
+	directive2 := func() *Event {
+		res := &http.Response{
+			Status: "200 OK",
+			StatusCode: 200,
+			Proto: "HTTP/1.0",
+			ProtoMajor: 1,
+		}
+		time.Sleep(time.Second)
+		return &Event{Value: res}
+	}
+
+	directive3 := func() *Event {
+		res := &http.Response{
+			Status: "500 SERVER ERROR",
+			StatusCode: 500,
+			Proto: "HTTP/1.0",
+			ProtoMajor: 1,
+		}
+		time.Sleep(time.Second * 3)
+		return &Event{Value: res}
+	}
+
+	obs := &Observer{
+		OnNext: func(ev *Event) {
+			fakeResponses = append(fakeResponses, ev.Value.(*http.Response))
+		},
+		OnCompleted: func(ev *Event) {
+			fakeResponses = append(fakeResponses, &http.Response{
+					Status: "999 End",
+					StatusCode: 999,
+			})
+		},
+	}
+
+	observable := Start(directive1, directive2, directive3).Subscribe(obs)
+
+	// Make sure it's the right type
+	assert.IsType(t, &Observable{}, observable)
+
+	assert.Equal(t, 4, len(fakeResponses))
+	assert.Equal(t, 200, fakeResponses[0].StatusCode)
+	assert.Equal(t, 404, fakeResponses[1].StatusCode)
+	assert.Equal(t, 500, fakeResponses[2].StatusCode)
+	assert.Equal(t, 999, fakeResponses[3].StatusCode)
+}
+
+
 
 
 

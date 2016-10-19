@@ -1,5 +1,9 @@
 package grx
 
+import (
+	"sync"
+)
+
 // Observer is a "sentinel" object consisting of three methods to handle event stream.
 type Observer struct {
 	OnNext      func(e *Event)
@@ -44,8 +48,15 @@ func (o *Observable) Add(ev *Event) {
 	}()
 }
 
+// Empty creates an Observable with one last item marked as "completed"
 func Empty() *Observable {
-	o := &Observable{}
+	o := &Observable{
+		Stream: make(chan *Event, 1),
+	}
+	go func() {
+		o.Stream <- &Event{ Completed: true }
+		close(o.Stream)
+	}()
 	return o
 }
 
@@ -72,10 +83,24 @@ func From(items []interface{}) *Observable {
 }
 
 // Start creates an Observable from a directive-like function's returned event.
-func Start(fx func() *Event) *Observable {
-	o := &Observable{ Stream: make(chan *Event, 1) }
+func Start(fx ...func() *Event) *Observable {
+	o := &Observable{
+		Stream: make(chan *Event, len(fx)),
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(len(fx))
+	for _, f := range fx {
+		go func(f func() *Event) {
+			defer wg.Done()
+			o.Stream <-f()
+		}(f)
+	}
+
+	// Must wait in a goroutine, else it will block and not returning
+	// until go of the above goroutines have returned.
 	go func() {
-		o.Stream <- fx()
+		wg.Wait()
 		close(o.Stream)
 	}()
 	
@@ -83,44 +108,27 @@ func Start(fx func() *Event) *Observable {
 }
 
 // Subscribe subscribes an Observer to the Observable and starts it.
-func (o *Observable) Subscribe(ob *Observer) {
+func (o *Observable) Subscribe(ob *Observer) *Observable {
 	o.Observer = ob
 
-	if o.Stream != nil {
-		// Loop over the Observable's stream.
-		for ev := range o.Stream {
+	if o.Stream == nil {
+		return o
+	}
+	
+	// Loop over the Observable's stream.
+	for ev := range o.Stream {
 
-			// Check if the stream is completed 
-			if o.isCompleted() {
-
-				// Not sure if this is even necessary
-				ev.Completed = true
-				
-				// Check if the cap is more than 0 (likely to be a last Event)
-				if cap(o.Stream) > 0 {
-					o.Observer.OnNext(ev)
-					o.Observer.OnCompleted(ev)
-					return
-				}
-
-				// If this is not a last Event (i.e. an empty Observable),
-				// call OnCompleted once and return
-				o.Observer.OnCompleted(ev)
-				return
-			} 
-			if ev.Error != nil {
-				o.Observer.OnError(ev)
-				return
-			}
-
-			// Keep calling OnNext
-			o.Observer.OnNext(ev)
+		if ev.Value != nil {
+			ob.OnNext(ev)
+		} else if ev.Error != nil {
+			ob.OnError(ev)
+			return o
 		}
 	}
 
 	// A hack for empty, finite Observable--emit a "terminal" event to signal stream's termination.
-	o.Observer.OnCompleted(&Event{ Completed: true })
-	return
+	o.Observer.OnCompleted(&Event{Completed: true})
+	return o
 }
 
 
