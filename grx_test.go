@@ -170,7 +170,7 @@ func TestStartMethodWithFakeExternalCalls(t *testing.T) {
 			Proto: "HTTP/1.0",
 			ProtoMajor: 1,
 		}
-		time.Sleep(time.Second * 2)
+		time.Sleep(time.Millisecond * 20)
 		return &Event{Value: res}
 	}
 
@@ -181,7 +181,7 @@ func TestStartMethodWithFakeExternalCalls(t *testing.T) {
 			Proto: "HTTP/1.0",
 			ProtoMajor: 1,
 		}
-		time.Sleep(time.Second)
+		time.Sleep(time.Millisecond * 10)
 		return &Event{Value: res}
 	}
 
@@ -192,7 +192,7 @@ func TestStartMethodWithFakeExternalCalls(t *testing.T) {
 			Proto: "HTTP/1.0",
 			ProtoMajor: 1,
 		}
-		time.Sleep(time.Second * 3)
+		time.Sleep(time.Millisecond * 30)
 		return &Event{Value: res}
 	}
 
@@ -218,6 +218,26 @@ func TestStartMethodWithFakeExternalCalls(t *testing.T) {
 	assert.Equal(t, 404, fakeResponses[1].StatusCode)
 	assert.Equal(t, 500, fakeResponses[2].StatusCode)
 	assert.Equal(t, 999, fakeResponses[3].StatusCode)
+}
+
+func TestCreateObservableWithInterval(t *testing.T) {
+
+	numch := make(chan int, 1)
+	
+	go func() {
+		_ = Interval(time.Millisecond).Subscribe(&Observer{
+			OnNext: func(e *Event) {
+				numch <- e.Value.(int)
+			},
+		})
+	}()
+
+	for i:=0; i<= 10;i++ {
+		<-time.After(time.Millisecond)
+		assert.Equal(t, i, <-numch)
+	}
+
+	close(numch)
 }
 
 

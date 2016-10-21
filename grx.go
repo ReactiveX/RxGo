@@ -2,6 +2,7 @@ package grx
 
 import (
 	"sync"
+	"time"
 )
 
 // Observer is a "sentinel" object consisting of three methods to handle event stream.
@@ -56,6 +57,22 @@ func Empty() *Observable {
 	go func() {
 		o.Stream <- &Event{ Completed: true }
 		close(o.Stream)
+	}()
+	return o
+}
+
+func Interval(d time.Duration) *Observable {
+	o := &Observable{
+		Stream: make(chan *Event),
+	}
+	
+	i := 0
+	go func() {
+		for {
+			o.Stream <- &Event{Value: i}
+			<-time.After(d)
+			i++
+		}
 	}()
 	return o
 }
