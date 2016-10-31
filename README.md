@@ -1,5 +1,5 @@
 # Go Reactive Extension (GRX)
-Simple Reactive Extension for Go.
+Simple Reactive Extension (RX) for Go.
 
 ## Why?
 I started `GRX` as I studied Reactive Programming, or specifically [ReactiveX](http://reactivex.io)'s interpretation of Reactive Programming.
@@ -27,25 +27,28 @@ This package is based on [ReactiveX](http://reactivex.io)'s Observable/Stream Pa
 package main
 import (
 	"fmt"
-	"grx"
 	"time"
+	
+	"github.com/jochasinga/grx/observable"
+    "github.com/jochasinga/grx/observer"
+	"github.com/jochasinga/grx/event"
 )
 
 func main() {
 
 	// Create an observable (stream) from a single item.
-	observable := grx.Just(1)
+	myStream := observable.Just(1)
 	score := 9
 
 	// Create an observer
-	observer := &Observer{
-		OnNext: func(e *Event) {
+	myObserver := &observer.Observer{
+		OnNext: func(e *event.Event) {
 			score = score + e.Value.(int)
 		},
 	}
 
 	// Subscribe the observer to watch over the stream
-	observable.Subscribe(observer)
+	myStream.Subscribe(myObserver)
 
 	// Block/wait here a bit for score to update.
 	<-time.After(100)
@@ -80,9 +83,12 @@ Here is another example, this time creating an `Observable` from a slice with `F
 package main
 import (
 	"fmt"
-	"grx"
 	"reflect"
 	"time"
+	
+	"github.com/jochasinga/grx/observable"
+    "github.com/jochasinga/grx/observer"
+	"github.com/jochasinga/grx/event"
 )
 
 func main() {
@@ -90,14 +96,14 @@ func main() {
 	xnums := []int{}
 
 	// Create an observable from a slice of integers.
-	numStream := grx.From(nums)
+	numStream := observer.From(nums)
 
 	// Create an Observer object.
-	observer := &Observer{
-		OnNext: func(e *Event) {
+	myObserver := &Observer{
+		OnNext: func(e *event.Event) {
 			xnums = append(xnums, e.Value.(int) * 2)
 		},
-		OnError: func(e *Event) {
+		OnError: func(e *event.Event) {
 			panic(e.Error)
 		},
 		OnCompleted: func(e *Event) {
@@ -106,7 +112,7 @@ func main() {
 	}
 
 	// Start watching the stream
-	numStream.Subscribe(observer)
+	numStream.Subscribe(myObserver)
 
 	// Block/wait for Observer to interact with the stream
 	<-time.After(100)
@@ -135,21 +141,21 @@ Most Observable methods and operators will return the Observable itself, making 
 
 ```go
 
-f1 := func() *Event {
-	time.Sleep(time.Second * 2)
-	return &Event{Value: 1}
+f1 := func() *event.Event {
+	time.Sleep(2 * time.Second)
+	return &event.Event{ Value: 1 }
 }
 
-f2 := func() *Event {
+f2 := func() *event.Event {
 	time.Sleep(time.Second)
-	return &Event{Value: 2}
+	return &event.Event{ Value: 2 }
 }
 
-observer := &Observer{
-	OnNext: func(e *Event) {fmt.Println(e.Value)},
+myObserver := &observer.Observer{
+	OnNext: func(e *event.Event) { fmt.Println(e.Value) },
 }
 
-observable := grx.Start(f1, f2).Subscribe(observer)
+myStream := grx.Start(f1, f2).Subscribe(myObserver)
 
 // 2 printed
 // 1 printed
