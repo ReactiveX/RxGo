@@ -52,7 +52,7 @@ func main() {
 	myStream.Subscribe(myObserver)
 
 	// Block/wait here a bit for score to update.
-	<-time.After(100)
+	<-time.After(100 * time.Millisecond)
 
 	fmt.Println(score) // 10
 }
@@ -116,7 +116,7 @@ func main() {
 	numStream.Subscribe(myObserver)
 
 	// Block/wait for Observer to interact with the stream
-	<-time.After(100)
+	<-time.After(100 * time.Millisecond)
 
 	fmt.Println(reflect.DeepEqual(xnums, []int{2, 4, 6, 0})) // true
 }
@@ -157,6 +157,9 @@ myObserver := &observer.Observer{
 }
 
 myStream := observable.Start(f1, f2).Subscribe(myObserver)
+
+// Block/wait for Observer to interact with the stream
+<-time.After(100 * time.Millisecond)
 
 // 2 printed
 // 1 printed
