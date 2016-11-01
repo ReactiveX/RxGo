@@ -28,6 +28,10 @@ func TestCreateObservableWithEmpty(t *testing.T) {
 		},
 	}
 	testStream.Subscribe(testObserver)
+
+	// Block until side-effect is made
+	<-time.After(100 * time.Millisecond)
+	
 	assert.Equal(t, "Sumpin's brewin'", msg)
 }
 
@@ -76,6 +80,7 @@ func TestCreateObservableWithStart(t *testing.T) {
 
 	// Make sure it's the right type
 	assert.IsType(t, &observable.Observable{}, testStream)
+	
 	nums := []int{}
 	testObserver := &observer.Observer{
 		OnNext: func(ev *event.Event) {
@@ -89,6 +94,10 @@ func TestCreateObservableWithStart(t *testing.T) {
 	}
 	
 	testStream.Subscribe(testObserver)
+
+	// Block until side-effect is made
+	<-time.After(100 * time.Millisecond)
+	
 	expected := []int{}
 	for i:=0; i<=20; i++ {
 		expected = append(expected, i * 2)
@@ -110,6 +119,10 @@ func TestSubscribeToJustObservable1(t *testing.T) {
 		OnCompleted: func(e *event.Event) { urlWithUserID = urlWithUserID + "?id=999" },
 	}
 	testStream.Subscribe(testObserver)
+
+	// Block until side-effect is made
+	<-time.After(100 * time.Millisecond)
+	
 	assert.Exactly(t, expected, urlWithUserID)
 }
 
@@ -136,6 +149,10 @@ func TestSubscribeToJustObservable2(t *testing.T) {
 	
 	// Start listening to stream
 	testStream.Subscribe(testObserver)
+
+	// Block until side-effect is made
+	<-time.After(100 * time.Millisecond)
+	
 	assert.Exactly(t, []int{2, 0}, nums)
 }
 
@@ -160,6 +177,10 @@ func TestSubscribeToFromObservable(t *testing.T) {
 
 	// Start listening to stream
 	testObservable.Subscribe(testObserver)
+
+	// Block until side-effect is made
+	<-time.After(100 * time.Millisecond)
+	
 	assert.Exactly(t, []int{2, 3, 4, 5, 6, 7, 0}, numCopy)
 }
 
@@ -214,6 +235,9 @@ func TestStartMethodWithFakeExternalCalls(t *testing.T) {
 	}
 
 	testObservable := observable.Start(directive1, directive2, directive3).Subscribe(testObserver)
+
+	// Block until side-effect is made
+	<-time.After(100 * time.Millisecond)
 
 	assert := assert.New(t)
 
