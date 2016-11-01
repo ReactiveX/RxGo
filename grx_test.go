@@ -215,12 +215,14 @@ func TestStartMethodWithFakeExternalCalls(t *testing.T) {
 
 	testObservable := observable.Start(directive1, directive2, directive3).Subscribe(testObserver)
 
-	assert.IsType(t, &observable.Observable{}, testObservable)
-	assert.Equal(t, 4, len(fakeResponses))
-	assert.Equal(t, 200, fakeResponses[0].StatusCode)
-	assert.Equal(t, 404, fakeResponses[1].StatusCode)
-	assert.Equal(t, 500, fakeResponses[2].StatusCode)
-	assert.Equal(t, 999, fakeResponses[3].StatusCode)
+	assert := assert.New(t)
+
+	assert.IsType(&observable.Observable{}, testObservable)
+	assert.Equal(4, len(fakeResponses))
+	assert.Equal(200, fakeResponses[0].StatusCode)
+	assert.Equal(404, fakeResponses[1].StatusCode)
+	assert.Equal(500, fakeResponses[2].StatusCode)
+	assert.Equal(999, fakeResponses[3].StatusCode)
 }
 
 func TestCreateObservableWithInterval(t *testing.T) {
@@ -237,6 +239,31 @@ func TestCreateObservableWithInterval(t *testing.T) {
 		<-time.After(1 * time.Millisecond)
 		assert.Equal(t, i, <-numch)
 	}
+}
+
+func TestSubscriptionDoesNotBlock(t *testing.T) {
+	testStream := observable.Just("Hello")
+	
+	testObserver := &observer.Observer{
+		OnNext: func(ev *event.Event) {
+			time.Sleep(1 * time.Second)
+			return
+		},
+		OnCompleted: func(ev *event.Event) {
+			t.Log("DONE")
+		},
+	}
+
+
+	first := time.Now()
+	testStream.Subscribe(testObserver)
+	elapsed := time.Since(first)
+
+	comp := assert.Comparison(func() bool {
+		return elapsed < 1 * time.Second
+	})
+
+	assert.Condition(t, comp)
 }
 
 
