@@ -18,6 +18,14 @@ func TestCreateObservableWithConstructor(t *testing.T) {
 	assert.IsType(t, &observable.Observable{}, testStream)
 }
 
+// TestCreateObservableWithCreate tests if the Create method returns an Observable
+func TestCreateObservableWithCreate(t *testing.T) {
+	testStream := observable.Create(&observer.Observer{
+		OnNext: func(e *event.Event) { e.Value = 42 },
+	})
+	assert.IsType(t, &observable.Observable{}, testStream)
+}
+
 // TestCreateObservableWithEmpty tests if Empty creates an empty Observable that terminates right away.
 func TestCreateObservableWithEmpty(t *testing.T) {
 	msg := "Sumpin's"
@@ -263,6 +271,18 @@ func TestCreateObservableWithInterval(t *testing.T) {
 		<-time.After(1 * time.Millisecond)
 		assert.Equal(t, i, <-numch)
 	}
+}
+
+func TestCreateObservableWithRange(t *testing.T) {
+	nums := []int{}
+	testObserver := &observer.Observer{
+		OnNext: func(e *event.Event) {
+			nums = append(nums, e.Value.(int))
+		},
+	}
+	_ = observable.Range(1, 10).Subscribe(testObserver)
+	<-time.After(100 * time.Millisecond)
+	assert.Exactly(t, []int{1, 2, 3, 4, 5, 6, 7, 8, 9}, nums)
 }
 
 func TestSubscriptionDoesNotBlock(t *testing.T) {

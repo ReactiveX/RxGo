@@ -2,11 +2,13 @@ package observable
 
 import (
 	"github.com/jochasinga/grx/event"
+	"github.com/jochasinga/grx/observer"
 )
 
 // Observable is a stream of events
 type Observable struct {
 	Stream    chan *event.Event
+	Observer  *observer.Observer
 }
 
 // To query a channel's length, this method should block.

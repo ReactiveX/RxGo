@@ -17,6 +17,13 @@ func (observable *Observable) Add(ev *event.Event) *Observable {
 	return observable
 }
 
+// Create creates an Observable from scratch by means of a function?
+func Create(obsrvr *observer.Observer) *Observable {
+	obsrvble := New()
+	obsrvble.Observer = obsrvr
+	return obsrvble
+}
+
 // Empty creates an Observable with one last item marked as "completed".
 // myStream := observable.Empty()
 func Empty() *Observable {
@@ -38,6 +45,17 @@ func Interval(d time.Duration) *Observable {
 			observable.Stream <- &event.Event{ Value: i }
 			<-time.After(d)
 			i++
+		}
+	}()
+	return observable
+}
+
+// Range creates an Observable that emits a particular range of sequential integers.
+func Range(start, end int) *Observable {
+	observable := New(end - start)
+	go func() {
+		for i := start; i < end; i++ {
+			observable.Stream <- &event.Event{ Value: i }
 		}
 	}()
 	return observable
@@ -87,6 +105,7 @@ func Start(fs ...func() *event.Event) *Observable {
 
 // Subscribe subscribes an Observer to the Observable and starts it.
 func (observable *Observable) Subscribe(observer *observer.Observer) *Observable {
+	observable.Observer = observer
 	if observable.Stream == nil {
 		return observable
 	}
@@ -98,10 +117,10 @@ func (observable *Observable) Subscribe(observer *observer.Observer) *Observable
 		for ev := range stream {
 			switch {
 			case ev.Error != nil:
-				observer.OnError(ev)
+				observable.Observer.OnError(ev)
 				break
 			case ev.Value != nil:
-				observer.OnNext(ev)
+				observable.Observer.OnNext(ev)
 			}
 		}
 		wg.Done()
@@ -109,8 +128,7 @@ func (observable *Observable) Subscribe(observer *observer.Observer) *Observable
 
 	go func() {
 		wg.Wait()
-		observer.OnCompleted(&event.Event{ Completed: true })
-		
+		observable.Observer.OnCompleted(&event.Event{ Completed: true })
 	}()
 	
 	// A hack for empty, finite Observable--emit a "terminal" event to signal stream's termination.
