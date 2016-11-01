@@ -28,10 +28,10 @@ package main
 import (
 	"fmt"
 	"time"
-	
-	"github.com/jochasinga/grx/observable"
-    "github.com/jochasinga/grx/observer"
+
 	"github.com/jochasinga/grx/event"
+    "github.com/jochasinga/grx/observer"
+	"github.com/jochasinga/grx/observable"
 )
 
 func main() {
@@ -40,7 +40,8 @@ func main() {
 	myStream := observable.Just(1)
 	score := 9
 
-	// Create an observer
+	// Create an observer with an OnNext method of incrementing
+	// the score by the value emitted by the observable.
 	myObserver := &observer.Observer{
 		OnNext: func(e *event.Event) {
 			score = score + e.Value.(int)
@@ -85,10 +86,10 @@ import (
 	"fmt"
 	"reflect"
 	"time"
-	
-	"github.com/jochasinga/grx/observable"
-    "github.com/jochasinga/grx/observer"
+
 	"github.com/jochasinga/grx/event"
+	"github.com/jochasinga/grx/observer"
+	"github.com/jochasinga/grx/observable"
 )
 
 func main() {
@@ -96,10 +97,10 @@ func main() {
 	xnums := []int{}
 
 	// Create an observable from a slice of integers.
-	numStream := observer.From(nums)
+	numStream := observable.From(nums)
 
-	// Create an Observer object.
-	myObserver := &Observer{
+	// Create an Observer object to monitor the stream.
+	myObserver := &observer.Observer{
 		OnNext: func(e *event.Event) {
 			xnums = append(xnums, e.Value.(int) * 2)
 		},
@@ -155,9 +156,11 @@ myObserver := &observer.Observer{
 	OnNext: func(e *event.Event) { fmt.Println(e.Value) },
 }
 
-myStream := grx.Start(f1, f2).Subscribe(myObserver)
+myStream := observable.Start(f1, f2).Subscribe(myObserver)
 
 // 2 printed
 // 1 printed
 
 ```
+
+**This is a very early project and thus not stable. PR are not accepted yet.**
