@@ -109,19 +109,30 @@ func (observable *Observable) Subscribe(observer *observer.Observer) *Observable
 		return observable
 	}
 
+	var wg sync.WaitGroup
+	wg.Add(1)
 	// Loop over the Observable's channel
-	for ev := range observable.Stream {
-		switch {
-		case ev.Error != nil:
-			observer.OnError(ev)
-			break
-		case ev.Value != nil:
-			observer.OnNext(ev)
+	go func(stream chan *event.Event) {
+		for ev := range stream {
+			switch {
+			case ev.Error != nil:
+				observer.OnError(ev)
+				break
+			case ev.Value != nil:
+				observer.OnNext(ev)
+			}
 		}
-	}
+		wg.Done()
+	}(observable.Stream)
+
+	go func() {
+		wg.Wait()
+		observer.OnCompleted(&event.Event{ Completed: true })
+		
+	}()
 	
 	// A hack for empty, finite Observable--emit a "terminal" event to signal stream's termination.
-	observer.OnCompleted(&event.Event{ Completed: true })
+	//observer.OnCompleted(&event.Event{ Completed: true })
 	return observable
 }
 
