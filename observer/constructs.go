@@ -11,4 +11,13 @@ type Observer struct {
 	OnCompleted func(e *event.Event)
 }
 
+// New constructs a new Observer instance with default handlers.
+func New() *Observer {
+	return &Observer{
+		OnNext: func(e *event.Event) {},
+		OnError: func(e *event.Event) { panic(e.Error) },
+		OnCompleted: func(e *event.Event) {},
+	}
+}
+
 

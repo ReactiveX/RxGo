@@ -7,4 +7,9 @@ type Event struct {
 	Completed bool
 }
 
+// New returns an instance of Event. 
+func New() *Event {
+	return &Event{}
+}
+
 

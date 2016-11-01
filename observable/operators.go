@@ -8,24 +8,6 @@ import (
 	"github.com/jochasinga/grx/observer"
 )
 
-// To query a channel's length, this method should block.
-func (observable *Observable) isCompleted() bool {
-	if len(observable.Stream) > 0 {
-		return false
-	}
-	return true
-}
-
-// New constructs an empty Observable with 0 or more buffer length.
-// myStream := observable.New(1)
-func New(buf ...int) *Observable {
-	bufferLen := 0
-	if len(buf) > 0 {
-		bufferLen = buf[len(buf)-1]
-	}
-	return &Observable{ Stream: make(chan *event.Event, bufferLen) }
-}
-
 // Add adds an Event to the Observable and return that Observable.
 // myStream = myStream.Add(newEvent)
 func (observable *Observable) Add(ev *event.Event) *Observable {
