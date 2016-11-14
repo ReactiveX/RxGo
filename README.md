@@ -1,26 +1,59 @@
-# Go Reactive Extension (GRX)
-Simple Reactive Extension (RX) for Go.
+# Go Reactive Extensions (grx)
+Reactive Extensions (Rx) for the Go Language
 
-## Why?
-I started `GRX` as I studied Reactive Programming, or specifically [ReactiveX](http://reactivex.io)'s interpretation of Reactive Programming.
+## Getting Started
+[ReactiveX](http://reactivex.io/), or Rx for short, is an API for programming with observable event streams. This is a port of ReactiveX to Go.
 
-## Is this for you?
-If you are someone who wants to learn or use Reactive Programming in Go, and you are open-mind about concurrency primitives such as goroutines, channels, and syncs being abstracted in favor of the [Stream mantra](https://camo.githubusercontent.com/e581baffb3db3e4f749350326af32de8d5ba4363/687474703a2f2f692e696d6775722e636f6d2f4149696d5138432e6a7067), you may find this interesting. 
+Rx is a new, alternative way of asychronous programming to callbacks, promises and deferred. It is about processing streams of events, with events being any occurances or changes within the system, either influenced by the external factors (i.e. users or another remote service) or internal components (i.e. logs).
 
-## What is Reactive Programming?
-**Reactive** is a yet-to-be-refined programming *paradigm*--or way of doing things--like the MVC was decades ago. One can say that a chat application (like Slack) or a real-time game server is "reactive". Then you might ask, "what's new?" Nothing is, really. It is the way of looking at the problem and programming that is.
+The pattern is that you `Subscribe` to an `Observable` using an `Observer`:
 
-## The Procedural Perception
-When you write code, it is hard to break the procedural perception (code being executed/interpreted from the first line all the way down). With an event-driven code in language like JavaScript, the callbacks become hard to maintain and make sense. This is simply because it is natural to humans' perception to read from top to bottom.
+```
 
-However, if you have programmed in a visual flow-based language like [Max/MSP](https://cycling74.com/products/max/#.WAGV0dwgd0I) or [Pure Data](https://puredata.info/), you already have programmed a "reactive" system, so to speak. In such systems, data flows around the system via cords, which connect units, patches, or functions (whatever you'd like to call them) which are self-contained, take one or more inputs, process it, and return one or more outputs. The idea is the system is always updated live, and a change in **anything** within the system will be propagated accordingly without the need to refresh or recompile.
+subscription := observable.Subscribe(observer)
 
-> If you are interested in this flow-based interpretation of Reactive Programming in Go, check out [go-flow](https://github.com/trustmaster/goflow).
+```
 
-## ReactiveX
-This package is based on [ReactiveX](http://reactivex.io)'s Observable/Stream Pattern, which consists of concepts like event streams or observables, observers, events, and etc. What is considered Reactive Programming is still murky, but ReactiveX is by far the most interesting one.
+**NOTE**: Observables are not active in themselves. They need to be subscribed to make something happen. Simply having an Observable lying around doesn't make anything happen, like sitting and watching time flies.
 
-## Usage
+## Install
+
+```bash
+
+go get -u github.com/jochasinga/grx
+
+```
+
+## Importing the Rx package
+```go
+
+import (
+	"github.com/jochasinga/grx"
+)
+
+```
+## Simple Usage
+```go
+
+watcher := &grx.Observer{
+
+	// Register a handler function for every emitted value.
+	NextHandler: grx.NextFunc(func (x interface{}) {
+		fmt.Printf("Got: %s\n", x.(int))
+	}),
+}
+
+source := grx.From([]int{1, 2, 3, 4, 5})
+_, err := source.Subscribe(watcher)
+if err != nil {
+
+	// This error is return right away if Observable is nil.
+	panic(err)
+}
+
+```
+
+The above will print the format string for every number in the slice.
 
 ```go
 
@@ -29,38 +62,39 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jochasinga/grx/event"
-    "github.com/jochasinga/grx/observer"
-	"github.com/jochasinga/grx/observable"
+	"github.com/jochasinga/grx"
 )
 
 func main() {
 
-	// Create an observable (stream) from a single item.
-	myStream := observable.Just(1)
 	score := 9
 
-	// Create an observer with an OnNext method of incrementing
-	// the score by the value emitted by the observable.
-	myObserver := &observer.Observer{
-		OnNext: func(e *event.Event) {
-			score = score + e.Value.(int)
-		},
+	watcher := &Observer{
+	
+		// Register a handler function for each emitted value.
+		NextHandler: grx.NextFunc(func(v interface{}) {
+			score +=  v.(int)
+		}),
+		
+		// Register a "clean-up" function when the observable terminates.
+		DoneHandler: grx.Donefunc(func() {
+			score *= 2
+		}),
 	}
 
-	// Subscribe the observer to watch over the stream
-	myStream.Subscribe(myObserver)
+	// Create an observable from a single item and subscribe to the observer.
+	_, _ := observable.Just(1).Subscribe(myObserver)
 
-	// Block/wait here a bit for score to update.
+	// Block/wait here a bit for score to update before printing out.
 	<-time.After(100 * time.Millisecond)
 
-	fmt.Println(score) // 10
+	fmt.Println(score) // 20
 }
 
 ```
 
 An `Observable` is a synchronous stream of `Event`s which can emit a `Value`, `Error`,
-or notify as `Completed`. Below is what an `Observable` created looks like:
+or notify as `Done`. Below is what an `Observable` looks like:
 
 ```bash
 
@@ -73,87 +107,41 @@ Start        Event with     Terminated
 
 ```
 
-An `Observer` watches over an `Observable` with `OnNext`, `OnError`, and `OnCompleted` methods, which get called for each `Event` it encounters. `OnNext` is called zero or more times to handle each `Event` that emits a value. `OnError` or `OnCompleted` is called, respectively, when an `Event` emits an error or a completed signal.
+An `Observer` watches over an `Observable` with a set of handlers: `NextHandler`, `ErrHandler`, and `DoneHandler`, which get called for each event it encounters. `NextHandler` is called zero or more times to handle each event that emits a value, that is when there is still a next event. `ErrHandler` or `DoneHandler` is called, respectively, when an event emits an error or the Observable is finished. When you subscribe an `Observer` to an `Observable`, it starts another non-blocking goroutine. Thus, that is why in the previous code it was necessary to block with `<-time.After()` before printing the score.
 
-These are done while you're doing something else. When you subscribe an `Observer` to an `Observable`, it is asynchronous. Thus, that is why in our code we waited with `<-time.After()` before printing the score. It didn't block.
-
-Here is another example, this time creating an `Observable` from a slice with `From` operator:
+There is a few ways you can create an `Observable` and subscribe it. Here is a different one using the operator `CreateObservable` and subscribing a set of handler functions with `SubscribeWith` instead of an `Observer`.
 
 ```go
 
-package main
-import (
-	"fmt"
-	"reflect"
-	"time"
-
-	"github.com/jochasinga/grx/event"
-	"github.com/jochasinga/grx/observer"
-	"github.com/jochasinga/grx/observable"
-)
-
-func main() {
-	nums := []interface{}{1, 2, 3}
-	xnums := []int{}
-
-	// Create an observable from a slice of integers.
-	numStream := observable.From(nums)
-
-	// Create an Observer object to monitor the stream.
-	myObserver := &observer.Observer{
-		OnNext: func(e *event.Event) {
-			xnums = append(xnums, e.Value.(int) * 2)
-		},
-		OnError: func(e *event.Event) {
-			panic(e.Error)
-		},
-		OnCompleted: func(e *Event) {
-            xnums = append(xnums, 0)
-		},
-	}
-
-	// Start watching the stream
-	numStream.Subscribe(myObserver)
-
-	// Block/wait for Observer to interact with the stream
-	<-time.After(100 * time.Millisecond)
-
-	fmt.Println(reflect.DeepEqual(xnums, []int{2, 4, 6, 0})) // true
+source := grx.CreateObservable(func(ob *grx.Observer) {
+	ob.OnNext("Hello")
 }
 
-```
+nextf := func(v interface{}) { 
+	fmt.Println(v)
+}
 
-The above code would have been visualized this way:
-
-```bash
-
-                     time -->
-
-(*)-------(e)----------(e)----------(e)-----------|>
- |         |            |            |            |
-Start   Event with   Event with    Event with  Terminated
-        value = 1    value = 2     value = 3
+_, _ = source.SubscribeWith(nextf, nil, nil)
 
 ```
-
-One of the concepts being ReactiveX's stream (or at least what I think) is to abstract all the concurrency primitives in a language, and instead having the user to focus on events and streams, not threads, coroutines, goroutines, etc.
-
 Most Observable methods and operators will return the Observable itself, making it chainable.
 
 ```go
 
-f1 := func() *event.Event {
+f1 := func() interface{} {
 	time.Sleep(2 * time.Second)
-	return &event.Event{ Value: 1 }
+	return 1 
 }
 
-f2 := func() *event.Event {
+f2 := func() interface{} {
 	time.Sleep(time.Second)
-	return &event.Event{ Value: 2 }
+	return 2
 }
 
-myObserver := &observer.Observer{
-	OnNext: func(e *event.Event) { fmt.Println(e.Value) },
+myObserver := &grx.Observer{
+	NextHandler: grx.NextFunc(func(v interface{}) { 
+		fmt.Println(v) 
+	}),
 }
 
 myStream := observable.Start(f1, f2).Subscribe(myObserver)
@@ -166,4 +154,4 @@ myStream := observable.Start(f1, f2).Subscribe(myObserver)
 
 ```
 
-**This is a very early project and thus not stable. PR are not accepted yet.**
+**This is a very early project and thus not stable yet.**
