@@ -11,7 +11,6 @@ type Observable struct {
         Stream    chan interface{}
 
         // Pointer to a default Observer, or the one subscribed to itself.
-	//Observer  *observer.Observer
 	Observer *Observer
 }
 
@@ -22,6 +21,12 @@ func (o *Observable) isCompleted() bool {
                 return false
         }
         return true
+}
+
+// hasNext determines whether there is a next object in the Observable.
+func (o *Observable) hasNext() bool {
+	_, ok := <-o.Stream
+	return ok
 }
 
 // New constructs an empty Observable with 0 or more buffer length.
@@ -65,10 +70,21 @@ func CreateFromChannel(items chan interface{}) *Observable {
 // Add adds an Event to the Observable and return that Observable.
 // myStream = myStream.Add(10)
 func (o *Observable) Add(v interface{}) *Observable {
-        go func() {
-                o.Stream <- v
-        }()
-        return o
+	if _, ok := <-o.Stream; ok {
+		go func() {
+			o.Stream <- v
+		}()
+		return o
+	}
+	ochan := make(chan interface{})
+
+	go func() {
+		for item := range o.Stream {
+			ochan <- item
+		}
+		o.Stream = ochan
+	}()
+	return o
 }
 
 // Empty creates an Observable with one last item marked as "completed".
@@ -190,7 +206,7 @@ func (o *Observable) Subscribe(ob *Observer) (*Subscription, error) {
 }
 
 // SubscribeWith subscribes handlers to the Observable and starts it.
-func (o *Observable) SubscribeWith(nxtf NextFunc, errf ErrFunc, donef DoneFunc) (*Subscription, error) {
+func (o *Observable) SubscribeFunc(nxtf func(v interface{}), errf func(e error), donef func()) (*Subscription, error) {
         if o == nil {
                 return nil, errors.New("Observable is not initialized.")
         }
@@ -227,7 +243,7 @@ func (o *Observable) SubscribeWith(nxtf NextFunc, errf ErrFunc, donef DoneFunc) 
 }
 
 // SubscribeHandler subscribes a Handler to the Observable and starts it.
-func (o *Observable) SubscribeHandler(h Handler) (*Subscription, error) {
+func (o *Observable) SubscribeHandler(h Handler, hs ...Handler) (*Subscription, error) {
         if o == nil {
                 return nil, errors.New("Observable is not initialized.")
         }
@@ -235,18 +251,26 @@ func (o *Observable) SubscribeHandler(h Handler) (*Subscription, error) {
                 return nil, errors.New("Stream is not initialized.")
         }
 
+	handlers := []Handler{h}
+	handlers = append(handlers, hs...)
+
         nc, errc, donec := make(chan NextFunc), make(chan ErrFunc), make(chan DoneFunc)
         go func() {
-                switch fn := h.(type) {
-                case NextFunc:
-                        nc <- fn
-                case ErrFunc:
-                        errc <- fn
-                case DoneFunc:
-                        donec <- fn
-                }
+		for _, h := range handlers {
+			switch fn := h.(type) {
+			case NextFunc:
+				nc <- fn
+				close(nc)
+			case ErrFunc:
+				errc <- fn
+				close(errc)
+			case DoneFunc:
+				donec <- fn
+				close(donec)
+			}
+		}
         }()
-
+	
         var wg sync.WaitGroup
         wg.Add(1)
         go func(stream chan interface{}) {
