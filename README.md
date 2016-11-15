@@ -8,7 +8,7 @@ Rx is a new, alternative way of asychronous programming to callbacks, promises a
 
 The pattern is that you `Subscribe` to an `Observable` using an `Observer`:
 
-```
+```go
 
 subscription := observable.Subscribe(observer)
 
@@ -27,9 +27,7 @@ go get -u github.com/jochasinga/grx
 ## Importing the Rx package
 ```go
 
-import (
-	"github.com/jochasinga/grx"
-)
+import "github.com/jochasinga/grx"
 
 ```
 ## Simple Usage
@@ -93,8 +91,8 @@ func main() {
 
 ```
 
-An `Observable` is a synchronous stream of `Event`s which can emit a `Value`, `Error`,
-or notify as `Done`. Below is what an `Observable` looks like:
+An `Observable` is a synchronous stream of evens which can emit a value of type `interface{}`, `error`,
+or notify as completed. Below is what an `Observable` looks like:
 
 ```bash
 
@@ -102,7 +100,7 @@ or notify as `Done`. Below is what an `Observable` looks like:
 
 (*)-------------(e)--------------|>
  |               |               |
-Start        Event with     Terminated
+Start        Event with         Done
              value = 1
 
 ```
@@ -121,7 +119,7 @@ nextf := func(v interface{}) {
 	fmt.Println(v)
 }
 
-_, _ = source.SubscribeWith(nextf, nil, nil)
+_, _ = source.SubscribeFunc(nextf, nil, nil)
 
 ```
 Most Observable methods and operators will return the Observable itself, making it chainable.
@@ -153,5 +151,12 @@ myStream := observable.Start(f1, f2).Subscribe(myObserver)
 // 1 printed
 
 ```
+
+## What about channels?
+Channels are the underlying implementation of almost all methods and operators. 
+In fact, `Observable` is basically a channel. The goal of this extension is just
+to comply to ReactiveX's way of programming instead of managing concurrency with
+primitives like channels and goroutines. However, they can always be used 
+alongside one another (check the examples).
 
 **This is a very early project and thus not stable yet.**
