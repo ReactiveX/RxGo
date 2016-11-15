@@ -4,9 +4,6 @@ import (
         "errors"
 	"sync"
         "time"
-
-        //"github.com/jochasinga/grx"
-        //"github.com/jochasinga/grx/observer"
 )
 
 // Observable is a stream of events implemented by an internal channel.
@@ -55,18 +52,15 @@ func CreateObservable(fn func(*Observer)) *Observable {
         return o
 }
 
-// I don't see the point of this yet.
-/*
 func CreateFromChannel(items chan interface{}) *Observable {
         if items != nil {
                 return &Observable{
                         Stream: items,
-                        Observer: &observer.Observer{},
+                        Observer: new(Observer),
                 }
         }
-        return New()
+        return NewObservable()
 }
-*/
 
 // Add adds an Event to the Observable and return that Observable.
 // myStream = myStream.Add(10)
