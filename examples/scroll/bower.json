@@ -1,0 +1,23 @@
+{
+  "name": "scroll-server-example",
+  "main": "index.js",
+  "homepage": "https://github.com/jochasinga/grx",
+  "authors": [
+    "Joe Chasinga <jo.chasinga@gmail.com>"
+  ],
+  "description": "server running grx to capture front-end scrolling",
+  "license": "MIT",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "jquery-1.11.1": "^3.1.1",
+    "socket.io-client": "^1.5.1",
+    "bootstrap": "^3.3.7"
+  }
+}

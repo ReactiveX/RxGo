@@ -26,3 +26,7 @@ _testmain.go
 # Backup files
 *~
 *#
+
+# Dep directories
+bower_components
+node_modules

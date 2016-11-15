@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+  <head>
+    <link rel="stylesheet" type="text/css" href="/bower_components/bootstrap/dist/css/bootstrap.css" />
+    <script type="text/javascript" href="/bower_components/bootstrap/dist/js/bootstrap.js"></script>
+    <script>
+      var ws = new WebSocket("ws://localhost:4000/scroll");
+      
+      window.onscroll = function() {
+        ws.send(window.pageYOffset)
+      }
+    </script>
+    <style>
+      body {
+        padding-top: 20px;
+        height: 3000px;
+      }
+    </style>
+    <title>Scroll-o-Matic!</title>
+  </head>
+  <body>
+    <div class="container">
+      <div class="jumbotron">
+	<h1>Scroll-o-Matic!</h1>
+	<p>
+	  This example demonstrate how scroll events can be sent to Go server
+	  running grx library.
+	</p>
+	<p>To see it in action, scroll down while watching the server's log.</p>
+      </div>
+    </div>
+  </body>
+  </html>
