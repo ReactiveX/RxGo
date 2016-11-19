@@ -1,6 +1,8 @@
 package grx
 
 import (
+	"errors"
+	"fmt"
         "testing"
         "time"
         "net/http"
@@ -307,4 +309,35 @@ func TestSubscriptionDoesNotBlock(t *testing.T) {
                 return elapsed < 1 * time.Second
         })
         assert.Condition(t, comp)
+}
+
+func TestSubscribeFuncToJustObservable(t *testing.T) {
+	source := Just(1, '2', "yes", 9.012, 'ง', errors.New("Damn"), struct{}{}, func(){})
+	source.SubscribeFunc(
+		func(v interface{}) { fmt.Println(v) },
+		func(err error) { fmt.Println(err) },
+		nil,
+	)
+	<-time.After(100 * time.Millisecond)
+}
+
+func TestObservableIsDone(t *testing.T) {
+	
+	//o := Just(1, 2, 3, "hi", "bye", []float64{5.0, 10.2})
+	o := Range(1, 10)
+	done := make(chan struct{}, 1)
+	o.Subscribe(&Observer{
+		NextHandler: NextFunc(func(v interface{}) {
+			t.Logf("Test value: %v", v)
+		}),
+		DoneHandler: DoneFunc(func() {
+			done <- struct{}{}
+		}),
+	})
+
+	<-time.After(100 * time.Millisecond)
+	assert.Equal(t, struct{}{}, <-done)
+	assert.Equal(t, true, o.isDone())
+
+
 }

@@ -1,6 +1,7 @@
 package grx
 
 import (
+	"fmt"
         "errors"
 	"sync"
         "time"
@@ -12,24 +13,24 @@ type Observable struct {
 
         // Pointer to a default Observer, or the one subscribed to itself.
 	Observer *Observer
+	done chan struct{}
 }
 
-// To query a channel's length, this method is not goroutine safe
-// and should block or it will return incorrect result.
-func (o *Observable) isCompleted() bool {
-        if len(o.Stream) > 0 {
-                return false
-        }
-        return true
+func (o *Observable) isDone() bool {
+	if _, ok := <-o.done; ok {
+		return true
+	}
+	return false
 }
 
-// hasNext determines whether there is a next object in the Observable.
 func (o *Observable) hasNext() bool {
-	_, ok := <-o.Stream
-	return ok
+	if _, ok := <-o.done; ok {
+		return false
+	}
+	return true
 }
 
-// New constructs an empty Observable with 0 or more buffer length.
+// NewObservable constructs an empty Observable with 0 or more buffer length.
 // myStream := observable.New(1)
 func NewObservable(buf ...int) *Observable {
         bufferLen := 0
@@ -38,8 +39,9 @@ func NewObservable(buf ...int) *Observable {
         }
         o := &Observable{
                 Stream: make(chan interface{}, bufferLen),
-                //Observer: &observer.Observer{},
 		Observer: new(Observer),
+		done: make(chan struct{}, 1),
+		
         }
         o.Observer.Observable = o
         return o
@@ -59,10 +61,9 @@ func CreateObservable(fn func(*Observer)) *Observable {
 
 func CreateFromChannel(items chan interface{}) *Observable {
         if items != nil {
-                return &Observable{
-                        Stream: items,
-                        Observer: new(Observer),
-                }
+		o := NewObservable()
+		o.Stream = items
+		return o
         }
         return NewObservable()
 }
@@ -70,12 +71,23 @@ func CreateFromChannel(items chan interface{}) *Observable {
 // Add adds an Event to the Observable and return that Observable.
 // myStream = myStream.Add(10)
 func (o *Observable) Add(v interface{}) *Observable {
+	/*
 	if _, ok := <-o.Stream; ok {
 		go func() {
 			o.Stream <- v
 		}()
 		return o
 	}
+        */
+	if !o.isDone() {
+		go func() {
+			o.Stream <- v
+		}()
+		return o
+	}
+
+	// Else if it's done (closed), create a fresh channel with copies
+	// of the old channel's elements for o.Stream.
 	ochan := make(chan interface{})
 
 	go func() {
@@ -115,11 +127,12 @@ func Interval(d time.Duration) *Observable {
 
 // Range creates an Observable that emits a particular range of sequential integers.
 func Range(start, end int) *Observable {
-        o := NewObservable(end - start)
+        o := NewObservable(0)
         go func() {
                 for i := start; i < end; i++ {
                         o.Stream <- i
                 }
+		close(o.Stream)
         }()
         return o
 }
@@ -179,7 +192,6 @@ func (o *Observable) Subscribe(ob *Observer) (*Subscription, error) {
 
         var wg sync.WaitGroup
         wg.Add(1)
-
         go func(stream chan interface{}) {
                 for item := range stream {
                         switch v := item.(type) {
@@ -199,10 +211,21 @@ func (o *Observable) Subscribe(ob *Observer) (*Subscription, error) {
 
         go func() {
                 wg.Wait()
-                if ob.DoneHandler != nil {
-                        ob.DoneHandler()
-                }
+		o.done <- struct{}{}
         }()
+
+	go func() {
+		select {
+		case recent := <-o.done:
+
+			// Clone to a new o.done channel so others can read from.
+			o.done = make(chan struct{}, 1)
+			o.done <- recent
+			if ob.DoneHandler != nil {
+				ob.DoneHandler()
+			}
+		}
+	}()
 
         return &Subscription{Subscribe: time.Now()}, nil
 }
@@ -215,6 +238,16 @@ func (o *Observable) SubscribeFunc(nxtf func(v interface{}), errf func(e error),
         if o.Stream == nil {
                 return nil, errors.New("Stream is not initialized.")
         }
+
+	go func() {
+		select {
+		case <-o.done:
+			fmt.Println("Done! Firing DoneHandler...")
+			if donef != nil {
+				donef()
+			}
+		}
+	}()
 
         var wg sync.WaitGroup
         wg.Add(1)
@@ -237,10 +270,22 @@ func (o *Observable) SubscribeFunc(nxtf func(v interface{}), errf func(e error),
 
         go func() {
                 wg.Wait()
-                if donef != nil {
-                        donef()
-                }
+		o.done <- struct{}{}
         }()
+
+	go func() {
+		select {
+		case recent := <-o.done:
+
+			// Clone to a new o.done channel so others can read from.
+			o.done = make(chan struct{}, 1)
+			o.done <- recent
+			if donef != nil {
+				donef()
+			}
+		}
+	}()
+	
         return &Subscription{Subscribe: time.Now()}, nil
 }
 
@@ -256,7 +301,7 @@ func (o *Observable) SubscribeHandler(h Handler, hs ...Handler) (*Subscription, 
 	handlers := []Handler{h}
 	handlers = append(handlers, hs...)
 
-        nc, errc, donec := make(chan NextFunc), make(chan ErrFunc), make(chan DoneFunc)
+        nc, errc, dc := make(chan NextFunc), make(chan ErrFunc), make(chan DoneFunc)
         go func() {
 		for _, h := range handlers {
 			switch fn := h.(type) {
@@ -267,8 +312,8 @@ func (o *Observable) SubscribeHandler(h Handler, hs ...Handler) (*Subscription, 
 				errc <- fn
 				close(errc)
 			case DoneFunc:
-				donec <- fn
-				close(donec)
+				dc <- fn
+				close(dc)
 			}
 		}
         }()
@@ -277,8 +322,6 @@ func (o *Observable) SubscribeHandler(h Handler, hs ...Handler) (*Subscription, 
         wg.Add(1)
         go func(stream chan interface{}) {
                 for item := range stream {
-
-                        // TODO: What's the point of type switching here?
                         switch v := item.(type) {
                         case error:
                                 if fn, ok := <-errc; ok {
@@ -296,7 +339,8 @@ func (o *Observable) SubscribeHandler(h Handler, hs ...Handler) (*Subscription, 
 
         go func() {
                 wg.Wait()
-                if fn, ok := <-donec; ok {
+                if fn, ok := <-dc; ok {
+			o.done <- struct{}{}
                         fn()
                 }
         }()
