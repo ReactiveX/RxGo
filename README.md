@@ -152,11 +152,13 @@ myStream := observable.Start(f1, f2).Subscribe(myObserver)
 
 ```
 
-## What about channels?
-Channels are the underlying implementation of almost all methods and operators. 
-In fact, `Observable` is basically a channel. The goal of this extension is just
-to comply to ReactiveX's way of programming instead of managing concurrency with
-primitives like channels and goroutines. However, they can always be used 
-alongside one another (check the examples).
+## Is this Idiomatic Go?
+It depends. This is certainly not for [purists who may regard this as a violation
+to Go's core philosophy](https://www.reddit.com/r/golang/comments/5d1erq/reactive_extension_for_go/). 
+Channels are the underlying implementations of almost all methods and operators. 
+In fact, `Observable` is basically a channel. The goal of this extension is just to expose
+a set of APIs complying to ReactiveX's way of programming instead of managing concurrency with
+primitives like channels and goroutines. However, they can always be used alongside one another 
+(check the examples).
 
-**This is a very early project and thus not stable yet.**
+## This is a very early project and there will be breaking changes.
