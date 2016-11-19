@@ -35,12 +35,17 @@ func TestCreateObservableWithEmpty(t *testing.T) {
 }
 
 // TestCreateObservableWithJust tests if Just method returns an Observable
-func TestCreateObservableWithJust(t *testing.T) {
+func TestCreateObservableWithJustOneArg(t *testing.T) {
         url := "http://api.com/api/v1.0/user"
         source := Just(url)
 
         // Observable must have Observable type.
         assert.IsType(t, (*Observable)(nil), source)
+}
+
+func TestCreateObservableWithJustManyArgs(t *testing.T) {
+	source := Just('R', 'x', 'G', 'o')
+	assert.IsType(t, (*Observable)(nil), source)
 }
 
 // TestCreateObservableWithFrom tests if From methods returns an <*Observable>
@@ -90,7 +95,7 @@ func TestCreateObservableWithStart(t *testing.T) {
         assert.Exactly(t, []int{666, 666}, nums)
 }
 
-func TestSubscribeToJustObservable1(t *testing.T) {
+func TestSubscribeToJustObservableWithOneArg(t *testing.T) {
         urlWithUserID := ""
 
         // Provided an Observable created with Just method
@@ -115,19 +120,31 @@ func TestSubscribeToJustObservable1(t *testing.T) {
         assert.Exactly(t, expected, urlWithUserID)
 }
 
-func TestSubscribeToJustObservable2(t *testing.T) {
+func TestSubscribeToJustObservableWithMultipleArgs(t *testing.T) {
         nums := []int{}
+	words := []string{}
+	chars := []rune{}
 
         // Create an Observable with an integer.
-	source := Just(1)
+	source := Just(1, "Hello", 'ห')
 
         // Create an Observer object.
         watcher := &Observer{
 
                 // While there is more events down the stream (in this case, just one), add 1 to the value emitted.
                 NextHandler: NextFunc(func(v interface{}) {
-                        num := v.(int) + 1
-                        nums = append(nums, num)
+			switch item := v.(type) {
+			case int:
+				num := item + 1
+				nums = append(nums, num)
+			case string:
+				word := item + " world"
+				words = append(words, word)
+			case rune:
+				chars = append(chars, item)
+			}
+                        //num := v.(int) + 1
+                        //nums = append(nums, num)
                 }),
 
                 // If an error is encountered at any time, panic.
@@ -146,7 +163,10 @@ func TestSubscribeToJustObservable2(t *testing.T) {
 
         // Block until side-effect is made
         <-time.After(100 * time.Millisecond)
+	
         assert.Exactly(t, []int{2, 0}, nums)
+	assert.Exactly(t, []string{"Hello world"}, words)
+	assert.Exactly(t, []rune{'ห'}, chars)
 }
 
 func TestSubscribeToFromObservable(t *testing.T) {

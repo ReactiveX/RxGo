@@ -126,10 +126,12 @@ func Range(start, end int) *Observable {
 
 // Just creates an observable with only one item and emit "as-is".
 // source := observable.Just("https://someurl.com/api")
-func Just(item interface{}) *Observable {
+func Just(items ...interface{}) *Observable {
         o := NewObservable(1)
         go func() {
-		o.Stream <- item
+		for _, item := range items {
+			o.Stream <- item
+		}
                 close(o.Stream)
         }()
         return o
