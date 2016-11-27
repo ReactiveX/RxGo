@@ -9,10 +9,10 @@ import (
 
 // Observable is a stream of events implemented by an internal channel.
 type Observable struct {
-        Stream    chan interface{}
-
-        // Pointer to a default Observer, or the one subscribed to itself.
-	Observer *Observer
+        C    chan interface{}
+	
+        // Pointer to a default Observer which subscribed to itself.
+	observer *Observer
 	done chan struct{}
 }
 
@@ -38,12 +38,12 @@ func NewObservable(buf ...int) *Observable {
                 bufferLen = buf[len(buf)-1]
         }
         o := &Observable{
-                Stream: make(chan interface{}, bufferLen),
-		Observer: new(Observer),
+                C: make(chan interface{}, bufferLen),
+		observer: new(Observer),
 		done: make(chan struct{}, 1),
 		
         }
-        o.Observer.Observable = o
+        o.observer.observable = o
         return o
 }
 
@@ -55,46 +55,39 @@ func NewObservable(buf ...int) *Observable {
 // })
 func CreateObservable(fn func(*Observer)) *Observable {
         o := NewObservable()
-        go fn(o.Observer)
+        go fn(o.observer)
         return o
 }
 
 func CreateFromChannel(items chan interface{}) *Observable {
         if items != nil {
 		o := NewObservable()
-		o.Stream = items
+		o.C = items
 		return o
         }
         return NewObservable()
 }
 
-// Add adds an Event to the Observable and return that Observable.
+// Add adds an item to the Observable and return that Observable.
+// If the Observable is done, it creates a new one and return it.
 // myStream = myStream.Add(10)
 func (o *Observable) Add(v interface{}) *Observable {
-	/*
-	if _, ok := <-o.Stream; ok {
-		go func() {
-			o.Stream <- v
-		}()
-		return o
-	}
-        */
 	if !o.isDone() {
 		go func() {
-			o.Stream <- v
+			o.C <- v
 		}()
 		return o
 	}
 
-	// Else if it's done (closed), create a fresh channel with copies
+	// else if it's done (C is closed), create a fresh channel with copies
 	// of the old channel's elements for o.Stream.
 	ochan := make(chan interface{})
 
 	go func() {
-		for item := range o.Stream {
+		for item := range o.C {
 			ochan <- item
 		}
-		o.Stream = ochan
+		o.C = ochan
 	}()
 	return o
 }
@@ -104,7 +97,7 @@ func (o *Observable) Add(v interface{}) *Observable {
 func Empty() *Observable {
         o := NewObservable()
         go func() {
-                close(o.Stream)
+                close(o.C)
         }()
         return o
 }
@@ -117,7 +110,7 @@ func Interval(d time.Duration) *Observable {
         i := 0
         go func() {
                 for {
-                        o.Stream <- i
+                        o.C <- i
                         <-time.After(d)
                         i++
                 }
@@ -130,9 +123,9 @@ func Range(start, end int) *Observable {
         o := NewObservable(0)
         go func() {
                 for i := start; i < end; i++ {
-                        o.Stream <- i
+                        o.C <- i
                 }
-		close(o.Stream)
+		close(o.C)
         }()
         return o
 }
@@ -143,9 +136,9 @@ func Just(items ...interface{}) *Observable {
         o := NewObservable(1)
         go func() {
 		for _, item := range items {
-			o.Stream <- item
+			o.C <- item
 		}
-                close(o.Stream)
+                close(o.C)
         }()
         return o
 }
@@ -155,9 +148,9 @@ func From(items []interface{}) *Observable {
         o := NewObservable(len(items))
         go func() {
                 for _, item := range items {
-                        o.Stream <- item
+                        o.C <- item
                 }
-                close(o.Stream)
+                close(o.C)
         }()
         return o
 }
@@ -170,13 +163,13 @@ func Start(fs ...func() interface{}) *Observable {
         for _, f := range fs {
                 wg.Add(1)
                 go func(fn func() interface{}) {
-                        o.Stream <-fn()
+                        o.C <-fn()
                         wg.Done()
                 }(f)
         }
         go func() {
                 wg.Wait()
-                close(o.Stream)
+                close(o.C)
         }()
         return o
 }
@@ -186,7 +179,7 @@ func (o *Observable) Subscribe(ob *Observer) (*Subscription, error) {
         if o == nil {
                 return nil, errors.New("Observer is not initialized.")
         }
-        if o.Stream == nil {
+        if o.C == nil {
                 return nil, errors.New("Stream is not initialized.")
         }
 
@@ -207,7 +200,7 @@ func (o *Observable) Subscribe(ob *Observer) (*Subscription, error) {
                         }
                 }
                 wg.Done()
-        }(o.Stream)
+        }(o.C)
 
         go func() {
                 wg.Wait()
@@ -235,7 +228,7 @@ func (o *Observable) SubscribeFunc(nxtf func(v interface{}), errf func(e error),
         if o == nil {
                 return nil, errors.New("Observable is not initialized.")
         }
-        if o.Stream == nil {
+        if o.C == nil {
                 return nil, errors.New("Stream is not initialized.")
         }
 
@@ -266,7 +259,7 @@ func (o *Observable) SubscribeFunc(nxtf func(v interface{}), errf func(e error),
                         }
                 }
                 wg.Done()
-        }(o.Stream)
+        }(o.C)
 
         go func() {
                 wg.Wait()
@@ -294,7 +287,7 @@ func (o *Observable) SubscribeHandler(h Handler, hs ...Handler) (*Subscription, 
         if o == nil {
                 return nil, errors.New("Observable is not initialized.")
         }
-        if o.Stream == nil {
+        if o.C == nil {
                 return nil, errors.New("Stream is not initialized.")
         }
 
@@ -335,7 +328,7 @@ func (o *Observable) SubscribeHandler(h Handler, hs ...Handler) (*Subscription, 
                         }
                 }
                 wg.Done()
-        }(o.Stream)
+        }(o.C)
 
         go func() {
                 wg.Wait()
