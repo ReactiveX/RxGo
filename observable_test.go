@@ -10,10 +10,6 @@ import (
         "github.com/stretchr/testify/assert"
 )
 
-func TestObservableImplementStream(t *testing.T) {
-        assert.Implements(t, (*Stream)(nil), new(Observable))
-}
-
 // TestCreateObservableWithConstructor tests if the constructor method returns an Observable
 func TestCreateObservableWithConstructor(t *testing.T) {
         source := NewObservable()
@@ -338,6 +334,22 @@ func TestObservableIsDone(t *testing.T) {
 	<-time.After(100 * time.Millisecond)
 	assert.Equal(t, struct{}{}, <-done)
 	assert.Equal(t, true, o.isDone())
-
-
 }
+
+func TestCreateObservableAndSubscribeFunc(t *testing.T) {
+	o := CreateObservable(func(ob *Observer) {
+		ob.OnNext(99)
+		ob.OnError(errors.New("Yike"))
+		ob.OnDone()
+	})
+
+	o.SubscribeFunc(
+		func(v interface{}) { assert.Equal(t, 99, v.(int)) },
+		func(err error) { assert.NotNil(t, err) },
+		func() { assert.NotNil(t, o.done) },
+	)
+
+	<-time.After(100 * time.Millisecond)
+}
+
+

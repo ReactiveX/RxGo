@@ -9,7 +9,7 @@ import (
 
 // Observable is a stream of events implemented by an internal channel.
 type Observable struct {
-        C    chan interface{}
+        C chan interface{}
 	
         // Pointer to a default Observer which subscribed to itself.
 	observer *Observer
