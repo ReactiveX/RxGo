@@ -32,5 +32,6 @@ func (ob *Observer) OnError(err error) {
 
 // OnDone terminates the Observer's internal Observable.
 func (ob *Observer) OnDone() {
+	ob.observable.done <- struct{}{}
         close(ob.observable.C)
 }
