@@ -352,4 +352,21 @@ func TestCreateObservableAndSubscribeFunc(t *testing.T) {
 	<-time.After(100 * time.Millisecond)
 }
 
+func TestCloseSubscription(t *testing.T) {
+	nums := []int{}
+	source := Interval(100 * time.Millisecond)
+	sub, _ := source.Subscribe(&Observer{
+		NextHandler: NextFunc(func(v interface{}) {
+			nums = append(nums, v.(int))
+		}),
+	})
+	
+	if sub != nil {
+		<-time.After(300 * time.Millisecond)
+		sub.Close()
+	}
+	
+	assert.Equal(t, []int{0, 1, 2}, nums)
+}
+
 

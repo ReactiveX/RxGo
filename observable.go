@@ -13,6 +13,7 @@ type Observable struct {
 	
         // Pointer to a default Observer which subscribed to itself.
 	observer *Observer
+	unsubscribed chan struct{}
 	done chan struct{}
 }
 
@@ -40,6 +41,7 @@ func NewObservable(buf ...int) *Observable {
         o := &Observable{
                 C: make(chan interface{}, bufferLen),
 		observer: new(Observer),
+		unsubscribed: make(chan struct{}, 1),
 		done: make(chan struct{}, 1),
 		
         }
@@ -209,9 +211,10 @@ func (o *Observable) Subscribe(ob *Observer) (*Subscription, error) {
 
 	go func() {
 		select {
+		case <-o.unsubscribed:
 		case recent := <-o.done:
 
-			// Clone to a new o.done channel so others can read from.
+			// Clone to a new o.done channel so others can read from it.
 			o.done = make(chan struct{}, 1)
 			o.done <- recent
 			if ob.DoneHandler != nil {
@@ -220,7 +223,12 @@ func (o *Observable) Subscribe(ob *Observer) (*Subscription, error) {
 		}
 	}()
 
-        return &Subscription{Subscribe: time.Now()}, nil
+        return &Subscription{
+		observable: o,
+		Subscribe: time.Now(),
+		Unsubscribe: time.Time{},
+		
+	}, nil
 }
 
 // SubscribeWith subscribes handlers to the Observable and starts it.
