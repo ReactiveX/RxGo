@@ -91,7 +91,7 @@ func main() {
 
 ```
 
-An `Observable` is a synchronous stream of evens which can emit a value of type `interface{}`, `error`,
+An `Observable` is a synchronous stream of events which can emit a value of type `interface{}`, `error`,
 or notify as completed. Below is what an `Observable` looks like:
 
 ```bash
