@@ -1,52 +1,94 @@
 package grx
 
 import (
-	"fmt"
-        "errors"
+	//"fmt"
 	"sync"
-        "time"
+	"time"
 )
 
-// Observable is a stream of events implemented by an internal channel.
-type Observable struct {
-        C chan interface{}
-	
-        // Pointer to a default Observer which subscribed to itself.
-	observer *Observer
+// BaseObservable is a stream of events implemented by an internal channel.
+type BaseObservable struct {
+	C            chan interface{}
 	unsubscribed chan struct{}
-	done chan struct{}
+	done         chan struct{}
+	_observer    Observer
 }
 
-func (o *Observable) isDone() bool {
+//====================== Utility functions ===========================//
+func (o *BaseObservable) isDone() bool {
 	if _, ok := <-o.done; ok {
 		return true
 	}
 	return false
 }
 
-func (o *Observable) hasNext() bool {
-	if _, ok := <-o.done; ok {
-		return false
+func (o *BaseObservable) Next() (interface{}, error) {
+	if _, ok := <-o.done; !ok {
+		return <-o.C, nil
 	}
-	return true
+	return nil, EndOfIteratorError
 }
 
-// NewObservable constructs an empty Observable with 0 or more buffer length.
-// myStream := observable.New(1)
-func NewObservable(buf ...int) *Observable {
-        bufferLen := 0
-        if len(buf) > 0 {
-                bufferLen = buf[len(buf)-1]
-        }
-        o := &Observable{
-                C: make(chan interface{}, bufferLen),
-		observer: new(Observer),
+func (o *BaseObservable) HasNext() bool {
+	if o.isDone() {
+		return true
+	}
+	return false
+}
+
+/*
+ * These unexported methods are used by the higher-level <Observable>
+ * interface to call, and should not be called directly by the type
+ * <BaseObservable> itself unless unavoidable.
+ *
+ */
+func (o *BaseObservable) getInnerObserver() Observer {
+	return o._observer
+}
+
+func (o *BaseObservable) setInnerObserverTo(ob Observer) Observer {
+	o._observer = ob
+	return o._observer
+}
+
+func (o *BaseObservable) addItem(item interface{}) {
+	o.Add(item)
+	//o.C <- item
+}
+
+func (o *BaseObservable) terminate() {
+	o.done <- struct{}{}
+	close(o.C)
+}
+
+func (o *BaseObservable) unsubscribe() {
+	o.unsubscribed <- struct{}{}
+}
+
+func (o *BaseObservable) getC() chan interface{} {
+	return o.C
+}
+
+func NewBaseObservable(buf ...int) *BaseObservable {
+	bufferLen := 0
+	if len(buf) > 0 {
+		bufferLen = buf[len(buf)-1]
+	}
+	o := &BaseObservable{
+		C: make(chan interface{}, bufferLen),
+		_observer: (Observer)(&BaseObserver{
+			NextHandler: (NextFunc)(nil),
+			ErrHandler:  (ErrFunc)(nil),
+			DoneHandler: (DoneFunc)(nil),
+		}),
 		unsubscribed: make(chan struct{}, 1),
-		done: make(chan struct{}, 1),
-		
-        }
-        o.observer.observable = o
-        return o
+		done:         make(chan struct{}, 1),
+	}
+	//o._observer.observable = o
+	if o._observer != nil {
+		_ = o._observer.setInnerObservableTo(Observable(o))
+	}
+	return o
 }
 
 // Create creates a new Observable provided by a function that takes an Observer
@@ -55,25 +97,41 @@ func NewObservable(buf ...int) *Observable {
 //         ob.OnNext("Hello")
 //         ob.OnError(errors.New("This is an error."))
 // })
-func CreateObservable(fn func(*Observer)) *Observable {
-        o := NewObservable()
-        go fn(o.observer)
-        return o
+//func CreateObservable(fn func(*Observer)) *Observable {
+func CreateBaseObservable(fn func(Observer)) *BaseObservable {
+	//o := NewObservable()
+	o := NewBaseObservable()
+	fn(o._observer)
+	return o
 }
 
-func CreateFromChannel(items chan interface{}) *Observable {
-        if items != nil {
-		o := NewObservable()
+//func CreateFromChannel(items chan interface{}) *Observable {
+/*
+func CreateBaseObservableFromChan(items chan interface{}) *BaseObservable {
+	if items != nil {
+		//o := NewObservable()
+		o := NewBaseObservable()
 		o.C = items
 		return o
-        }
-        return NewObservable()
+	}
+	//return NewObservable()
+	return NewBaseObservable()
 }
+*/
+
+/*
+func CreateBaseObservableFrom(iter Iterator) *BaseObservable {
+	if iter != nil {
+
+	}
+}
+*/
 
 // Add adds an item to the Observable and return that Observable.
 // If the Observable is done, it creates a new one and return it.
 // myStream = myStream.Add(10)
-func (o *Observable) Add(v interface{}) *Observable {
+//func (o *Observable) Add(v interface{}) *Observable {
+func (o *BaseObservable) Add(v interface{}) *BaseObservable {
 	if !o.isDone() {
 		go func() {
 			o.C <- v
@@ -84,7 +142,6 @@ func (o *Observable) Add(v interface{}) *Observable {
 	// else if it's done (C is closed), create a fresh channel with copies
 	// of the old channel's elements for o.Stream.
 	ochan := make(chan interface{})
-
 	go func() {
 		for item := range o.C {
 			ochan <- item
@@ -96,254 +153,307 @@ func (o *Observable) Add(v interface{}) *Observable {
 
 // Empty creates an Observable with one last item marked as "completed".
 // myStream := observable.Empty()
-func Empty() *Observable {
-        o := NewObservable()
-        go func() {
-                close(o.C)
-        }()
-        return o
+//func Empty() *Observable {
+func Empty() *BaseObservable {
+	//o := NewObservable()
+	o := NewBaseObservable()
+	go func() {
+		o.terminate()
+		//close(o.C)
+	}()
+	return o
 }
 
 // Interval creates an Observable emitting incremental integers infinitely
 // between each give interval.
 // source := observable.Interval(1 * time.Second)
-func Interval(d time.Duration) *Observable {
-        o := NewObservable(1)
-        i := 0
-        go func() {
-                for {
-                        o.C <- i
-                        <-time.After(d)
-                        i++
-                }
-        }()
-        return o
+//func Interval(d time.Duration) *Observable {
+func Interval(d time.Duration) *BaseObservable {
+	//o := NewObservable(1)
+	o := NewBaseObservable(1)
+	i := 0
+	go func() {
+		for {
+			o.C <- i
+			<-time.After(d)
+			i++
+		}
+	}()
+	return o
 }
 
 // Range creates an Observable that emits a particular range of sequential integers.
-func Range(start, end int) *Observable {
-        o := NewObservable(0)
-        go func() {
-                for i := start; i < end; i++ {
-                        o.C <- i
-                }
-		close(o.C)
-        }()
-        return o
+//func Range(start, end int) *Observable {
+func Range(start, end int) *BaseObservable {
+	//o := NewObservable(0)
+	o := NewBaseObservable()
+	go func() {
+		for i := start; i < end; i++ {
+			o.C <- i
+		}
+		o.terminate()
+		//close(o.C)
+	}()
+	return o
 }
 
 // Just creates an observable with only one item and emit "as-is".
 // source := observable.Just("https://someurl.com/api")
-func Just(items ...interface{}) *Observable {
-        o := NewObservable(1)
-        go func() {
+//func Just(items ...interface{}) *Observable {
+func Just(items ...interface{}) *BaseObservable {
+	o := NewBaseObservable()
+	go func() {
 		for _, item := range items {
 			o.C <- item
 		}
-                close(o.C)
-        }()
-        return o
+		o.terminate()
+	}()
+	return o
 }
 
 // From creates an Observable from a slice of items and emit them in order.
-func From(items []interface{}) *Observable {
-        o := NewObservable(len(items))
-        go func() {
-                for _, item := range items {
-                        o.C <- item
-                }
-                close(o.C)
-        }()
-        return o
+//func From(items []interface{}) *Observable {
+func From(items []interface{}) *BaseObservable {
+	//o := NewObservable(len(items))
+	o := NewBaseObservable(len(items))
+	go func() {
+		for _, item := range items {
+			o.C <- item
+		}
+		//close(o.C)
+		o.terminate()
+
+	}()
+	return o
 }
 
 // Start creates an Observable from one or more directive-like functions
 // myStream := observable.Start(f1, f2, f3)
-func Start(fs ...func() interface{}) *Observable {
-        o := NewObservable(len(fs))
-        var wg sync.WaitGroup
-        for _, f := range fs {
-                wg.Add(1)
-                go func(fn func() interface{}) {
-                        o.C <-fn()
-                        wg.Done()
-                }(f)
-        }
-        go func() {
-                wg.Wait()
-                close(o.C)
-        }()
-        return o
+func Start(fs ...func() interface{}) *BaseObservable {
+	o := NewBaseObservable(len(fs))
+	var wg sync.WaitGroup
+	for _, f := range fs {
+		wg.Add(1)
+		go func(fn func() interface{}) {
+			o.C <- fn()
+			wg.Done()
+		}(f)
+	}
+
+	go func() {
+		wg.Wait()
+		//close(o.C)
+		o.terminate()
+	}()
+	return o
 }
 
-// Subscribe subscribes an Observer to the Observable and starts it.
-func (o *Observable) Subscribe(ob *Observer) (*Subscription, error) {
-        if o == nil {
-                return nil, errors.New("Observer is not initialized.")
-        }
-        if o.C == nil {
-                return nil, errors.New("Stream is not initialized.")
-        }
+func (o *BaseObservable) runStream(ob Observer) {
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func(items chan interface{}) {
+		for item := range items {
+			switch next := item.(type) {
+			case error:
+				if ob.OnError != nil {
+					ob.OnError(next)
+				}
+				return
+			default:
+				if ob.OnNext != nil {
+					ob.OnNext(next)
+				}
+			}
+		}
+		wg.Done()
+	}(o.C)
 
-        var wg sync.WaitGroup
-        wg.Add(1)
-        go func(stream chan interface{}) {
-                for item := range stream {
-                        switch v := item.(type) {
-                        case error:
-                                if ob.ErrHandler != nil {
-                                        ob.ErrHandler(v)
-                                }
-                                return
-                        case interface{}:
-                                if ob.NextHandler != nil {
-                                        ob.NextHandler(v)
-                                }
-                        }
-                }
-                wg.Done()
-        }(o.C)
-
-        go func() {
-                wg.Wait()
-		o.done <- struct{}{}
-        }()
+	go func() {
+		wg.Wait()
+		o.terminate()
+	}()
 
 	go func() {
 		select {
 		case <-o.unsubscribed:
-		case recent := <-o.done:
-
-			// Clone to a new o.done channel so others can read from it.
-			o.done = make(chan struct{}, 1)
-			o.done <- recent
-			if ob.DoneHandler != nil {
-				ob.DoneHandler()
+		case <-o.done:
+			if ob.OnDone != nil {
+				ob.OnDone()
 			}
 		}
 	}()
+}
 
-        return &Subscription{
-		observable: o,
-		Subscribe: time.Now(),
-		Unsubscribe: time.Time{},
-		
-	}, nil
+func checkObservable(o *BaseObservable) error {
+	if o == nil {
+		return NilObservableError
+	}
+	if o.C == nil {
+		return NilObservableCError
+	}
+	if o.isDone() {
+		return EndOfIteratorError
+	}
+	return nil
+
+	/*
+		switch {
+		default:
+			return UndefinedObservableError
+		case o == nil:
+			return NilObservableError
+		case o.C == nil:
+			return NilObservableCError
+		case o.isDone():
+			return EndOfIteratorError
+		}
+
+		return nil
+	*/
+}
+
+/*
+// Subscribe subscribes an Observer to the Observable and starts it.
+//func (o *Observable) Subscribe(ob *Observer) (*Subscription, error) {
+func (o *BaseObservable) Subscribe(ob Observer) (Subscriptor, error) {
+
+	err := checkObservable(o)
+	if err != nil {
+		return nil, err
+	}
+
+	o.runStream(ob)
+
+	return Subscriptor(&Subscription{
+		_observable:   o,
+		SubscribeAt:   time.Now(),
+		UnsubscribeAt: time.Time{},
+	}), nil
 }
 
 // SubscribeWith subscribes handlers to the Observable and starts it.
-func (o *Observable) SubscribeFunc(nxtf func(v interface{}), errf func(e error), donef func()) (*Subscription, error) {
-        if o == nil {
-                return nil, errors.New("Observable is not initialized.")
-        }
-        if o.C == nil {
-                return nil, errors.New("Stream is not initialized.")
-        }
+//func (o *Observable) SubscribeFunc(nxtf func(v interface{}), errf func(e error), donef func()) (Subscriptor, error) {
+func (o *BaseObservable) SubscribeFunc(nxtf func(v interface{}), errf func(e error), donef func()) (Subscriptor, error) {
 
-	go func() {
-		select {
-		case <-o.done:
-			fmt.Println("Done! Firing DoneHandler...")
-			if donef != nil {
-				donef()
-			}
-		}
-	}()
+	err := checkObservable(o)
+	if err != nil {
+		return nil, err
+	}
 
-        var wg sync.WaitGroup
-        wg.Add(1)
-        go func(stream chan interface{}) {
-                for item := range stream {
-                        switch v := item.(type) {
-                        case error:
-                                if errf != nil {
-                                        errf(v)
-                                }
-                                return
-                        case interface{}:
-                                if nxtf != nil {
-                                        nxtf(v)
-                                }
-                        }
-                }
-                wg.Done()
-        }(o.C)
+	ob := Observer(&BaseObserver{
+		NextHandler: NextFunc(nxtf),
+		ErrHandler:  ErrFunc(errf),
+		DoneHandler: DoneFunc(donef),
+	})
 
-        go func() {
-                wg.Wait()
-		o.done <- struct{}{}
-        }()
+	o.runStream(ob)
 
-	go func() {
-		select {
-		case recent := <-o.done:
-
-			// Clone to a new o.done channel so others can read from.
-			o.done = make(chan struct{}, 1)
-			o.done <- recent
-			if donef != nil {
-				donef()
-			}
-		}
-	}()
-	
-        return &Subscription{Subscribe: time.Now()}, nil
+	return Subscriptor(&Subscription{SubscribeAt: time.Now()}), nil
 }
+*/
 
 // SubscribeHandler subscribes a Handler to the Observable and starts it.
-func (o *Observable) SubscribeHandler(h Handler, hs ...Handler) (*Subscription, error) {
-        if o == nil {
-                return nil, errors.New("Observable is not initialized.")
-        }
-        if o.C == nil {
-                return nil, errors.New("Stream is not initialized.")
-        }
+//func (o *BaseObservable) SubscribeHandler(h EventHandler, hs ...EventHandler) (Subscriptor, error) {
+func (o *BaseObservable) Subscribe(h EventHandler) (Subscriptor, error) {
 
-	handlers := []Handler{h}
-	handlers = append(handlers, hs...)
-
-        nc, errc, dc := make(chan NextFunc), make(chan ErrFunc), make(chan DoneFunc)
-        go func() {
-		for _, h := range handlers {
-			switch fn := h.(type) {
-			case NextFunc:
-				nc <- fn
-				close(nc)
-			case ErrFunc:
-				errc <- fn
-				close(errc)
-			case DoneFunc:
-				dc <- fn
-				close(dc)
-			}
+	/*
+		err := checkObservable(o)
+		if err != nil {
+			return nil, err
 		}
-        }()
-	
-        var wg sync.WaitGroup
-        wg.Add(1)
-        go func(stream chan interface{}) {
-                for item := range stream {
-                        switch v := item.(type) {
-                        case error:
-                                if fn, ok := <-errc; ok {
-                                        fn(v)
-                                }
-                                return
-                        case interface{}:
-                                if fn, ok := <-nc; ok {
-                                        fn(v)
-                                }
-                        }
-                }
-                wg.Done()
-        }(o.C)
+	*/
 
-        go func() {
-                wg.Wait()
-                if fn, ok := <-dc; ok {
-			o.done <- struct{}{}
-                        fn()
-                }
-        }()
-        return &Subscription{Subscribe: time.Now()}, nil
+	ob := NewBaseObserver()
+
+	var nextf NextFunc
+	var errf ErrFunc
+	var donef DoneFunc
+
+	switch handler := h.(type) {
+	case NextFunc:
+		nextf = handler
+	case ErrFunc:
+		errf = handler
+	case DoneFunc:
+		donef = handler
+	case *BaseObserver:
+		ob = handler
+	}
+
+	if ob == nil {
+		ob = &BaseObserver{
+			NextHandler: nextf,
+			ErrHandler:  errf,
+			DoneHandler: donef,
+		}
+	}
+
+	o.runStream(ob)
+
+	/*
+		handlers := append([]EventHandler{h}, hs...)
+
+		nc, errc, dc := make(chan NextFunc), make(chan ErrFunc), make(chan DoneFunc)
+
+		var wg sync.WaitGroup
+		for _, handler := range handlers {
+			wg.Add(1)
+			go func() {
+				switch handler := handler.(type) {
+				case NextFunc:
+					nc <- handler
+				case ErrFunc:
+					errc <- handler
+				case DoneFunc:
+					dc <- handler
+				case *BaseObserver:
+					switch {
+					case handler.NextHandler != nil:
+						nc <- handler.NextHandler
+					case handler.ErrHandler != nil:
+						errc <- handler.ErrHandler
+					case handler.DoneHandler != nil:
+						dc <- handler.DoneHandler
+					}
+				}
+				wg.Done()
+			}()
+		}
+
+		go func() {
+			wg.Wait()
+			close(nc)
+			close(errc)
+			close(dc)
+		}()
+
+		//var wg sync.WaitGroup
+		wg.Add(1)
+
+		go func(stream chan interface{}) {
+			for item := range stream {
+				switch v := item.(type) {
+				case error:
+					if fn, ok := <-errc; ok {
+						fn(v)
+					}
+					return
+				case interface{}:
+					if fn, ok := <-nc; ok {
+						fn(v)
+					}
+				}
+			}
+			wg.Done()
+		}(o.C)
+
+		go func() {
+			wg.Wait()
+			if fn, ok := <-dc; ok {
+				o.done <- struct{}{}
+				fn()
+			}
+		}()
+	*/
+	return Subscriptor(&Subscription{SubscribeAt: time.Now()}), nil
 }

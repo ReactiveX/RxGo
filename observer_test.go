@@ -7,16 +7,17 @@ import (
 )
 
 func TestCreateNewObserverWithConstructor(t *testing.T) {
-	ob := NewObserver()
+	//ob := NewObserver()
+	ob := NewBaseObserver()
 	
 	assert := assert.New(t)	
 	assert.IsType((*Observer)(nil), ob)
-	assert.NotNil(ob.observable.C)
-	assert.NotNil(ob.observable.observer)
+	assert.NotNil(ob._observable.getC())
+	assert.NotNil(ob._observable.getInnerObserver())
 	assert.Nil(ob.NextHandler)
 	assert.Nil(ob.ErrHandler)
 	assert.Nil(ob.DoneHandler)
-	assert.Equal(ob, ob.observable.observer)
+	assert.Equal(ob, ob._observable.getInnerObserver())
 }
 
 
