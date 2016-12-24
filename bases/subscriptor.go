@@ -1,4 +1,4 @@
-package grx
+package bases
 
 import "time"
 
@@ -6,5 +6,6 @@ import "time"
 type Subscriptor interface {
 	Dispose() Subscriptor
 	Unsubscribe() Subscriptor
-	UnsubscribeIn(time.Duration) Subscriptor
+	UnsubscribeIn(time.Duration) (<-chan Subscriptor)
+    UnsubscribeOn(chan struct{}{}) (<-chan Subscriptor)
 }
