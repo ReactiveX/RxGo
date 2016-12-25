@@ -3,10 +3,10 @@ package errors
 import "fmt"
 
 // ErrorType serves as error code for the error enum
-type Code uint32
+type ErrorCode uint32
 
 const (
-	EndOfIteratorError Code = iota
+	EndOfIteratorError ErrorCode = iota
 	NilObservableError
 	NilEventStreamError
 	NilObserverError
@@ -15,11 +15,11 @@ const (
 
 // BaseError provides a base template for more package-specific errors
 type BaseError struct {
-	code    Code
+	code    ErrorCode
 	message string
 }
 
-func New(code Code, msg ...string) BaseError {
+func New(code ErrorCode, msg ...string) BaseError {
 	err := BaseError{
 		code: code,
 	}
@@ -32,10 +32,10 @@ func New(code Code, msg ...string) BaseError {
 }
 
 // Error returns an error string to implement the error interface
-func (err *BaseError) Error() string {
+func (err BaseError) Error() string {
 	return fmt.Sprintf("%d - %s", err.code, err.message)
 }
 
-func (err *BaseError) Code() Code {
-	return err.code
+func (err BaseError) Code() int {
+	return int(err.code)
 }

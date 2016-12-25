@@ -1,13 +1,8 @@
 package handlers
 
 import (
-	"github.com/jochasinga/bases"
-	"github.com/jochasinga/grx"
+	"github.com/jochasinga/grx/bases"
 )
-
-type EventHandler interface {
-	Apply(grx.Emitter)
-}
 
 type (
 	NextFunc func(bases.Item)
@@ -15,7 +10,7 @@ type (
 	DoneFunc func()
 )
 
-func (handle NextFunc) Apply(e grx.Emitter) {
+func (handle NextFunc) Apply(e bases.Emitter) {
 	if item, err := e.Emit(); err == nil {
 		if item != nil {
 			handle(item)
@@ -25,7 +20,7 @@ func (handle NextFunc) Apply(e grx.Emitter) {
 	}
 }
 
-func (handle ErrFunc) Apply(e grx.Emitter) {
+func (handle ErrFunc) Apply(e bases.Emitter) {
 	if item, err := e.Emit(); err != nil {
 		if item == nil {
 			handle(err)
@@ -35,6 +30,6 @@ func (handle ErrFunc) Apply(e grx.Emitter) {
 	}
 }
 
-func (handle DoneFunc) Apply(e grx.Emitter) {
+func (handle DoneFunc) Apply(e bases.Emitter) {
 	handle()
 }

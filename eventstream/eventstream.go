@@ -2,30 +2,21 @@ package eventstream
 
 import (
 	"github.com/jochasinga/grx/bases"
+	"github.com/jochasinga/grx/errors"
 )
 
 type EventStream chan bases.Emitter
 
-func (evs EventStream) isDone() bool {
-	_, ok := <-evs
-	return ok
-}
-
 // Next returns the next Event on the EventStream
-func (evs EventStream) Next() bases.Emitter {
-	if !evs.isDone() {
-		return <-o.EventStream
+func (evs EventStream) Next() (bases.Emitter, error) {
+	if emitter, ok := <-evs; ok {
+		return emitter, nil
 	}
-	return nil, NewError(grx.EndOfIteratorError)
-}
-
-// HasNext returns true if there is the next Event and false otherwise
-func (evs EventStream) HasNext() bool {
-	return !evs.isDone()
+	return nil, NewError(errors.EndOfIteratorError)
 }
 
 // New creates a new EventStream from one or more Event
-func New(emitters ...Emitter) EventStream {
+func New(emitters ...bases.Emitter) EventStream {
 	es := make(EventStream)
 	go func() {
 		for _, emitter := range emitters {
@@ -37,11 +28,15 @@ func New(emitters ...Emitter) EventStream {
 }
 
 // From creates a new EventStream from an Iterator
-func From(iter Iterator) EventStream {
+func From(iter bases.Iterator) EventStream {
 	es := make(EventStream)
 	go func() {
-		for iter.HasNext() {
-			es <- iter.Next()
+		for {
+			emitter, err := iter.Next()
+			if err != nil {
+				return
+			}
+			es <- emitter
 		}
 		close(es)
 	}()

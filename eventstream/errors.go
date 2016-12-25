@@ -1,16 +1,14 @@
 package eventstream
 
 import (
-	"github.com/jochasinga/grx"
+	"github.com/jochasinga/grx/errors"
 )
 
 type EventStreamError struct {
-	grx.BaseError
+	errors.BaseError
 }
 
-func NewError(code grx.ErrorType) {
-	return &EventStreamError{
-		Code:    code,
-		Message: code.String(),
-	}
+func NewError(code errors.ErrorCode) EventStreamError {
+	baseErr := errors.New(code)
+	return EventStreamError{baseErr}
 }
