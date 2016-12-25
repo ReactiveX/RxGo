@@ -53,3 +53,13 @@ func TestBaseErrorWithCustomMessage(t *testing.T) {
 		assert.Equal(tt.Expected, tt.Actual)
 	}
 }
+
+func TestErrorMethod(t *testing.T) {
+	baseError := New(UndefinedError)
+	assert.Equal(t, "4 - UndefinedError", baseError.Error())
+}
+
+func TestCodeMethod(t *testing.T) {
+	baseError := New(UndefinedError)
+	assert.EqualValues(t, 4, baseError.Code())
+}
