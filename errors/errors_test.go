@@ -8,7 +8,7 @@ import (
 )
 
 func TestErrorCodes(t *testing.T) {
-	errors := []Code{
+	errors := []ErrorCode{
 		EndOfIteratorError,
 		NilObservableError,
 		NilEventStreamError,
@@ -16,22 +16,25 @@ func TestErrorCodes(t *testing.T) {
 		UndefinedError,
 	}
 	errorEnumTests := unittest.Tables{}
-
 	for i, err := range errors {
 		errorEnumTests = append(errorEnumTests, unittest.Table{err, i})
 	}
 
 	assert := assert.New(t)
-
 	for _, tt := range errorEnumTests {
 		assert.EqualValues(tt.Expected, tt.Actual)
 	}
 }
 
+func TestBaseErrorImplementError(t *testing.T) {
+	baseError := New(EndOfIteratorError)
+	assert.Implements(t, (*error)(nil), baseError)
+}
+
 func TestBaseErrorWithDefaultMessage(t *testing.T) {
 	baseError := New(EndOfIteratorError)
 	baseErrorTests := unittest.Tables{
-		{baseError.code, Code(0)},
+		{baseError.code, ErrorCode(0)},
 		{baseError.message, "EndOfIteratorError"},
 	}
 
@@ -44,7 +47,7 @@ func TestBaseErrorWithDefaultMessage(t *testing.T) {
 func TestBaseErrorWithCustomMessage(t *testing.T) {
 	baseError := New(NilObservableError, "Observable is set to nil")
 	baseErrorTests := unittest.Tables{
-		{baseError.code, Code(1)},
+		{baseError.code, ErrorCode(1)},
 		{baseError.message, "Observable is set to nil"},
 	}
 
