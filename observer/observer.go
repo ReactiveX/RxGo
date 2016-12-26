@@ -29,7 +29,7 @@ var DefaultObserver = func() *Observer {
 }()
 
 // Apply makes Observer implements handlers.EventHandler
-func (ob *Observer) Apply(e bases.Emitter) {
+func (ob *Observer) Handle(e bases.Emitter) {
 	if ob.observable.HasNext() {
 		item, err := e.Emit() 
 		if err != nil {
