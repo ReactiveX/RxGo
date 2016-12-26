@@ -1,4 +1,4 @@
-package grx
+package observable
 
 import (
 	"sync"
@@ -6,13 +6,13 @@ import (
 
 	"github.com/jochasinga/grx/bang"
 	"github.com/jochasinga/grx/observer"
-	"github.com/jochasinga/grx/stream"
+	"github.com/jochasinga/grx/eventstream"
 	"github.com/jochasinga/grx/subject"
 )
 
 // Observable is a stream of Emitters
 type Observable struct {
-	stream.EventStream
+	eventstream.EventStream
 	notifier *bang.Notifier
 	observer *subject.Subject
 }
@@ -166,8 +166,7 @@ func Start(f func() Emitter, fs ...func() Emitter) *Observable {
 	return o
 }
 
-func processStream(o *Observable, ob *Observer, async bool) {
-	async = false
+func processStream(o *Observable, ob *Observer) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {

@@ -1,4 +1,4 @@
-package grx
+package observable
 
 import (
 	"net/http"

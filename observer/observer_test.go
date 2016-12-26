@@ -1,16 +1,16 @@
-package grx
+package observer
 
 import (
-        "testing"
+	"testing"
 
-        "github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCreateNewObserverWithConstructor(t *testing.T) {
 	//ob := NewObserver()
 	ob := NewBaseObserver()
-	
-	assert := assert.New(t)	
+
+	assert := assert.New(t)
 	assert.IsType((*Observer)(nil), ob)
 	assert.NotNil(ob._observable.getC())
 	assert.NotNil(ob._observable.getInnerObserver())
@@ -19,6 +19,3 @@ func TestCreateNewObserverWithConstructor(t *testing.T) {
 	assert.Nil(ob.DoneHandler)
 	assert.Equal(ob, ob._observable.getInnerObserver())
 }
-
-
-

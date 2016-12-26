@@ -3,8 +3,8 @@ package subscription
 import (
 	"time"
 
-	"github.com/jochasinga/bases"
-	"github.com/jochasinga/subject"
+	"github.com/jochasinga/grx/bases"
+	"github.com/jochasinga/grx/subject"
 )
 
 // Subscription is usually returned from any subscription

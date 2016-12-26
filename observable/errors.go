@@ -1,11 +1,11 @@
 package observable
 
 import (
-	"github.com/jochasinga/grx"
+	"github.com/jochasinga/grx/errors"
 )
 
 type ObservableError struct {
-	grx.BaseError
+	errors.BaseError
 }
 
 func NewError(code grx.ErrorType) {

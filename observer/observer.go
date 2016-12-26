@@ -1,13 +1,13 @@
 package observer
 
 import (
-	"github.com/jochasinga/grx"
-	"github.com/jochasinga/bases"
+	"github.com/jochasinga/grx/subject"
+	"github.com/jochasinga/grx/bases"
 	"github.com/jochasinga/grx/handlers"
 )
 
 type Observer struct {
-	observable  *grx.Subject
+	observable  *subject.Subject
 	NextHandler handlers.EventHandler
 	ErrHandler  handlers.EventHandler
 	DoneHandler handlers.EventHandler

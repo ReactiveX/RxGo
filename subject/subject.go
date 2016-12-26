@@ -1,13 +1,13 @@
 package subject
 
 import (
-	"github.com/jochasinga/observable"
-	"github.com/jochasinga/observer"
+	"github.com/jochasinga/grx/observable"
+	"github.com/jochasinga/grx/observer"
 )
 
 type Subject struct {
-	*Observable
-	*Observer
+	*observable.Observable
+	*observer.Observer
 }
 
 func New(fs ...func(*Subject)) *Subject {
