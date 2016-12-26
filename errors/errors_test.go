@@ -13,6 +13,7 @@ func TestErrorCodes(t *testing.T) {
 		NilObservableError,
 		NilEventStreamError,
 		NilObserverError,
+		NilSingleError,
 		UndefinedError,
 	}
 	errorEnumTests := unittest.Tables{}

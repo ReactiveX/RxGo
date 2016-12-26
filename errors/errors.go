@@ -10,6 +10,7 @@ const (
 	NilObservableError
 	NilEventStreamError
 	NilObserverError
+	NilSingleError
 	UndefinedError
 )
 
