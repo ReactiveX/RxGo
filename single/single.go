@@ -9,8 +9,8 @@ type Single struct {
 
 // Emit type-assert and return an Item type or an error
 func (s Single) Emit() (bases.Item, error) {
-	if v, ok := s.Item.(error); ok {
-		return nil, v
+	if err, ok := s.Item.(error); ok {
+		return nil, err
 	}
 	return s.Item, nil
 }

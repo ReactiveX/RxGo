@@ -49,9 +49,14 @@ func (li *List) Next() (Emitter, error) {
 	return nil, errors.New(errors.EndOfIteratorError)
 }
 
+func TestEventStreamImplementIterator(t *testing.T) {
+	evs := New(num, word, pi, ru)
+	assert.Implements(t, (*Iterator)(nil), evs)
+}
+
 func TestCreateEventStreamWithConstructor(t *testing.T) {
 	evs := New(num, word, pi, ru)
-	assert.IsType(t, (EventStream)(nil), evs)
+	assert.IsType(t, EventStream(nil), evs)
 }
 
 func TestCreateEventStreamWithFrom(t *testing.T) {
@@ -59,7 +64,7 @@ func TestCreateEventStreamWithFrom(t *testing.T) {
 		inner: []Emitter{num, word, pi, ru},
 	}
 	evs := From(li)
-	assert.IsType(t, (EventStream)(nil), evs)
+	assert.IsType(t, EventStream(nil), evs)
 }
 
 func TestEventStreamNextMethod(t *testing.T) {

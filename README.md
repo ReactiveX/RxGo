@@ -121,6 +121,7 @@ nextf := func(v interface{}) {
 
 _, _ = source.SubscribeFunc(nextf, nil, nil)
 
+
 ```
 Most Observable methods and operators will return the Observable itself, making it chainable.
 

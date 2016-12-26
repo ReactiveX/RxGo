@@ -245,7 +245,7 @@ func (o *BaseObservable) SubscribeFunc(nxtf func(v interface{}), errf func(e err
 */
 
 // SubscribeHandler subscribes a Handler to the Observable and starts it.
-func (o *BaseObservable) Subscribe(h EventHandler) (Subscriptor, error) {
+func (o *Observable) Subscribe(handle EventHandler) (Subscriptor, error) {
 	err := checkObservable(o)
 	if err != nil {
 		return nil, err
@@ -281,72 +281,7 @@ func (o *BaseObservable) Subscribe(h EventHandler) (Subscriptor, error) {
 		})
 	}
 
-	o.runStream(ob)
+	processStream(o, ob)
 
-	/*
-		handlers := append([]EventHandler{h}, hs...)
-
-		nc, errc, dc := make(chan NextFunc), make(chan ErrFunc), make(chan DoneFunc)
-
-		var wg sync.WaitGroup
-		for _, handler := range handlers {
-			wg.Add(1)
-			go func() {
-				switch handler := handler.(type) {
-				case NextFunc:
-					nc <- handler
-				case ErrFunc:
-					errc <- handler
-				case DoneFunc:
-					dc <- handler
-				case *BaseObserver:
-					switch {
-					case handler.NextHandler != nil:
-						nc <- handler.NextHandler
-					case handler.ErrHandler != nil:
-						errc <- handler.ErrHandler
-					case handler.DoneHandler != nil:
-						dc <- handler.DoneHandler
-					}
-				}
-				wg.Done()
-			}()
-		}
-
-		go func() {
-			wg.Wait()
-			close(nc)
-			close(errc)
-			close(dc)
-		}()
-
-		//var wg sync.WaitGroup
-		wg.Add(1)
-
-		go func(stream chan interface{}) {
-			for item := range stream {
-				switch v := item.(type) {
-				case error:
-					if fn, ok := <-errc; ok {
-						fn(v)
-					}
-					return
-				case interface{}:
-					if fn, ok := <-nc; ok {
-						fn(v)
-					}
-				}
-			}
-			wg.Done()
-		}(o.C)
-
-		go func() {
-			wg.Wait()
-			if fn, ok := <-dc; ok {
-				o.done <- struct{}{}
-				fn()
-			}
-		}()
-	*/
 	return Subscriptor(&Subscription{SubscribeAt: time.Now()}), nil
 }
