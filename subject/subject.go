@@ -1,20 +1,18 @@
 package subject
 
 import (
-	"github.com/jochasinga/grx/observable"
-	"github.com/jochasinga/grx/observer"
+	"github.com/jochasinga/grx/bases"
 )
 
 type Subject struct {
-	*observable.Observable
-	*observer.Observer
+	bases.Stream
+	bases.Sentinel
 }
 
+var DefaultSubject = &Subject{}
+
 func New(fs ...func(*Subject)) *Subject {
-	s := &Subject{
-		Observable: observable.New(),
-		Observer:   observer.New(),
-	}
+	s := DefaultSubject
 	if len(fs) > 0 {
 		for _, f := range fs {
 			f(s)
@@ -22,3 +20,11 @@ func New(fs ...func(*Subject)) *Subject {
 	}
 	return s
 }
+
+/*
+func (s *Subject) Done() {
+	if o, ok := s.Stream.(*observable.Observable); ok {
+		o.Done()
+	}
+}
+*/

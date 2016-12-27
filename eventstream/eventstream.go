@@ -18,12 +18,14 @@ func (evs EventStream) Next() (bases.Emitter, error) {
 // New creates a new EventStream from one or more Event
 func New(emitters ...bases.Emitter) EventStream {
 	es := make(EventStream)
-	go func() {
-		for _, emitter := range emitters {
-			es <- emitter
-		}
-		close(es)
-	}()
+	if len(emitters) > 0 {
+		go func() {
+			for _, emitter := range emitters {
+				es <- emitter
+			}
+			//close(es)
+		}()
+	}
 	return es
 }
 

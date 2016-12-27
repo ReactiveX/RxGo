@@ -2,31 +2,31 @@ package bang
 
 // Notifier consists of a pair of channels used in notifying an Observable
 type Notifier struct {
-	unsubscribe chan struct{}
-	done        chan struct{}
+	Unsubscribed chan struct{}
+	IsDone       chan struct{}
 }
 
-var Bang = func() struct{}{} {
-    return struct{}{}
+var Bang = func() struct{} {
+	return struct{}{}
 }()
 
 func (notif *Notifier) Done() {
 	go func() {
-		notif.done <- Bang
-		close(notif.done)
+		notif.IsDone <- Bang
+		close(notif.IsDone)
 	}()
 }
 
 func (notif *Notifier) Unsubscribe() {
 	go func() {
-		notif.unsubscribe <- Bang
-		close(notif.unsubscribe)
+		notif.Unsubscribed <- Bang
+		close(notif.Unsubscribed)
 	}()
 }
 
 func New() *Notifier {
 	return &Notifier{
-		unsubscribe: make(chan struct{}, 1),
-		done:        make(chan struct{}, 1),
+		Unsubscribed: make(chan struct{}),
+		IsDone:       make(chan struct{}),
 	}
 }

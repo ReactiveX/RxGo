@@ -3,6 +3,7 @@ package bases
 type Stream interface {
 	Subscribe(EventHandler) (Subscriptor, error)
 	Unsubscribe() Subscriptor
+	Done()
 
 	Iterator
 	//Subscribe(Observer) (Subscriptor, error)

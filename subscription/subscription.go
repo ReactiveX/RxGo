@@ -17,7 +17,7 @@ type Subscription struct {
 // DefaultSubscription is a default Subscription
 var DefaultSubscription = &Subscription{}
 
-func New(fs ...func(*Subscription)) {
+func New(fs ...func(*Subscription)) *Subscription {
 	s := DefaultSubscription
 	if len(fs) > 0 {
 		for _, f := range fs {
@@ -33,6 +33,11 @@ func (s *Subscription) Dispose() bases.Subscriptor {
 		s.observable.Unsubscribe()
 		s.UnsubscribeAt = time.Now()
 	}()
+	return s
+}
+
+func (s *Subscription) Subscribe() bases.Subscriptor {
+	s.SubscribeAt = time.Now()
 	return s
 }
 
@@ -53,15 +58,24 @@ func (s *Subscription) UnsubscribeIn(d time.Duration) <-chan bases.Subscriptor {
 }
 
 // UnscribeOn unsubscribes an Observable
-func (s *Subscription) UnsubscribeOn(sig chan struct{}, timeout ...time.Duration) <-chan Subscriptor {
-	out := make(chan Subscriptor)
-	go func() {
-		select {
-		case <-time.After(timeout):
-		case <-sig:
-			out <- s.Dispose()
-		}
-	}()
-	return out
+func (s *Subscription) UnsubscribeOn(sig chan struct{}, timeout time.Duration) <-chan bases.Subscriptor {
+	out := make(chan bases.Subscriptor)
 
+	if timeout >= 0 {
+		go func() {
+			select {
+			case <-time.After(timeout):
+				return
+			case <-sig:
+				out <- s.Dispose()
+				return
+			}
+		}()
+	}
+	go func() {
+		<-sig
+		out <- s.Dispose()
+	}()
+
+	return out
 }

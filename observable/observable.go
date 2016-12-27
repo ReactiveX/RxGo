@@ -25,7 +25,7 @@ var DefaultObservable = func() *Observable {
 		notifier:    bang.New(),
 	}
 	o.observer = subject.New(func(s *subject.Subject) {
-		s.Observable = o
+		s.Stream = o
 	})
 	return o
 }()
@@ -61,6 +61,7 @@ func Create(f func(*Observer), fs ...func(*Observer)) *Observable {
 	return o
 }
 
+/*
 // Add adds an item to the Observable and returns that Observable.
 // If the Observable is done, it creates a new one and return it.
 func (o *Observable) Add(e Emitter, es ...Emitter) *Observable {
@@ -82,6 +83,7 @@ func (o *Observable) Add(e Emitter, es ...Emitter) *Observable {
 	}()
 	return out
 }
+*/
 
 // Empty creates an Observable with one last item marked as "completed".
 func Empty() *Observable {
@@ -122,7 +124,7 @@ func Range(start, end int) *Observable {
 // Just creates an observable with only one item and emit "as-is".
 // source := observable.Just("https://someurl.com/api")
 func Just(em Emitter, ems ...Emitter) Observable {
-	o := new(Observable)
+	o := New()
 	emitters := append([]Emitter{em}, ems...)
 
 	go func() {
@@ -134,15 +136,29 @@ func Just(em Emitter, ems ...Emitter) Observable {
 	return o
 }
 
-// From creates an Observable from an Iterator
-func From(iter Iterator) *Observable {
-	o := New()
+/*
+// From creates a new EventStream from an Iterator
+func From(iter bases.Iterator) EventStream {
+	es := make(EventStream)
 	go func() {
-		for iter.HasNext() {
-			o.EventStream <- iter.Next()
+		for {
+			emitter, err := iter.Next()
+			if err != nil {
+				return
+			}
+			es <- emitter
 		}
-		o.Done()
+		close(es)
 	}()
+	return es
+}
+*/
+
+// From creates an Observable from an Iterator
+func From(iter bases.Iterator) *Observable {
+	o := New()
+	o.EventStream = o.From(iter)
+	o.Done()
 	return o
 }
 
@@ -171,21 +187,7 @@ func processStream(o *Observable, ob *Observer) {
 	wg.Add(1)
 	go func() {
 		for emitter := range o.EventStream {
-			item, err := emitter.Emit()
-			if err != nil {
-				if item == nil {
-					if ob.ErrHandler != nil {
-						ob.ErrHandler(err)
-					}
-					return
-				}
-			} else {
-				if item != nil {
-					if ob.NextHandler != nil {
-						ob.NextHandler(item)
-					}
-				}
-			}
+			ob.Handle(emitter)
 		}
 		wg.Done()
 	}()
@@ -195,15 +197,15 @@ func processStream(o *Observable, ob *Observer) {
 		o.Done()
 	}()
 
-	select {
-	case <-o.unsubscribed:
-		return
-	case <-o.done:
-		if ob.DoneHandler != nil {
+	go func() {
+		select {
+		case <-o.unsubscribed:
+			return
+		case <-o.done:
 			ob.DoneHandler()
 			return
 		}
-	}
+	}()
 }
 
 func checkObservable(o *Observable) error {

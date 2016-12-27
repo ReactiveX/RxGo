@@ -1,48 +1,43 @@
 package observer
 
 import (
-	"github.com/jochasinga/grx/subject"
 	"github.com/jochasinga/grx/bases"
 	"github.com/jochasinga/grx/handlers"
+	"github.com/jochasinga/grx/subject"
 )
 
 type Observer struct {
 	observable  *subject.Subject
-	NextHandler handlers.EventHandler
-	ErrHandler  handlers.EventHandler
-	DoneHandler handlers.EventHandler
+	NextHandler bases.EventHandler
+	ErrHandler  bases.EventHandler
+	DoneHandler bases.EventHandler
 }
 
 // DefaultObserver is a default Observable used by the constructor New.
 // It makes sure no attribute is instantiated with nil that can cause a panic.
 var DefaultObserver = func() *Observer {
 	ob := &Observer{
-		NextHandler: handlers.NextFunc(func(e bases.Emitter){}),
-		ErrHandler: handlers.ErrFunc(func(err error){}),
-		DoneHandler: handlers.DoneFunc(func(){})
-		notifier:    bang.New(),
+		NextHandler: handlers.NextFunc(func(e bases.Item) {}),
+		ErrHandler:  handlers.ErrFunc(func(err error) {}),
+		DoneHandler: handlers.DoneFunc(func() {}),
 	}
 	ob.observable = subject.New(func(s *subject.Subject) {
-		s.Observer = o
+		s.Sentinel = ob
 	})
-	return o
+	return ob
 }()
 
 // Apply makes Observer implements handlers.EventHandler
 func (ob *Observer) Handle(e bases.Emitter) {
-	if ob.observable.HasNext() {
-		item, err := e.Emit() 
-		if err != nil {
-			if item == nil {
-				ob.ErrHandler(err)
-			}
-		} else {
-			if item != nil {
-				ob.NextHandler(item)
-			}
+	item, err := e.Emit()
+	if err != nil {
+		if handle, ok := ob.ErrHandler.(handlers.ErrFunc); ok {
+			handle(err)
 		}
-	} else {
-		observer.DoneHandler()
+		return
+	}
+	if handle, ok := ob.NextHandler.(handlers.NextFunc); ok {
+		handle(item)
 	}
 }
 
@@ -59,22 +54,23 @@ func New(fs ...func(*Observer)) *Observer {
 
 // OnNext applies Observer's NextHandler to an Item
 func (ob *Observer) OnNext(item bases.Item) {
-	if ob.NextHandler != nil {
-		ob.NextHandler(item)
+	if handle, ok := ob.NextHandler.(handlers.NextFunc); ok {
+		handle(item)
 	}
 }
 
 // OnError applies Observer's ErrHandler to an error
 func (ob *Observer) OnError(err error) {
-	if ob.ErrHandler != nil {
-		ob.ErrHandler(err)
+	if handle, ok := ob.ErrHandler.(handlers.ErrFunc); ok {
+		handle(err)
 	}
+	return
 }
 
 // OnDone terminates the Observer's internal Observable
 func (ob *Observer) OnDone() {
 	ob.observable.Done()
-	if ob.DoneHandler != nil {
-		ob.DoneHandler()
+	if handle, ok := ob.DoneHandler.(handlers.DoneFunc); ok {
+		handle()
 	}
 }

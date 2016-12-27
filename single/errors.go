@@ -1,16 +1,14 @@
 package single
 
 import (
-	"github.com/jochasinga/grx"
+	"github.com/jochasinga/grx/errors"
 )
 
 type SingleError struct {
-	grx.BaseError
+	errors.BaseError
 }
 
-func NewError(code grx.ErrorType) {
-	return &SingleError{
-		Code:    code,
-		Message: code.String(),
-	}
+func NewError(code errors.ErrorCode) SingleError {
+	baseError := errors.New(code)
+	return SingleError{baseError}
 }
