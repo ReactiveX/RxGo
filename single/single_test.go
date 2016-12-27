@@ -8,6 +8,8 @@ import (
 	. "github.com/jochasinga/grx/bases"
 	"github.com/jochasinga/grx/handlers"
 	"github.com/jochasinga/grx/observer"
+	"github.com/jochasinga/grx/subscription"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -64,12 +66,45 @@ func TestSubscribingToObserver(t *testing.T) {
 	s1 := New(Number(1))
 	sub, err := s1.Subscribe(ob)
 	<-time.After(10 * time.Millisecond)
+	if s, ok := sub.(*subscription.Subscription); ok {
+		assert.WithinDuration(s.SubscribeAt, time.Now(), 20*time.Millisecond)
+	}
 	assert.Nil(err)
 	assert.Implements((*Subscriptor)(nil), sub)
 	assert.Equal(3, num)
 
 	s2 := New(Text("Hello"))
 	sub, err = s2.Subscribe(ob)
+	<-time.After(10 * time.Millisecond)
+	assert.Nil(err)
+	assert.Implements((*Subscriptor)(nil), sub)
+	assert.Equal("text error", errorMessage)
+}
+
+func TestSubscribingToHandlers(t *testing.T) {
+	assert := assert.New(t)
+	num := 2
+	errorMessage := ""
+
+	nextf := handlers.NextFunc(func(item Item) {
+		num += int(item.(Number))
+	})
+	errf := handlers.ErrFunc(func(err error) {
+		errorMessage = err.Error()
+	})
+
+	s1 := New(Number(1))
+	sub, err := s1.Subscribe(nextf)
+	<-time.After(10 * time.Millisecond)
+	if s, ok := sub.(*subscription.Subscription); ok {
+		assert.WithinDuration(s.SubscribeAt, time.Now(), 20*time.Millisecond)
+	}
+	assert.Nil(err)
+	assert.Implements((*Subscriptor)(nil), sub)
+	assert.Equal(3, num)
+
+	s2 := New(Text("Hello"))
+	sub, err = s2.Subscribe(errf)
 	<-time.After(10 * time.Millisecond)
 	assert.Nil(err)
 	assert.Implements((*Subscriptor)(nil), sub)
