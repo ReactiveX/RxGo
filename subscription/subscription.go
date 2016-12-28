@@ -10,8 +10,8 @@ import (
 // Subscription is usually returned from any subscription
 type Subscription struct {
 	observable    *subject.Subject
-	SubscribeAt   time.Time
-	UnsubscribeAt time.Time
+	subscribeAt   time.Time
+	unsubscribeAt time.Time
 }
 
 // DefaultSubscription is a default Subscription
@@ -27,23 +27,34 @@ func New(fs ...func(*Subscription)) *Subscription {
 	return s
 }
 
+func (s *Subscription) Stream() bases.Stream {
+	return s.observable.Stream
+}
+
 // Dispose cleans up an observable and notify its unsubscribe channel and return a Subscriptor
-func (s *Subscription) Dispose() bases.Subscriptor {
+func (s *Subscription) Dispose() {
 	go func() {
 		s.observable.Unsubscribe()
-		s.UnsubscribeAt = time.Now()
 	}()
-	return s
 }
 
 func (s *Subscription) Subscribe() bases.Subscriptor {
-	s.SubscribeAt = time.Now()
+	s.subscribeAt = time.Now()
 	return s
+}
+
+func (s *Subscription) SubscribeAt() time.Time {
+	return s.subscribeAt
 }
 
 // Unsubscribe is an alias for Dispose
 func (s *Subscription) Unsubscribe() bases.Subscriptor {
-	return s.Dispose()
+	s.unsubscribeAt = time.Now()
+	return s
+}
+
+func (s *Subscription) UnsubscribeAt() time.Time {
+	return s.unsubscribeAt
 }
 
 // UnscribeIn notify the unsubscribe channel in d duration, then return the Subscriptor
@@ -51,7 +62,7 @@ func (s *Subscription) UnsubscribeIn(d time.Duration) <-chan bases.Subscriptor {
 	out := make(chan bases.Subscriptor)
 	go func() {
 		<-time.After(d)
-		out <- s.Dispose()
+		out <- s.Unsubscribe()
 		close(out)
 	}()
 	return out
@@ -67,15 +78,10 @@ func (s *Subscription) UnsubscribeOn(sig chan struct{}, timeout time.Duration) <
 			case <-time.After(timeout):
 				return
 			case <-sig:
-				out <- s.Dispose()
+				out <- s.Unsubscribe()
 				return
 			}
 		}()
 	}
-	go func() {
-		<-sig
-		out <- s.Dispose()
-	}()
-
 	return out
 }
