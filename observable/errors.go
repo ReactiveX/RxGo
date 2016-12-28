@@ -8,9 +8,7 @@ type ObservableError struct {
 	errors.BaseError
 }
 
-func NewError(code grx.ErrorType) {
-	return &ObservableError{
-		Code:    code,
-		Message: code.String(),
-	}
+func NewError(code errors.ErrorCode) ObservableError {
+	baseError := errors.New(code)
+	return ObservableError{baseError}
 }
