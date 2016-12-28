@@ -11,6 +11,7 @@ const (
 	NilEventStreamError
 	NilObserverError
 	NilSingleError
+	HandlerFuncError
 	UndefinedError
 )
 
