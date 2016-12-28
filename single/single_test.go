@@ -35,9 +35,9 @@ func TestSingleImplementStream(t *testing.T) {
 }
 
 func TestCreateSingleWithConstructor(t *testing.T) {
-	s := New(Number(1))
-
 	assert := assert.New(t)
+
+	s := New(Number(1))
 
 	emitter, err := s.Next()
 	assert.Nil(err)
@@ -48,6 +48,10 @@ func TestCreateSingleWithConstructor(t *testing.T) {
 	emitter, err = s.Next()
 	assert.Nil(emitter)
 	assert.NotNil(err)
+	assert.Panics(func() {
+		assert.Implements((*Emitter)(nil), emitter)
+	})
+	assert.EqualValues(nil, emitter)
 }
 
 func TestSubscribingToObserver(t *testing.T) {
@@ -67,7 +71,7 @@ func TestSubscribingToObserver(t *testing.T) {
 	sub, err := s1.Subscribe(ob)
 	<-time.After(10 * time.Millisecond)
 	if s, ok := sub.(*subscription.Subscription); ok {
-		assert.WithinDuration(s.SubscribeAt, time.Now(), 20*time.Millisecond)
+		assert.WithinDuration(s.SubscribeAt(), time.Now(), 20*time.Millisecond)
 	}
 	assert.Nil(err)
 	assert.Implements((*Subscriptor)(nil), sub)
@@ -97,7 +101,7 @@ func TestSubscribingToHandlers(t *testing.T) {
 	sub, err := s1.Subscribe(nextf)
 	<-time.After(10 * time.Millisecond)
 	if s, ok := sub.(*subscription.Subscription); ok {
-		assert.WithinDuration(s.SubscribeAt, time.Now(), 20*time.Millisecond)
+		assert.WithinDuration(s.SubscribeAt(), time.Now(), 20*time.Millisecond)
 	}
 	assert.Nil(err)
 	assert.Implements((*Subscriptor)(nil), sub)
@@ -109,4 +113,20 @@ func TestSubscribingToHandlers(t *testing.T) {
 	assert.Nil(err)
 	assert.Implements((*Subscriptor)(nil), sub)
 	assert.Equal("text error", errorMessage)
+}
+
+func TestSubscribeAndUnsubscribeReturnSameSubscriptor(t *testing.T) {
+	assert := assert.New(t)
+	s1 := DefaultSingle
+
+	sampleHandler := handlers.NextFunc(func(item Item) {
+		return
+	})
+
+	sub1, _ := s1.Subscribe(sampleHandler)
+	<-time.After(10 * time.Millisecond)
+	sub2 := s1.Unsubscribe()
+
+	assert.Equal(sub1.SubscribeAt(), sub2.SubscribeAt())
+	assert.Equal(sub1.UnsubscribeAt(), sub2.UnsubscribeAt())
 }

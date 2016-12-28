@@ -1,8 +1,6 @@
 package single
 
 import (
-	"time"
-
 	"github.com/jochasinga/grx/bang"
 	"github.com/jochasinga/grx/bases"
 	"github.com/jochasinga/grx/errors"
@@ -67,6 +65,8 @@ func (s *Single) Subscribe(handler bases.EventHandler) (bases.Subscriptor, error
 		nextf = handler
 	case handlers.ErrFunc:
 		errf = handler
+	case handlers.DoneFunc:
+		return nil, NewError(errors.HandlerFuncError)
 	case *observer.Observer:
 		ob = handler
 		isObserver = true
@@ -85,9 +85,7 @@ func (s *Single) Subscribe(handler bases.EventHandler) (bases.Subscriptor, error
 		}
 	}()
 
-	return bases.Subscriptor(&subscription.Subscription{
-		SubscribeAt: time.Now(),
-	}), nil
+	return s.subscriptor.Subscribe(), nil
 }
 
 func (s *Single) Unsubscribe() bases.Subscriptor {
@@ -99,6 +97,8 @@ func (s *Single) Unsubscribe() bases.Subscriptor {
 func New(e bases.Emitter) *Single {
 	s := &Single{
 		EventStream: make(eventstream.EventStream),
+		subscriptor: bases.Subscriptor(subscription.DefaultSubscription),
+		notifier:    bang.New(),
 	}
 	go func() {
 		s.EventStream <- e
