@@ -1,243 +1,254 @@
 package observable
 
 import (
+	"errors"
+	"fmt"
+	"math/rand"
 	"net/http"
 	"testing"
 	"time"
 
+	"github.com/jochasinga/grx/bases"
+	"github.com/jochasinga/grx/emittable"
+	"github.com/jochasinga/grx/handlers"
+	"github.com/jochasinga/grx/iterable"
+	"github.com/jochasinga/grx/observer"
+
 	"github.com/stretchr/testify/assert"
 )
 
-// TestCreateObservableWithConstructor tests if the constructor method returns an Observable
-func TestCreateObservableWithConstructor(t *testing.T) {
-	//source := NewObservable()
-	source := NewBaseObservable()
-	assert.IsType(t, (*BaseObservable)(nil), source)
+func TestObservableImplementStream(t *testing.T) {
+	assert.Implements(t, (*bases.Stream)(nil), DefaultObservable)
 }
 
-func TestCreateObservableWithCreate(t *testing.T) {
+func TestObservableImplementIterator(t *testing.T) {
+	assert.Implements(t, (*bases.Iterator)(nil), DefaultObservable)
+}
 
-	source := CreateBaseObservable(func(ob Observer) {
+func TestCreateObservableWithConstructor(t *testing.T) {
+	source := New()
+	assert.IsType(t, (*Observable)(nil), source)
+}
+
+func TestCreateOperator(t *testing.T) {
+	source := Create(func(ob *observer.Observer) {
 		ob.OnNext("Hello")
 	})
 
-	t.Log(source.getInnerObserver().getInnerObservable())
-
 	empty := ""
 
-	eventHandler := NextFunc(
-		func(v interface{}) {
-			if val, ok := v.(string); ok {
-				empty += val
-			}
-		},
-	)
+	eventHandler := handlers.NextFunc(func(it bases.Item) {
+		if text, ok := it.(string); ok {
+			empty += text
+		} else {
+			panic("Item is not a string")
+		}
+	})
 
-	source.Subscribe(eventHandler)
-
+	_, _ = source.Subscribe(eventHandler)
 	<-time.After(100 * time.Millisecond)
-
 	assert.Equal(t, "Hello", empty)
+
+	source = Create(func(ob *observer.Observer) {
+		ob.OnError(errors.New("OMG this is an error"))
+	})
+
+	errText := ""
+	errHandler := handlers.ErrFunc(func(err error) {
+		errText += err.Error()
+	})
+	_, _ = source.Subscribe(errHandler)
+	<-time.After(100 * time.Millisecond)
+	assert.Equal(t, "OMG this is an error", errText)
 }
 
-// TestCreateObservableWithEmpty tests if Empty creates an empty Observable that terminates right away.
-func TestCreateObservableWithEmpty(t *testing.T) {
+func TestEmptyOperator(t *testing.T) {
 	msg := "Sumpin's"
 	source := Empty()
 
-	watcher := &BaseObserver{
-		DoneHandler: DoneFunc(func() {
+	watcher := &observer.Observer{
+		NextHandler: handlers.NextFunc(func(i bases.Item) {
+			panic("NextHandler shouldn't be called")
+		}),
+		DoneHandler: handlers.DoneFunc(func() {
 			msg += " brewin'"
 		}),
 	}
-	source.Subscribe(watcher)
+	_, err := source.Subscribe(watcher)
+	assert.Nil(t, err)
 
-	// Block until side-effect is made
 	<-time.After(100 * time.Millisecond)
 	assert.Equal(t, "Sumpin's brewin'", msg)
 }
 
-// TestCreateObservableWithJust tests if Just method returns an Observable
-func TestCreateObservableWithJustOneArg(t *testing.T) {
+func TestJustOperator(t *testing.T) {
+	assert := assert.New(t)
 	url := "http://api.com/api/v1.0/user"
 	source := Just(url)
 
-	// Observable must have Observable type.
-	assert.IsType(t, (*BaseObservable)(nil), source)
+	assert.IsType((*Observable)(nil), source)
+
+	urlWithQueryString := ""
+	queryString := "?id=999"
+	expected := url + queryString
+
+	watcher := &observer.Observer{
+		NextHandler: handlers.NextFunc(func(it bases.Item) {
+			if url, ok := it.(string); ok {
+				urlWithQueryString += url
+			}
+		}),
+		DoneHandler: handlers.DoneFunc(func() {
+			urlWithQueryString += queryString
+		}),
+	}
+
+	sub, err := source.Subscribe(watcher)
+	assert.Nil(err)
+	assert.NotNil(sub)
+	<-time.After(10 * time.Millisecond)
+	assert.Equal(expected, urlWithQueryString)
+
+	source = Just('R', 'x', 'G', 'o')
+	e, err := source.Next()
+	assert.IsType((*Observable)(nil), source)
+	assert.Nil(err)
+	assert.IsType((*emittable.Emittable)(nil), e)
+	assert.Implements((*bases.Emitter)(nil), e)
 }
 
-func TestCreateObservableWithJustManyArgs(t *testing.T) {
-	source := Just('R', 'x', 'G', 'o')
-	assert.IsType(t, (*BaseObservable)(nil), source)
-}
+func TestFromOperator(t *testing.T) {
+	assert := assert.New(t)
 
-// TestCreateObservableWithFrom tests if From methods returns an <*Observable>
-func TestCreateObservableWithFrom(t *testing.T) {
-	// Provided a slice of URL strings
-	urls := []interface{}{
+	iterableUrls := iterable.From([]interface{}{
 		"http://api.com/api/v1.0/user",
 		"https://dropbox.com/api/v2.1/get/storage",
 		"http://googleapi.com/map",
+	})
+
+	responses := []string{}
+
+	request := func(url string) string {
+		randomNum := rand.Intn(100)
+		time.Sleep((200 - time.Duration(randomNum)) * time.Millisecond)
+		return fmt.Sprintf("{\"url\":%q}", url)
 	}
 
-	// and an Observable created with From method
-	source := From(urls)
-
-	// Observable must have Observable type
-	assert.IsType(t, (*BaseObservable)(nil), source)
-}
-
-func TestCreateObservableWithStart(t *testing.T) {
-	// Provided a "directive" function which return an event that emits
-	// a slice of integer numbers from 0 to 20.
-	directive := func() interface{} {
-		return 333
-	}
-
-	source := Start(directive)
-
-	// Make sure it's the right type
-	assert.IsType(t, (*BaseObservable)(nil), source)
-
-	nums := []int{}
-	//watcher := &Observer{
-	watcher := &BaseObserver{
-		NextHandler: NextFunc(func(v interface{}) {
-			if num, ok := v.(int); ok {
-				nums = append(nums, num*2)
+	urlStream := From(iterableUrls)
+	urlObserver := &observer.Observer{
+		NextHandler: handlers.NextFunc(func(it bases.Item) {
+			if url, ok := it.(string); ok {
+				res := request(url)
+				responses = append(responses, res)
+			} else {
+				assert.Fail("Item is not a string as expected")
 			}
 		}),
-		DoneHandler: DoneFunc(func() {
-			nums = append(nums, 666)
+		DoneHandler: handlers.DoneFunc(func() {
+			responses = append(responses, "END")
 		}),
 	}
 
-	source.Subscribe(watcher)
+	sub, err := urlStream.Subscribe(urlObserver)
+	assert.NotNil(sub)
+	assert.Nil(err)
 
-	// Block until side-effect is made
 	<-time.After(100 * time.Millisecond)
-	assert.Exactly(t, []int{666, 666}, nums)
-}
-
-func TestSubscribeToJustObservableWithOneArg(t *testing.T) {
-	urlWithUserID := ""
-
-	// Provided an Observable created with Just method
-	url := "http://api.com/api/v1.0/user"
-	expected := url + "?id=999"
-	source := Just(url)
-
-	//watcher := &Observer{
-	watcher := &BaseObserver{
-		NextHandler: NextFunc(func(v interface{}) {
-			if u, ok := v.(string); ok {
-				urlWithUserID = u
-			}
-		}),
-		DoneHandler: DoneFunc(func() {
-			urlWithUserID = urlWithUserID + "?id=999"
-		}),
+	expectedStrings := []string{
+		"{\"url\":\"http://api.com/api/v1.0/user\"}",
+		"{\"url\":\"https://dropbox.com/api/v2.1/get/storage\"}",
+		"{\"url\":\"http://googleapi.com/map\"}",
+		"END",
 	}
-	source.Subscribe(watcher)
+	assert.Exactly(expectedStrings, responses)
 
-	// Block until side-effect is made
-	<-time.After(100 * time.Millisecond)
-	assert.Exactly(t, expected, urlWithUserID)
-}
-
-func TestSubscribeToJustObservableWithMultipleArgs(t *testing.T) {
-	nums := []int{}
-	words := []string{}
-	chars := []rune{}
-
-	// Create an Observable with an integer.
-	source := Just(1, "Hello", 'ห')
-
-	// Create an Observer object.
-	//watcher := &Observer{
-	watcher := &BaseObserver{
-
-		// While there is more events down the stream (in this case, just one), add 1 to the value emitted.
-		NextHandler: NextFunc(func(v interface{}) {
-			switch item := v.(type) {
-			case int:
-				num := item + 1
-				nums = append(nums, num)
-			case string:
-				word := item + " world"
-				words = append(words, word)
-			case rune:
-				chars = append(chars, item)
-			}
-			//num := v.(int) + 1
-			//nums = append(nums, num)
-		}),
-
-		// If an error is encountered at any time, panic.
-		ErrHandler: ErrFunc(func(err error) {
-			panic(err.Error)
-		}),
-
-		// When the stream comes to an end, append 0 to the slice.
-		DoneHandler: DoneFunc(func() {
-			nums = append(nums, 0)
-		}),
-	}
-
-	// Start listening to stream
-	source.Subscribe(watcher)
-
-	// Block until side-effect is made
-	<-time.After(100 * time.Millisecond)
-
-	assert.Exactly(t, []int{2, 0}, nums)
-	assert.Exactly(t, []string{"Hello world"}, words)
-	assert.Exactly(t, []rune{'ห'}, chars)
-}
-
-func TestSubscribeToFromObservable(t *testing.T) {
-	nums := []interface{}{1, 2, 3, 4, 5, 6}
+	iterableNums := iterable.From([]interface{}{1, 2, 3, 4, 5, 6})
 	numCopy := []int{}
 
-	// Create an Observable with an integer.
-	source := From(nums)
-	//watcher := &Observer{
-	watcher := &BaseObserver{
-		// While there is more events down the stream (in this case, just one), add 1 to the value emitted.
-		NextHandler: NextFunc(func(v interface{}) {
-			numCopy = append(numCopy, v.(int)+1)
+	numStream := From(iterableNums)
+	numObserver := &observer.Observer{
+		NextHandler: handlers.NextFunc(func(it bases.Item) {
+			if num, ok := it.(int); ok {
+				numCopy = append(numCopy, num+1)
+			} else {
+				assert.Fail("Item is not an integer as expected")
+			}
 		}),
-
-		// When the stream comes to an end, append 0 to the slice.
-		DoneHandler: DoneFunc(func() {
+		DoneHandler: handlers.DoneFunc(func() {
 			numCopy = append(numCopy, 0)
 		}),
 	}
 
-	// Start listening to stream
-	source.Subscribe(watcher)
+	sub, err = numStream.Subscribe(numObserver)
+	assert.NotNil(sub)
+	assert.Nil(err)
 
-	// Block until side-effect is made
 	<-time.After(100 * time.Millisecond)
-	assert.Exactly(t, []int{2, 3, 4, 5, 6, 7, 0}, numCopy)
+	expectedNums := []int{2, 3, 4, 5, 6, 7, 0}
+	assert.Exactly(expectedNums, numCopy)
+}
+
+func TestStartOperator(t *testing.T) {
+	assert := assert.New(t)
+	d1 := func() bases.Emitter {
+		return emittable.From(333)
+	}
+	d2 := func() bases.Emitter {
+		return emittable.From(666)
+	}
+	d3 := func() bases.Emitter {
+		return emittable.From(999)
+	}
+
+	source := Start(d1, d2, d3)
+	e, err := source.Next()
+
+	assert.IsType((*Observable)(nil), source)
+	assert.Nil(err)
+	assert.IsType((*emittable.Emittable)(nil), e)
+	assert.Implements((*bases.Emitter)(nil), e)
+
+	nums := []int{}
+	watcher := &observer.Observer{
+		NextHandler: handlers.NextFunc(func(it bases.Item) {
+			if num, ok := it.(int); ok {
+				nums = append(nums, num+111)
+			} else {
+				assert.Fail("Item is not an integer as expected")
+			}
+		}),
+		DoneHandler: handlers.DoneFunc(func() {
+			nums = append(nums, 0)
+		}),
+	}
+
+	_, _ = source.Subscribe(watcher)
+	<-time.After(100 * time.Millisecond)
+	expected := []int{444, 777, 1110, 0}
+	assert.Exactly(expected, nums)
 }
 
 func TestStartMethodWithFakeExternalCalls(t *testing.T) {
-	fakeResponses := []*http.Response{}
+	fakeHttpResponses := []*http.Response{}
+
+	// NOTE: HTTP Response errors such as status 500 does not return an error
+	fakeHttpErrors := []error{}
 
 	// Fake directives that returns an Event containing an HTTP response.
-	directive1 := func() interface{} {
+	d1 := func() bases.Emitter {
 		res := &http.Response{
 			Status:     "404 NOT FOUND",
 			StatusCode: 404,
 			Proto:      "HTTP/1.0",
 			ProtoMajor: 1,
 		}
-		time.Sleep(time.Millisecond * 20)
-		return res
+
+		// Simulating an I/O block
+		time.Sleep(20 * time.Millisecond)
+		return emittable.From(res)
 	}
 
-	directive2 := func() interface{} {
+	d2 := func() bases.Emitter {
 		res := &http.Response{
 			Status:     "200 OK",
 			StatusCode: 200,
@@ -245,10 +256,10 @@ func TestStartMethodWithFakeExternalCalls(t *testing.T) {
 			ProtoMajor: 1,
 		}
 		time.Sleep(10 * time.Millisecond)
-		return res
+		return emittable.From(res)
 	}
 
-	directive3 := func() interface{} {
+	d3 := func() bases.Emitter {
 		res := &http.Response{
 			Status:     "500 SERVER ERROR",
 			StatusCode: 500,
@@ -256,82 +267,136 @@ func TestStartMethodWithFakeExternalCalls(t *testing.T) {
 			ProtoMajor: 1,
 		}
 		time.Sleep(30 * time.Millisecond)
-		return res
+		return emittable.From(res)
 	}
 
-	//watcher := &Observer{
-	watcher := &BaseObserver{
-		NextHandler: NextFunc(func(v interface{}) {
-			fakeResponses = append(fakeResponses, v.(*http.Response))
+	d4 := func() bases.Emitter {
+		err := errors.New("Some kind of error")
+		time.Sleep(50 * time.Millisecond)
+		return emittable.From(err)
+	}
+
+	watcher := &observer.Observer{
+		NextHandler: handlers.NextFunc(func(it bases.Item) {
+			if res, ok := it.(*http.Response); ok {
+				fakeHttpResponses = append(fakeHttpResponses, res)
+			}
 		}),
-		DoneHandler: DoneFunc(func() {
-			fakeResponses = append(fakeResponses, &http.Response{
+		ErrHandler: handlers.ErrFunc(func(err error) {
+			fakeHttpErrors = append(fakeHttpErrors, err)
+		}),
+		DoneHandler: handlers.DoneFunc(func() {
+			fakeHttpResponses = append(fakeHttpResponses, &http.Response{
 				Status:     "999 End",
 				StatusCode: 999,
 			})
 		}),
 	}
 
-	source := Start(directive1, directive2, directive3)
-	source.Subscribe(watcher)
-
-	// Block until side-effect is made
-	<-time.After(100 * time.Millisecond)
+	source := Start(d1, d2, d3, d4)
+	_, err := source.Subscribe(watcher)
 
 	assert := assert.New(t)
+	assert.Nil(err)
+
+	<-time.After(100 * time.Millisecond)
+
 	assert.IsType((*Observable)(nil), source)
-	assert.Equal(4, len(fakeResponses))
-	assert.Equal(200, fakeResponses[0].StatusCode)
-	assert.Equal(404, fakeResponses[1].StatusCode)
-	assert.Equal(500, fakeResponses[2].StatusCode)
-	assert.Equal(999, fakeResponses[3].StatusCode)
+	assert.Equal(4, len(fakeHttpResponses))
+	assert.Equal(1, len(fakeHttpErrors))
+	assert.Equal(200, fakeHttpResponses[0].StatusCode)
+	assert.Equal(404, fakeHttpResponses[1].StatusCode)
+	assert.Equal(500, fakeHttpResponses[2].StatusCode)
+	assert.Equal(999, fakeHttpResponses[3].StatusCode)
+	assert.Equal("Some kind of error", fakeHttpErrors[0])
 }
 
-func TestCreateObservableWithInterval(t *testing.T) {
+func TestIntervalOperator(t *testing.T) {
+	assert := assert.New(t)
 	numch := make(chan int, 1)
 	source := Interval(1 * time.Millisecond)
+	assert.IsType((*Observable)(nil), source)
+
 	go func() {
-		//source.Subscribe(&Observer{
-		source.Subscribe(&BaseObserver{
-			NextHandler: NextFunc(func(v interface{}) {
-				numch <- v.(int)
+		_, _ = source.Subscribe(&observer.Observer{
+			NextHandler: handlers.NextFunc(func(it bases.Item) {
+				if num, ok := it.(int); ok {
+					numch <- num
+				}
 			}),
 		})
 	}()
 
-	for i := 0; i <= 10; i++ {
-		<-time.After(1 * time.Millisecond)
-		assert.Equal(t, i, <-numch)
+	i := 0
+
+	select {
+	case <-time.After(1 * time.Millisecond):
+		if i >= 10 {
+			return
+		}
+		i++
+	case num := <-numch:
+		assert.Equal(i, num)
 	}
+	/*
+		for i := 0; i <= 10; i++ {
+			<-time.After(1 * time.Millisecond)
+			assert.Equal(i, <-numch)
+		}
+	*/
 }
 
-func TestCreateObservableWithRange(t *testing.T) {
+func TestRangeOperator(t *testing.T) {
+	assert := assert.New(t)
 	nums := []int{}
-	//watcher := &Observer{
-	watcher := &BaseObserver{
-		NextHandler: NextFunc(func(v interface{}) {
-			nums = append(nums, v.(int))
+	watcher := &observer.Observer{
+		NextHandler: handlers.NextFunc(func(it bases.Item) {
+			if num, ok := it.(int); ok {
+				nums = append(nums, num)
+			} else {
+				assert.Fail("Item is not an integer as expected")
+			}
 		}),
 	}
-	_, _ = Range(1, 10).Subscribe(watcher)
+	source := Range(1, 10)
+	assert.IsType((*Observable)(nil), source)
+
+	_, err := source.Subscribe(watcher)
+	assert.Nil(err)
+
 	<-time.After(100 * time.Millisecond)
-	assert.Exactly(t, []int{1, 2, 3, 4, 5, 6, 7, 8, 9}, nums)
+	expected := []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
+	assert.Exactly(expected, nums)
 }
 
-func TestSubscriptionDoesNotBlock(t *testing.T) {
-	source := Just("Hello", "world", "foo")
-	watcher := &BaseObserver{
-		NextHandler: NextFunc(func(v interface{}) {
+func TestSubscriptionIsNonBlocking(t *testing.T) {
+	var (
+		s1 = Just("Hello", "world", "foo", 'a', 1.2, -3111.02, []rune{}, struct{}{})
+		s2 = From(iterable.From([]interface{}{1, 2, "Hi", 'd', 2.10, -54, []byte{}}))
+		s3 = Range(1, 100)
+		s4 = Interval(1 * time.Second)
+		s5 = Empty()
+	)
+
+	sources := []*Observable{s1, s2, s3, s4, s5}
+
+	watcher := &observer.Observer{
+		NextHandler: handlers.NextFunc(func(it bases.Item) {
 			time.Sleep(1 * time.Second)
+			t.Log(it)
 			return
 		}),
-		DoneHandler: DoneFunc(func() {
+		DoneHandler: handlers.DoneFunc(func() {
 			t.Log("DONE")
 		}),
 	}
+
 	first := time.Now()
-	_, err := source.Subscribe(watcher)
-	assert.Nil(t, err)
+
+	for _, source := range sources {
+		_, err := source.Subscribe(watcher)
+		assert.Nil(t, err)
+	}
 
 	elapsed := time.Since(first)
 
@@ -341,71 +406,45 @@ func TestSubscriptionDoesNotBlock(t *testing.T) {
 	assert.Condition(t, comp)
 }
 
-/*
-func TestSubscribeFuncToJustObservable(t *testing.T) {
-	source := Just(1, '2', "yes", 9.012, 'ง', errors.New("Damn"), struct{}{}, func() {})
-	source.SubscribeFunc(
-		func(v interface{}) { fmt.Println(v) },
-		func(err error) { fmt.Println(err) },
-		nil,
-	)
-	<-time.After(100 * time.Millisecond)
-}
-*/
-
 func TestObservableDoneChannel(t *testing.T) {
-
-	//o := Just(1, 2, 3, "hi", "bye", []float64{5.0, 10.2})
+	assert := assert.New(t)
 	o := Range(1, 10)
-	done := make(chan struct{}, 1)
-	//o.Subscribe(&Observer{
-	o.Subscribe(&BaseObserver{
-		NextHandler: NextFunc(func(v interface{}) {
-			t.Logf("Test value: %v", v)
+	_, err := o.Subscribe(&observer.Observer{
+		NextHandler: handlers.NextFunc(func(it bases.Item) {
+			t.Logf("Test value: %v\n", it)
 		}),
-		DoneHandler: DoneFunc(func() {
-			done <- struct{}{}
+		DoneHandler: handlers.DoneFunc(func() {
+			o.notifier.Done()
 		}),
 	})
 
-	<-time.After(100 * time.Millisecond)
-	assert.Equal(t, struct{}{}, <-done)
-	assert.Equal(t, true, o.isDone())
-}
-
-/*
-func TestCreateObservableAndSubscribeFunc(t *testing.T) {
-	//o := CreateObservable(func(ob *Observer) {
-	o := CreateBaseObservable(func(ob Observer) {
-		ob.OnNext(99)
-		ob.OnError(errors.New("Yike, to err is to be human"))
-		ob.OnDone()
-	})
-
-	o.SubscribeFunc(
-		func(v interface{}) { assert.Equal(t, 99, v.(int)) },
-		func(err error) { assert.NotNil(t, err) },
-		func() { assert.NotNil(t, o.done) },
-	)
+	assert.Nil(err)
 
 	<-time.After(100 * time.Millisecond)
+	assert.Equal(struct{}{}, <-o.notifier.IsDone)
 }
-*/
 
-func TestSubscriptionGetsDisposed(t *testing.T) {
+func TestObservableGetDisposedViaSubscription(t *testing.T) {
 	nums := []int{}
 	source := Interval(100 * time.Millisecond)
-	//sub, _ := source.Subscribe(&Observer{
-	sub, _ := source.Subscribe(&BaseObserver{
-		NextHandler: NextFunc(func(v interface{}) {
-			nums = append(nums, v.(int))
+	sub, err := source.Subscribe(&observer.Observer{
+		NextHandler: handlers.NextFunc(func(it bases.Item) {
+			if num, ok := it.(int); ok {
+				nums = append(nums, num)
+			} else {
+				assert.Fail(t, "Item is not an integer as expected")
+			}
 		}),
 	})
 
-	if sub != nil {
-		<-time.After(300 * time.Millisecond)
-		_ = sub.Dispose()
-	}
+	assert.Nil(t, err)
+	assert.NotNil(t, sub)
 
-	assert.Equal(t, []int{0, 1, 2}, nums, "nums slice should be equal to [0 1 2]")
+	<-time.After(300 * time.Millisecond)
+	sub.Dispose()
+
+	comp := assert.Comparison(func() bool {
+		return len(nums) <= 4
+	})
+	assert.Condition(t, comp)
 }

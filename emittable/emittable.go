@@ -9,16 +9,18 @@ type Emittable struct {
 	value interface{}
 }
 
+var DefaultEmittable = &Emittable{}
+
 func (e *Emittable) Emit() (bases.Item, error) {
 	switch e := e.value.(type) {
 	case error:
 		return nil, e
-	default:
-		break
+	case interface{}:
+		return bases.Item(e), nil
 	}
 	return bases.Item(e), nil
 }
 
-func New(any interface{}) *Emittable {
+func From(any interface{}) *Emittable {
 	return &Emittable{any}
 }

@@ -29,16 +29,11 @@ var DefaultObserver = func() *Observer {
 
 // Apply makes Observer implements handlers.EventHandler
 func (ob *Observer) Handle(e bases.Emitter) {
-	item, err := e.Emit()
+	_, err := e.Emit()
 	if err != nil {
-		if handle, ok := ob.ErrHandler.(handlers.ErrFunc); ok {
-			handle(err)
-		}
-		return
+		ob.ErrHandler.Handle(e)
 	}
-	if handle, ok := ob.NextHandler.(handlers.NextFunc); ok {
-		handle(item)
-	}
+	ob.NextHandler.Handle(e)
 }
 
 // New constructs a new Observer instance with default Observable

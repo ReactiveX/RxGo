@@ -1,6 +1,8 @@
 package eventstream
 
 import (
+	"fmt"
+
 	"github.com/jochasinga/grx/bases"
 	"github.com/jochasinga/grx/errors"
 )
@@ -17,13 +19,13 @@ func (evs EventStream) Next() (bases.Emitter, error) {
 
 // New creates a new EventStream from one or more Event
 func New(emitters ...bases.Emitter) EventStream {
-	es := make(EventStream)
+	es := make(EventStream, len(emitters))
 	if len(emitters) > 0 {
 		go func() {
 			for _, emitter := range emitters {
 				es <- emitter
 			}
-			//close(es)
+			close(es)
 		}()
 	}
 	return es
@@ -35,8 +37,9 @@ func From(iter bases.Iterator) EventStream {
 	go func() {
 		for {
 			emitter, err := iter.Next()
+			fmt.Println(emitter, err)
 			if err != nil {
-				return
+				break
 			}
 			es <- emitter
 		}

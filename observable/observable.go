@@ -5,16 +5,26 @@ import (
 	"time"
 
 	"github.com/jochasinga/grx/bang"
-	"github.com/jochasinga/grx/observer"
+	"github.com/jochasinga/grx/bases"
+	"github.com/jochasinga/grx/emittable"
+	"github.com/jochasinga/grx/errors"
 	"github.com/jochasinga/grx/eventstream"
+	"github.com/jochasinga/grx/handlers"
+	"github.com/jochasinga/grx/observer"
 	"github.com/jochasinga/grx/subject"
+	"github.com/jochasinga/grx/subscription"
 )
+
+// DirectiveFunc defines a func that should be passed to the observable.Start method,
+// and represents a simple func that takes no arguments and return a bases.Emitter type.
+type Directive func() bases.Emitter
 
 // Observable is a stream of Emitters
 type Observable struct {
 	eventstream.EventStream
-	notifier *bang.Notifier
-	observer *subject.Subject
+	subscriptor bases.Subscriptor
+	notifier    *bang.Notifier
+	observer    *subject.Subject
 }
 
 // DefaultObservable is a default Observable used by the constructor New.
@@ -23,6 +33,7 @@ var DefaultObservable = func() *Observable {
 	o := &Observable{
 		EventStream: eventstream.New(),
 		notifier:    bang.New(),
+		subscriptor: subscription.DefaultSubscription,
 	}
 	o.observer = subject.New(func(s *subject.Subject) {
 		s.Stream = o
@@ -34,8 +45,9 @@ func (o *Observable) Done() {
 	o.notifier.Done()
 }
 
-func (o *Observable) Unsubscribe() {
+func (o *Observable) Unsubscribe() bases.Subscriptor {
 	o.notifier.Unsubscribe()
+	return o.subscriptor.Unsubscribe()
 }
 
 // New returns a new pointer to a default Observable.
@@ -50,12 +62,14 @@ func New(fs ...func(*Observable)) *Observable {
 }
 
 // Create creates a new Observable provided by one or more function that takes an Observer as an argument
-func Create(f func(*Observer), fs ...func(*Observer)) *Observable {
-	o := New()
-	fs = append([]func(*Observer){f}, fs...)
+func Create(f func(*observer.Observer), fs ...func(*observer.Observer)) *Observable {
+	o := DefaultObservable
+	fs = append([]func(*observer.Observer){f}, fs...)
 	go func() {
 		for _, f := range fs {
-			f(o)
+			if observableRef, ok := o.observer.Sentinel.(*observer.Observer); ok {
+				f(observableRef)
+			}
 		}
 	}()
 	return o
@@ -94,14 +108,14 @@ func Empty() *Observable {
 	return o
 }
 
-// Interval creates an Observable emitting incremental integers infinitely
-// between each given time interval.
+// Interval creates an Observable emitting incremental integers infinitely between
+// each given time interval.
 func Interval(d time.Duration) *Observable {
 	o := New()
 	go func() {
 		i := 0
 		for {
-			o.EventStream <- i
+			o.EventStream <- emittable.From(i)
 			<-time.After(d)
 			i++
 		}
@@ -113,8 +127,10 @@ func Interval(d time.Duration) *Observable {
 func Range(start, end int) *Observable {
 	o := New()
 	go func() {
-		for i := start; i < end; i++ {
-			o.EventStream <- i
+		i := start
+		for i < end {
+			o.EventStream <- emittable.From(i)
+			i++
 		}
 		o.Done()
 	}()
@@ -122,167 +138,106 @@ func Range(start, end int) *Observable {
 }
 
 // Just creates an observable with only one item and emit "as-is".
-// source := observable.Just("https://someurl.com/api")
-func Just(em Emitter, ems ...Emitter) Observable {
-	o := New()
-	emitters := append([]Emitter{em}, ems...)
+func Just(v interface{}, any ...interface{}) *Observable {
+	any = append([]interface{}{v}, any...)
+	o := New(func(o *Observable) {
+		o.EventStream = make(eventstream.EventStream, len(any))
+	})
 
 	go func() {
-		for _, emitter := range emitters {
-			o.EventStream <- emitter
+		for _, val := range any {
+			o.EventStream <- emittable.From(val)
 		}
-		o.Done()
+		close(o.EventStream)
+		//o.Done()
 	}()
 	return o
 }
 
-/*
-// From creates a new EventStream from an Iterator
-func From(iter bases.Iterator) EventStream {
-	es := make(EventStream)
-	go func() {
-		for {
-			emitter, err := iter.Next()
-			if err != nil {
-				return
-			}
-			es <- emitter
-		}
-		close(es)
-	}()
-	return es
-}
-*/
-
-// From creates an Observable from an Iterator
+// From creates an Observable from an Iterator type
 func From(iter bases.Iterator) *Observable {
-	o := New()
-	o.EventStream = o.From(iter)
-	o.Done()
+	o := New(func(o *Observable) {
+		o.EventStream = eventstream.From(iter)
+	})
 	return o
 }
 
 // Start creates an Observable from one or more directive-like functions
-func Start(f func() Emitter, fs ...func() Emitter) *Observable {
-	o := New()
-	fs = append([](func() Emitter){f}, fs...)
+func Start(f Directive, fs ...Directive) *Observable {
+	fs = append([]Directive{f}, fs...)
+	o := New(func(o *Observable) {
+		o.EventStream = make(eventstream.EventStream, len(fs))
+	})
 
 	var wg sync.WaitGroup
 	wg.Add(len(fs))
 	for _, f := range fs {
-		go func(f func() Emitter) {
+		go func(f Directive) {
 			o.EventStream <- f()
 			wg.Done()
 		}(f)
 	}
 	go func() {
 		wg.Wait()
-		o.Done()
+		//o.Done()
+		close(o.EventStream)
 	}()
 	return o
 }
 
-func processStream(o *Observable, ob *Observer) {
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		for emitter := range o.EventStream {
-			ob.Handle(emitter)
-		}
-		wg.Done()
-	}()
-	
-	go func() {
-		wg.Wait()
-		o.Done()
-	}()
-
-	go func() {
-		select {
-		case <-o.unsubscribed:
-			return
-		case <-o.done:
-			ob.DoneHandler()
-			return
-		}
-	}()
-}
-
 func checkObservable(o *Observable) error {
-
 	switch {
 	case o == nil:
-		return NewError(grx.NilObservableError)
+		return NewError(errors.NilObservableError)
 	case o.EventStream == nil:
-		return eventstream.NewError(grx.NilEventStreamError)
-	case o.isDone():
-		return NewError(grx.EndOfIteratorError)
+		return eventstream.NewError(errors.NilEventStreamError)
 	default:
-		return nil
+		break
 	}
 	return nil
 }
-	
-/*
-// SubscribeWith subscribes handlers to the Observable and starts it.
-//func (o *Observable) SubscribeFunc(nxtf func(v interface{}), errf func(e error), donef func()) (Subscriptor, error) {
-func (o *BaseObservable) SubscribeFunc(nxtf func(v interface{}), errf func(e error), donef func()) (Subscriptor, error) {
 
-	err := checkObservable(o)
-	if err != nil {
+// Subscribe subscribes an EventHandler to the receiving Observable and starts the stream
+func (o *Observable) Subscribe(handler bases.EventHandler) (bases.Subscriptor, error) {
+	if err := checkObservable(o); err != nil {
 		return nil, err
 	}
-
-	ob := Observer(&BaseObserver{
-		NextHandler: NextFunc(nxtf),
-		ErrHandler:  ErrFunc(errf),
-		DoneHandler: DoneFunc(donef),
-	})
-
-	o.runStream(ob)
-
-	return Subscriptor(&Subscription{SubscribeAt: time.Now()}), nil
-}
-*/
-
-// SubscribeHandler subscribes a Handler to the Observable and starts it.
-func (o *Observable) Subscribe(handle EventHandler) (Subscriptor, error) {
-	err := checkObservable(o)
-	if err != nil {
-		return nil, err
-	}
-
-	ob := observer.New()
-
-	var (
-		nextf NextFunc
-		errf  ErrFunc
-		donef DoneFunc
-	)
 
 	isObserver := false
 
-	switch h := h.(type) {
-	case NextFunc:
-		nextf = h
-	case ErrFunc:
-		errf = h
-	case DoneFunc:
-		donef = h
-	case *BaseObserver:
-		ob = h
+	var (
+		ob    *observer.Observer
+		nextf handlers.NextFunc
+		errf  handlers.ErrFunc
+		donef handlers.DoneFunc
+	)
+
+	switch handler := handler.(type) {
+	case handlers.NextFunc:
+		nextf = handler
+	case handlers.ErrFunc:
+		errf = handler
+	case handlers.DoneFunc:
+		donef = handler
+	case *observer.Observer:
+		ob = handler
 		isObserver = true
 	}
 
 	if !isObserver {
-		ob = observer.New(func(ob *Observer) {
-			ob.NextHandler: nextf,
-			ob.ErrHandler: errf,
-			ob.DoneHandler: donef,
+		ob = observer.New(func(ob *observer.Observer) {
+			ob.NextHandler = nextf
+			ob.ErrHandler = errf
+			ob.DoneHandler = donef
 		})
 	}
 
-	processStream(o, ob)
+	// TODO: This should be asynchronous
+	for emitter := range o.EventStream {
+		ob.Handle(emitter)
+	}
 
-	return Subscriptor(&Subscription{SubscribeAt: time.Now()}), nil
+	ob.DoneHandler.Handle(emittable.DefaultEmittable)
+
+	return o.subscriptor.Subscribe(), nil
 }

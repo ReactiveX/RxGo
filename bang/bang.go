@@ -26,7 +26,7 @@ func (notif *Notifier) Unsubscribe() {
 
 func New() *Notifier {
 	return &Notifier{
-		Unsubscribed: make(chan struct{}),
-		IsDone:       make(chan struct{}),
+		Unsubscribed: make(chan struct{}, 1),
+		IsDone:       make(chan struct{}, 1),
 	}
 }
