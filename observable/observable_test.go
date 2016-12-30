@@ -35,6 +35,35 @@ func (f *Fixture) TearDown() *Fixture {
 	return &Fixture{}
 }
 
+func TestBasicObservableConstructor(t *testing.T) {
+	assert := assert.New(t)
+	basic := NewBasic(0)
+	assert.IsType((Basic)(nil), basic)
+	assert.Equal(0, cap(basic))
+	basic = NewBasic(3)
+	assert.Equal(3, cap(basic))
+}
+
+func TestConnectableObservableConstructor(t *testing.T) {
+	assert := assert.New(t)
+	connectable := NewConnectable(0)
+	assert.IsType(Connectable{}, connectable)
+	assert.Equal(0, cap(connectable.emitters))
+	connectable = NewConnectable(3)
+	assert.Equal(3, cap(connectable.emitters))
+	text := "hello"
+	ob := observer.Observer{
+		NextHandler: func(item bases.Item) {
+			text += item.(string)
+		},
+	}
+	connectable = NewConnectable(6, ob)
+
+	assert.Equal(6, cap(connectable.emitters))
+	connectable.observers[0].NextHandler(bases.Item(" world"))
+	assert.Equal("hello world", text)
+}
+
 func TestBasicSubscription(t *testing.T) {
 
 	fixture := (&Fixture{}).SetUp(func(f *Fixture) {

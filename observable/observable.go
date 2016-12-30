@@ -40,6 +40,10 @@ type CurryableFunc func(interface{}) MappableFunc
 
 type Basic <-chan bases.Emitter
 
+func NewBasic(buffer uint) Basic {
+	return make(Basic, int(buffer))
+}
+
 func (bs Basic) Subscribe(ob observer.Observer) <-chan struct{} {
 	done := make(chan struct{}, 1)
 	go func() {
@@ -66,6 +70,13 @@ func (bs Basic) Map(fx MappableFunc) Basic {
 type Connectable struct {
 	emitters  <-chan bases.Emitter
 	observers []observer.Observer
+}
+
+func NewConnectable(buffer uint, observers ...observer.Observer) Connectable {
+	return Connectable{
+		emitters:  make(chan bases.Emitter, int(buffer)),
+		observers: observers,
+	}
 }
 
 func (cnxt Connectable) Subscribe(ob observer.Observer) Connectable {
