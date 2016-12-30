@@ -19,13 +19,24 @@ import (
 // and represents a simple func that takes no arguments and return a bases.Emitter type.
 type Directive func() bases.Emitter
 
-// Observable is a stream of Emitters
-type Observable struct {
-	source chan bases.Emitter
-	//subscriptor bases.Subscriptor
-	//notifier    *bang.Notifier
-	//observer    *subject.Subject
+type Applicator interface {
+	Apply(bases.Emitter)
 }
+
+type MappableFunc func(bases.Emitter) bases.Emitter
+type CurryableFunc func(interface{}) MappableFunc
+
+//func (fx Mappable) Apply(e bases.Emitter) {}
+//type Curryable func(bases.Emitter) func(interface{}) bases.Emittable
+//func (fx Curryable) Apply(e bases.Emitter) {}
+
+// Observable is a stream of Emitters
+//type Observable struct {
+//	source chan bases.Emitter
+//subscriptor bases.Subscriptor
+//notifier    *bang.Notifier
+//observer    *subject.Subject
+//}
 
 type Basic <-chan bases.Emitter
 
@@ -41,6 +52,17 @@ func (bs Basic) Subscribe(ob observer.Observer) <-chan struct{} {
 	return done
 }
 
+func (bs Basic) Map(fx MappableFunc) Basic {
+	out := make(chan bases.Emitter)
+	go func() {
+		for e := range bs {
+			out <- fx(e)
+		}
+		close(out)
+	}()
+	return Basic(out)
+}
+
 type Connectable struct {
 	emitters  <-chan bases.Emitter
 	observers []observer.Observer
@@ -51,7 +73,7 @@ func (cnxt Connectable) Subscribe(ob observer.Observer) Connectable {
 	return cnxt
 }
 
-func (cnxt Connectable) Map(fx func(e bases.Emitter) bases.Emitter) Connectable {
+func (cnxt Connectable) Map(fx MappableFunc) Connectable {
 	out := make(chan bases.Emitter)
 	go func() {
 		for e := range cnxt.emitters {
@@ -122,7 +144,7 @@ var DefaultObservable = func() *Observable {
 	return o
 }()
 */
-var DefaultObservable = Observable{}
+//var DefaultObservable = Observable{}
 
 /*
 func (o *Observable) Done() {

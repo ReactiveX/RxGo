@@ -111,23 +111,29 @@ func TestConnectableMap(t *testing.T) {
 		f.echan = emittable.From(f.errch)
 	})
 
-	connectable := ConnectableFrom([]bases.Emitter{
+	sourceSlice := []bases.Emitter{
 		fixture.eint,
 		fixture.estr,
 		fixture.echar,
 		fixture.echan,
-	})
-
-	modFunc := func(e bases.Emitter) bases.Emitter {
-		if item, err := e.Emit(); err == nil {
-			if val, ok := item.(int); ok {
-				return emittable.From(val * 100)
-			}
-		}
-		return e
 	}
 
-	connectable = connectable.Map(modFunc)
+	//basic := BasicFrom(sourceSlice)
+	connectable := ConnectableFrom(sourceSlice)
+
+	// multiplyAllIntBy is a CurryableFunc
+	multiplyAllIntBy := func(n interface{}) func(bases.Emitter) bases.Emitter {
+		return func(e bases.Emitter) bases.Emitter {
+			if item, err := e.Emit(); err == nil {
+				if val, ok := item.(int); ok {
+					return emittable.From(val * n.(int))
+				}
+			}
+			return e
+		}
+	}
+
+	connectable = connectable.Map(multiplyAllIntBy(100))
 
 	subtests := []bases.Emitter{
 		emittable.From(1000),
