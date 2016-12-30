@@ -3,16 +3,17 @@ package observer
 import (
 	"github.com/jochasinga/grx/bases"
 	"github.com/jochasinga/grx/handlers"
-	"github.com/jochasinga/grx/subject"
 )
 
 type Observer struct {
-	observable  *subject.Subject
-	NextHandler bases.EventHandler
-	ErrHandler  bases.EventHandler
-	DoneHandler bases.EventHandler
+	//observable *subject.Subject
+	sink        <-chan bases.Emitter
+	NextHandler handlers.NextFunc
+	ErrHandler  handlers.ErrFunc
+	DoneHandler handlers.DoneFunc
 }
 
+/*
 // DefaultObserver is a default Observable used by the constructor New.
 // It makes sure no attribute is instantiated with nil that can cause a panic.
 var DefaultObserver = func() *Observer {
@@ -26,17 +27,20 @@ var DefaultObserver = func() *Observer {
 	})
 	return ob
 }()
+*/
 
 // Apply makes Observer implements handlers.EventHandler
-func (ob *Observer) Handle(e bases.Emitter) {
+func (ob Observer) Handle(e bases.Emitter) {
 	_, err := e.Emit()
 	if err != nil {
 		ob.ErrHandler.Handle(e)
+		return
 	}
 	ob.NextHandler.Handle(e)
 }
 
 // New constructs a new Observer instance with default Observable
+/*
 func New(fs ...func(*Observer)) *Observer {
 	ob := DefaultObserver
 	if len(fs) > 0 {
@@ -46,26 +50,46 @@ func New(fs ...func(*Observer)) *Observer {
 	}
 	return ob
 }
+*/
 
 // OnNext applies Observer's NextHandler to an Item
+/*
 func (ob *Observer) OnNext(item bases.Item) {
-	if handle, ok := ob.NextHandler.(handlers.NextFunc); ok {
-		handle(item)
+	if ob.NextHandler != nil {
+		ob.NextHandler(item)
 	}
-}
 
+		if handle, ok := ob.NextHandler.(handlers.NextFunc); ok {
+			handle(item)
+		}
+}
+*/
+
+/*
 // OnError applies Observer's ErrHandler to an error
 func (ob *Observer) OnError(err error) {
-	if handle, ok := ob.ErrHandler.(handlers.ErrFunc); ok {
-		handle(err)
+	if ob.ErrHandler != nil {
+		ob.ErrHandler(err)
 	}
+
+		if handle, ok := ob.ErrHandler.(handlers.ErrFunc); ok {
+			handle(err)
+		}
+
 	return
 }
+*/
 
+/*
 // OnDone terminates the Observer's internal Observable
 func (ob *Observer) OnDone() {
 	ob.observable.Done()
-	if handle, ok := ob.DoneHandler.(handlers.DoneFunc); ok {
-		handle()
+	if ob.DoneHandler != nil {
+		ob.DoneHandler()
 	}
+
+		if handle, ok := ob.DoneHandler.(handlers.DoneFunc); ok {
+			handle()
+		}
 }
+*/

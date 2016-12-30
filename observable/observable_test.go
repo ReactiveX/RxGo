@@ -2,21 +2,251 @@ package observable
 
 import (
 	"errors"
-	"fmt"
-	"math/rand"
-	"net/http"
+	//"math/rand"
+	//"net/http"
 	"testing"
-	"time"
+	//"time"
 
+	//"github.com/bmizerany/assert"
 	"github.com/jochasinga/grx/bases"
 	"github.com/jochasinga/grx/emittable"
-	"github.com/jochasinga/grx/handlers"
-	"github.com/jochasinga/grx/iterable"
+	//"github.com/jochasinga/grx/handlers"
+	//"github.com/jochasinga/grx/iterable"
 	"github.com/jochasinga/grx/observer"
-
 	"github.com/stretchr/testify/assert"
 )
 
+type Fixture struct {
+	num                      int
+	text                     string
+	char                     rune
+	err                      error
+	fin                      bool
+	errch                    chan error
+	eint, estr, echar, echan bases.Emitter
+}
+
+func (f *Fixture) SetUp(conf func(*Fixture)) *Fixture {
+	conf(f)
+	return f
+}
+
+func (f *Fixture) TearDown() *Fixture {
+	return &Fixture{}
+}
+
+func TestBasicSubscription(t *testing.T) {
+
+	fixture := (&Fixture{}).SetUp(func(f *Fixture) {
+		f.errch = make(chan error, 1)
+		f.eint = emittable.From(10)
+		f.estr = emittable.From("hello")
+		f.echar = emittable.From('a')
+		f.echan = emittable.From(f.errch)
+	})
+
+	// Send an error over to errch
+	go func() {
+		fixture.errch <- errors.New("yike")
+		return
+	}()
+
+	basic := BasicFrom([]bases.Emitter{
+		fixture.eint,
+		fixture.estr,
+		fixture.echar,
+		fixture.echan,
+	})
+
+	ob := observer.Observer{
+		NextHandler: func(it bases.Item) {
+			switch it := it.(type) {
+			case int:
+				t.Logf("Item is an integer: %d\n", it)
+				fixture.num += it
+			case string:
+				t.Logf("Item is a string: %q\n", it)
+				fixture.text += it
+			case rune:
+				t.Logf("Item is a rune: %v\n", it)
+				fixture.char += it
+			case chan error:
+				if e, ok := <-it; ok {
+					t.Logf("Item is an emitted error: %v", e)
+					fixture.err = e
+				}
+			}
+		},
+
+		DoneHandler: func() {
+			t.Log("done")
+			fixture.fin = !fixture.fin
+		},
+	}
+	done := basic.Subscribe(ob)
+	<-done
+
+	subtests := []struct {
+		n, expected interface{}
+	}{
+		{fixture.num, 10},
+		{fixture.text, "hello"},
+		{fixture.char, 'a'},
+		{fixture.err, errors.New("yike")},
+		{fixture.fin, true},
+	}
+
+	for _, tt := range subtests {
+		assert.Equal(t, tt.expected, tt.n)
+	}
+}
+
+func TestConnectableMap(t *testing.T) {
+
+	fixture := (&Fixture{}).SetUp(func(f *Fixture) {
+		f.errch = make(chan error, 1)
+		f.eint = emittable.From(10)
+		f.estr = emittable.From("hello")
+		f.echar = emittable.From('a')
+		f.echan = emittable.From(f.errch)
+	})
+
+	connectable := ConnectableFrom([]bases.Emitter{
+		fixture.eint,
+		fixture.estr,
+		fixture.echar,
+		fixture.echan,
+	})
+
+	modFunc := func(e bases.Emitter) bases.Emitter {
+		if item, err := e.Emit(); err == nil {
+			if val, ok := item.(int); ok {
+				return emittable.From(val * 100)
+			}
+		}
+		return e
+	}
+
+	connectable = connectable.Map(modFunc)
+
+	subtests := []bases.Emitter{
+		emittable.From(1000),
+		fixture.estr,
+		fixture.echar,
+		fixture.echan,
+	}
+
+	i := 0
+	for e := range connectable.emitters {
+		assert.Equal(t, subtests[i], e)
+		i++
+	}
+}
+
+func TestConnectableSubscription(t *testing.T) {
+
+	fixture := (&Fixture{}).SetUp(func(f *Fixture) {
+		f.errch = make(chan error, 1)
+		f.eint = emittable.From(10)
+		f.estr = emittable.From("hello")
+		f.echar = emittable.From('a')
+		f.echan = emittable.From(f.errch)
+	})
+
+	// Send an error over to errch
+	go func() {
+		fixture.errch <- errors.New("yike")
+		return
+	}()
+
+	connectable := ConnectableFrom([]bases.Emitter{
+		fixture.eint,
+		fixture.estr,
+		fixture.echar,
+		fixture.echan,
+	})
+
+	ob1 := observer.Observer{
+		NextHandler: func(it bases.Item) {
+			switch it := it.(type) {
+			case int:
+				t.Logf("Item is an integer: %d\n", it)
+				fixture.num += it
+			case string:
+				t.Logf("Item is a string: %q\n", it)
+				fixture.text += it
+			case rune:
+				t.Logf("Item is a rune: %v\n", it)
+				fixture.char += it
+			case chan error:
+				if e, ok := <-it; ok {
+					t.Logf("Item is an emitted error: %v", e)
+					fixture.err = e
+				}
+			}
+		},
+		DoneHandler: func() {
+			t.Log("done")
+			fixture.fin = !fixture.fin
+		},
+	}
+
+	ob2 := observer.Observer{
+		NextHandler: func(it bases.Item) {
+			switch it := it.(type) {
+			case int:
+				t.Logf("Item is indeed an integer: %d\n", it)
+			case string:
+				t.Logf("Item is indeed a string: %q\n", it)
+			case rune:
+				t.Logf("Item is indeed a rune: %v\n", it)
+			case chan error:
+				if e, ok := <-it; ok {
+					t.Logf("Item is an indeed emitted error: %v", e)
+					fixture.err = e
+				}
+			}
+		},
+		DoneHandler: func() {
+			t.Log("Indeed it's done")
+		},
+	}
+
+	beforetests := []struct {
+		n, expected interface{}
+	}{
+		{fixture.num, 0},
+		{fixture.text, ""},
+		{fixture.char, rune(0)},
+		{fixture.err, error(nil)},
+		{fixture.fin, false},
+	}
+
+	for _, tt := range beforetests {
+		assert.Equal(t, tt.expected, tt.n)
+	}
+
+	connectable = connectable.Subscribe(ob1).Subscribe(ob2)
+
+	done := connectable.Connect()
+	<-done
+
+	subtests := []struct {
+		n, expected interface{}
+	}{
+		{fixture.num, 10},
+		{fixture.text, "hello"},
+		{fixture.char, 'a'},
+		{fixture.err, errors.New("yike")},
+		{fixture.fin, true},
+	}
+
+	for _, tt := range subtests {
+		assert.Equal(t, tt.expected, tt.n)
+	}
+}
+
+/*
 func TestObservableImplementStream(t *testing.T) {
 	assert.Implements(t, (*bases.Stream)(nil), DefaultObservable)
 }
@@ -338,12 +568,12 @@ func TestIntervalOperator(t *testing.T) {
 	case num := <-numch:
 		assert.Equal(i, num)
 	}
-	/*
-		for i := 0; i <= 10; i++ {
-			<-time.After(1 * time.Millisecond)
-			assert.Equal(i, <-numch)
-		}
-	*/
+
+	//	for i := 0; i <= 10; i++ {
+	//		<-time.After(1 * time.Millisecond)
+	//		assert.Equal(i, <-numch)
+	//	}
+
 }
 
 func TestRangeOperator(t *testing.T) {
@@ -448,3 +678,4 @@ func TestObservableGetDisposedViaSubscription(t *testing.T) {
 	})
 	assert.Condition(t, comp)
 }
+*/
