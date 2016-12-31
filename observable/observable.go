@@ -2,12 +2,12 @@ package observable
 
 import (
 	"sync"
-	//"time"
+	"time"
 
 	//"github.com/jochasinga/grx/bang"
 	"github.com/jochasinga/grx/bases"
-	//"github.com/jochasinga/grx/emittable"
 	//"github.com/jochasinga/grx/errors"
+	"github.com/jochasinga/grx/emittable"
 	//"github.com/jochasinga/grx/eventstream"
 	//"github.com/jochasinga/grx/handlers"
 	"github.com/jochasinga/grx/observer"
@@ -17,14 +17,13 @@ import (
 
 // DirectiveFunc defines a func that should be passed to the observable.Start method,
 // and represents a simple func that takes no arguments and return a bases.Emitter type.
-type Directive func() bases.Emitter
-
-type Applicator interface {
-	Apply(bases.Emitter)
-}
-
-type MappableFunc func(bases.Emitter) bases.Emitter
-type CurryableFunc func(interface{}) MappableFunc
+type (
+	Directive      func() bases.Emitter
+	MappableFunc   func(bases.Emitter) bases.Emitter
+	CurryableFunc  func(interface{}) MappableFunc
+	FilterableFunc func(bases.Emitter) bool
+	ReduceableFunc func(bases.Emitter) bases.Emitter
+)
 
 //func (fx Mappable) Apply(e bases.Emitter) {}
 //type Curryable func(bases.Emitter) func(interface{}) bases.Emittable
@@ -67,7 +66,7 @@ func (bs Basic) Map(fx MappableFunc) Basic {
 	return Basic(out)
 }
 
-func (bs Basic) Filter(fx func(bases.Emitter) bool) Basic {
+func (bs Basic) Filter(fx FilterableFunc) Basic {
 	out := make(chan bases.Emitter)
 	go func() {
 		for e := range bs {
@@ -240,34 +239,33 @@ func (o *Observable) Add(e Emitter, es ...Emitter) *Observable {
 }
 */
 
-/*
 // Empty creates an Observable with one last item marked as "completed".
-func Empty() *Observable {
-	o := New()
+func Empty() Basic {
+	source := make(chan bases.Emitter)
 	go func() {
-		//o.Done()
-		close(o.EventStream)
+		close(source)
 	}()
-	return o
+	return Basic(source)
 }
-*/
 
-/*
 // Interval creates an Observable emitting incremental integers infinitely between
 // each given time interval.
-func Interval(d time.Duration) *Observable {
-	o := New()
+func Interval(d time.Duration, done chan struct{}) Basic {
+	source := make(chan bases.Emitter)
 	go func() {
 		i := 0
 		for {
-			o.EventStream <- emittable.From(i)
-			<-time.After(d)
+			select {
+			case <-done:
+			case <-time.After(d):
+				source <- emittable.From(i)
+			}
 			i++
 		}
+		close(source)
 	}()
-	return o
+	return Basic(source)
 }
-*/
 
 /*
 // Range creates an Observable that emits a particular range of sequential integers.

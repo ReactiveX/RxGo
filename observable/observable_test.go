@@ -2,6 +2,7 @@ package observable
 
 import (
 	"errors"
+	"time"
 	//"math/rand"
 	//"net/http"
 	"testing"
@@ -171,17 +172,71 @@ func TestBasicMap(t *testing.T) {
 		assert.Equal(t, subtests[i], e)
 		i++
 	}
+}
 
+func TestBasicFilter(t *testing.T) {
+	fixture := setupDefaultFixture()
+
+	sourceSlice := []bases.Emitter{
+		fixture.eint,
+		fixture.estr,
+		fixture.echar,
+		fixture.echan,
+	}
+
+	basic := BasicFrom(sourceSlice)
+
+	isIntOrString := func(e bases.Emitter) bool {
+		if item, err := e.Emit(); err == nil {
+			switch item.(type) {
+			case int, string:
+				return true
+			}
+		}
+		return false
+	}
+
+	basic = basic.Filter(isIntOrString)
+
+	assert.Equal(t, fixture.eint, <-basic)
+	assert.Equal(t, fixture.estr, <-basic)
+}
+
+func TestBasicEmpty(t *testing.T) {
+
+	basic := Empty()
+	isDone := false
+
+	done := basic.Subscribe(observer.Observer{
+		DoneHandler: func() {
+			isDone = !isDone
+		},
+	})
+
+	<-done
+	assert.True(t, isDone)
+}
+
+func TestBasicInterval(t *testing.T) {
+
+	fin := make(chan struct{})
+	basic := Interval(500*time.Millisecond, fin)
+
+	_ = basic.Subscribe(observer.Observer{
+		NextHandler: func(item bases.Item) {
+			t.Log(item)
+		},
+		DoneHandler: func() {
+			t.Log("done")
+		},
+	})
+
+	<-time.After(2 * time.Second)
+	fin <- struct{}{}
 }
 
 func TestConnectableMap(t *testing.T) {
-	fixture := (&Fixture{}).Setup(func(f *Fixture) {
-		f.errch = make(chan error, 1)
-		f.eint = emittable.From(10)
-		f.estr = emittable.From("hello")
-		f.echar = emittable.From('a')
-		f.echan = emittable.From(f.errch)
-	})
+	fixture := setupDefaultFixture()
 
 	sourceSlice := []bases.Emitter{
 		fixture.eint,
