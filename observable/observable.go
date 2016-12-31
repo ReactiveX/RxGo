@@ -67,6 +67,19 @@ func (bs Basic) Map(fx MappableFunc) Basic {
 	return Basic(out)
 }
 
+func (bs Basic) Filter(fx func(bases.Emitter) bool) Basic {
+	out := make(chan bases.Emitter)
+	go func() {
+		for e := range bs {
+			if fx(e) {
+				out <- e
+			}
+		}
+		close(out)
+	}()
+	return Basic(out)
+}
+
 type Connectable struct {
 	emitters  <-chan bases.Emitter
 	observers []observer.Observer

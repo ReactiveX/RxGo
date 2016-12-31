@@ -26,53 +26,57 @@ type Fixture struct {
 	eint, estr, echar, echan bases.Emitter
 }
 
-func (f *Fixture) SetUp(conf func(*Fixture)) *Fixture {
+func (f *Fixture) Setup(conf func(*Fixture)) *Fixture {
 	conf(f)
 	return f
 }
 
-func (f *Fixture) TearDown() *Fixture {
-	return &Fixture{}
-}
-
-func TestBasicObservableConstructor(t *testing.T) {
-	assert := assert.New(t)
-	basic := NewBasic(0)
-	assert.IsType((Basic)(nil), basic)
-	assert.Equal(0, cap(basic))
-	basic = NewBasic(3)
-	assert.Equal(3, cap(basic))
-}
-
-func TestConnectableObservableConstructor(t *testing.T) {
-	assert := assert.New(t)
-	connectable := NewConnectable(0)
-	assert.IsType(Connectable{}, connectable)
-	assert.Equal(0, cap(connectable.emitters))
-	connectable = NewConnectable(3)
-	assert.Equal(3, cap(connectable.emitters))
-	text := "hello"
-	ob := observer.Observer{
-		NextHandler: func(item bases.Item) {
-			text += item.(string)
-		},
-	}
-	connectable = NewConnectable(6, ob)
-
-	assert.Equal(6, cap(connectable.emitters))
-	connectable.observers[0].NextHandler(bases.Item(" world"))
-	assert.Equal("hello world", text)
-}
-
-func TestBasicSubscription(t *testing.T) {
-
-	fixture := (&Fixture{}).SetUp(func(f *Fixture) {
+func setupDefaultFixture() *Fixture {
+	return (&Fixture{}).Setup(func(f *Fixture) {
 		f.errch = make(chan error, 1)
 		f.eint = emittable.From(10)
 		f.estr = emittable.From("hello")
 		f.echar = emittable.From('a')
 		f.echan = emittable.From(f.errch)
 	})
+}
+
+func TestBasicObservableConstructor(t *testing.T) {
+	assert := assert.New(t)
+	basic := NewBasic(0)
+
+	assert.IsType((Basic)(nil), basic)
+	assert.Equal(0, cap(basic))
+
+	basic = NewBasic(3)
+	assert.Equal(3, cap(basic))
+}
+
+func TestConnectableObservableConstructor(t *testing.T) {
+	assert := assert.New(t)
+	text := "hello"
+	connectable := NewConnectable(0)
+
+	if assert.IsType(Connectable{}, connectable) {
+		assert.Equal(0, cap(connectable.emitters))
+	}
+
+	connectable = NewConnectable(3)
+	assert.Equal(3, cap(connectable.emitters))
+	ob := observer.Observer{
+		NextHandler: func(item bases.Item) {
+			text += item.(string)
+		},
+	}
+
+	connectable = NewConnectable(6, ob)
+	assert.Equal(6, cap(connectable.emitters))
+	connectable.observers[0].NextHandler(bases.Item(" world"))
+	assert.Equal("hello world", text)
+}
+
+func TestBasicSubscription(t *testing.T) {
+	fixture := setupDefaultFixture()
 
 	// Send an error over to errch
 	go func() {
@@ -130,9 +134,48 @@ func TestBasicSubscription(t *testing.T) {
 	}
 }
 
-func TestConnectableMap(t *testing.T) {
+func TestBasicMap(t *testing.T) {
+	fixture := setupDefaultFixture()
 
-	fixture := (&Fixture{}).SetUp(func(f *Fixture) {
+	sourceSlice := []bases.Emitter{
+		fixture.eint,
+		fixture.estr,
+		fixture.echar,
+		fixture.echan,
+	}
+
+	basic := BasicFrom(sourceSlice)
+
+	multiplyAllIntBy := func(n interface{}) func(bases.Emitter) bases.Emitter {
+		return func(e bases.Emitter) bases.Emitter {
+			if item, err := e.Emit(); err == nil {
+				if val, ok := item.(int); ok {
+					return emittable.From(val * n.(int))
+				}
+			}
+			return e
+		}
+	}
+
+	basic = basic.Map(multiplyAllIntBy(100))
+
+	subtests := []bases.Emitter{
+		emittable.From(1000),
+		fixture.estr,
+		fixture.echar,
+		fixture.echan,
+	}
+
+	i := 0
+	for e := range basic {
+		assert.Equal(t, subtests[i], e)
+		i++
+	}
+
+}
+
+func TestConnectableMap(t *testing.T) {
+	fixture := (&Fixture{}).Setup(func(f *Fixture) {
 		f.errch = make(chan error, 1)
 		f.eint = emittable.From(10)
 		f.estr = emittable.From("hello")
@@ -147,7 +190,6 @@ func TestConnectableMap(t *testing.T) {
 		fixture.echan,
 	}
 
-	//basic := BasicFrom(sourceSlice)
 	connectable := ConnectableFrom(sourceSlice)
 
 	// multiplyAllIntBy is a CurryableFunc
@@ -180,7 +222,7 @@ func TestConnectableMap(t *testing.T) {
 
 func TestConnectableSubscription(t *testing.T) {
 
-	fixture := (&Fixture{}).SetUp(func(f *Fixture) {
+	fixture := (&Fixture{}).Setup(func(f *Fixture) {
 		f.errch = make(chan error, 1)
 		f.eint = emittable.From(10)
 		f.estr = emittable.From("hello")
