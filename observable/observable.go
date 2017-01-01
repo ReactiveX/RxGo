@@ -1,33 +1,19 @@
 package observable
 
 import (
-	"sync"
 	"time"
 
 	//"github.com/jochasinga/grx/bang"
 	"github.com/jochasinga/grx/bases"
 	//"github.com/jochasinga/grx/errors"
 	"github.com/jochasinga/grx/emittable"
+	"github.com/jochasinga/grx/fx"
 	//"github.com/jochasinga/grx/eventstream"
 	//"github.com/jochasinga/grx/handlers"
 	"github.com/jochasinga/grx/observer"
 	//"github.com/jochasinga/grx/subject"
 	//"github.com/jochasinga/grx/subscription"
 )
-
-// DirectiveFunc defines a func that should be passed to the observable.Start method,
-// and represents a simple func that takes no arguments and return a bases.Emitter type.
-type (
-	Directive      func() bases.Emitter
-	MappableFunc   func(bases.Emitter) bases.Emitter
-	CurryableFunc  func(interface{}) MappableFunc
-	FilterableFunc func(bases.Emitter) bool
-	ReduceableFunc func(bases.Emitter) bases.Emitter
-)
-
-//func (fx Mappable) Apply(e bases.Emitter) {}
-//type Curryable func(bases.Emitter) func(interface{}) bases.Emittable
-//func (fx Curryable) Apply(e bases.Emitter) {}
 
 // Observable is a stream of Emitters
 //type Observable struct {
@@ -39,7 +25,7 @@ type (
 
 type Basic <-chan bases.Emitter
 
-func NewBasic(buffer uint) Basic {
+func New(buffer uint) Basic {
 	return make(Basic, int(buffer))
 }
 
@@ -55,22 +41,22 @@ func (bs Basic) Subscribe(ob observer.Observer) <-chan struct{} {
 	return done
 }
 
-func (bs Basic) Map(fx MappableFunc) Basic {
+func (bs Basic) Map(apply fx.MappableFunc) Basic {
 	out := make(chan bases.Emitter)
 	go func() {
 		for e := range bs {
-			out <- fx(e)
+			out <- apply(e)
 		}
 		close(out)
 	}()
 	return Basic(out)
 }
 
-func (bs Basic) Filter(fx FilterableFunc) Basic {
+func (bs Basic) Filter(apply fx.FilterableFunc) Basic {
 	out := make(chan bases.Emitter)
 	go func() {
 		for e := range bs {
-			if fx(e) {
+			if apply(e) {
 				out <- e
 			}
 		}
@@ -79,6 +65,7 @@ func (bs Basic) Filter(fx FilterableFunc) Basic {
 	return Basic(out)
 }
 
+/*
 type Connectable struct {
 	emitters  <-chan bases.Emitter
 	observers []observer.Observer
@@ -128,8 +115,9 @@ func (cnxt Connectable) Connect() <-chan struct{} {
 	}()
 	return done
 }
+*/
 
-func BasicFrom(es []bases.Emitter) Basic {
+func From(es []bases.Emitter) Basic {
 	source := make(chan bases.Emitter, len(es))
 	go func() {
 		for _, e := range es {
@@ -138,17 +126,6 @@ func BasicFrom(es []bases.Emitter) Basic {
 		close(source)
 	}()
 	return Basic(source)
-}
-
-func ConnectableFrom(es []bases.Emitter) Connectable {
-	source := make(chan bases.Emitter)
-	go func() {
-		for _, e := range es {
-			source <- e
-		}
-		close(source)
-	}()
-	return Connectable{emitters: source}
 }
 
 // DefaultObservable is a default Observable used by the constructor New.
@@ -250,13 +227,14 @@ func Empty() Basic {
 
 // Interval creates an Observable emitting incremental integers infinitely between
 // each given time interval.
-func Interval(d time.Duration, done chan struct{}) Basic {
+func Interval(term chan struct{}, d time.Duration) Basic {
 	source := make(chan bases.Emitter)
 	go func() {
 		i := 0
 		for {
 			select {
-			case <-done:
+			case <-term:
+				return
 			case <-time.After(d):
 				source <- emittable.From(i)
 			}

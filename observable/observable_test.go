@@ -2,6 +2,7 @@ package observable
 
 import (
 	"errors"
+	//"fmt"
 	"time"
 	//"math/rand"
 	//"net/http"
@@ -11,143 +12,127 @@ import (
 	//"github.com/bmizerany/assert"
 	"github.com/jochasinga/grx/bases"
 	"github.com/jochasinga/grx/emittable"
+	"github.com/jochasinga/grx/fx"
 	//"github.com/jochasinga/grx/handlers"
 	//"github.com/jochasinga/grx/iterable"
 	"github.com/jochasinga/grx/observer"
+
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
 type Fixture struct {
-	num                      int
-	text                     string
-	char                     rune
-	err                      error
-	fin                      bool
-	errch                    chan error
-	eint, estr, echar, echan bases.Emitter
+	num                       int
+	text                      string
+	char                      rune
+	err                       error
+	isdone                    bool
+	errchan                   chan error
+	emitters                  []bases.Emitter
+	eint, etext, echar, echan bases.Emitter
 }
 
-func (f *Fixture) Setup(conf func(*Fixture)) *Fixture {
+func setupFixture(conf func(*Fixture)) *Fixture {
+	f := new(Fixture)
 	conf(f)
 	return f
 }
 
 func setupDefaultFixture() *Fixture {
-	return (&Fixture{}).Setup(func(f *Fixture) {
-		f.errch = make(chan error, 1)
+	return setupFixture(func(f *Fixture) {
+		f.errchan = make(chan error, 1)
 		f.eint = emittable.From(10)
-		f.estr = emittable.From("hello")
+		f.etext = emittable.From("hello")
 		f.echar = emittable.From('a')
-		f.echan = emittable.From(f.errch)
+		f.echan = emittable.From(f.errchan)
+		f.emitters = []bases.Emitter{
+			f.eint,
+			f.etext,
+			f.echar,
+			f.echan,
+		}
 	})
 }
 
-func TestBasicObservableConstructor(t *testing.T) {
-	assert := assert.New(t)
-	basic := NewBasic(0)
-
-	assert.IsType((Basic)(nil), basic)
-	assert.Equal(0, cap(basic))
-
-	basic = NewBasic(3)
-	assert.Equal(3, cap(basic))
+type BasicSuite struct {
+	suite.Suite
+	fixture *Fixture
 }
 
-func TestConnectableObservableConstructor(t *testing.T) {
-	assert := assert.New(t)
-	text := "hello"
-	connectable := NewConnectable(0)
-
-	if assert.IsType(Connectable{}, connectable) {
-		assert.Equal(0, cap(connectable.emitters))
-	}
-
-	connectable = NewConnectable(3)
-	assert.Equal(3, cap(connectable.emitters))
-	ob := observer.Observer{
-		NextHandler: func(item bases.Item) {
-			text += item.(string)
-		},
-	}
-
-	connectable = NewConnectable(6, ob)
-	assert.Equal(6, cap(connectable.emitters))
-	connectable.observers[0].NextHandler(bases.Item(" world"))
-	assert.Equal("hello world", text)
+func (suite *BasicSuite) SetupTest() {
+	suite.fixture = setupDefaultFixture()
 }
 
-func TestBasicSubscription(t *testing.T) {
-	fixture := setupDefaultFixture()
+func (suite *BasicSuite) TestCreateBasic() {
+	bs1 := New(0)
+	bs2 := New(3)
+
+	if assert.IsType(suite.T(), (Basic)(nil), bs1) &&
+		assert.IsType(suite.T(), (Basic)(nil), bs2) {
+
+		assert.Equal(suite.T(), 0, cap(bs1))
+		assert.Equal(suite.T(), 3, cap(bs2))
+	}
+}
+
+func (suite *BasicSuite) TestSubscription() {
 
 	// Send an error over to errch
 	go func() {
-		fixture.errch <- errors.New("yike")
+		suite.fixture.errchan <- errors.New("yike")
 		return
 	}()
 
-	basic := BasicFrom([]bases.Emitter{
-		fixture.eint,
-		fixture.estr,
-		fixture.echar,
-		fixture.echan,
+	bs := From([]bases.Emitter{
+		suite.fixture.eint,
+		suite.fixture.etext,
+		suite.fixture.echar,
+		suite.fixture.echan,
 	})
 
 	ob := observer.Observer{
 		NextHandler: func(it bases.Item) {
 			switch it := it.(type) {
 			case int:
-				t.Logf("Item is an integer: %d\n", it)
-				fixture.num += it
+				suite.fixture.num += it
 			case string:
-				t.Logf("Item is a string: %q\n", it)
-				fixture.text += it
+				suite.fixture.text += it
 			case rune:
-				t.Logf("Item is a rune: %v\n", it)
-				fixture.char += it
+				suite.fixture.char += it
 			case chan error:
 				if e, ok := <-it; ok {
-					t.Logf("Item is an emitted error: %v", e)
-					fixture.err = e
+					suite.fixture.err = e
 				}
 			}
 		},
 
 		DoneHandler: func() {
-			t.Log("done")
-			fixture.fin = !fixture.fin
+			suite.fixture.isdone = !suite.fixture.isdone
 		},
 	}
-	done := basic.Subscribe(ob)
+	done := bs.Subscribe(ob)
 	<-done
 
 	subtests := []struct {
 		n, expected interface{}
 	}{
-		{fixture.num, 10},
-		{fixture.text, "hello"},
-		{fixture.char, 'a'},
-		{fixture.err, errors.New("yike")},
-		{fixture.fin, true},
+		{suite.fixture.num, 10},
+		{suite.fixture.text, "hello"},
+		{suite.fixture.char, 'a'},
+		{suite.fixture.err, errors.New("yike")},
+		{suite.fixture.isdone, true},
 	}
 
 	for _, tt := range subtests {
-		assert.Equal(t, tt.expected, tt.n)
+		assert.Equal(suite.T(), tt.expected, tt.n)
 	}
 }
 
-func TestBasicMap(t *testing.T) {
-	fixture := setupDefaultFixture()
+func (suite *BasicSuite) TestBasicMap() {
 
-	sourceSlice := []bases.Emitter{
-		fixture.eint,
-		fixture.estr,
-		fixture.echar,
-		fixture.echan,
-	}
+	bs1 := From(suite.fixture.emitters)
 
-	basic := BasicFrom(sourceSlice)
-
-	multiplyAllIntBy := func(n interface{}) func(bases.Emitter) bases.Emitter {
+	multiplyAllIntBy := func(n interface{}) fx.MappableFunc {
 		return func(e bases.Emitter) bases.Emitter {
 			if item, err := e.Emit(); err == nil {
 				if val, ok := item.(int); ok {
@@ -158,33 +143,25 @@ func TestBasicMap(t *testing.T) {
 		}
 	}
 
-	basic = basic.Map(multiplyAllIntBy(100))
+	bs2 := bs1.Map(multiplyAllIntBy(100))
 
 	subtests := []bases.Emitter{
 		emittable.From(1000),
-		fixture.estr,
-		fixture.echar,
-		fixture.echan,
+		suite.fixture.etext,
+		suite.fixture.echar,
+		suite.fixture.echan,
 	}
 
 	i := 0
-	for e := range basic {
-		assert.Equal(t, subtests[i], e)
+	for e := range bs2 {
+		assert.Equal(suite.T(), subtests[i], e)
 		i++
 	}
 }
 
-func TestBasicFilter(t *testing.T) {
-	fixture := setupDefaultFixture()
+func (suite *BasicSuite) TestBasicFilter() {
 
-	sourceSlice := []bases.Emitter{
-		fixture.eint,
-		fixture.estr,
-		fixture.echar,
-		fixture.echan,
-	}
-
-	basic := BasicFrom(sourceSlice)
+	bs1 := From(suite.fixture.emitters)
 
 	isIntOrString := func(e bases.Emitter) bool {
 		if item, err := e.Emit(); err == nil {
@@ -196,186 +173,59 @@ func TestBasicFilter(t *testing.T) {
 		return false
 	}
 
-	basic = basic.Filter(isIntOrString)
+	bs2 := bs1.Filter(isIntOrString)
 
-	assert.Equal(t, fixture.eint, <-basic)
-	assert.Equal(t, fixture.estr, <-basic)
+	assert.Equal(suite.T(), suite.fixture.eint, <-bs2)
+	assert.Equal(suite.T(), suite.fixture.etext, <-bs2)
+	assert.Nil(suite.T(), <-bs2)
 }
 
-func TestBasicEmpty(t *testing.T) {
+func (suite *BasicSuite) TestEmpty() {
 
-	basic := Empty()
-	isDone := false
+	bs := Empty()
+	finished := false
 
-	done := basic.Subscribe(observer.Observer{
+	done := bs.Subscribe(observer.Observer{
 		DoneHandler: func() {
-			isDone = !isDone
+			finished = !finished
 		},
 	})
 
 	<-done
-	assert.True(t, isDone)
+	assert.True(suite.T(), finished)
 }
 
-func TestBasicInterval(t *testing.T) {
+func (suite *BasicSuite) TestInterval() {
 
-	fin := make(chan struct{})
-	basic := Interval(500*time.Millisecond, fin)
+	numch := make(chan int, 1)
+	term := make(chan struct{}, 1)
+	source := Interval(term, 1*time.Second)
+	assert.IsType(suite.T(), (Basic)(nil), source)
 
-	_ = basic.Subscribe(observer.Observer{
-		NextHandler: func(item bases.Item) {
-			t.Log(item)
-		},
-		DoneHandler: func() {
-			t.Log("done")
+	_ = source.Subscribe(observer.Observer{
+		NextHandler: func(it bases.Item) {
+			if num, ok := it.(int); ok {
+				numch <- num
+			}
 		},
 	})
-
-	<-time.After(2 * time.Second)
-	fin <- struct{}{}
-}
-
-func TestConnectableMap(t *testing.T) {
-	fixture := setupDefaultFixture()
-
-	sourceSlice := []bases.Emitter{
-		fixture.eint,
-		fixture.estr,
-		fixture.echar,
-		fixture.echan,
-	}
-
-	connectable := ConnectableFrom(sourceSlice)
-
-	// multiplyAllIntBy is a CurryableFunc
-	multiplyAllIntBy := func(n interface{}) func(bases.Emitter) bases.Emitter {
-		return func(e bases.Emitter) bases.Emitter {
-			if item, err := e.Emit(); err == nil {
-				if val, ok := item.(int); ok {
-					return emittable.From(val * n.(int))
-				}
-			}
-			return e
-		}
-	}
-
-	connectable = connectable.Map(multiplyAllIntBy(100))
-
-	subtests := []bases.Emitter{
-		emittable.From(1000),
-		fixture.estr,
-		fixture.echar,
-		fixture.echan,
-	}
 
 	i := 0
-	for e := range connectable.emitters {
-		assert.Equal(t, subtests[i], e)
-		i++
-	}
+	go func() {
+		for {
+			select {
+			case num := <-numch:
+				assert.Equal(suite.T(), i, num)
+			}
+			i++
+		}
+	}()
+	<-time.After(5 * time.Second)
+	term <- struct{}{}
 }
 
-func TestConnectableSubscription(t *testing.T) {
-
-	fixture := (&Fixture{}).Setup(func(f *Fixture) {
-		f.errch = make(chan error, 1)
-		f.eint = emittable.From(10)
-		f.estr = emittable.From("hello")
-		f.echar = emittable.From('a')
-		f.echan = emittable.From(f.errch)
-	})
-
-	// Send an error over to errch
-	go func() {
-		fixture.errch <- errors.New("yike")
-		return
-	}()
-
-	connectable := ConnectableFrom([]bases.Emitter{
-		fixture.eint,
-		fixture.estr,
-		fixture.echar,
-		fixture.echan,
-	})
-
-	ob1 := observer.Observer{
-		NextHandler: func(it bases.Item) {
-			switch it := it.(type) {
-			case int:
-				t.Logf("Item is an integer: %d\n", it)
-				fixture.num += it
-			case string:
-				t.Logf("Item is a string: %q\n", it)
-				fixture.text += it
-			case rune:
-				t.Logf("Item is a rune: %v\n", it)
-				fixture.char += it
-			case chan error:
-				if e, ok := <-it; ok {
-					t.Logf("Item is an emitted error: %v", e)
-					fixture.err = e
-				}
-			}
-		},
-		DoneHandler: func() {
-			t.Log("done")
-			fixture.fin = !fixture.fin
-		},
-	}
-
-	ob2 := observer.Observer{
-		NextHandler: func(it bases.Item) {
-			switch it := it.(type) {
-			case int:
-				t.Logf("Item is indeed an integer: %d\n", it)
-			case string:
-				t.Logf("Item is indeed a string: %q\n", it)
-			case rune:
-				t.Logf("Item is indeed a rune: %v\n", it)
-			case chan error:
-				if e, ok := <-it; ok {
-					t.Logf("Item is an indeed emitted error: %v", e)
-					fixture.err = e
-				}
-			}
-		},
-		DoneHandler: func() {
-			t.Log("Indeed it's done")
-		},
-	}
-
-	beforetests := []struct {
-		n, expected interface{}
-	}{
-		{fixture.num, 0},
-		{fixture.text, ""},
-		{fixture.char, rune(0)},
-		{fixture.err, error(nil)},
-		{fixture.fin, false},
-	}
-
-	for _, tt := range beforetests {
-		assert.Equal(t, tt.expected, tt.n)
-	}
-
-	connectable = connectable.Subscribe(ob1).Subscribe(ob2)
-
-	done := connectable.Connect()
-	<-done
-
-	subtests := []struct {
-		n, expected interface{}
-	}{
-		{fixture.num, 10},
-		{fixture.text, "hello"},
-		{fixture.char, 'a'},
-		{fixture.err, errors.New("yike")},
-		{fixture.fin, true},
-	}
-
-	for _, tt := range subtests {
-		assert.Equal(t, tt.expected, tt.n)
-	}
+func TestConnectableSuite(t *testing.T) {
+	suite.Run(t, new(BasicSuite))
 }
 
 /*
