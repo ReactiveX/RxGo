@@ -5,91 +5,75 @@ import (
 	"github.com/jochasinga/grx/handlers"
 )
 
+// Observer represents
 type Observer struct {
-	//observable *subject.Subject
-	sink        <-chan bases.Emitter
+	sink        <-chan interface{}
 	NextHandler handlers.NextFunc
 	ErrHandler  handlers.ErrFunc
 	DoneHandler handlers.DoneFunc
 }
 
-/*
-// DefaultObserver is a default Observable used by the constructor New.
-// It makes sure no attribute is instantiated with nil that can cause a panic.
-var DefaultObserver = func() *Observer {
-	ob := &Observer{
-		NextHandler: handlers.NextFunc(func(e bases.Item) {}),
-		ErrHandler:  handlers.ErrFunc(func(err error) {}),
-		DoneHandler: handlers.DoneFunc(func() {}),
-	}
-	ob.observable = subject.New(func(s *subject.Subject) {
-		s.Sentinel = ob
-	})
-	return ob
-}()
-*/
+// DefaultObserver makes sure any handler won't turn up nil.
+var DefaultObserver = Observer{
+	NextHandler: func(interface{}) {},
+	ErrHandler:  func(err error) {},
+	DoneHandler: func() {},
+}
 
-// Apply makes Observer implements handlers.EventHandler
-func (ob Observer) Handle(e bases.Emitter) {
-	_, err := e.Emit()
-	if err != nil {
-		ob.ErrHandler.Handle(e)
+// Handle makes Observer implements handlers.EventHandler
+func (ob Observer) Handle(item interface{}) {
+	switch item := item.(type) {
+	case error:
+		ob.ErrHandler(item)
 		return
-	}
-	ob.NextHandler.Handle(e)
-}
-
-// New constructs a new Observer instance with default Observable
-/*
-func New(fs ...func(*Observer)) *Observer {
-	ob := DefaultObserver
-	if len(fs) > 0 {
-		for _, f := range fs {
-			f(ob)
-		}
-	}
-	return ob
-}
-*/
-
-// OnNext applies Observer's NextHandler to an Item
-/*
-func (ob *Observer) OnNext(item bases.Item) {
-	if ob.NextHandler != nil {
+	default:
 		ob.NextHandler(item)
 	}
-
-		if handle, ok := ob.NextHandler.(handlers.NextFunc); ok {
-			handle(item)
-		}
 }
-*/
 
-/*
+// New constructs a new Observer instance with default Observer and accept
+// any number of EventHandler
+func New(eventHandlers ...bases.EventHandler) Observer {
+	ob := DefaultObserver
+	if len(eventHandlers) > 0 {
+		for _, handler := range eventHandlers {
+			switch handler := handler.(type) {
+			case handlers.NextFunc:
+				ob.NextHandler = handler
+			case handlers.ErrFunc:
+				ob.ErrHandler = handler
+			case handlers.DoneFunc:
+				ob.DoneHandler = handler
+			case Observer:
+				ob = handler
+			}
+		}
+	}
+	return ob
+}
+
+// OnNext applies Observer's NextHandler to an Item
+func (ob Observer) OnNext(item interface{}) {
+	switch item := item.(type) {
+	case error:
+		return
+	default:
+		if ob.NextHandler != nil {
+			ob.NextHandler(item)
+		}
+	}
+}
+
 // OnError applies Observer's ErrHandler to an error
-func (ob *Observer) OnError(err error) {
+func (ob Observer) OnError(err error) {
 	if ob.ErrHandler != nil {
 		ob.ErrHandler(err)
 	}
-
-		if handle, ok := ob.ErrHandler.(handlers.ErrFunc); ok {
-			handle(err)
-		}
-
-	return
 }
-*/
 
-/*
 // OnDone terminates the Observer's internal Observable
-func (ob *Observer) OnDone() {
-	ob.observable.Done()
+func (ob Observer) OnDone() {
 	if ob.DoneHandler != nil {
 		ob.DoneHandler()
 	}
-
-		if handle, ok := ob.DoneHandler.(handlers.DoneFunc); ok {
-			handle()
-		}
 }
-*/
