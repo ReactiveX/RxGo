@@ -2,145 +2,104 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
-	. "github.com/jochasinga/grx/bases"
+	"github.com/jochasinga/grx/bases"
 	"github.com/stretchr/testify/assert"
 )
 
-type (
-	myInt    int
-	myString string
-	myFloat  float64
-	myRune   rune
-)
-
-func (n myInt) Emit() (Item, error) {
-	return Item(n), nil
-}
-func (w myString) Emit() (Item, error) {
-	return Item(w), nil
-}
-func (pi myFloat) Emit() (Item, error) {
-	return Item(pi), nil
-}
-func (r myRune) Emit() (Item, error) {
-	return Item(r), nil
-}
-
-func TestAllTypesImplementEventHandler(t *testing.T) {
+func TestHandlersImplementEventHandler(t *testing.T) {
 	assert := assert.New(t)
-	assert.Implements((*EventHandler)(nil), (*NextFunc)(nil))
-	assert.Implements((*EventHandler)(nil), (*ErrFunc)(nil))
-	assert.Implements((*EventHandler)(nil), (*DoneFunc)(nil))
+	assert.Implements((*bases.EventHandler)(nil), (*NextFunc)(nil))
+	assert.Implements((*bases.EventHandler)(nil), (*ErrFunc)(nil))
+	assert.Implements((*bases.EventHandler)(nil), (*DoneFunc)(nil))
 }
 
 func TestNextFuncHandleMethod(t *testing.T) {
+	assert := assert.New(t)
+
 	var (
-		num  myInt    = 1
-		word myString = "Hello"
-		pi   myFloat  = 3.1416
-		ru   myRune   = 'ด'
+		num  = 1
+		word = "Hello"
+		pi   = 3.1416
+		ru   = 'ด'
+		err  = errors.New("Anonymous error")
 	)
 
-	assert := assert.New(t)
-	samples := []Item{}
-	nextf := NextFunc(func(i Item) {
-		samples = append(samples, i)
+	samples := []interface{}{}
+
+	// Append each item to samples slice
+	nextf := NextFunc(func(item interface{}) {
+		samples = append(samples, item)
 	})
 
-	nextHandleTests := []struct {
-		in       Emitter
-		expected Item
-	}{
-		{num, Item(num)},
-		{word, Item(word)},
-		{pi, Item(pi)},
-		{ru, Item(ru)},
+	nextHandleTests := []interface{}{num, word, pi, ru, err}
+
+	for _, tt := range nextHandleTests {
+		nextf.Handle(tt)
 	}
 
-	for n, tt := range nextHandleTests {
-		nextf.Handle(tt.in)
-		assert.Equal(tt.expected, samples[n])
-	}
-}
-
-type (
-	someInt    int
-	someString string
-	someFloat  float64
-	someRune   rune
-)
-
-func (n someInt) Emit() (Item, error) {
-	return nil, errors.New("myInt error")
-}
-func (w someString) Emit() (Item, error) {
-	return nil, errors.New("myString error")
-}
-func (pi someFloat) Emit() (Item, error) {
-	return nil, errors.New("myFloat error")
-}
-func (r someRune) Emit() (Item, error) {
-	return nil, errors.New("myRune error")
+	expected := []interface{}{num, word, pi, ru}
+	assert.Exactly(samples, expected)
 }
 
 func TestErrFuncHandleMethod(t *testing.T) {
+	assert := assert.New(t)
+
 	var (
-		num  someInt    = 1
-		word someString = "Hello"
-		pi   someFloat  = 3.1416
-		ru   someRune   = 'ด'
+		num  = 1
+		word = "Hello"
+		pi   = 3.1416
+		ru   = 'ด'
 	)
 
-	assert := assert.New(t)
 	samples := []error{}
+
 	errf := ErrFunc(func(err error) {
 		samples = append(samples, err)
 	})
 
-	errHandleTests := []struct {
-		in       Emitter
-		expected string
-	}{
-		{num, "myInt error"},
-		{word, "myString error"},
-		{pi, "myFloat error"},
-		{ru, "myRune error"},
+	errHandleTests := []interface{}{
+		fmt.Errorf("Integer %d error", num),
+		fmt.Errorf("String %s error", word),
+		pi,
+		fmt.Errorf("Rune %U error", ru),
 	}
 
-	for n, tt := range errHandleTests {
-		errf.Handle(tt.in)
-		assert.Equal(tt.expected, samples[n].Error())
+	for _, tt := range errHandleTests {
+		errf.Handle(tt)
 	}
+
+	expected := []error{
+		fmt.Errorf("Integer %d error", num),
+		fmt.Errorf("String %s error", word),
+		fmt.Errorf("Rune %U error", ru),
+	}
+
+	assert.Exactly(samples, expected)
 }
 
 func TestDoneFuncHandleMethod(t *testing.T) {
+	assert := assert.New(t)
+
 	var (
-		num  someInt    = 1
-		word someString = "Hello"
-		pi   someFloat  = 3.1416
-		ru   someRune   = 'ด'
+		num  = 1
+		word = "Hello"
+		pi   = 3.1416
+		ru   = 'ด'
 	)
 
-	assert := assert.New(t)
 	samples := []string{}
+
 	errf := DoneFunc(func() {
-		samples = append(samples, "done")
+		samples = append(samples, "DONE")
 	})
 
-	doneHandleTests := []struct {
-		in       Emitter
-		expected string
-	}{
-		{num, "done"},
-		{word, "done"},
-		{pi, "done"},
-		{ru, "done"},
-	}
+	doneHandleTests := []interface{}{num, word, pi, ru}
 
 	for n, tt := range doneHandleTests {
-		errf.Handle(tt.in)
-		assert.Equal(tt.expected, samples[n])
+		errf.Handle(tt)
+		assert.Equal(samples[n], "DONE")
 	}
 }

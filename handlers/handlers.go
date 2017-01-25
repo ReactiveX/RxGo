@@ -1,27 +1,29 @@
 package handlers
 
-import (
-	"github.com/jochasinga/grx/bases"
-)
-
 type (
-	NextFunc func(bases.Item)
+	NextFunc func(interface{})
 	ErrFunc  func(error)
 	DoneFunc func()
 )
 
-func (handle NextFunc) Handle(e bases.Emitter) {
-	if item, err := e.Emit(); err == nil {
+func (handle NextFunc) Handle(item interface{}) {
+	switch item := item.(type) {
+	case error:
+		return
+	default:
 		handle(item)
 	}
 }
 
-func (handle ErrFunc) Handle(e bases.Emitter) {
-	if _, err := e.Emit(); err != nil {
-		handle(err)
+func (handle ErrFunc) Handle(item interface{}) {
+	switch item := item.(type) {
+	case error:
+		handle(item)
+	default:
+		return
 	}
 }
 
-func (handle DoneFunc) Handle(e bases.Emitter) {
+func (handle DoneFunc) Handle(item interface{}) {
 	handle()
 }
