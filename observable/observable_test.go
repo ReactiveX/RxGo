@@ -112,6 +112,29 @@ func TestSubscribeToDoneFunc(t *testing.T) {
 	assert.Equal(t, "done", donetext)
 }
 
+func TestJustOperator(t *testing.T) {
+	myStream := Just(1, 2.01, "foo", map[string]string{"bar": "baz"}, 'a')
+	numItems := 5
+	yes := make(chan struct{})
+
+	n := 0
+	go func() {
+		for sig := range yes {
+			assert.Equal(t, struct{}{}, sig)
+			n++
+		}
+	}()
+
+	onNext := handlers.NextFunc(func(item interface{}) {
+		yes <- struct{}{}
+	})
+
+	sub := myStream.Subscribe(onNext)
+	<-sub
+
+	assert.Equal(t, numItems, n)
+}
+
 func TestSubscribeToObserver(t *testing.T) {
 	assert := assert.New(t)
 
@@ -143,11 +166,7 @@ func TestSubscribeToObserver(t *testing.T) {
 		fin <- struct{}{}
 	})
 
-	ob := observer.Observer{
-		NextHandler: onnext,
-		ErrHandler:  onerr,
-		DoneHandler: ondone,
-	}
+	ob := observer.New(onnext, onerr, ondone)
 
 	go func() {
 		expected := []string{"foo", "bar", "baz"}
