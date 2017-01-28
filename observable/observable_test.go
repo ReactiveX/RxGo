@@ -1,80 +1,189 @@
 package observable
 
 import (
-	"errors"
+
 	//"fmt"
-	"time"
+
 	//"math/rand"
 	//"net/http"
+	"errors"
 	"testing"
-	//"time"
 
-	//"github.com/bmizerany/assert"
 	"github.com/jochasinga/grx/bases"
-	"github.com/jochasinga/grx/emittable"
-	"github.com/jochasinga/grx/fx"
-	//"github.com/jochasinga/grx/handlers"
-	//"github.com/jochasinga/grx/iterable"
-	"github.com/jochasinga/grx/observer"
+	//"github.com/jochasinga/grx/emittable"
 
+	"github.com/jochasinga/grx/handlers"
+	//"github.com/jochasinga/grx/iterable"
+
+	"github.com/jochasinga/grx/observer"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
+	//"github.com/stretchr/testify/suite"
 )
 
-type Fixture struct {
-	num                       int
-	text                      string
-	char                      rune
-	err                       error
-	isdone                    bool
-	errchan                   chan error
-	emitters                  []bases.Emitter
-	eint, etext, echar, echan bases.Emitter
+func TestObservableImplementsBaseObservable(t *testing.T) {
+	t.Skip("Skipping implementation test for now")
+	assert.Implements(t, (*bases.Observable)(nil), Observable(nil))
 }
 
-func setupFixture(conf func(*Fixture)) *Fixture {
-	f := new(Fixture)
-	conf(f)
-	return f
+func TestDefaultObservable(t *testing.T) {
+	assert.Equal(t, 0, cap(DefaultObservable))
 }
 
-func setupDefaultFixture() *Fixture {
-	return setupFixture(func(f *Fixture) {
-		f.errchan = make(chan error, 1)
-		f.eint = emittable.From(10)
-		f.etext = emittable.From("hello")
-		f.echar = emittable.From('a')
-		f.echan = emittable.From(f.errchan)
-		f.emitters = []bases.Emitter{
-			f.eint,
-			f.etext,
-			f.echar,
-			f.echan,
+func TestCreateObservableWithConstructor(t *testing.T) {
+	assert := assert.New(t)
+
+	stream1 := New(0)
+	stream2 := New(3)
+
+	if assert.IsType(Observable(nil), stream1) && assert.IsType(Observable(nil), stream2) {
+		assert.Equal(0, cap(stream1))
+		assert.Equal(3, cap(stream2))
+	}
+
+}
+
+func TestCheckEventHandler(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skip testing of unexported testCheckEventHandler")
+	}
+
+	testtext := ""
+
+	df := handlers.DoneFunc(func() {
+		testtext += "done"
+	})
+
+	myObserver := observer.New(df)
+
+	ob1 := checkEventHandler(myObserver)
+	ob2 := checkEventHandler(df)
+
+	ob1.OnDone()
+	assert.Equal(t, "done", testtext)
+
+	ob2.OnDone()
+	assert.Equal(t, "donedone", testtext)
+}
+
+func TestSubscribeToNextFunc(t *testing.T) {
+	myStream := Just(1, 2, 3, errors.New("4"), 5)
+	mynum := 0
+
+	nf := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			mynum += num
 		}
 	})
+
+	done := myStream.Subscribe(nf)
+	<-done
+
+	assert.Equal(t, 6, mynum)
 }
 
-type BasicSuite struct {
-	suite.Suite
-	fixture *Fixture
+func TestSubscribeToErrFunc(t *testing.T) {
+	myStream := Just(1, "hello", errors.New("bang"), 43.5)
+
+	var myerr error
+
+	ef := handlers.ErrFunc(func(err error) {
+		myerr = err
+	})
+
+	done := myStream.Subscribe(ef)
+	sub := <-done
+
+	assert.Equal(t, "bang", myerr.Error())
+	assert.Equal(t, "bang", sub.Error.Error())
 }
 
-func (suite *BasicSuite) SetupTest() {
-	suite.fixture = setupDefaultFixture()
+func TestSubscribeToDoneFunc(t *testing.T) {
+	myStream := Just(nil)
+
+	donetext := ""
+
+	df := handlers.DoneFunc(func() {
+		donetext = "done"
+	})
+
+	done := myStream.Subscribe(df)
+	<-done
+
+	assert.Equal(t, "done", donetext)
 }
 
-func (suite *BasicSuite) TestCreateBasic() {
-	bs1 := New(0)
-	bs2 := New(3)
+func TestSubscribeToObserver(t *testing.T) {
+	assert := assert.New(t)
 
-	if assert.IsType(suite.T(), (Basic)(nil), bs1) &&
-		assert.IsType(suite.T(), (Basic)(nil), bs2) {
+	myStream := From([]interface{}{
+		"foo", "bar", "baz", 'a', 'b', errors.New("bang"), 99,
+	})
 
-		assert.Equal(suite.T(), 0, cap(bs1))
-		assert.Equal(suite.T(), 3, cap(bs2))
+	strings := make(chan string)
+	chars := make(chan rune)
+	integers := make(chan int)
+	fin := make(chan struct{})
+
+	onnext := handlers.NextFunc(func(item interface{}) {
+		switch item := item.(type) {
+		case string:
+			strings <- item
+		case rune:
+			chars <- item
+		case int:
+			integers <- item
+		}
+	})
+
+	onerr := handlers.ErrFunc(func(err error) {
+		t.Logf("Error emitted in the stream: %v\n", err)
+	})
+
+	ondone := handlers.DoneFunc(func() {
+		fin <- struct{}{}
+	})
+
+	ob := observer.Observer{
+		NextHandler: onnext,
+		ErrHandler:  onerr,
+		DoneHandler: ondone,
 	}
+
+	go func() {
+		expected := []string{"foo", "bar", "baz"}
+		n := 0
+		for string := range strings {
+			assert.Equal(expected[n], string)
+			n++
+		}
+	}()
+
+	go func() {
+		expected := []rune{'a', 'b', 'c'}
+		n := 0
+		for char := range chars {
+			assert.Equal(expected[n], char)
+			n++
+		}
+	}()
+
+	go func() {
+		num := <-integers
+		assert.Equal(0, num, "integers should not receive anything.")
+	}()
+
+	go func() {
+		sig := <-fin
+		assert.Equal(nil, sig, "fin should not receive anything.")
+	}()
+
+	done := myStream.Subscribe(ob)
+	sub := <-done
+
+	assert.Equal("bang", sub.Error.Error())
 }
 
+/*
 func (suite *BasicSuite) TestSubscription() {
 
 	// Send an error over to errch
@@ -224,7 +333,94 @@ func (suite *BasicSuite) TestInterval() {
 	term <- struct{}{}
 }
 
-func TestConnectableSuite(t *testing.T) {
+type FakeHttp struct {
+	responses []bases.Item
+	errors    []error
+}
+
+func (fhttp *FakeHttp) Get(delay time.Duration, fn func() (*http.Response, error)) (*http.Response, error) {
+	time.Sleep(delay)
+	return fn()
+}
+
+func (suite *BasicSuite) TestFakeBlockingExternalCalls() {
+
+	fhttp := new(FakeHttp)
+
+	// Fake directives that returns an Event containing an HTTP response.
+	d1 := func() &http.Response {
+		return &http.Response{
+			Status:     "404 NOT FOUND",
+			StatusCode: 404,
+			Proto:      "HTTP/1.0",
+			ProtoMajor: 1,
+		}
+	}
+
+	d2 := func() &http.Response {
+		return &http.Response{
+			Status:     "200 OK",
+			StatusCode: 200,
+			Proto:      "HTTP/1.0",
+			ProtoMajor: 1,
+		}
+	}
+
+	d3 := func() &http.Response {
+		return &http.Response{
+			Status:     "500 SERVER ERROR",
+			StatusCode: 500,
+			Proto:      "HTTP/1.0",
+			ProtoMajor: 1,
+		}
+	}
+
+	d4 := func() &http.Response {
+		return errors.New("Some kind of error")
+	}
+
+	e1 := emittable.From(func() interface{} {
+		res, _ := fhttp.Get(10 * time.Millisecond, d1)
+		return res
+	})
+	e2 := emitable.From(func() interface{} {
+		res, _ := fhttp.Get(30 * time.Millisecond, d2)
+		return res
+	})
+	e3 := emittable.From(func() interface{} {
+		res, _ := fhttp.Get(20 * time.Millisecond, d3)
+		return res
+	})
+	e4 := emittable.From(func() interface{} {
+		_, err := fhttp.Get(50 * time.Millisecond, d4)
+		return err
+	})
+
+	basic := Just(e1, e2, e3, e4)
+
+	watcher := &observer.Observer{
+		NextHandler: func(it bases.Item) {
+			fhttp.responses = append(fhttp.responses, it)
+		}),
+		ErrHandler: func(err error) {
+			fhttp.errors = append(fhttp.errors, err)
+		}),
+		DoneHandler: handlers.DoneFunc(func() {
+			fhttp.responses = append(fhttp.responses, bases.Item("Oho end")
+		}),
+	}
+
+	done := basic.Subscribe(watcher)
+	<-done
+
+	if assert.NotEmpty(suite.T(), fhttp.responses) && assert.NotEmpty(suite.T(), fhttp.errors) {
+
+		assert.Len(suite.T(), 3, fhttp.responses)
+		assert.Len(suite.T(), 1, fhttp.errors)
+	}
+}
+
+func TestBasicSuite(t *testing.T) {
 	suite.Run(t, new(BasicSuite))
 }
 
@@ -439,90 +635,9 @@ func TestStartOperator(t *testing.T) {
 	expected := []int{444, 777, 1110, 0}
 	assert.Exactly(expected, nums)
 }
+*/
 
-func TestStartMethodWithFakeExternalCalls(t *testing.T) {
-	fakeHttpResponses := []*http.Response{}
-
-	// NOTE: HTTP Response errors such as status 500 does not return an error
-	fakeHttpErrors := []error{}
-
-	// Fake directives that returns an Event containing an HTTP response.
-	d1 := func() bases.Emitter {
-		res := &http.Response{
-			Status:     "404 NOT FOUND",
-			StatusCode: 404,
-			Proto:      "HTTP/1.0",
-			ProtoMajor: 1,
-		}
-
-		// Simulating an I/O block
-		time.Sleep(20 * time.Millisecond)
-		return emittable.From(res)
-	}
-
-	d2 := func() bases.Emitter {
-		res := &http.Response{
-			Status:     "200 OK",
-			StatusCode: 200,
-			Proto:      "HTTP/1.0",
-			ProtoMajor: 1,
-		}
-		time.Sleep(10 * time.Millisecond)
-		return emittable.From(res)
-	}
-
-	d3 := func() bases.Emitter {
-		res := &http.Response{
-			Status:     "500 SERVER ERROR",
-			StatusCode: 500,
-			Proto:      "HTTP/1.0",
-			ProtoMajor: 1,
-		}
-		time.Sleep(30 * time.Millisecond)
-		return emittable.From(res)
-	}
-
-	d4 := func() bases.Emitter {
-		err := errors.New("Some kind of error")
-		time.Sleep(50 * time.Millisecond)
-		return emittable.From(err)
-	}
-
-	watcher := &observer.Observer{
-		NextHandler: handlers.NextFunc(func(it bases.Item) {
-			if res, ok := it.(*http.Response); ok {
-				fakeHttpResponses = append(fakeHttpResponses, res)
-			}
-		}),
-		ErrHandler: handlers.ErrFunc(func(err error) {
-			fakeHttpErrors = append(fakeHttpErrors, err)
-		}),
-		DoneHandler: handlers.DoneFunc(func() {
-			fakeHttpResponses = append(fakeHttpResponses, &http.Response{
-				Status:     "999 End",
-				StatusCode: 999,
-			})
-		}),
-	}
-
-	source := Start(d1, d2, d3, d4)
-	_, err := source.Subscribe(watcher)
-
-	assert := assert.New(t)
-	assert.Nil(err)
-
-	<-time.After(100 * time.Millisecond)
-
-	assert.IsType((*Observable)(nil), source)
-	assert.Equal(4, len(fakeHttpResponses))
-	assert.Equal(1, len(fakeHttpErrors))
-	assert.Equal(200, fakeHttpResponses[0].StatusCode)
-	assert.Equal(404, fakeHttpResponses[1].StatusCode)
-	assert.Equal(500, fakeHttpResponses[2].StatusCode)
-	assert.Equal(999, fakeHttpResponses[3].StatusCode)
-	assert.Equal("Some kind of error", fakeHttpErrors[0])
-}
-
+/*
 func TestIntervalOperator(t *testing.T) {
 	assert := assert.New(t)
 	numch := make(chan int, 1)

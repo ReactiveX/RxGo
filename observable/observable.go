@@ -1,196 +1,124 @@
 package observable
 
 import (
+	"sync"
 	"time"
 
 	//"github.com/jochasinga/grx/bang"
 	"github.com/jochasinga/grx/bases"
 	//"github.com/jochasinga/grx/errors"
-	"github.com/jochasinga/grx/emittable"
+	//"github.com/jochasinga/grx/emittable"
 	"github.com/jochasinga/grx/fx"
-	//"github.com/jochasinga/grx/eventstream"
-	//"github.com/jochasinga/grx/handlers"
 	"github.com/jochasinga/grx/observer"
+	//"github.com/jochasinga/grx/eventstream"
+	"github.com/jochasinga/grx/handlers"
 	//"github.com/jochasinga/grx/subject"
-	//"github.com/jochasinga/grx/subscription"
+	"github.com/jochasinga/grx/subscription"
 )
 
-// Observable is a stream of Emitters
-//type Observable struct {
-//	source chan bases.Emitter
-//subscriptor bases.Subscriptor
-//notifier    *bang.Notifier
-//observer    *subject.Subject
-//}
+// Observable is a basic observable channel
+type Observable <-chan interface{}
 
-type Basic <-chan bases.Emitter
+var DefaultObservable = make(Observable)
 
-func New(buffer uint) Basic {
-	return make(Basic, int(buffer))
+// New creates an Observable
+func New(buffer uint) Observable {
+	return make(Observable, int(buffer))
 }
 
-func (bs Basic) Subscribe(ob observer.Observer) <-chan struct{} {
-	done := make(chan struct{}, 1)
+func checkEventHandler(handler bases.EventHandler) observer.Observer {
+	ob := observer.DefaultObserver
+
+	switch handler := handler.(type) {
+	case handlers.NextFunc:
+		ob.NextHandler = handler
+	case handlers.ErrFunc:
+		ob.ErrHandler = handler
+	case handlers.DoneFunc:
+		ob.DoneHandler = handler
+	case observer.Observer:
+		ob = handler
+	}
+
+	return ob
+}
+
+// Make sure Observable implements base.Observable
+//
+// Subscribe returns a channel of empty struct
+func (o Observable) Subscribe(handler bases.EventHandler) <-chan subscription.Subscription {
+	done := make(chan subscription.Subscription, 1)
+	sub := subscription.New().Subscribe()
+
+	ob := checkEventHandler(handler)
+
 	go func() {
-		for e := range bs {
-			ob.NextHandler.Handle(e)
+	OuterLoop:
+		for item := range o {
+			switch item := item.(type) {
+			case error:
+				err := item.(error)
+				ob.ErrHandler(err)
+
+				// Record the error and return without completing.
+				sub.Error = err
+				break OuterLoop
+			default:
+				ob.OnNext(item)
+			}
 		}
-		ob.DoneHandler()
-		done <- struct{}{}
+
+		// This part only gets executed if there wasn't an error.
+		if sub.Error == nil {
+			ob.OnDone()
+		}
+
+		done <- sub.Unsubscribe()
+		return
 	}()
+
 	return done
 }
 
-func (bs Basic) Map(apply fx.MappableFunc) Basic {
-	out := make(chan bases.Emitter)
+func (o Observable) Unsubscribe() subscription.Subscription {
+	// Stub: to be implemented
+	return subscription.New()
+}
+
+func (o Observable) Map(apply fx.MappableFunc) Observable {
+	out := make(chan interface{})
 	go func() {
-		for e := range bs {
-			out <- apply(e)
+		for item := range o {
+			out <- apply(item)
 		}
 		close(out)
 	}()
-	return Basic(out)
+	return Observable(out)
 }
 
-func (bs Basic) Filter(apply fx.FilterableFunc) Basic {
-	out := make(chan bases.Emitter)
+func (o Observable) Filter(apply fx.FilterableFunc) Observable {
+	out := make(chan interface{})
 	go func() {
-		for e := range bs {
-			if apply(e) {
-				out <- e
+		for item := range o {
+			if apply(item) {
+				out <- item
 			}
 		}
 		close(out)
 	}()
-	return Basic(out)
+	return Observable(out)
 }
 
-/*
-type Connectable struct {
-	emitters  <-chan bases.Emitter
-	observers []observer.Observer
-}
-
-func NewConnectable(buffer uint, observers ...observer.Observer) Connectable {
-	return Connectable{
-		emitters:  make(chan bases.Emitter, int(buffer)),
-		observers: observers,
-	}
-}
-
-func (cnxt Connectable) Subscribe(ob observer.Observer) Connectable {
-	cnxt.observers = append(cnxt.observers, ob)
-	return cnxt
-}
-
-func (cnxt Connectable) Map(fx MappableFunc) Connectable {
-	out := make(chan bases.Emitter)
+func From(items []interface{}) Observable {
+	source := make(chan interface{}, len(items))
 	go func() {
-		for e := range cnxt.emitters {
-			out <- fx(e)
-		}
-		close(out)
-	}()
-	return Connectable{emitters: out}
-}
-
-func (cnxt Connectable) Connect() <-chan struct{} {
-	done := make(chan struct{}, 1)
-	var wg sync.WaitGroup
-
-	for _, ob := range cnxt.observers {
-		wg.Add(1)
-		go func(ob observer.Observer) {
-			for e := range cnxt.emitters {
-				ob.NextHandler.Handle(e)
-			}
-			ob.DoneHandler()
-			wg.Done()
-		}(ob)
-	}
-
-	go func() {
-		wg.Wait()
-		done <- struct{}{}
-	}()
-	return done
-}
-*/
-
-func From(es []bases.Emitter) Basic {
-	source := make(chan bases.Emitter, len(es))
-	go func() {
-		for _, e := range es {
-			source <- e
+		for _, item := range items {
+			source <- item
 		}
 		close(source)
 	}()
-	return Basic(source)
+	return Observable(source)
 }
-
-// DefaultObservable is a default Observable used by the constructor New.
-// It is preferable to using the new keyword to create one.
-/*
-var DefaultObservable = func() *Observable {
-	o := &Observable{
-		EventStream: make(eventstream.EventStream),
-		notifier:    bang.New(),
-		subscriptor: subscription.DefaultSubscription,
-	}
-	o.observer = subject.New(func(s *subject.Subject) {
-		s.Stream = o
-		s.Sentinel = o.observer
-	})
-	return o
-}()
-*/
-//var DefaultObservable = Observable{}
-
-/*
-func (o *Observable) Done() {
-	o.notifier.Done()
-}
-*/
-
-/*
-func (o *Observable) Unsubscribe() bases.Subscriptor {
-	o.notifier.Unsubscribe()
-	return o.subscriptor.Unsubscribe()
-}
-*/
-
-/*
-// New returns a new pointer to a default Observable.
-func New(fs ...func(*Observable)) *Observable {
-	o := DefaultObservable
-	if len(fs) > 0 {
-		for _, f := range fs {
-			f(o)
-		}
-	}
-	return o
-}
-*/
-
-/*
-// Create creates a new Observable provided by one or more function that takes an Observer as an argument
-func Create(f func(*observer.Observer)) *Observable {
-	//fs = append([]func(*observer.Observer){f}, fs...)
-	o := DefaultObservable
-	f(o)
-
-
-		go func() {
-			for _, f := range fs {
-				f(o.observer.Sentinel.(*observer.Observer))
-			}
-			//o.observer.Sentinel = ob
-			//close(o.EventStream)
-		}()
-
-	return o
-}
-*/
 
 /*
 // Add adds an item to the Observable and returns that Observable.
@@ -216,19 +144,19 @@ func (o *Observable) Add(e Emitter, es ...Emitter) *Observable {
 }
 */
 
-// Empty creates an Observable with one last item marked as "completed".
-func Empty() Basic {
-	source := make(chan bases.Emitter)
+// Empty creates an Observable with no item and terminate once subscribed to.
+func Empty() Observable {
+	source := make(chan interface{})
 	go func() {
 		close(source)
 	}()
-	return Basic(source)
+	return Observable(source)
 }
 
 // Interval creates an Observable emitting incremental integers infinitely between
 // each given time interval.
-func Interval(term chan struct{}, d time.Duration) Basic {
-	source := make(chan bases.Emitter)
+func Interval(term chan struct{}, d time.Duration) Observable {
+	source := make(chan interface{})
 	go func() {
 		i := 0
 		for {
@@ -236,98 +164,76 @@ func Interval(term chan struct{}, d time.Duration) Basic {
 			case <-term:
 				return
 			case <-time.After(d):
-				source <- emittable.From(i)
+				source <- i
 			}
 			i++
 		}
 		close(source)
 	}()
-	return Basic(source)
+	return Observable(source)
 }
 
-/*
 // Range creates an Observable that emits a particular range of sequential integers.
-func Range(start, end int) *Observable {
-	o := New()
+func Range(start, end int) Observable {
+	source := make(chan interface{})
 	go func() {
 		i := start
 		for i < end {
-			o.EventStream <- emittable.From(i)
+			source <- i
 			i++
 		}
-		o.Done()
+		close(source)
 	}()
-	return o
+	return Observable(source)
 }
-*/
 
-/*
-// Just creates an observable with only one item and emit "as-is".
-func Just(v interface{}, any ...interface{}) *Observable {
-	any = append([]interface{}{v}, any...)
-	o := New(func(o *Observable) {
-		o.EventStream = make(eventstream.EventStream, len(any))
-	})
+// Just creates an observable with the provided "as-is" item(s)
+func Just(item interface{}, items ...interface{}) Observable {
+	source := make(chan interface{})
+	if len(items) > 0 {
+		items = append([]interface{}{item}, items...)
+	} else {
+		items = []interface{}{item}
+	}
 
 	go func() {
-		for _, val := range any {
-			o.EventStream <- emittable.From(val)
+		for _, item := range items {
+			source <- item
 		}
-		close(o.EventStream)
-		//o.Done()
+		close(source)
 	}()
-	return o
-}
-*/
 
-/*
-// From creates an Observable from an Iterator type
-func From(iter bases.Iterator) *Observable {
-	o := New(func(o *Observable) {
-		o.EventStream = eventstream.From(iter)
-	})
-	return o
+	return Observable(source)
 }
-*/
 
-/*
 // Start creates an Observable from one or more directive-like functions
-func Start(f Directive, fs ...Directive) *Observable {
-	fs = append([]Directive{f}, fs...)
-	o := New(func(o *Observable) {
-		o.EventStream = make(eventstream.EventStream, len(fs))
-	})
+// and emit the result of each asynchronously.
+func Start(f fx.DirectiveFunc, fs ...fx.DirectiveFunc) Observable {
+	if len(fs) > 0 {
+		fs = append([]fx.DirectiveFunc{f}, fs...)
+	} else {
+		fs = []fx.DirectiveFunc{f}
+	}
+
+	source := make(chan interface{}, len(fs))
 
 	var wg sync.WaitGroup
 	wg.Add(len(fs))
 	for _, f := range fs {
-		go func(f Directive) {
-			o.EventStream <- f()
+		go func(f fx.DirectiveFunc) {
+			source <- f()
 			wg.Done()
 		}(f)
 	}
+
+	// Wait in another goroutine to not block
 	go func() {
 		wg.Wait()
-		//o.Done()
-		close(o.EventStream)
+		close(source)
 	}()
-	return o
-}
-*/
 
-/*
-func checkObservable(o *Observable) error {
-	switch {
-	case o == nil:
-		return NewError(errors.NilObservableError)
-	case o.EventStream == nil:
-		return eventstream.NewError(errors.NilEventStreamError)
-	default:
-		break
-	}
-	return nil
+	return Observable(source)
 }
-*/
 
 /*
 // Subscribe subscribes an EventHandler to the receiving Observable and starts the stream
