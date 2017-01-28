@@ -8,6 +8,7 @@ import (
 	//"net/http"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/jochasinga/grx/bases"
 	//"github.com/jochasinga/grx/emittable"
@@ -65,6 +66,107 @@ func TestCheckEventHandler(t *testing.T) {
 	assert.Equal(t, "donedone", testtext)
 }
 
+func TestEmptyOperator(t *testing.T) {
+	myStream := Empty()
+	text := ""
+
+	onDone := handlers.DoneFunc(func() {
+		text += "done"
+	})
+	sub := myStream.Subscribe(onDone)
+	<-sub
+
+	assert.Equal(t, "done", text)
+}
+
+func TestIntervalOperator(t *testing.T) {
+	fin := make(chan struct{})
+	myStream := Interval(fin, 10*time.Millisecond)
+	nums := []int{}
+
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			if num >= 5 {
+				fin <- struct{}{}
+				close(fin)
+			}
+			nums = append(nums, num)
+		}
+	})
+
+	sub := myStream.Subscribe(onNext)
+	<-sub
+
+	assert.Exactly(t, []int{0, 1, 2, 3, 4, 5}, nums)
+}
+
+func TestRangeOperator(t *testing.T) {
+	myStream := Range(2, 6)
+	nums := []int{}
+
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	onDone := handlers.DoneFunc(func() {
+		nums = append(nums, 1000)
+	})
+
+	sub := myStream.Subscribe(observer.New(onNext, onDone))
+	<-sub
+
+	assert.Exactly(t, []int{2, 3, 4, 5, 1000}, nums)
+}
+
+func TestJustOperator(t *testing.T) {
+	myStream := Just(1, 2.01, "foo", map[string]string{"bar": "baz"}, 'a')
+	numItems := 5
+	yes := make(chan struct{})
+
+	n := 0
+	go func() {
+		for sig := range yes {
+			assert.Equal(t, struct{}{}, sig)
+			n++
+		}
+	}()
+
+	onNext := handlers.NextFunc(func(item interface{}) {
+		yes <- struct{}{}
+	})
+
+	sub := myStream.Subscribe(onNext)
+	<-sub
+
+	assert.Equal(t, numItems, n)
+}
+
+func TestFromOperator(t *testing.T) {
+	items := []interface{}{1, 3.1416, &struct{ foo string }{"bar"}}
+	myStream := From(items)
+	lenItems := len(items)
+	yes := make(chan struct{})
+
+	n := 0
+	go func() {
+		for sig := range yes {
+			assert.Equal(t, struct{}{}, sig)
+			n++
+		}
+	}()
+
+	onNext := handlers.NextFunc(func(item interface{}) {
+		yes <- struct{}{}
+	})
+
+	sub := myStream.Subscribe(onNext)
+	<-sub
+
+	assert.Equal(t, lenItems, n)
+}
+
 func TestSubscribeToNextFunc(t *testing.T) {
 	myStream := Just(1, 2, 3, errors.New("4"), 5)
 	mynum := 0
@@ -110,29 +212,6 @@ func TestSubscribeToDoneFunc(t *testing.T) {
 	<-done
 
 	assert.Equal(t, "done", donetext)
-}
-
-func TestJustOperator(t *testing.T) {
-	myStream := Just(1, 2.01, "foo", map[string]string{"bar": "baz"}, 'a')
-	numItems := 5
-	yes := make(chan struct{})
-
-	n := 0
-	go func() {
-		for sig := range yes {
-			assert.Equal(t, struct{}{}, sig)
-			n++
-		}
-	}()
-
-	onNext := handlers.NextFunc(func(item interface{}) {
-		yes <- struct{}{}
-	})
-
-	sub := myStream.Subscribe(onNext)
-	<-sub
-
-	assert.Equal(t, numItems, n)
 }
 
 func TestSubscribeToObserver(t *testing.T) {

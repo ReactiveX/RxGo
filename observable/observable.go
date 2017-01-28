@@ -60,7 +60,7 @@ func (o Observable) Subscribe(handler bases.EventHandler) <-chan subscription.Su
 				err := item.(error)
 				ob.ErrHandler(err)
 
-				// Record the error and return without completing.
+				// Record the error and break the loop.
 				sub.Error = err
 				break OuterLoop
 			default:
@@ -68,7 +68,7 @@ func (o Observable) Subscribe(handler bases.EventHandler) <-chan subscription.Su
 			}
 		}
 
-		// This part only gets executed if there wasn't an error.
+		// OnDone only gets executed if there's no error.
 		if sub.Error == nil {
 			ob.OnDone()
 		}
@@ -120,30 +120,6 @@ func From(items []interface{}) Observable {
 	return Observable(source)
 }
 
-/*
-// Add adds an item to the Observable and returns that Observable.
-// If the Observable is done, it creates a new one and return it.
-func (o *Observable) Add(e Emitter, es ...Emitter) *Observable {
-	es = append([]Emitter{e}, es...)
-	out := New()
-	if !o.isDone() {
-		go func() {
-			for _, e := range es {
-				o.EventStream <- e
-			}
-		}()
-		*o = *out
-		return out
-	}
-	go func() {
-		for _, e := range es {
-			out.EventStream <- e
-		}
-	}()
-	return out
-}
-*/
-
 // Empty creates an Observable with no item and terminate once subscribed to.
 func Empty() Observable {
 	source := make(chan interface{})
@@ -157,19 +133,20 @@ func Empty() Observable {
 // each given time interval.
 func Interval(term chan struct{}, d time.Duration) Observable {
 	source := make(chan interface{})
-	go func() {
+	go func(term chan struct{}) {
 		i := 0
+	OuterLoop:
 		for {
 			select {
 			case <-term:
-				return
+				break OuterLoop
 			case <-time.After(d):
 				source <- i
 			}
 			i++
 		}
 		close(source)
-	}()
+	}(term)
 	return Observable(source)
 }
 
@@ -234,56 +211,3 @@ func Start(f fx.DirectiveFunc, fs ...fx.DirectiveFunc) Observable {
 
 	return Observable(source)
 }
-
-/*
-// Subscribe subscribes an EventHandler to the receiving Observable and starts the stream
-func (o *Observable) Subscribe(handler bases.EventHandler) (bases.Subscriptor, error) {
-	if err := checkObservable(o); err != nil {
-		return nil, err
-	}
-
-	isObserver := false
-
-	// Set up default handlers
-	var (
-		//ob    *observer.Observer
-		nextf handlers.NextFunc = func(it bases.Item) {}
-		errf  handlers.ErrFunc  = func(err error) {}
-		donef handlers.DoneFunc = func() {}
-	)
-
-	switch handler := handler.(type) {
-	case handlers.NextFunc:
-		nextf = handler
-	case handlers.ErrFunc:
-		errf = handler
-	case handlers.DoneFunc:
-		donef = handler
-	case *observer.Observer:
-		//ob = handler
-		o.observer.Sentinel = handler
-		isObserver = true
-	}
-
-	if !isObserver {
-		o.observer.Sentinel = observer.New(func(ob *observer.Observer) {
-			ob.NextHandler = nextf
-			ob.ErrHandler = errf
-			ob.DoneHandler = donef
-		})
-	}
-
-	// TODO: This should be asynchronous
-	for emitter := range o.EventStream {
-		if ob, ok := o.observer.Sentinel.(*observer.Observer); ok {
-			ob.Handle(emitter)
-		}
-	}
-
-	if ob, ok := o.observer.Sentinel.(*observer.Observer); ok {
-		ob.DoneHandler.Handle(emittable.DefaultEmittable)
-	}
-
-	return o.subscriptor.Subscribe(), nil
-}
-*/
