@@ -13,6 +13,7 @@ import (
 	"github.com/jochasinga/grx/bases"
 	//"github.com/jochasinga/grx/emittable"
 
+	"github.com/jochasinga/grx/fx"
 	"github.com/jochasinga/grx/handlers"
 	//"github.com/jochasinga/grx/iterable"
 
@@ -281,156 +282,64 @@ func TestSubscribeToObserver(t *testing.T) {
 	assert.Equal("bang", sub.Error.Error())
 }
 
+func TestObservableMap(t *testing.T) {
+	items := []interface{}{1, 2, 3, "foo", "bar", []byte("baz")}
+	stream1 := From(items)
+
+	multiplyAllIntBy := func(factor interface{}) fx.MappableFunc {
+		return func(item interface{}) interface{} {
+			if num, ok := item.(int); ok {
+				return num * factor.(int)
+			}
+			return item
+		}
+	}
+	stream2 := stream1.Map(multiplyAllIntBy(10))
+
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	sub := stream2.Subscribe(onNext)
+	<-sub
+
+	assert.Exactly(t, []int{10, 20, 30}, nums)
+}
+
+func TestObservableFilter(t *testing.T) {
+	items := []interface{}{1, 2, 3, 120, []byte("baz"), 7, 10, 13}
+	stream1 := From(items)
+
+	lt := func(target interface{}) fx.FilterableFunc {
+		return func(item interface{}) bool {
+			if num, ok := item.(int); ok {
+				if num < 9 {
+					return true
+				}
+			}
+			return false
+		}
+	}
+
+	stream2 := stream1.Filter(lt(9))
+
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	sub := stream2.Subscribe(onNext)
+	<-sub
+
+	assert.Exactly(t, []int{1, 2, 3, 7}, nums)
+}
+
 /*
-func (suite *BasicSuite) TestSubscription() {
-
-	// Send an error over to errch
-	go func() {
-		suite.fixture.errchan <- errors.New("yike")
-		return
-	}()
-
-	bs := From([]bases.Emitter{
-		suite.fixture.eint,
-		suite.fixture.etext,
-		suite.fixture.echar,
-		suite.fixture.echan,
-	})
-
-	ob := observer.Observer{
-		NextHandler: func(it bases.Item) {
-			switch it := it.(type) {
-			case int:
-				suite.fixture.num += it
-			case string:
-				suite.fixture.text += it
-			case rune:
-				suite.fixture.char += it
-			case chan error:
-				if e, ok := <-it; ok {
-					suite.fixture.err = e
-				}
-			}
-		},
-
-		DoneHandler: func() {
-			suite.fixture.isdone = !suite.fixture.isdone
-		},
-	}
-	done := bs.Subscribe(ob)
-	<-done
-
-	subtests := []struct {
-		n, expected interface{}
-	}{
-		{suite.fixture.num, 10},
-		{suite.fixture.text, "hello"},
-		{suite.fixture.char, 'a'},
-		{suite.fixture.err, errors.New("yike")},
-		{suite.fixture.isdone, true},
-	}
-
-	for _, tt := range subtests {
-		assert.Equal(suite.T(), tt.expected, tt.n)
-	}
-}
-
-func (suite *BasicSuite) TestBasicMap() {
-
-	bs1 := From(suite.fixture.emitters)
-
-	multiplyAllIntBy := func(n interface{}) fx.MappableFunc {
-		return func(e bases.Emitter) bases.Emitter {
-			if item, err := e.Emit(); err == nil {
-				if val, ok := item.(int); ok {
-					return emittable.From(val * n.(int))
-				}
-			}
-			return e
-		}
-	}
-
-	bs2 := bs1.Map(multiplyAllIntBy(100))
-
-	subtests := []bases.Emitter{
-		emittable.From(1000),
-		suite.fixture.etext,
-		suite.fixture.echar,
-		suite.fixture.echan,
-	}
-
-	i := 0
-	for e := range bs2 {
-		assert.Equal(suite.T(), subtests[i], e)
-		i++
-	}
-}
-
-func (suite *BasicSuite) TestBasicFilter() {
-
-	bs1 := From(suite.fixture.emitters)
-
-	isIntOrString := func(e bases.Emitter) bool {
-		if item, err := e.Emit(); err == nil {
-			switch item.(type) {
-			case int, string:
-				return true
-			}
-		}
-		return false
-	}
-
-	bs2 := bs1.Filter(isIntOrString)
-
-	assert.Equal(suite.T(), suite.fixture.eint, <-bs2)
-	assert.Equal(suite.T(), suite.fixture.etext, <-bs2)
-	assert.Nil(suite.T(), <-bs2)
-}
-
-func (suite *BasicSuite) TestEmpty() {
-
-	bs := Empty()
-	finished := false
-
-	done := bs.Subscribe(observer.Observer{
-		DoneHandler: func() {
-			finished = !finished
-		},
-	})
-
-	<-done
-	assert.True(suite.T(), finished)
-}
-
-func (suite *BasicSuite) TestInterval() {
-
-	numch := make(chan int, 1)
-	term := make(chan struct{}, 1)
-	source := Interval(term, 1*time.Second)
-	assert.IsType(suite.T(), (Basic)(nil), source)
-
-	_ = source.Subscribe(observer.Observer{
-		NextHandler: func(it bases.Item) {
-			if num, ok := it.(int); ok {
-				numch <- num
-			}
-		},
-	})
-
-	i := 0
-	go func() {
-		for {
-			select {
-			case num := <-numch:
-				assert.Equal(suite.T(), i, num)
-			}
-			i++
-		}
-	}()
-	<-time.After(5 * time.Second)
-	term <- struct{}{}
-}
-
 type FakeHttp struct {
 	responses []bases.Item
 	errors    []error
