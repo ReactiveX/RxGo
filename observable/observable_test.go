@@ -339,6 +339,76 @@ func TestObservableFilter(t *testing.T) {
 	assert.Exactly(t, []int{1, 2, 3, 7}, nums)
 }
 
+func TestObservableScanWithIntegers(t *testing.T) {
+	items := []interface{}{0, 1, 3, 5, 1, 8}
+	stream1 := From(items)
+
+	stream2 := stream1.Scan(func(x, y interface{}) interface{} {
+		var v1, v2 int
+
+		if x, ok := x.(int); ok {
+			v1 = x
+		}
+
+		if y, ok := y.(int); ok {
+			v2 = y
+		}
+
+		return v1 + v2
+	})
+
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	sub := stream2.Subscribe(onNext)
+	<-sub
+
+	assert.Exactly(t, []int{0, 1, 4, 9, 10, 18}, nums)
+}
+
+func TestObservableScanWithString(t *testing.T) {
+	items := []interface{}{"hello", "world", "this", "is", "foo"}
+	stream1 := From(items)
+
+	stream2 := stream1.Scan(func(x, y interface{}) interface{} {
+		var w1, w2 string
+
+		if x, ok := x.(string); ok {
+			w1 = x
+		}
+
+		if y, ok := y.(string); ok {
+			w2 = y
+		}
+
+		return w1 + w2
+	})
+
+	words := []string{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if word, ok := item.(string); ok {
+			words = append(words, word)
+		}
+	})
+
+	sub := stream2.Subscribe(onNext)
+	<-sub
+
+	expected := []string{
+		"hello",
+		"helloworld",
+		"helloworldthis",
+		"helloworldthisis",
+		"helloworldthisisfoo",
+	}
+
+	assert.Exactly(t, expected, words)
+}
+
 /*
 type FakeHttp struct {
 	responses []bases.Item

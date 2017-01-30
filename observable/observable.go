@@ -109,6 +109,21 @@ func (o Observable) Filter(apply fx.FilterableFunc) Observable {
 	return Observable(out)
 }
 
+func (o Observable) Scan(apply fx.ScannableFunc) Observable {
+	// implement here
+	out := make(chan interface{})
+
+	go func() {
+		var current interface{}
+		for item := range o {
+			out <- apply(current, item)
+			current = apply(current, item)
+		}
+		close(out)
+	}()
+	return Observable(out)
+}
+
 func From(items []interface{}) Observable {
 	source := make(chan interface{}, len(items))
 	go func() {
