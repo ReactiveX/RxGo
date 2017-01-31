@@ -1,96 +1,63 @@
 package connectable
 
 import (
-	"errors"
 	"testing"
 
-	"github.com/jochasinga/grx/bases"
-	"github.com/jochasinga/grx/emittable"
-	"github.com/jochasinga/grx/fx"
+	"github.com/jochasinga/grx/handlers"
 	"github.com/jochasinga/grx/observer"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 )
 
-type Fixture struct {
-	num                       int
-	text                      string
-	char                      rune
-	err                       error
-	isdone                    bool
-	errchan                   chan error
-	emitters                  []bases.Emitter
-	eint, etext, echar, echan bases.Emitter
-}
-
-func setupFixture(conf func(*Fixture)) *Fixture {
-	f := new(Fixture)
-	conf(f)
-	return f
-}
-
-func setupDefaultFixture() *Fixture {
-	return setupFixture(func(f *Fixture) {
-		f.errchan = make(chan error, 1)
-		f.eint = emittable.From(10)
-		f.etext = emittable.From("hello")
-		f.echar = emittable.From('a')
-		f.echan = emittable.From(f.errchan)
-		f.emitters = []bases.Emitter{
-			f.eint,
-			f.etext,
-			f.echar,
-			f.echan,
-		}
-	})
-}
-
-type ConnectableSuite struct {
-	suite.Suite
-	fixture *Fixture
-}
-
-func (suite *ConnectableSuite) SetupTest() {
-	suite.fixture = setupDefaultFixture()
-}
-
-func (suite *ConnectableSuite) TestCreateConnectable() {
+func TestCreateConnectableWithConstructor(t *testing.T) {
+	assert := assert.New(t)
 	text := "hello"
 	co1 := New(0)
 	co2 := New(3)
-	co3 := New(6)
+	co3 := Just("world")
 
 	cotests := []struct {
 		expect, suspect int
 	}{
-		{0, cap(co1.Basic)},
-		{3, cap(co2.Basic)},
-		{6, cap(co3.Basic)},
+		{0, cap(co1.Observable)},
+		{3, cap(co2.Observable)},
+		{0, cap(co3.Observable)},
 	}
 
-	if assert.IsType(suite.T(), Connectable{}, co1) &&
-		assert.IsType(suite.T(), Connectable{}, co2) &&
-		assert.IsType(suite.T(), Connectable{}, co3) {
+	if assert.IsType(Connectable{}, co1) &&
+		assert.IsType(Connectable{}, co2) &&
+		assert.IsType(Connectable{}, co3) {
 
 		for _, tt := range cotests {
-			assert.Equal(suite.T(), tt.suspect, tt.expect)
+			assert.Equal(tt.suspect, tt.expect)
 		}
 	}
 
-	ob := observer.Observer{
-		NextHandler: func(item bases.Item) {
-			text += item.(string)
-		},
-	}
+	ob := observer.New(handlers.NextFunc(func(item interface{}) {
+		text += item.(string)
+	}),
+	)
 
-	co4 := co3.Subscribe(ob)
-	co4.observers[0].NextHandler(bases.Item(" world"))
+	co4 := New(0, ob)
+	assert.Equal(0, cap(co4.Observable))
 
-	assert.Equal(suite.T(), 6, cap(co4.Basic))
-	assert.Equal(suite.T(), "hello world", text)
+	co4.observers[0].OnNext("world")
+	assert.Equal("helloworld", text)
+
+	/*
+		co4 := co3.Subscribe(ob)
+
+		assert.Equal(0, cap(co4.Observable))
+		assert.Equal("hello", text)
+
+		sub := co4.Connect()
+		<-sub
+
+		assert.Equal("helloworld", text)
+	*/
 }
 
+/*
 func (suite *ConnectableSuite) TestSubscription() {
 
 	// Send an error over to errch
@@ -211,3 +178,4 @@ func (suite *ConnectableSuite) TestFilter() {
 func TestConnectableSuite(t *testing.T) {
 	suite.Run(t, new(ConnectableSuite))
 }
+*/
