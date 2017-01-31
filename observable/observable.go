@@ -201,17 +201,18 @@ func Just(item interface{}, items ...interface{}) Observable {
 // Start creates an Observable from one or more directive-like functions
 // and emit the result of each asynchronously.
 func Start(f fx.DirectiveFunc, fs ...fx.DirectiveFunc) Observable {
+
 	if len(fs) > 0 {
 		fs = append([]fx.DirectiveFunc{f}, fs...)
 	} else {
 		fs = []fx.DirectiveFunc{f}
 	}
 
-	source := make(chan interface{}, len(fs))
+	source := make(chan interface{})
 
 	var wg sync.WaitGroup
-	wg.Add(len(fs))
 	for _, f := range fs {
+		wg.Add(1)
 		go func(f fx.DirectiveFunc) {
 			source <- f()
 			wg.Done()

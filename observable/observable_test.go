@@ -1,12 +1,9 @@
 package observable
 
 import (
-
-	//"fmt"
-
 	//"math/rand"
-	//"net/http"
 	"errors"
+	"net/http"
 	"testing"
 	"time"
 
@@ -166,6 +163,110 @@ func TestFromOperator(t *testing.T) {
 	<-sub
 
 	assert.Equal(t, lenItems, n)
+}
+
+func fakeGet(url string, delay time.Duration, result interface{}) (interface{}, error) {
+	<-time.After(delay)
+	if err, isErr := result.(error); isErr {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func TestStartOperator(t *testing.T) {
+
+	responseCodes := []int{}
+	done := false
+
+	d1 := fx.DirectiveFunc(func() interface{} {
+		result := &http.Response{
+			Status:     "200 OK",
+			StatusCode: 200,
+		}
+
+		res, err := fakeGet("somehost.com", 10*time.Millisecond, result)
+		if err != nil {
+			return err
+		}
+		return res
+	})
+
+	d2 := fx.DirectiveFunc(func() interface{} {
+		result := &http.Response{
+			Status:     "301 Moved Permanently",
+			StatusCode: 301,
+		}
+
+		res, err := fakeGet("somehost.com", 15*time.Millisecond, result)
+		if err != nil {
+			return err
+		}
+		return res
+	})
+
+	d3 := fx.DirectiveFunc(func() interface{} {
+		result := &http.Response{
+			Status:     "500 Server Error",
+			StatusCode: 500,
+		}
+
+		res, err := fakeGet("badserver.co", 50*time.Millisecond, result)
+		if err != nil {
+			return err
+		}
+		return res
+	})
+
+	e1 := fx.DirectiveFunc(func() interface{} {
+		err := errors.New("Bad URL")
+		res, err := fakeGet("badurl.err", 100*time.Millisecond, err)
+		if err != nil {
+			return err
+		}
+		return res
+	})
+
+	d4 := fx.DirectiveFunc(func() interface{} {
+		result := &http.Response{
+			Status:     "404 Not Found",
+			StatusCode: 400,
+		}
+		res, err := fakeGet("notfound.org", 200*time.Millisecond, result)
+		if err != nil {
+			return err
+		}
+		return res
+	})
+
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if res, ok := item.(*http.Response); ok {
+			responseCodes = append(responseCodes, res.StatusCode)
+		}
+	})
+
+	onError := handlers.ErrFunc(func(err error) {
+		if err != nil {
+			t.Log(err)
+		}
+	})
+
+	onDone := handlers.DoneFunc(func() {
+		done = true
+	})
+
+	myObserver := observer.New(onNext, onError, onDone)
+
+	myStream := Start(d1, d3, d4, e1, d2)
+
+	sub := myStream.Subscribe(myObserver)
+	s := <-sub
+
+	assert.Exactly(t, []int{200, 301, 500}, responseCodes)
+	assert.Equal(t, "Bad URL", s.Error.Error())
+
+	// Error should have prevented OnDone from being called
+	assert.False(t, done)
 }
 
 func TestSubscribeToNextFunc(t *testing.T) {
@@ -410,17 +511,7 @@ func TestObservableScanWithString(t *testing.T) {
 }
 
 /*
-type FakeHttp struct {
-	responses []bases.Item
-	errors    []error
-}
-
-func (fhttp *FakeHttp) Get(delay time.Duration, fn func() (*http.Response, error)) (*http.Response, error) {
-	time.Sleep(delay)
-	return fn()
-}
-
-func (suite *BasicSuite) TestFakeBlockingExternalCalls() {
+func TestMockedBlockingExternalCalls(t *testing.T) {
 
 	fhttp := new(FakeHttp)
 
