@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (c) 2016 Joe Chasinga
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,17 +24,21 @@
 package main
 
 import (
-	"strconv"
-	"time"
 	"log"
 	"net/http"
+	"strconv"
+	"time"
 
-	"github.com/jochasinga/grx"
 	"github.com/gorilla/websocket"
+	//"github.com/jochasinga/grx"
+
+	"github.com/jochasinga/grx/handlers"
+	"github.com/jochasinga/grx/observable"
+	"github.com/jochasinga/grx/observer"
 )
 
-var upgrader = websocket.Upgrader {
-	ReadBufferSize: 1024,
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 }
 
@@ -44,7 +48,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		return
 	}
-	
+
 	lastPos := 0
 	pchan := make(chan interface{})
 
@@ -58,28 +62,32 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}()
-	
+
 	for {
 		_, p, err := conn.ReadMessage()
 		if err != nil {
 			return
 		}
 
-		source := grx.Just(p)
-		source.Subscribe(&grx.Observer{
-			NextHandler: grx.NextFunc(func(v interface{}) {
-				offset, _ := strconv.Atoi(string(v.([]byte)))
+		source := observable.Just(p)
+
+		onNext := handlers.NextFunc(func(item interface{}) {
+			if item, ok := item.([]byte); ok {
+				offset, _ := strconv.Atoi(string(item))
 				pchan <- offset
 				lastPos = offset
-			}),
+			}
 		})
+
+		_ = source.Subscribe(observer.New(onNext))
 	}
-	
+
 }
 
 func main() {
 	http.HandleFunc("/scroll", indexHandler)
 	http.Handle("/", http.FileServer(http.Dir(".")))
-	
+
+	log.Println("Server listening on port 4000")
 	log.Fatal(http.ListenAndServe(":4000", nil))
 }
