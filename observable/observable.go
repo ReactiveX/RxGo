@@ -4,15 +4,10 @@ import (
 	"sync"
 	"time"
 
-	//"github.com/jochasinga/grx/bang"
 	"github.com/jochasinga/grx/bases"
-	//"github.com/jochasinga/grx/errors"
-	//"github.com/jochasinga/grx/emittable"
 	"github.com/jochasinga/grx/fx"
-	"github.com/jochasinga/grx/observer"
-	//"github.com/jochasinga/grx/eventstream"
 	"github.com/jochasinga/grx/handlers"
-	//"github.com/jochasinga/grx/subject"
+	"github.com/jochasinga/grx/observer"
 	"github.com/jochasinga/grx/subscription"
 )
 
@@ -26,7 +21,7 @@ func New(buffer uint) Observable {
 	return make(Observable, int(buffer))
 }
 
-func checkEventHandler(handler bases.EventHandler) observer.Observer {
+func CheckEventHandler(handler bases.EventHandler) observer.Observer {
 	ob := observer.DefaultObserver
 
 	switch handler := handler.(type) {
@@ -50,18 +45,17 @@ func (o Observable) Subscribe(handler bases.EventHandler) <-chan subscription.Su
 	done := make(chan subscription.Subscription, 1)
 	sub := subscription.New().Subscribe()
 
-	ob := checkEventHandler(handler)
+	ob := CheckEventHandler(handler)
 
 	go func() {
 	OuterLoop:
 		for item := range o {
 			switch item := item.(type) {
 			case error:
-				err := item.(error)
-				ob.ErrHandler(err)
+				ob.OnError(item)
 
 				// Record the error and break the loop.
-				sub.Error = err
+				sub.Error = item
 				break OuterLoop
 			default:
 				ob.OnNext(item)
@@ -110,7 +104,6 @@ func (o Observable) Filter(apply fx.FilterableFunc) Observable {
 }
 
 func (o Observable) Scan(apply fx.ScannableFunc) Observable {
-	// implement here
 	out := make(chan interface{})
 
 	go func() {
@@ -146,7 +139,7 @@ func Empty() Observable {
 
 // Interval creates an Observable emitting incremental integers infinitely between
 // each given time interval.
-func Interval(term chan struct{}, d time.Duration) Observable {
+func Interval(term chan struct{}, timeout time.Duration) Observable {
 	source := make(chan interface{})
 	go func(term chan struct{}) {
 		i := 0
@@ -155,7 +148,7 @@ func Interval(term chan struct{}, d time.Duration) Observable {
 			select {
 			case <-term:
 				break OuterLoop
-			case <-time.After(d):
+			case <-time.After(timeout):
 				source <- i
 			}
 			i++
@@ -201,7 +194,6 @@ func Just(item interface{}, items ...interface{}) Observable {
 // Start creates an Observable from one or more directive-like functions
 // and emit the result of each asynchronously.
 func Start(f fx.DirectiveFunc, fs ...fx.DirectiveFunc) Observable {
-
 	if len(fs) > 0 {
 		fs = append([]fx.DirectiveFunc{f}, fs...)
 	} else {

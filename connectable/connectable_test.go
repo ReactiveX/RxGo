@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jochasinga/grx/fx"
 	"github.com/jochasinga/grx/handlers"
 	"github.com/jochasinga/grx/observer"
 
@@ -196,4 +197,131 @@ func TestSubscribeToManyObservers(t *testing.T) {
 	assert.Exactly([]error{expectedErr, expectedErr}, errs)
 
 	assert.Empty(dones)
+}
+
+func TestConnectableMap(t *testing.T) {
+	items := []interface{}{1, 2, 3, "foo", "bar", []byte("baz")}
+	stream := From(items)
+
+	multiplyAllIntBy := func(factor interface{}) fx.MappableFunc {
+		return func(item interface{}) interface{} {
+			if num, ok := item.(int); ok {
+				return num * factor.(int)
+			}
+			return item
+		}
+	}
+	stream = stream.Map(multiplyAllIntBy(10))
+
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	subs := stream.Subscribe(onNext).Connect()
+	<-subs
+
+	assert.Exactly(t, []int{10, 20, 30}, nums)
+}
+
+func TestConnectableFilter(t *testing.T) {
+	items := []interface{}{1, 2, 3, 120, []byte("baz"), 7, 10, 13}
+	stream := From(items)
+
+	lt := func(target interface{}) fx.FilterableFunc {
+		return func(item interface{}) bool {
+			if num, ok := item.(int); ok {
+				if num < 9 {
+					return true
+				}
+			}
+			return false
+		}
+	}
+
+	stream = stream.Filter(lt(9))
+
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	subs := stream.Subscribe(onNext).Connect()
+	<-subs
+
+	assert.Exactly(t, []int{1, 2, 3, 7}, nums)
+}
+
+func TestConnectableScanWithIntegers(t *testing.T) {
+	items := []interface{}{0, 1, 3, 5, 1, 8}
+	stream := From(items)
+
+	stream = stream.Scan(func(x, y interface{}) interface{} {
+		var v1, v2 int
+
+		if x, ok := x.(int); ok {
+			v1 = x
+		}
+
+		if y, ok := y.(int); ok {
+			v2 = y
+		}
+
+		return v1 + v2
+	})
+
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	subs := stream.Subscribe(onNext).Connect()
+	<-subs
+
+	assert.Exactly(t, []int{0, 1, 4, 9, 10, 18}, nums)
+}
+
+func TestConnectableScanWithStrings(t *testing.T) {
+	items := []interface{}{"hello", "world", "this", "is", "foo"}
+	stream := From(items)
+
+	stream = stream.Scan(func(x, y interface{}) interface{} {
+		var w1, w2 string
+
+		if x, ok := x.(string); ok {
+			w1 = x
+		}
+
+		if y, ok := y.(string); ok {
+			w2 = y
+		}
+
+		return w1 + w2
+	})
+
+	words := []string{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if word, ok := item.(string); ok {
+			words = append(words, word)
+		}
+	})
+
+	subs := stream.Subscribe(onNext).Connect()
+	<-subs
+
+	expected := []string{
+		"hello",
+		"helloworld",
+		"helloworldthis",
+		"helloworldthisis",
+		"helloworldthisisfoo",
+	}
+
+	assert.Exactly(t, expected, words)
 }

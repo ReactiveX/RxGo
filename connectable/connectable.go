@@ -212,3 +212,17 @@ func (co Connectable) Filter(fn fx.FilterableFunc) Connectable {
 	}()
 	return Connectable{Observable: source}
 }
+
+func (co Connectable) Scan(apply fx.ScannableFunc) Connectable {
+	out := make(chan interface{})
+
+	go func() {
+		var current interface{}
+		for item := range co.Observable {
+			out <- apply(current, item)
+			current = apply(current, item)
+		}
+		close(out)
+	}()
+	return Connectable{Observable: out}
+}
