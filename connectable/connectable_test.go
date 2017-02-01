@@ -1,7 +1,9 @@
 package connectable
 
 import (
+	"errors"
 	"testing"
+	"time"
 
 	"github.com/jochasinga/grx/handlers"
 	"github.com/jochasinga/grx/observer"
@@ -43,139 +45,155 @@ func TestCreateConnectableWithConstructor(t *testing.T) {
 
 	co4.observers[0].OnNext("world")
 	assert.Equal("helloworld", text)
-
-	/*
-		co4 := co3.Subscribe(ob)
-
-		assert.Equal(0, cap(co4.Observable))
-		assert.Equal("hello", text)
-
-		sub := co4.Connect()
-		<-sub
-
-		assert.Equal("helloworld", text)
-	*/
 }
 
-/*
-func (suite *ConnectableSuite) TestSubscription() {
+func TestSubscribeToNextFunc(t *testing.T) {
+	co := Just(1, 2, 3)
+	num := 0
 
-	// Send an error over to errch
-	go func() {
-		suite.fixture.errchan <- errors.New("yike")
-		return
-	}()
+	onNext := handlers.NextFunc(func(item interface{}) {
+		num += item.(int)
+	})
 
-	co1 := From(suite.fixture.emitters)
+	co = co.Subscribe(onNext)
+	sub := co.Connect()
+	<-sub
 
-	ob := observer.Observer{
-		NextHandler: func(it bases.Item) {
-			switch it := it.(type) {
-			case int:
-				suite.fixture.num += it
-			case string:
-				suite.fixture.text += it
-			case rune:
-				suite.fixture.char += it
-			case chan error:
-				if e, ok := <-it; ok {
-					suite.fixture.err = e
-				}
-			}
+	assert.Equal(t, 6, num)
+}
+
+func TestSubscribeToErrFunc(t *testing.T) {
+	co := Just(errors.New("bang"))
+
+	var myError error
+
+	onError := handlers.ErrFunc(func(err error) {
+		myError = err
+	})
+
+	co = co.Subscribe(onError)
+	sub := co.Connect()
+	<-sub
+
+	if assert.NotNil(t, myError) {
+		assert.Equal(t, "bang", myError.Error())
+	}
+}
+
+func TestSubscribeToDoneFunc(t *testing.T) {
+	co := Empty()
+
+	text := ""
+
+	onDone := handlers.DoneFunc(func() {
+		text += "done"
+	})
+
+	sub := co.Subscribe(onDone).Connect()
+	<-sub
+
+	if assert.NotEmpty(t, text) {
+		assert.Equal(t, "done", text)
+	}
+
+}
+
+func TestSubscribeToObserver(t *testing.T) {
+	assert := assert.New(t)
+
+	var (
+		num   int
+		myErr error
+		done  string
+	)
+
+	co := From([]interface{}{1, 2, 3, errors.New("bang"), 9})
+
+	onNext := handlers.NextFunc(func(item interface{}) {
+		num += item.(int)
+	})
+
+	onError := handlers.ErrFunc(func(err error) {
+		myErr = err
+	})
+
+	onDone := handlers.DoneFunc(func() {
+		done = "done"
+	})
+
+	ob := observer.New(onError, onDone, onNext)
+
+	sub := co.Subscribe(ob).Connect()
+	//<-sub
+
+	for c := range sub {
+		for s := range c {
+			assert.Equal("bang", s.Error.Error())
+		}
+	}
+
+	assert.Equal(6, num)
+	assert.Equal("bang", myErr.Error())
+	assert.Empty(done)
+}
+
+func TestSubscribeToManyObservers(t *testing.T) {
+	assert := assert.New(t)
+
+	var (
+		nums  []int
+		errs  []error
+		dones []string
+	)
+
+	co := From([]interface{}{1, 2, 3, errors.New("bang"), 9})
+
+	ob1 := observer.Observer{
+		NextHandler: func(item interface{}) {
+			<-time.After(100 * time.Millisecond)
+			nums = append(nums, item.(int))
+		},
+		ErrHandler: func(err error) {
+			errs = append(errs, err)
 		},
 		DoneHandler: func() {
-			suite.fixture.isdone = !suite.fixture.isdone
+			dones = append(dones, "D1")
 		},
 	}
 
-	beforetests := []struct {
-		n, expected interface{}
-	}{
-		{suite.fixture.num, 0},
-		{suite.fixture.text, ""},
-		{suite.fixture.char, rune(0)},
-		{suite.fixture.err, error(nil)},
-		{suite.fixture.isdone, false},
+	ob2 := observer.Observer{
+		NextHandler: func(item interface{}) {
+			nums = append(nums, item.(int)*2)
+		},
+		ErrHandler: func(err error) {
+			errs = append(errs, err)
+		},
+		DoneHandler: func() {
+			dones = append(dones, "D2")
+		},
 	}
 
-	for _, tt := range beforetests {
-		assert.Equal(suite.T(), tt.expected, tt.n)
-	}
+	ob3 := handlers.NextFunc(func(item interface{}) {
+		<-time.After(200 * time.Millisecond)
+		nums = append(nums, item.(int)*10)
+	})
 
-	co2 := co1.Subscribe(ob)
+	co = co.Subscribe(ob1).Subscribe(ob3).Subscribe(ob2)
+	subs := co.Connect()
 
-	done := co2.Connect()
-	<-done
-
-	subtests := []struct {
-		n, expected interface{}
-	}{
-		{suite.fixture.num, 10},
-		{suite.fixture.text, "hello"},
-		{suite.fixture.char, 'a'},
-		{suite.fixture.err, errors.New("yike")},
-		{suite.fixture.isdone, true},
-	}
-
-	for _, tt := range subtests {
-		assert.Equal(suite.T(), tt.expected, tt.n)
-	}
-}
-
-func (suite *ConnectableSuite) TestConnectableMap() {
-
-	co1 := From(suite.fixture.emitters)
-
-	// multiplyAllIntBy is a CurryableFunc
-	multiplyAllIntBy := func(n interface{}) fx.MappableFunc {
-		return func(e bases.Emitter) bases.Emitter {
-			if item, err := e.Emit(); err == nil {
-				if val, ok := item.(int); ok {
-					return emittable.From(val * n.(int))
-				}
-			}
-			return e
+	for sub := range subs {
+		for s := range sub {
+			assert.Equal("bang", s.Error.Error())
 		}
 	}
 
-	co2 := co1.Map(multiplyAllIntBy(100))
-
-	cotests := []bases.Emitter{
-		emittable.From(1000),
-		suite.fixture.etext,
-		suite.fixture.echar,
-		suite.fixture.echan,
+	expectedNums := []int{2, 4, 6, 1, 10, 2, 3, 20, 30}
+	for _, num := range expectedNums {
+		assert.Contains(nums, num)
 	}
 
-	i := 0
-	for e := range co2.Basic {
-		assert.Equal(suite.T(), cotests[i], e)
-		i++
-	}
+	expectedErr := errors.New("bang")
+	assert.Exactly([]error{expectedErr, expectedErr}, errs)
+
+	assert.Empty(dones)
 }
-
-func (suite *ConnectableSuite) TestFilter() {
-
-	co1 := From(suite.fixture.emitters)
-
-	isIntOrString := func(e bases.Emitter) bool {
-		if item, err := e.Emit(); err == nil {
-			switch item.(type) {
-			case int, string:
-				return true
-			}
-		}
-		return false
-	}
-
-	co2 := co1.Filter(isIntOrString)
-
-	assert.Equal(suite.T(), suite.fixture.eint, <-co2.Basic)
-	assert.Equal(suite.T(), suite.fixture.etext, <-co2.Basic)
-	assert.Equal(suite.T(), nil, <-co2.Basic)
-}
-
-func TestConnectableSuite(t *testing.T) {
-	suite.Run(t, new(ConnectableSuite))
-}
-*/

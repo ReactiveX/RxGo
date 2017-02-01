@@ -128,49 +128,64 @@ func (co Connectable) Subscribe(handler bases.EventHandler) Connectable {
 	return co
 }
 
-func (co Connectable) Connect() <-chan subscription.Subscription {
-	done := make(chan subscription.Subscription, 1)
-	sub := subscription.New().Subscribe()
+func (co Connectable) Connect() <-chan (chan subscription.Subscription) {
+	done := make(chan (chan subscription.Subscription), 1)
+	source := []interface{}{}
+
+	for item := range co.Observable {
+		source = append(source, item)
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(len(co.observers))
 
 	for _, ob := range co.observers {
+		local := make([]interface{}, len(source))
+		copy(local, source)
+
 		fin := make(chan struct{})
+		sub := subscription.New().Subscribe()
 
 		go func(ob observer.Observer) {
-
-			//c := make(chan interface{}, len(co.Observable))
-
-			/*
-				for item := range co.Observable {
-					c <- item
-					close(c)
-				}
-			*/
-
-			for item := range co.Observable {
+		OuterLoop:
+			//for item := range co.Observable {
+			for _, item := range local {
 				switch item := item.(type) {
 				case error:
 					ob.OnError(item)
 
 					// Record error
 					sub.Error = item
-					break
+					break OuterLoop
 				default:
 					ob.OnNext(item)
 				}
 			}
-
 			fin <- struct{}{}
-			close(fin)
 		}(ob)
 
-		go func() {
+		temp := make(chan subscription.Subscription)
+
+		go func(ob observer.Observer) {
 			<-fin
 			if sub.Error == nil {
 				ob.OnDone()
+				sub.Unsubscribe()
 			}
-			done <- sub.Unsubscribe()
-		}()
+
+			go func() {
+				temp <- sub
+				done <- temp
+			}()
+			wg.Done()
+		}(ob)
 	}
+
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
 	return done
 }
 
