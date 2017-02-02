@@ -7,6 +7,7 @@ import (
 
 	"github.com/jochasinga/grx/fx"
 	"github.com/jochasinga/grx/handlers"
+	"github.com/jochasinga/grx/iterable"
 	"github.com/jochasinga/grx/observer"
 
 	"github.com/stretchr/testify/assert"
@@ -108,7 +109,11 @@ func TestSubscribeToObserver(t *testing.T) {
 		done  string
 	)
 
-	co := From([]interface{}{1, 2, 3, errors.New("bang"), 9})
+	it, err := iterable.From([]interface{}{1, 2, 3, errors.New("bang"), 9})
+	if err != nil {
+		t.Fail()
+	}
+	co := From(it)
 
 	onNext := handlers.NextFunc(func(item interface{}) {
 		num += item.(int)
@@ -147,7 +152,12 @@ func TestSubscribeToManyObservers(t *testing.T) {
 		dones []string
 	)
 
-	co := From([]interface{}{1, 2, 3, errors.New("bang"), 9})
+	it, err := iterable.From([]interface{}{1, 2, 3, errors.New("bang"), 9})
+	if err != nil {
+		t.Fail()
+	}
+
+	co := From(it)
 
 	ob1 := observer.Observer{
 		NextHandler: func(item interface{}) {
@@ -201,7 +211,12 @@ func TestSubscribeToManyObservers(t *testing.T) {
 
 func TestConnectableMap(t *testing.T) {
 	items := []interface{}{1, 2, 3, "foo", "bar", []byte("baz")}
-	stream := From(items)
+	it, err := iterable.From(items)
+	if err != nil {
+		t.Fail()
+	}
+
+	stream := From(it)
 
 	multiplyAllIntBy := func(factor interface{}) fx.MappableFunc {
 		return func(item interface{}) interface{} {
@@ -228,7 +243,12 @@ func TestConnectableMap(t *testing.T) {
 
 func TestConnectableFilter(t *testing.T) {
 	items := []interface{}{1, 2, 3, 120, []byte("baz"), 7, 10, 13}
-	stream := From(items)
+	it, err := iterable.From(items)
+	if err != nil {
+		t.Fail()
+	}
+
+	stream := From(it)
 
 	lt := func(target interface{}) fx.FilterableFunc {
 		return func(item interface{}) bool {
@@ -258,7 +278,11 @@ func TestConnectableFilter(t *testing.T) {
 
 func TestConnectableScanWithIntegers(t *testing.T) {
 	items := []interface{}{0, 1, 3, 5, 1, 8}
-	stream := From(items)
+	it, err := iterable.From(items)
+	if err != nil {
+		t.Fail()
+	}
+	stream := From(it)
 
 	stream = stream.Scan(func(x, y interface{}) interface{} {
 		var v1, v2 int
@@ -289,7 +313,12 @@ func TestConnectableScanWithIntegers(t *testing.T) {
 
 func TestConnectableScanWithStrings(t *testing.T) {
 	items := []interface{}{"hello", "world", "this", "is", "foo"}
-	stream := From(items)
+	it, err := iterable.From(items)
+	if err != nil {
+		t.Fail()
+	}
+
+	stream := From(it)
 
 	stream = stream.Scan(func(x, y interface{}) interface{} {
 		var w1, w2 string

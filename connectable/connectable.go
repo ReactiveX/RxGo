@@ -26,11 +26,28 @@ func New(buffer uint, observers ...observer.Observer) Connectable {
 }
 
 // From creates a Connectable from a slice of interface{}
+/*
 func From(items []interface{}) Connectable {
 	source := make(chan interface{}, len(items))
 	go func() {
 		for _, item := range items {
 			source <- item
+		}
+		close(source)
+	}()
+	return Connectable{Observable: source}
+}
+*/
+
+func From(it bases.Iterator) Connectable {
+	source := make(chan interface{})
+	go func() {
+		for {
+			val, err := it.Next()
+			if err != nil {
+				break
+			}
+			source <- val
 		}
 		close(source)
 	}()
