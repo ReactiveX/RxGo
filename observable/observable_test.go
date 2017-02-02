@@ -370,7 +370,7 @@ func TestSubscribeToObserver(t *testing.T) {
 		assert.Equal(expectedChars[n], char)
 	}
 
-	assert.Equal("bang", sub.Error.Error())
+	assert.Equal("bang", sub.Err().Error())
 }
 
 func TestObservableMap(t *testing.T) {
