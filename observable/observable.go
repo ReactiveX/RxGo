@@ -23,7 +23,6 @@ func New(buffer uint) Observable {
 
 func CheckEventHandler(handler bases.EventHandler) observer.Observer {
 	ob := observer.DefaultObserver
-
 	switch handler := handler.(type) {
 	case handlers.NextFunc:
 		ob.NextHandler = handler
@@ -34,7 +33,6 @@ func CheckEventHandler(handler bases.EventHandler) observer.Observer {
 	case observer.Observer:
 		ob = handler
 	}
-
 	return ob
 }
 
@@ -42,7 +40,7 @@ func CheckEventHandler(handler bases.EventHandler) observer.Observer {
 //
 // Subscribe returns a channel of empty struct
 func (o Observable) Subscribe(handler bases.EventHandler) <-chan subscription.Subscription {
-	done := make(chan subscription.Subscription, 1)
+	done := make(chan subscription.Subscription)
 	sub := subscription.New().Subscribe()
 
 	ob := CheckEventHandler(handler)
@@ -117,11 +115,15 @@ func (o Observable) Scan(apply fx.ScannableFunc) Observable {
 	return Observable(out)
 }
 
-func From(items []interface{}) Observable {
-	source := make(chan interface{}, len(items))
+func From(it bases.Iterator) Observable {
+	source := make(chan interface{})
 	go func() {
-		for _, item := range items {
-			source <- item
+		for {
+			val, err := it.Next()
+			if err != nil {
+				break
+			}
+			source <- val
 		}
 		close(source)
 	}()

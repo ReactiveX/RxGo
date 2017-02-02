@@ -1,28 +1,33 @@
 package iterable
 
-import (
-	"github.com/jochasinga/grx/bases"
-	"github.com/jochasinga/grx/emittable"
-	"github.com/jochasinga/grx/errors"
-)
+import "github.com/jochasinga/grx/errors"
 
 // Emittable is a high-level alias for empty interface which may any underlying type including error
-type Iterable chan bases.Emitter
+type Iterable <-chan interface{}
 
-func (it Iterable) Next() (bases.Emitter, error) {
-	if next, ok := <-(chan bases.Emitter)(it); ok {
+func (it Iterable) Next() (interface{}, error) {
+	if next, ok := <-it; ok {
 		return next, nil
 	}
 	return nil, errors.New(errors.EndOfIteratorError)
 }
 
-func From(any []interface{}) Iterable {
-	it := make(chan bases.Emitter, len(any))
-	go func() {
-		for _, val := range any {
-			it <- emittable.From(val)
-		}
-		close(it)
-	}()
-	return Iterable(it)
+func From(any interface{}) (Iterable, error) {
+	switch any := any.(type) {
+	case []interface{}:
+		c := make(chan interface{}, len(any))
+		go func() {
+			for _, val := range any {
+				c <- val
+			}
+			close(c)
+		}()
+		return Iterable(c), nil
+	case chan interface{}:
+		return Iterable(any), nil
+	case <-chan interface{}:
+		return Iterable(any), nil
+	default:
+		return nil, errors.New(errors.IterableError)
+	}
 }

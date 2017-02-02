@@ -9,6 +9,7 @@ import (
 	"github.com/jochasinga/grx/bases"
 	"github.com/jochasinga/grx/fx"
 	"github.com/jochasinga/grx/handlers"
+	"github.com/jochasinga/grx/iterable"
 	"github.com/jochasinga/grx/observer"
 
 	"github.com/stretchr/testify/assert"
@@ -49,8 +50,8 @@ func TestCheckEventHandler(t *testing.T) {
 
 	myObserver := observer.New(df)
 
-	ob1 := checkEventHandler(myObserver)
-	ob2 := checkEventHandler(df)
+	ob1 := CheckEventHandler(myObserver)
+	ob2 := CheckEventHandler(df)
 
 	ob1.OnDone()
 	assert.Equal(t, "done", testtext)
@@ -138,26 +139,29 @@ func TestJustOperator(t *testing.T) {
 
 func TestFromOperator(t *testing.T) {
 	items := []interface{}{1, 3.1416, &struct{ foo string }{"bar"}}
-	myStream := From(items)
-	lenItems := len(items)
-	yes := make(chan struct{})
+	it, err := iterable.From(items)
+	if err != nil {
+		t.Fail()
+	}
 
-	n := 0
-	go func() {
-		for sig := range yes {
-			assert.Equal(t, struct{}{}, sig)
-			n++
-		}
-	}()
+	myStream := From(it)
+	nums := []interface{}{}
 
 	onNext := handlers.NextFunc(func(item interface{}) {
-		yes <- struct{}{}
+		switch item := item.(type) {
+		case int, float64:
+			nums = append(nums, item)
+		}
 	})
 
 	sub := myStream.Subscribe(onNext)
 	<-sub
 
-	assert.Equal(t, lenItems, n)
+	expected := []interface{}{1, 3.1416}
+	assert.Len(t, nums, 2)
+	for n, num := range nums {
+		assert.Equal(t, expected[n], num)
+	}
 }
 
 func fakeGet(url string, delay time.Duration, result interface{}) (interface{}, error) {
@@ -314,73 +318,69 @@ func TestSubscribeToDoneFunc(t *testing.T) {
 func TestSubscribeToObserver(t *testing.T) {
 	assert := assert.New(t)
 
-	myStream := From([]interface{}{
+	it, err := iterable.From([]interface{}{
 		"foo", "bar", "baz", 'a', 'b', errors.New("bang"), 99,
 	})
+	if err != nil {
+		t.Fail()
+	}
+	myStream := From(it)
 
-	strings := make(chan string)
-	chars := make(chan rune)
-	integers := make(chan int)
-	fin := make(chan struct{})
+	words := []string{}
+	chars := []rune{}
+	integers := []int{}
+	finished := false
 
-	onnext := handlers.NextFunc(func(item interface{}) {
+	onNext := handlers.NextFunc(func(item interface{}) {
 		switch item := item.(type) {
 		case string:
-			strings <- item
+			words = append(words, item)
 		case rune:
-			chars <- item
+			chars = append(chars, item)
 		case int:
-			integers <- item
+			integers = append(integers, item)
 		}
 	})
 
-	onerr := handlers.ErrFunc(func(err error) {
+	onError := handlers.ErrFunc(func(err error) {
 		t.Logf("Error emitted in the stream: %v\n", err)
 	})
 
-	ondone := handlers.DoneFunc(func() {
-		fin <- struct{}{}
+	onDone := handlers.DoneFunc(func() {
+		finished = true
 	})
 
-	ob := observer.New(onnext, onerr, ondone)
-
-	go func() {
-		expected := []string{"foo", "bar", "baz"}
-		n := 0
-		for string := range strings {
-			assert.Equal(expected[n], string)
-			n++
-		}
-	}()
-
-	go func() {
-		expected := []rune{'a', 'b', 'c'}
-		n := 0
-		for char := range chars {
-			assert.Equal(expected[n], char)
-			n++
-		}
-	}()
-
-	go func() {
-		num := <-integers
-		assert.Equal(0, num, "integers should not receive anything.")
-	}()
-
-	go func() {
-		sig := <-fin
-		assert.Equal(nil, sig, "fin should not receive anything.")
-	}()
+	ob := observer.New(onNext, onError, onDone)
 
 	done := myStream.Subscribe(ob)
 	sub := <-done
+
+	assert.Empty(integers)
+	assert.False(finished)
+
+	expectedWords := []string{"foo", "bar", "baz"}
+	assert.Len(words, len(expectedWords))
+	for n, word := range words {
+		assert.Equal(expectedWords[n], word)
+	}
+
+	expectedChars := []rune{'a', 'b'}
+	assert.Len(chars, len(expectedChars))
+	for n, char := range chars {
+		assert.Equal(expectedChars[n], char)
+	}
 
 	assert.Equal("bang", sub.Error.Error())
 }
 
 func TestObservableMap(t *testing.T) {
 	items := []interface{}{1, 2, 3, "foo", "bar", []byte("baz")}
-	stream1 := From(items)
+	it, err := iterable.From(items)
+	if err != nil {
+		t.Fail()
+	}
+
+	stream1 := From(it)
 
 	multiplyAllIntBy := func(factor interface{}) fx.MappableFunc {
 		return func(item interface{}) interface{} {
@@ -407,7 +407,12 @@ func TestObservableMap(t *testing.T) {
 
 func TestObservableFilter(t *testing.T) {
 	items := []interface{}{1, 2, 3, 120, []byte("baz"), 7, 10, 13}
-	stream1 := From(items)
+	it, err := iterable.From(items)
+	if err != nil {
+		t.Fail()
+	}
+
+	stream1 := From(it)
 
 	lt := func(target interface{}) fx.FilterableFunc {
 		return func(item interface{}) bool {
@@ -437,7 +442,12 @@ func TestObservableFilter(t *testing.T) {
 
 func TestObservableScanWithIntegers(t *testing.T) {
 	items := []interface{}{0, 1, 3, 5, 1, 8}
-	stream1 := From(items)
+	it, err := iterable.From(items)
+	if err != nil {
+		t.Fail()
+	}
+
+	stream1 := From(it)
 
 	stream2 := stream1.Scan(func(x, y interface{}) interface{} {
 		var v1, v2 int
@@ -468,7 +478,12 @@ func TestObservableScanWithIntegers(t *testing.T) {
 
 func TestObservableScanWithString(t *testing.T) {
 	items := []interface{}{"hello", "world", "this", "is", "foo"}
-	stream1 := From(items)
+	it, err := iterable.From(items)
+	if err != nil {
+		t.Fail()
+	}
+
+	stream1 := From(it)
 
 	stream2 := stream1.Scan(func(x, y interface{}) interface{} {
 		var w1, w2 string
