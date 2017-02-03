@@ -4,12 +4,12 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/jochasinga/grx/bases"
+	"github.com/jochasinga/rx"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestIterableImplementsIterator(t *testing.T) {
-	assert.Implements(t, (*bases.Iterator)(nil), Iterable(nil))
+	assert.Implements(t, (*rx.Iterator)(nil), Iterable(nil))
 }
 
 func TestCreateHomogenousIterable(t *testing.T) {

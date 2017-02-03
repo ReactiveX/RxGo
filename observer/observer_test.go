@@ -3,7 +3,7 @@ package observer
 import (
 	"testing"
 
-	"github.com/jochasinga/grx/handlers"
+	"github.com/jochasinga/rx/handlers"
 	"github.com/stretchr/testify/assert"
 )
 

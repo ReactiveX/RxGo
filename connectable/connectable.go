@@ -1,17 +1,19 @@
+// Package connectable provides a Connectable and its methods.
 package connectable
 
 import (
 	"sync"
 	"time"
 
-	"github.com/jochasinga/grx/bases"
-	"github.com/jochasinga/grx/fx"
-	"github.com/jochasinga/grx/observable"
-	"github.com/jochasinga/grx/observer"
-	"github.com/jochasinga/grx/subscription"
+	"github.com/jochasinga/rx"
+	"github.com/jochasinga/rx/fx"
+	"github.com/jochasinga/rx/observable"
+	"github.com/jochasinga/rx/observer"
+	"github.com/jochasinga/rx/subscription"
 )
 
-// Connectable "is" a Basic observable with a slice to keep record of subscribed observers.
+// Connectable is an Observable which can subscribe several
+// EventHandlers before starting processing with Connect.
 type Connectable struct {
 	observable.Observable
 	observers []observer.Observer
@@ -25,7 +27,8 @@ func New(buffer uint, observers ...observer.Observer) Connectable {
 	}
 }
 
-func From(it bases.Iterator) Connectable {
+// From creates a Connectable from an Iterator.
+func From(it rx.Iterator) Connectable {
 	source := make(chan interface{})
 	go func() {
 		for {
@@ -40,6 +43,7 @@ func From(it bases.Iterator) Connectable {
 	return Connectable{Observable: source}
 }
 
+// Empty creates a Connectable with no item and terminate immediately.
 func Empty() Connectable {
 	source := make(chan interface{})
 	go func() {
@@ -48,6 +52,8 @@ func Empty() Connectable {
 	return Connectable{Observable: source}
 }
 
+// Interval creates a Connectable emitting incremental integers infinitely between
+// each given time interval.
 func Interval(term chan struct{}, timeout time.Duration) Connectable {
 	source := make(chan interface{})
 	go func(term chan struct{}) {
@@ -68,6 +74,7 @@ func Interval(term chan struct{}, timeout time.Duration) Connectable {
 	return Connectable{Observable: source}
 }
 
+// Range creates an Observable that emits a particular range of sequential integers.
 func Range(start, end int) Connectable {
 	source := make(chan interface{})
 	go func() {
@@ -81,6 +88,7 @@ func Range(start, end int) Connectable {
 	return Connectable{Observable: source}
 }
 
+// Just creates an Connectable with the provided item(s).
 func Just(item interface{}, items ...interface{}) Connectable {
 	source := make(chan interface{})
 	if len(items) > 0 {
@@ -99,6 +107,8 @@ func Just(item interface{}, items ...interface{}) Connectable {
 	return Connectable{Observable: source}
 }
 
+// Start creates a Connectable from one or more directive-like EmittableFunc
+// and emits the result of each operation asynchronously on a new Connectable.
 func Start(f fx.EmittableFunc, fs ...fx.EmittableFunc) Connectable {
 	if len(fs) > 0 {
 		fs = append([]fx.EmittableFunc{f}, fs...)
@@ -125,12 +135,14 @@ func Start(f fx.EmittableFunc, fs ...fx.EmittableFunc) Connectable {
 	return Connectable{Observable: source}
 }
 
-func (co Connectable) Subscribe(handler bases.EventHandler) Connectable {
+// Subscribe subscribes an EventHandler and returns a Connectable.
+func (co Connectable) Subscribe(handler rx.EventHandler) Connectable {
 	ob := observable.CheckEventHandler(handler)
 	co.observers = append(co.observers, ob)
 	return co
 }
 
+// Connect activates the Observable stream and returns a channel of Subscription channel.
 func (co Connectable) Connect() <-chan (chan subscription.Subscription) {
 	done := make(chan (chan subscription.Subscription), 1)
 	source := []interface{}{}
@@ -191,6 +203,8 @@ func (co Connectable) Connect() <-chan (chan subscription.Subscription) {
 	return done
 }
 
+// Map maps a MappableFunc predicate to each item in Connectable and
+// returns a new Connectable with applied items.
 func (co Connectable) Map(fn fx.MappableFunc) Connectable {
 	source := make(chan interface{}, len(co.Observable))
 	go func() {
@@ -202,6 +216,8 @@ func (co Connectable) Map(fn fx.MappableFunc) Connectable {
 	return Connectable{Observable: source}
 }
 
+// Filter filters items in the original Connectable and returns
+// a new Connectable with the filtered items.
 func (co Connectable) Filter(fn fx.FilterableFunc) Connectable {
 	source := make(chan interface{}, len(co.Observable))
 	go func() {
@@ -215,6 +231,8 @@ func (co Connectable) Filter(fn fx.FilterableFunc) Connectable {
 	return Connectable{Observable: source}
 }
 
+// Scan applies ScannableFunc predicate to each item in the original
+// Connectable sequentially and emits each successive value on a new Connectable.
 func (co Connectable) Scan(apply fx.ScannableFunc) Connectable {
 	out := make(chan interface{})
 

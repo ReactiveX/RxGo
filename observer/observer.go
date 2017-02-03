@@ -1,26 +1,25 @@
 package observer
 
 import (
-	"github.com/jochasinga/grx/bases"
-	"github.com/jochasinga/grx/handlers"
+	"github.com/jochasinga/rx"
+	"github.com/jochasinga/rx/handlers"
 )
 
-// Observer represents
+// Observer represents a group of EventHandlers.
 type Observer struct {
-	sink        <-chan interface{}
 	NextHandler handlers.NextFunc
 	ErrHandler  handlers.ErrFunc
 	DoneHandler handlers.DoneFunc
 }
 
-// DefaultObserver makes sure any handler won't turn up nil.
+// DefaultObserver guarantees any handler won't be nil.
 var DefaultObserver = Observer{
 	NextHandler: func(interface{}) {},
 	ErrHandler:  func(err error) {},
 	DoneHandler: func() {},
 }
 
-// Handle makes Observer implements handlers.EventHandler
+// Handle registers Observer to EventHandler.
 func (ob Observer) Handle(item interface{}) {
 	switch item := item.(type) {
 	case error:
@@ -33,7 +32,7 @@ func (ob Observer) Handle(item interface{}) {
 
 // New constructs a new Observer instance with default Observer and accept
 // any number of EventHandler
-func New(eventHandlers ...bases.EventHandler) Observer {
+func New(eventHandlers ...rx.EventHandler) Observer {
 	ob := DefaultObserver
 	if len(eventHandlers) > 0 {
 		for _, handler := range eventHandlers {

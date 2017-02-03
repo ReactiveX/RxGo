@@ -30,11 +30,10 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	//"github.com/jochasinga/grx"
 
-	"github.com/jochasinga/grx/handlers"
-	"github.com/jochasinga/grx/observable"
-	"github.com/jochasinga/grx/observer"
+	"github.com/jochasinga/rx/handlers"
+	"github.com/jochasinga/rx/observable"
+	"github.com/jochasinga/rx/observer"
 )
 
 var upgrader = websocket.Upgrader{

@@ -4,12 +4,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jochasinga/grx/bases"
-	"github.com/jochasinga/grx/errors"
-	"github.com/jochasinga/grx/fx"
-	"github.com/jochasinga/grx/handlers"
-	"github.com/jochasinga/grx/observer"
-	"github.com/jochasinga/grx/subscription"
+	"github.com/jochasinga/rx"
+	"github.com/jochasinga/rx/errors"
+	"github.com/jochasinga/rx/fx"
+	"github.com/jochasinga/rx/handlers"
+	"github.com/jochasinga/rx/observer"
+	"github.com/jochasinga/rx/subscription"
 )
 
 // Observable is a basic observable channel
@@ -22,7 +22,8 @@ func New(buffer uint) Observable {
 	return make(Observable, int(buffer))
 }
 
-func CheckEventHandler(handler bases.EventHandler) observer.Observer {
+// CheckHandler checks the underlying type of an EventHandler.
+func CheckEventHandler(handler rx.EventHandler) observer.Observer {
 	ob := observer.DefaultObserver
 	switch handler := handler.(type) {
 	case handlers.NextFunc:
@@ -37,6 +38,7 @@ func CheckEventHandler(handler bases.EventHandler) observer.Observer {
 	return ob
 }
 
+// Next returns the next item on the Observable.
 func (o Observable) Next() (interface{}, error) {
 	if next, ok := <-o; ok {
 		return next, nil
@@ -44,8 +46,8 @@ func (o Observable) Next() (interface{}, error) {
 	return nil, errors.New(errors.EndOfIteratorError)
 }
 
-// Subscribe returns a Subscription channel
-func (o Observable) Subscribe(handler bases.EventHandler) <-chan subscription.Subscription {
+// Subscribe subscribes an EventHandler and returns a Subscription channel.
+func (o Observable) Subscribe(handler rx.EventHandler) <-chan subscription.Subscription {
 	done := make(chan subscription.Subscription)
 	sub := subscription.New().Subscribe()
 
@@ -78,11 +80,15 @@ func (o Observable) Subscribe(handler bases.EventHandler) <-chan subscription.Su
 	return done
 }
 
+/*
 func (o Observable) Unsubscribe() subscription.Subscription {
 	// Stub: to be implemented
 	return subscription.New()
 }
+*/
 
+// Map maps a MappableFunc predicate to each item in Observable and
+// returns a new Observable with applied items.
 func (o Observable) Map(apply fx.MappableFunc) Observable {
 	out := make(chan interface{})
 	go func() {
@@ -94,6 +100,8 @@ func (o Observable) Map(apply fx.MappableFunc) Observable {
 	return Observable(out)
 }
 
+// Filter filters items in the original Observable and returns
+// a new Observable with the filtered items.
 func (o Observable) Filter(apply fx.FilterableFunc) Observable {
 	out := make(chan interface{})
 	go func() {
@@ -107,6 +115,8 @@ func (o Observable) Filter(apply fx.FilterableFunc) Observable {
 	return Observable(out)
 }
 
+// Scan applies ScannableFunc predicate to each item in the original
+// Observable sequentially and emits each successive value on a new Observable.
 func (o Observable) Scan(apply fx.ScannableFunc) Observable {
 	out := make(chan interface{})
 
@@ -121,7 +131,8 @@ func (o Observable) Scan(apply fx.ScannableFunc) Observable {
 	return Observable(out)
 }
 
-func From(it bases.Iterator) Observable {
+// From creates a new Observable from an Iterator.
+func From(it rx.Iterator) Observable {
 	source := make(chan interface{})
 	go func() {
 		for {
@@ -136,7 +147,7 @@ func From(it bases.Iterator) Observable {
 	return Observable(source)
 }
 
-// Empty creates an Observable with no item and terminate once subscribed to.
+// Empty creates an Observable with no item and terminate immediately.
 func Empty() Observable {
 	source := make(chan interface{})
 	go func() {
@@ -180,7 +191,7 @@ func Range(start, end int) Observable {
 	return Observable(source)
 }
 
-// Just creates an observable with the provided "as-is" item(s)
+// Just creates an Observable with the provided item(s).
 func Just(item interface{}, items ...interface{}) Observable {
 	source := make(chan interface{})
 	if len(items) > 0 {
@@ -199,8 +210,8 @@ func Just(item interface{}, items ...interface{}) Observable {
 	return Observable(source)
 }
 
-// Start creates an Observable from one or more directive-like functions
-// and emit the result of each asynchronously.
+// Start creates an Observable from one or more directive-like EmittableFunc
+// and emits the result of each operation asynchronously on a new Observable.
 func Start(f fx.EmittableFunc, fs ...fx.EmittableFunc) Observable {
 	if len(fs) > 0 {
 		fs = append([]fx.EmittableFunc{f}, fs...)

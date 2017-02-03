@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jochasinga/grx/fx"
-	"github.com/jochasinga/grx/handlers"
-	"github.com/jochasinga/grx/iterable"
-	"github.com/jochasinga/grx/observer"
+	"github.com/jochasinga/rx/fx"
+	"github.com/jochasinga/rx/handlers"
+	"github.com/jochasinga/rx/iterable"
+	"github.com/jochasinga/rx/observer"
 
 	"github.com/stretchr/testify/assert"
 )

@@ -1,8 +1,11 @@
+// Package fx provides predicate-like function types to be used with operators
+// such as Map, Filter, Scan, and Start.
 package fx
 
 type (
 
 	// EmittableFunc defines a function that should be used with Start operator.
+	// EmittableFunc can be used to wrap a blocking operation.
 	EmittableFunc func() interface{}
 
 	// MappableFunc defines a function that acts as a predicate to the Map operator.

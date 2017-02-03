@@ -1,6 +1,6 @@
-package bases
+package rx
 
-// Iterator is a type with Next method
+// Iterator type is implemented by Iterable.
 type Iterator interface {
 	Next() (interface{}, error)
 }

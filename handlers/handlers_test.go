@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/jochasinga/grx/bases"
+	"github.com/jochasinga/rx"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestHandlersImplementEventHandler(t *testing.T) {
 	assert := assert.New(t)
-	assert.Implements((*bases.EventHandler)(nil), (*NextFunc)(nil))
-	assert.Implements((*bases.EventHandler)(nil), (*ErrFunc)(nil))
-	assert.Implements((*bases.EventHandler)(nil), (*DoneFunc)(nil))
+	assert.Implements((*rx.EventHandler)(nil), (*NextFunc)(nil))
+	assert.Implements((*rx.EventHandler)(nil), (*ErrFunc)(nil))
+	assert.Implements((*rx.EventHandler)(nil), (*DoneFunc)(nil))
 }
 
 func TestNextFuncHandleMethod(t *testing.T) {

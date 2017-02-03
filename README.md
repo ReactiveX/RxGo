@@ -1,10 +1,12 @@
-# Go Reactive Extensions (grx)
-Reactive Extensions (Rx) for the Go Language
+# RxGo
+[![Build Status](https://travis-ci.org/jochasinga/RxGo.svg?branch=master)](https://travis-ci.org/jochasinga/RxGo) 
+[![Coverage Status](https://coveralls.io/repos/github/jochasinga/RxGo/badge.svg?branch=master)](https://coveralls.io/github/jochasinga/RxGo?branch=master)
+Reactive Extensions for the Go Language
 
 ## Getting Started
-[ReactiveX](http://reactivex.io/), or Rx for short, is an API for programming with observable streams. This is a ReactiveX API in Go.
+[ReactiveX](http://reactivex.io/), or Rx for short, is an API for programming with observable streams. This is a ReactiveX API for the Go language.
 
-Rx is a new, alternative way of asychronous programming to callbacks, promises and deferred. It is about processing streams of events, with events being any occurances or changes within the system, either influenced by the external factors (i.e. users or another remote service) or internal components (i.e. logs).
+Rx is a new, alternative way of asychronous programming to callbacks, promises and deferred. It is about processing streams of events or items, with events being any occurances or changes within the system, either influenced by the external factors (i.e. users or another remote service) or internal components (i.e. logs).
 
 The pattern is that you `Subscribe` to an `Observable` using an `Observer`:
 
@@ -14,44 +16,89 @@ subscription := observable.Subscribe(observer)
 
 ```
 
+An `Observer` is a type consists of three `EventHandler` fields, the `NextHandler`, `Errhandler`, and `DoneHandler`, respectively. These handlers can be evoked with `OnNext`, `OnError`, and `OnDone` methods, respectively.
+
+The `Observer` itself is also an `EventHandler`. This means all types mentioend can be subscribed to an `Observable`.
+
+```go
+
+nextHandler := func(item interface{}) interface{} {
+	if num, ok := item.(int); ok {
+		nums = append(nums, num)
+	}
+}
+
+// Only next item will be handled. 
+sub := observable.Subscribe(handlers.NextFunc(nextHandler))
+
+
+```
+
 **NOTE**: Observables are not active in themselves. They need to be subscribed to make something happen. Simply having an Observable lying around doesn't make anything happen, like sitting and watching time flies.
 
 ## Install
 
 ```bash
 
-go get -u github.com/jochasinga/grx
+go get -u github.com/jochasinga/rxgo
 
 ```
 
 ## Importing the Rx package
+Certain types, such as `observer.Observer` and `observable.Observable` are organized into subpackages for namespace-sake to avoid redundant constructor like `NewObservable`. Instead, an `Observable` can be created with `observable.New()`.
+
 ```go
 
-import "github.com/jochasinga/grx"
+import (
+	"github.com/jochasinga/rx"
+	"github.com/jochasinga/rx/observer"
+	"github.com/jochasinga/rx/observable"
+	//...
+)
+
 
 ```
+
 ## Simple Usage
+
 ```go
 
-watcher := &grx.Observer{
+watcher := observer.Observer{
 
-	// Register a handler function for every emitted value.
-	NextHandler: grx.NextFunc(func (x interface{}) {
-		fmt.Printf("Got: %s\n", x.(int))
-	}),
+	// Register a handler function for every next available item.
+	NextHandler: func(item interface{}) {
+		fmt.Printf("Processing: %v\n", item)
+	},
+
+	// Register a handler for any emitted error.
+	ErrHandler: func(err error) {
+		fmt.Printf("Encountered error: %v\n", err)
+	},
+
+	// Register a handler when a stream is completed.
+	DoneHandler: func() {
+		fmt.Println("Done!")
+	},
 }
 
-source := grx.From([]int{1, 2, 3, 4, 5})
-_, err := source.Subscribe(watcher)
-if err != nil {
+it, _ := iterable.New([]interface{}{1, 2, 3, 4, errors.New("bang"), 5})
+source := observable.From(it)
+sub := source.Subscribe(watcher)
 
-	// This error is return right away if Observable is nil.
-	panic(err)
-}
+// wait for the async operation
+<-sub
 
 ```
 
-The above will print the format string for every number in the slice.
+The above will:
+- print the format string for every number in the slice up to 4.
+- print the error "bang"
+
+It is important to remember that only an `OnError` or `OnDone` can be called in a 
+stream. If there's an error in the stream, the processing stops and `OnDone` will
+never be called, and vice versa.
+
+The concept is to group all side effects into these handlers and let an `Observer` or any `EventHandler` to handle them. 
 
 ```go
 
@@ -60,39 +107,41 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jochasinga/grx"
+	"github.com/jochasinga/rx"
+	"github.com/jochasinga/rx/handlers"
 )
 
 func main() {
 
 	score := 9
 
-	watcher := &Observer{
-	
-		// Register a handler function for each emitted value.
-		NextHandler: grx.NextFunc(func(v interface{}) {
-			score +=  v.(int)
-		}),
-		
-		// Register a "clean-up" function when the observable terminates.
-		DoneHandler: grx.Donefunc(func() {
-			score *= 2
-		}),
-	}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			score += num
+		}
+	})
 
-	// Create an observable from a single item and subscribe to the observer.
-	_, _ := observable.Just(1).Subscribe(myObserver)
+	onDone := handlers.DoneFunc(func() {
+		score *= 2
+	})
 
-	// Block/wait here a bit for score to update before printing out.
-	<-time.After(100 * time.Millisecond)
+	watcher := observer.New(onNext, onDone)
+
+	// Create an `Observable` from a single item and subscribe to the observer.
+	sub := observable.Just(1).Subscribe(watcher)
+	<-sub
 
 	fmt.Println(score) // 20
 }
 
 ```
 
-An `Observable` is a synchronous stream of evens which can emit a value of type `interface{}`, `error`,
-or notify as completed. Below is what an `Observable` looks like:
+Please check out the [examples](examples/) to see how it can be applied to reactive applications.
+
+## Recap
+
+An `Observable` is a synchronous stream of "emitted" values which can be either an empty interface{} or error.
+
 
 ```bash
 
@@ -105,21 +154,7 @@ Start        Event with         Done
 
 ```
 
-An `Observer` watches over an `Observable` with a set of handlers: `NextHandler`, `ErrHandler`, and `DoneHandler`, which get called for each event it encounters. `NextHandler` is called zero or more times to handle each event that emits a value, that is when there is still a next event. `ErrHandler` or `DoneHandler` is called, respectively, when an event emits an error or the Observable is finished. When you subscribe an `Observer` to an `Observable`, it starts another non-blocking goroutine. Thus, that is why in the previous code it was necessary to block with `<-time.After()` before printing the score.
-
-There is a few ways you can create an `Observable` and subscribe it. Here is a different one using the operator `CreateObservable` and subscribing a set of handler functions with `SubscribeWith` instead of an `Observer`.
-
-```go
-
-source := grx.CreateObservable(func(ob *grx.Observer) {
-	ob.OnNext("Hello")
-}
-
-nextf := func(v interface{}) { 
-	fmt.Println(v)
-}
-
-_, _ = source.SubscribeFunc(nextf, nil, nil)
+In **RxGo**, it's useful to think of `Observable` and `Connectable` as channels with additional ability to `Subscribe` handlers. In fact, they are basically channels. When `Subscribe` method is called on a `Observable` (or `Connect` method in case of `Connectable`), one or more goroutines are spawned to handle asynchronous processing.
 
 
 ```
@@ -128,38 +163,32 @@ Most Observable methods and operators will return the Observable itself, making 
 ```go
 
 f1 := func() interface{} {
+	
+	// Simulate a blocking I/O
 	time.Sleep(2 * time.Second)
 	return 1 
 }
 
 f2 := func() interface{} {
+
+	// Simulate a blocking I/O
 	time.Sleep(time.Second)
 	return 2
 }
 
-myObserver := &grx.Observer{
-	NextHandler: grx.NextFunc(func(v interface{}) { 
-		fmt.Println(v) 
-	}),
+onNext := handlers.NextFunc(func(v iterface{}) {
+	val := encodeVal(v)
+	saveToDB(val)
+})
+
+wait := observable.Start(f1, f2).Subscribe(onNext)
+sub := <-wait
+
+if err := sub.Err(); err != nil {
+	saveToLog(err)	
 }
 
-myStream := observable.Start(f1, f2).Subscribe(myObserver)
-
-// Block/wait for Observer to interact with the stream
-<-time.After(100 * time.Millisecond)
-
-// 2 printed
-// 1 printed
 
 ```
 
-## Is this Idiomatic Go?
-It depends. This is certainly not for [purists who may regard this as a violation
-to Go's core philosophy](https://www.reddit.com/r/golang/comments/5d1erq/reactive_extension_for_go/). 
-Channels are the underlying implementations of almost all methods and operators. 
-In fact, `Observable` is basically a channel. The goal of this extension is just to expose
-a set of APIs complying to ReactiveX's way of programming instead of managing concurrency with
-primitives like channels and goroutines. However, they can always be used alongside one another 
-(check the examples).
-
-## This is a very early project and there will be breaking changes.
+## This is an early project and there will be breaking changes. However, discussions and contributions are welcome. Please feel free to experiment and come back with suggestions/issues. 

@@ -2,7 +2,7 @@
 // sequences of empty interface such as slice and channel to an Iterator.
 package iterable
 
-import "github.com/jochasinga/grx/errors"
+import "github.com/jochasinga/rx/errors"
 
 // Iterable converts channel and slice into an Iterator.
 type Iterable <-chan interface{}
