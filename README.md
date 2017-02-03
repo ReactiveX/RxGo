@@ -140,8 +140,7 @@ Please check out the [examples](examples/) to see how it can be applied to react
 
 ## Recap
 
-An `Observable` is a synchronous stream of "emitted" values which can be either an empty interface{} or error.
-
+An `Observable` is a synchronous stream of "emitted" values which can be either an empty interface{} or error. Below is how an `Observable` can be visualized:
 
 ```bash
 
