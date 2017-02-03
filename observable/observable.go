@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/jochasinga/grx/bases"
+	"github.com/jochasinga/grx/errors"
 	"github.com/jochasinga/grx/fx"
 	"github.com/jochasinga/grx/handlers"
 	"github.com/jochasinga/grx/observer"
@@ -36,9 +37,14 @@ func CheckEventHandler(handler bases.EventHandler) observer.Observer {
 	return ob
 }
 
-// Make sure Observable implements base.Observable
-//
-// Subscribe returns a channel of empty struct
+func (o Observable) Next() (interface{}, error) {
+	if next, ok := <-o; ok {
+		return next, nil
+	}
+	return nil, errors.New(errors.EndOfIteratorError)
+}
+
+// Subscribe returns a Subscription channel
 func (o Observable) Subscribe(handler bases.EventHandler) <-chan subscription.Subscription {
 	done := make(chan subscription.Subscription)
 	sub := subscription.New().Subscribe()
@@ -195,11 +201,11 @@ func Just(item interface{}, items ...interface{}) Observable {
 
 // Start creates an Observable from one or more directive-like functions
 // and emit the result of each asynchronously.
-func Start(f fx.DirectiveFunc, fs ...fx.DirectiveFunc) Observable {
+func Start(f fx.EmittableFunc, fs ...fx.EmittableFunc) Observable {
 	if len(fs) > 0 {
-		fs = append([]fx.DirectiveFunc{f}, fs...)
+		fs = append([]fx.EmittableFunc{f}, fs...)
 	} else {
-		fs = []fx.DirectiveFunc{f}
+		fs = []fx.EmittableFunc{f}
 	}
 
 	source := make(chan interface{})
@@ -207,7 +213,7 @@ func Start(f fx.DirectiveFunc, fs ...fx.DirectiveFunc) Observable {
 	var wg sync.WaitGroup
 	for _, f := range fs {
 		wg.Add(1)
-		go func(f fx.DirectiveFunc) {
+		go func(f fx.EmittableFunc) {
 			source <- f()
 			wg.Done()
 		}(f)

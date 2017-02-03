@@ -1,18 +1,16 @@
 package fx
 
-import (
-	"github.com/jochasinga/grx/bases"
-)
-
 type (
 
-	// DirectiveFunc defines a func that should be passed to the observable.Start method,
-	// and represents a simple func that takes no arguments and return a bases.Emitter type.
-	DirectiveFunc func() bases.Emitter
+	// EmittableFunc defines a function that should be used with Start operator.
+	EmittableFunc func() interface{}
 
-	// MappableFunc defines a func that should be passed to the Map operator.
-	MappableFunc func(bases.Emitter) bases.Emitter
+	// MappableFunc defines a function that acts as a predicate to the Map operator.
+	MappableFunc func(interface{}) interface{}
+
+	// ScannableFunc defines a function that acts as a predicate to the Scan operator.
+	ScannableFunc func(interface{}, interface{}) interface{}
 
 	// FilterableFunc defines a func that should be passed to the Filter operator.
-	FilterableFunc func(bases.Emitter) bool
+	FilterableFunc func(interface{}) bool
 )

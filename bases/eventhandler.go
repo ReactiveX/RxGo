@@ -1,5 +1,5 @@
 package bases
 
 type EventHandler interface {
-	Handle(Emitter)
+	Handle(interface{})
 }

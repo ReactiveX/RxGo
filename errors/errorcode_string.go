@@ -4,13 +4,14 @@ package errors
 
 import "fmt"
 
-const _ErrorCode_name = "EndOfIteratorErrorNilObservableErrorNilEventStreamErrorNilObserverErrorUndefinedError"
+const _ErrorCode_name = "EndOfIteratorErrorHandlerErrorObservableErrorObserverErrorIterableErrorUndefinedError"
 
-var _ErrorCode_index = [...]uint8{0, 18, 36, 55, 71, 85}
+var _ErrorCode_index = [...]uint8{0, 18, 30, 45, 58, 71, 85}
 
 func (i ErrorCode) String() string {
+	i -= 1
 	if i >= ErrorCode(len(_ErrorCode_index)-1) {
-		return fmt.Sprintf("ErrorCode(%d)", i)
+		return fmt.Sprintf("ErrorCode(%d)", i+1)
 	}
 	return _ErrorCode_name[_ErrorCode_index[i]:_ErrorCode_index[i+1]]
 }

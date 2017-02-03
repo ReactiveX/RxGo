@@ -2,7 +2,7 @@
 Reactive Extensions (Rx) for the Go Language
 
 ## Getting Started
-[ReactiveX](http://reactivex.io/), or Rx for short, is an API for programming with observable event streams. This is a port of ReactiveX to Go.
+[ReactiveX](http://reactivex.io/), or Rx for short, is an API for programming with observable streams. This is a ReactiveX API in Go.
 
 Rx is a new, alternative way of asychronous programming to callbacks, promises and deferred. It is about processing streams of events, with events being any occurances or changes within the system, either influenced by the external factors (i.e. users or another remote service) or internal components (i.e. logs).
 

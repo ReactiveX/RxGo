@@ -25,20 +25,6 @@ func New(buffer uint, observers ...observer.Observer) Connectable {
 	}
 }
 
-// From creates a Connectable from a slice of interface{}
-/*
-func From(items []interface{}) Connectable {
-	source := make(chan interface{}, len(items))
-	go func() {
-		for _, item := range items {
-			source <- item
-		}
-		close(source)
-	}()
-	return Connectable{Observable: source}
-}
-*/
-
 func From(it bases.Iterator) Connectable {
 	source := make(chan interface{})
 	go func() {
@@ -113,11 +99,11 @@ func Just(item interface{}, items ...interface{}) Connectable {
 	return Connectable{Observable: source}
 }
 
-func Start(f fx.DirectiveFunc, fs ...fx.DirectiveFunc) Connectable {
+func Start(f fx.EmittableFunc, fs ...fx.EmittableFunc) Connectable {
 	if len(fs) > 0 {
-		fs = append([]fx.DirectiveFunc{f}, fs...)
+		fs = append([]fx.EmittableFunc{f}, fs...)
 	} else {
-		fs = []fx.DirectiveFunc{f}
+		fs = []fx.EmittableFunc{f}
 	}
 
 	source := make(chan interface{})
@@ -125,7 +111,7 @@ func Start(f fx.DirectiveFunc, fs ...fx.DirectiveFunc) Connectable {
 	var wg sync.WaitGroup
 	for _, f := range fs {
 		wg.Add(1)
-		go func(f fx.DirectiveFunc) {
+		go func(f fx.EmittableFunc) {
 			source <- f()
 			wg.Done()
 		}(f)
@@ -165,7 +151,6 @@ func (co Connectable) Connect() <-chan (chan subscription.Subscription) {
 
 		go func(ob observer.Observer) {
 		OuterLoop:
-			//for item := range co.Observable {
 			for _, item := range local {
 				switch item := item.(type) {
 				case error:

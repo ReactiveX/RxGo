@@ -3,14 +3,9 @@ package observer
 import (
 	"testing"
 
-	"github.com/jochasinga/grx/bases"
 	"github.com/jochasinga/grx/handlers"
 	"github.com/stretchr/testify/assert"
 )
-
-func TestObserverImplementsBaseObserver(t *testing.T) {
-	assert.Implements(t, (*bases.Observer)(nil), Observer{})
-}
 
 func TestCreateNewObserverWithConstructor(t *testing.T) {
 	assert := assert.New(t)
@@ -20,6 +15,15 @@ func TestCreateNewObserverWithConstructor(t *testing.T) {
 	assert.NotNil(ob.NextHandler)
 	assert.NotNil(ob.ErrHandler)
 	assert.NotNil(ob.DoneHandler)
+
+	onNext := handlers.NextFunc(func(item interface{}) {})
+	onError := handlers.ErrFunc(func(err error) {})
+
+	ob2 := New(onNext, onError)
+	assert.NotNil(ob2.NextHandler)
+	assert.NotNil(ob2.ErrHandler)
+	assert.NotNil(ob2.DoneHandler)
+
 }
 
 func TestCreateNewObserverWithObserver(t *testing.T) {

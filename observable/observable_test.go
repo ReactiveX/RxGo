@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jochasinga/grx/bases"
 	"github.com/jochasinga/grx/fx"
 	"github.com/jochasinga/grx/handlers"
 	"github.com/jochasinga/grx/iterable"
@@ -14,11 +13,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 )
-
-func TestObservableImplementsBaseObservable(t *testing.T) {
-	t.Skip("Skipping implementation test for now")
-	assert.Implements(t, (*bases.Observable)(nil), Observable(nil))
-}
 
 func TestDefaultObservable(t *testing.T) {
 	assert.Equal(t, 0, cap(DefaultObservable))
@@ -116,30 +110,27 @@ func TestRangeOperator(t *testing.T) {
 
 func TestJustOperator(t *testing.T) {
 	myStream := Just(1, 2.01, "foo", map[string]string{"bar": "baz"}, 'a')
-	numItems := 5
-	yes := make(chan struct{})
-
-	n := 0
-	go func() {
-		for sig := range yes {
-			assert.Equal(t, struct{}{}, sig)
-			n++
-		}
-	}()
+	//numItems := 5
+	//yes := make(chan struct{})
+	stuff := []interface{}{}
 
 	onNext := handlers.NextFunc(func(item interface{}) {
-		yes <- struct{}{}
+		stuff = append(stuff, item)
 	})
 
 	sub := myStream.Subscribe(onNext)
 	<-sub
 
-	assert.Equal(t, numItems, n)
+	expected := []interface{}{
+		1, 2.01, "foo", map[string]string{"bar": "baz"}, 'a',
+	}
+
+	assert.Exactly(t, expected, stuff)
 }
 
 func TestFromOperator(t *testing.T) {
 	items := []interface{}{1, 3.1416, &struct{ foo string }{"bar"}}
-	it, err := iterable.From(items)
+	it, err := iterable.New(items)
 	if err != nil {
 		t.Fail()
 	}
@@ -178,7 +169,7 @@ func TestStartOperator(t *testing.T) {
 	responseCodes := []int{}
 	done := false
 
-	d1 := fx.DirectiveFunc(func() interface{} {
+	d1 := fx.EmittableFunc(func() interface{} {
 		result := &http.Response{
 			Status:     "200 OK",
 			StatusCode: 200,
@@ -191,7 +182,7 @@ func TestStartOperator(t *testing.T) {
 		return res
 	})
 
-	d2 := fx.DirectiveFunc(func() interface{} {
+	d2 := fx.EmittableFunc(func() interface{} {
 		result := &http.Response{
 			Status:     "301 Moved Permanently",
 			StatusCode: 301,
@@ -204,7 +195,7 @@ func TestStartOperator(t *testing.T) {
 		return res
 	})
 
-	d3 := fx.DirectiveFunc(func() interface{} {
+	d3 := fx.EmittableFunc(func() interface{} {
 		result := &http.Response{
 			Status:     "500 Server Error",
 			StatusCode: 500,
@@ -217,7 +208,7 @@ func TestStartOperator(t *testing.T) {
 		return res
 	})
 
-	e1 := fx.DirectiveFunc(func() interface{} {
+	e1 := fx.EmittableFunc(func() interface{} {
 		err := errors.New("Bad URL")
 		res, err := fakeGet("badurl.err", 100*time.Millisecond, err)
 		if err != nil {
@@ -226,7 +217,7 @@ func TestStartOperator(t *testing.T) {
 		return res
 	})
 
-	d4 := fx.DirectiveFunc(func() interface{} {
+	d4 := fx.EmittableFunc(func() interface{} {
 		result := &http.Response{
 			Status:     "404 Not Found",
 			StatusCode: 400,
@@ -245,9 +236,7 @@ func TestStartOperator(t *testing.T) {
 	})
 
 	onError := handlers.ErrFunc(func(err error) {
-		if err != nil {
-			t.Log(err)
-		}
+		t.Log(err)
 	})
 
 	onDone := handlers.DoneFunc(func() {
@@ -262,7 +251,7 @@ func TestStartOperator(t *testing.T) {
 	s := <-sub
 
 	assert.Exactly(t, []int{200, 301, 500}, responseCodes)
-	assert.Equal(t, "Bad URL", s.Error.Error())
+	assert.Equal(t, "Bad URL", s.Err().Error())
 
 	// Error should have prevented OnDone from being called
 	assert.False(t, done)
@@ -318,7 +307,7 @@ func TestSubscribeToDoneFunc(t *testing.T) {
 func TestSubscribeToObserver(t *testing.T) {
 	assert := assert.New(t)
 
-	it, err := iterable.From([]interface{}{
+	it, err := iterable.New([]interface{}{
 		"foo", "bar", "baz", 'a', 'b', errors.New("bang"), 99,
 	})
 	if err != nil {
@@ -375,7 +364,7 @@ func TestSubscribeToObserver(t *testing.T) {
 
 func TestObservableMap(t *testing.T) {
 	items := []interface{}{1, 2, 3, "foo", "bar", []byte("baz")}
-	it, err := iterable.From(items)
+	it, err := iterable.New(items)
 	if err != nil {
 		t.Fail()
 	}
@@ -407,7 +396,7 @@ func TestObservableMap(t *testing.T) {
 
 func TestObservableFilter(t *testing.T) {
 	items := []interface{}{1, 2, 3, 120, []byte("baz"), 7, 10, 13}
-	it, err := iterable.From(items)
+	it, err := iterable.New(items)
 	if err != nil {
 		t.Fail()
 	}
@@ -442,7 +431,7 @@ func TestObservableFilter(t *testing.T) {
 
 func TestObservableScanWithIntegers(t *testing.T) {
 	items := []interface{}{0, 1, 3, 5, 1, 8}
-	it, err := iterable.From(items)
+	it, err := iterable.New(items)
 	if err != nil {
 		t.Fail()
 	}
@@ -478,7 +467,7 @@ func TestObservableScanWithIntegers(t *testing.T) {
 
 func TestObservableScanWithString(t *testing.T) {
 	items := []interface{}{"hello", "world", "this", "is", "foo"}
-	it, err := iterable.From(items)
+	it, err := iterable.New(items)
 	if err != nil {
 		t.Fail()
 	}

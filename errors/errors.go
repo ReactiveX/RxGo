@@ -6,12 +6,11 @@ import "fmt"
 type ErrorCode uint32
 
 const (
-	EndOfIteratorError ErrorCode = iota
-	NilObservableError
-	NilEventStreamError
-	NilObserverError
-	NilSingleError
-	HandlerFuncError
+	EndOfIteratorError ErrorCode = iota + 1
+	HandlerError
+	ObservableError
+	ObserverError
+	IterableError
 	UndefinedError
 )
 

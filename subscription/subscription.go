@@ -7,7 +7,7 @@ type Subscription struct {
 	SubscribeAt   time.Time
 	UnsubscribeAt time.Time
 	Error         error
-	term          chan struct{}
+	//term          chan struct{}
 }
 
 // DefaultSubscription is a default Subscription
@@ -31,6 +31,7 @@ func (s Subscription) Unsubscribe() Subscription {
 	return s
 }
 
+/* TODO:
 func (s Subscription) Dispose() {
 	s.term <- struct{}{}
 	close(s.term)
@@ -41,7 +42,6 @@ func (s Subscription) Terminated() chan struct{} {
 }
 
 // UnscribeIn notify the unsubscribe channel in d duration, then return the Subscriptor
-/*
 func (s *Subscription) UnsubscribeIn(d time.Duration) <-chan bases.Subscriptor {
 	out := make(chan bases.Subscriptor)
 	go func() {

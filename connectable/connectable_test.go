@@ -109,7 +109,7 @@ func TestSubscribeToObserver(t *testing.T) {
 		done  string
 	)
 
-	it, err := iterable.From([]interface{}{1, 2, 3, errors.New("bang"), 9})
+	it, err := iterable.New([]interface{}{1, 2, 3, errors.New("bang"), 9})
 	if err != nil {
 		t.Fail()
 	}
@@ -152,7 +152,7 @@ func TestSubscribeToManyObservers(t *testing.T) {
 		dones []string
 	)
 
-	it, err := iterable.From([]interface{}{1, 2, 3, errors.New("bang"), 9})
+	it, err := iterable.New([]interface{}{1, 2, 3, errors.New("bang"), 9})
 	if err != nil {
 		t.Fail()
 	}
@@ -211,7 +211,7 @@ func TestSubscribeToManyObservers(t *testing.T) {
 
 func TestConnectableMap(t *testing.T) {
 	items := []interface{}{1, 2, 3, "foo", "bar", []byte("baz")}
-	it, err := iterable.From(items)
+	it, err := iterable.New(items)
 	if err != nil {
 		t.Fail()
 	}
@@ -243,7 +243,7 @@ func TestConnectableMap(t *testing.T) {
 
 func TestConnectableFilter(t *testing.T) {
 	items := []interface{}{1, 2, 3, 120, []byte("baz"), 7, 10, 13}
-	it, err := iterable.From(items)
+	it, err := iterable.New(items)
 	if err != nil {
 		t.Fail()
 	}
@@ -278,7 +278,7 @@ func TestConnectableFilter(t *testing.T) {
 
 func TestConnectableScanWithIntegers(t *testing.T) {
 	items := []interface{}{0, 1, 3, 5, 1, 8}
-	it, err := iterable.From(items)
+	it, err := iterable.New(items)
 	if err != nil {
 		t.Fail()
 	}
@@ -313,7 +313,7 @@ func TestConnectableScanWithIntegers(t *testing.T) {
 
 func TestConnectableScanWithStrings(t *testing.T) {
 	items := []interface{}{"hello", "world", "this", "is", "foo"}
-	it, err := iterable.From(items)
+	it, err := iterable.New(items)
 	if err != nil {
 		t.Fail()
 	}

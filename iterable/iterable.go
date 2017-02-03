@@ -1,10 +1,14 @@
+// Package iterable provides an Iterable type that is capable of converting
+// sequences of empty interface such as slice and channel to an Iterator.
 package iterable
 
 import "github.com/jochasinga/grx/errors"
 
-// Emittable is a high-level alias for empty interface which may any underlying type including error
+// Iterable converts channel and slice into an Iterator.
 type Iterable <-chan interface{}
 
+// Next returns the next element in an Iterable sequence and an
+// error when it reaches the end. Next registers Iterable to Iterator.
 func (it Iterable) Next() (interface{}, error) {
 	if next, ok := <-it; ok {
 		return next, nil
@@ -12,7 +16,8 @@ func (it Iterable) Next() (interface{}, error) {
 	return nil, errors.New(errors.EndOfIteratorError)
 }
 
-func From(any interface{}) (Iterable, error) {
+// New creates a new Iterable from a slice or a channel of empty interface.
+func New(any interface{}) (Iterable, error) {
 	switch any := any.(type) {
 	case []interface{}:
 		c := make(chan interface{}, len(any))

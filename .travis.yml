@@ -1,0 +1,11 @@
+language: go
+
+go:
+        - 1.6
+        - tip
+
+install:
+        - go get github.com/stretchr/testify/assert
+        - go get github.com/mattn/goveralls
+
+script: goveralls -service travis-ci -repotoken $COVERALLS_TOKEN

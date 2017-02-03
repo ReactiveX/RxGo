@@ -27,12 +27,12 @@ func TestCreateHomogenousIterable(t *testing.T) {
 		items = append(items, i)
 	}
 
-	it1, err := From(ch)
+	it1, err := New(ch)
 	if err != nil {
 		t.Fail()
 	}
 
-	it2, err := From(items)
+	it2, err := New(items)
 	if err != nil {
 		t.Fail()
 	}
@@ -42,8 +42,17 @@ func TestCreateHomogenousIterable(t *testing.T) {
 	assert.IsType(Iterable(nil), it2)
 
 	for i := 0; i < 10; i++ {
-		assert.Equal(i, it1.Next())
-		assert.Equal(i, it2.Next())
+		if v, err := it1.Next(); err == nil {
+			assert.Equal(i, v)
+		} else {
+			t.Fail()
+		}
+
+		if v, err := it2.Next(); err == nil {
+			assert.Equal(i, v)
+		} else {
+			t.Fail()
+		}
 	}
 }
 
@@ -60,12 +69,12 @@ func TestCreateHeterogeneousIterable(t *testing.T) {
 		close(ch)
 	}()
 
-	it1, err := From(ch)
+	it1, err := New(ch)
 	if err != nil {
 		t.Fail()
 	}
 
-	it2, err := From(items)
+	it2, err := New(items)
 	if err != nil {
 		t.Fail()
 	}
@@ -75,7 +84,16 @@ func TestCreateHeterogeneousIterable(t *testing.T) {
 	assert.IsType(Iterable(nil), it2)
 
 	for _, item := range items {
-		assert.Equal(item, it1.Next())
-		assert.Equal(item, it2.Next())
+		if v, err := it1.Next(); err == nil {
+			assert.Equal(item, v)
+		} else {
+			t.Fail()
+		}
+
+		if v, err := it2.Next(); err == nil {
+			assert.Equal(item, v)
+		} else {
+			t.Fail()
+		}
 	}
 }

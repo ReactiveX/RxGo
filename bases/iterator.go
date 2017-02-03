@@ -1,6 +1,6 @@
 package bases
 
-// Iterator is an interface with Next and HasNext methods
+// Iterator is a type with Next method
 type Iterator interface {
-	Next() (Emitter, error)
+	Next() (interface{}, error)
 }
