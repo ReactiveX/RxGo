@@ -1,14 +1,11 @@
 language: go
-sudo: false
 
 go:
+  - 1.6
   - tip
 
-before_install:
-  - go get github.com/mattn/goveralls
-
 install:
-  - go get github.com/stretchr/testify/assert
+  - go get github.com/mattn/goveralls
+  - get get github.com/stretchr/testify/assert
 
-script: 
-  - $HOME/gopath/bin/goveralls -service=travis-ci
+script: goveralls -service travis-ci -repotoken $COVERALLS_TOKEN
