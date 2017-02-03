@@ -155,8 +155,6 @@ Start        Event with         Done
 
 In **RxGo**, it's useful to think of `Observable` and `Connectable` as channels with additional ability to `Subscribe` handlers. In fact, they are basically channels. When `Subscribe` method is called on a `Observable` (or `Connect` method in case of `Connectable`), one or more goroutines are spawned to handle asynchronous processing.
 
-
-```
 Most Observable methods and operators will return the Observable itself, making it chainable.
 
 ```go
