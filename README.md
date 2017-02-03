@@ -1,5 +1,5 @@
 # RxGo
-[![Build Status](https://travis-ci.org/jochasinga/RxGo.svg?branch=master)](https://travis-ci.org/jochasinga/RxGo) [![Coverage Status](https://coveralls.io/repos/github/jochasinga/RxGo/badge.svg?branch=master)](https://coveralls.io/github/jochasinga/RxGo?branch=master)
+[![Build Status](https://travis-ci.org/jochasinga/RxGo.svg?branch=master)](https://travis-ci.org/jochasinga/RxGo)    [![Coverage Status](https://coveralls.io/repos/github/jochasinga/RxGo/badge.svg?branch=master)](https://coveralls.io/github/jochasinga/RxGo?branch=master)    
 Reactive Extensions for the Go Language
 
 ## Getting Started
