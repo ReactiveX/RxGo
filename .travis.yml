@@ -2,11 +2,9 @@ language: go
 
 go:
   - 1.6
-  - 1.7
   - tip
 
-env:
-  - COVERALLS_TOKEN=MOJgsHY8GI9kpZh0ZzCmyN8OlaTKY3F2w
+go_import_path: github.com/jochasinga/rx
 
 install:
   - go get github.com/mattn/goveralls
