@@ -2,10 +2,14 @@ language: go
 
 go:
   - 1.6
+  - 1.7
   - tip
+
+env:
+  - COVERALLS_TOKEN=MOJgsHY8GI9kpZh0ZzCmyN8OlaTKY3F2w
 
 install:
   - go get github.com/mattn/goveralls
-  - get get github.com/stretchr/testify/assert
+  - go get github.com/stretchr/testify/assert
 
 script: goveralls -service travis-ci -repotoken $COVERALLS_TOKEN
