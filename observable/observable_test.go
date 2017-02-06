@@ -429,6 +429,48 @@ func TestObservableFilter(t *testing.T) {
 	assert.Exactly(t, []int{1, 2, 3, 7}, nums)
 }
 
+func TestObservableLast(t *testing.T) {
+	items := []interface{}{0, 1, 3}
+	it, err := iterable.New(items)
+	if err != nil {
+		t.Fail()
+	}
+
+	stream1 := From(it)
+
+	stream2 := stream1.Last()
+
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	sub := stream2.Subscribe(onNext)
+	<-sub
+
+	assert.Exactly(t, []int{3}, nums)
+}
+
+func TestObservableLastWithEmpty(t *testing.T) {
+	stream1 := Empty()
+
+	stream2 := stream1.Last()
+
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	sub := stream2.Subscribe(onNext)
+	<-sub
+
+	assert.Exactly(t, []int{}, nums)
+}
+
 func TestObservableDistinct(t *testing.T) {
 	items := []interface{}{1,2,2,1,3}
 	it, err := iterable.New(items)
