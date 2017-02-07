@@ -2,6 +2,9 @@
 [![Build Status](https://travis-ci.org/jochasinga/RxGo.svg?branch=master)](https://travis-ci.org/jochasinga/RxGo)    [![Coverage Status](https://coveralls.io/repos/github/jochasinga/RxGo/badge.svg?branch=master)](https://coveralls.io/github/jochasinga/RxGo?branch=master)    
 Reactive Extensions for the Go Language
 
+## Contributions
+We have seen a few eager pull requests coming in, and they are so much appreciated. However, before you work on a feature or fix a bug and send a PR, always *open an issue or see if it's already been opened and discussed*. This way decisions are arrived collaboratively and you know your feature is aligned to the project's direction. Please see [contributions](wiki/Contributions) for more info.
+
 ## Getting Started
 [ReactiveX](http://reactivex.io/), or Rx for short, is an API for programming with observable streams. This is a ReactiveX API for the Go language.
 
