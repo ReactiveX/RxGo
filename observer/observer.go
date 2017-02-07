@@ -1,8 +1,8 @@
 package observer
 
 import (
-	"github.com/jochasinga/rx"
-	"github.com/jochasinga/rx/handlers"
+	"github.com/jochasinga/rxgo"
+	"github.com/jochasinga/rxgo/handlers"
 )
 
 // Observer represents a group of EventHandlers.

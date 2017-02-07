@@ -5,11 +5,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jochasinga/rx"
-	"github.com/jochasinga/rx/fx"
-	"github.com/jochasinga/rx/observable"
-	"github.com/jochasinga/rx/observer"
-	"github.com/jochasinga/rx/subscription"
+	"github.com/jochasinga/rxgo"
+	"github.com/jochasinga/rxgo/fx"
+	"github.com/jochasinga/rxgo/observable"
+	"github.com/jochasinga/rxgo/observer"
+	"github.com/jochasinga/rxgo/subscription"
 )
 
 // Connectable is an Observable which can subscribe several

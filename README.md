@@ -39,7 +39,7 @@ sub := observable.Subscribe(handlers.NextFunc(nextHandler))
 
 ```bash
 
-go get -u github.com/jochasinga/rxgo
+go get -u github.com/jochasinga/rxgogo
 
 ```
 
@@ -49,9 +49,9 @@ Certain types, such as `observer.Observer` and `observable.Observable` are organ
 ```go
 
 import (
-	"github.com/jochasinga/rx"
-	"github.com/jochasinga/rx/observer"
-	"github.com/jochasinga/rx/observable"
+	"github.com/jochasinga/rxgo"
+	"github.com/jochasinga/rxgo/observer"
+	"github.com/jochasinga/rxgo/observable"
 	//...
 )
 
@@ -106,8 +106,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jochasinga/rx"
-	"github.com/jochasinga/rx/handlers"
+	"github.com/jochasinga/rxgo"
+	"github.com/jochasinga/rxgo/handlers"
 )
 
 func main() {

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/jochasinga/rx"
+	"github.com/jochasinga/rxgo"
 	"github.com/stretchr/testify/assert"
 )
 
