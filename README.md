@@ -17,7 +17,7 @@ subscription := observable.Subscribe(observer)
 
 An `Observer` is a type consists of three `EventHandler` fields, the `NextHandler`, `Errhandler`, and `DoneHandler`, respectively. These handlers can be evoked with `OnNext`, `OnError`, and `OnDone` methods, respectively.
 
-The `Observer` itself is also an `EventHandler`. This means all types mentioend can be subscribed to an `Observable`.
+The `Observer` itself is also an `EventHandler`. This means all types mentioned can be subscribed to an `Observable`.
 
 ```go
 

@@ -115,6 +115,41 @@ func (o Observable) Filter(apply fx.FilterableFunc) Observable {
 	return Observable(out)
 }
 
+//Distinct supress duplicate items in the original Observable and returns
+// a new Observable.
+func (o Observable) Distinct(apply fx.KeySelectorFunc) Observable {
+	out := make(chan interface{})
+	go func() {
+		keysets := make(map[interface{}]struct{})
+		for item := range o {
+			key := apply(item)
+			_, ok := keysets[key]
+			if !ok {
+				out <- item
+			}
+			keysets[key] = struct{}{}
+		}
+		close(out)
+	}()
+	return Observable(out)
+}
+
+func (o Observable) DistinctUntilChanged(apply fx.KeySelectorFunc) Observable {
+	out := make(chan interface{})
+	go func() {
+		var current interface{}
+		for item := range o {
+			key := apply(item)
+			if current != key {
+				out <- item
+				current = key
+			}
+		}
+		close(out)
+	}()
+	return Observable(out)
+}
+
 // Scan applies ScannableFunc predicate to each item in the original
 // Observable sequentially and emits each successive value on a new Observable.
 func (o Observable) Scan(apply fx.ScannableFunc) Observable {
