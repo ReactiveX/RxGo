@@ -115,6 +115,44 @@ func (o Observable) Filter(apply fx.FilterableFunc) Observable {
 	return Observable(out)
 }
 
+// Skip suppress the first n items in the original Observable and
+// returns a new Observable with the rest items.
+func (o Observable) Skip(skip uint) Observable {
+	out := make(chan interface{})
+	go func() {
+		rest_skip := skip
+		for item := range o {
+			if (rest_skip > 0) {
+				rest_skip -= 1
+				continue
+			}
+			out <- item
+		}
+		close(out)
+	}()
+	return Observable(out)
+}
+
+// Skip suppress the last n items in the original Observable and
+// returns a new Observable with the rest items.
+func (o Observable) SkipLast(skip uint) Observable {
+	out := make(chan interface{})
+	go func() {
+		buf := make(chan interface{}, skip)
+		for item := range o {
+			select {
+				case buf <- item:
+				default:
+					out <- (<- buf)
+					buf <- item
+			}
+		}
+		close(buf)
+		close(out)
+	}()
+	return Observable(out)
+}
+
 //Distinct supress duplicate items in the original Observable and returns
 // a new Observable.
 func (o Observable) Distinct(apply fx.KeySelectorFunc) Observable {
