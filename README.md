@@ -43,6 +43,8 @@ go get -u github.com/jochasinga/rxgo
 
 ```
 
+**Important**: We are currently resolving import path issue. Meanwhile, after installing, you will have to go to the installed directory (see where you set your $GOPATH) and manually change the root directory from rxgo to rx. See [issue #7](/issues/7).
+
 ## Importing the Rx package
 Certain types, such as `observer.Observer` and `observable.Observable` are organized into subpackages for namespace-sake to avoid redundant constructor like `NewObservable`. Instead, an `Observable` can be created with `observable.New()`.
 
