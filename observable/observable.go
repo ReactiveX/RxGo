@@ -10,6 +10,7 @@ import (
 	"github.com/jochasinga/rx/handlers"
 	"github.com/jochasinga/rx/observer"
 	"github.com/jochasinga/rx/subscription"
+	
 )
 
 // Observable is a basic observable channel
@@ -110,6 +111,20 @@ func (o Observable) Filter(apply fx.FilterableFunc) Observable {
 				out <- item
 			}
 		}
+		close(out)
+	}()
+	return Observable(out)
+}
+
+// Last returns a new Observable which emit only last item.
+func (o Observable) Last() Observable {
+	out := make(chan interface{})
+	go func() {
+		var last interface{}
+		for item := range o {
+			last = item
+		}
+		out <- last
 		close(out)
 	}()
 	return Observable(out)
