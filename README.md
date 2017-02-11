@@ -3,12 +3,14 @@
 Reactive Extensions for the Go Language
 
 ## Contributions
-We have seen a few eager pull requests coming in, and they are so much appreciated. However, before you work on a feature or fix a bug and send a PR, please *open an issue or see if it's already been opened and discussed*. This way decisions are arrived collaboratively and you know your feature is aligned to the project's direction and your contribution will be merged pretty quickly. Please see [contributions](wiki/Contributions) for more info.
+All contributions are welcome, both in development and documentation! Be sure you check out [contributions](wiki/Contributions) for more.
 
 ## Getting Started
 [ReactiveX](http://reactivex.io/), or Rx for short, is an API for programming with observable streams. This is a ReactiveX API for the Go language.
 
-Rx is a new, alternative way of asychronous programming to callbacks, promises and deferred. It is about processing streams of events or items, with events being any occurances or changes within the system, either influenced by the external factors (i.e. users or another remote service) or internal components (i.e. logs).
+*ReactiveX* is a new, alternative way of asychronous programming to callbacks, promises and deferred. It is about processing streams of events or items, with events being any occurances or changes within the system.
+
+>In Go, it is simpler to think of a observable stream as a channel which can `Subscribe` to a set of handler functions.
 
 The pattern is that you `Subscribe` to an `Observable` using an `Observer`:
 
@@ -33,7 +35,6 @@ nextHandler := func(item interface{}) interface{} {
 // Only next item will be handled. 
 sub := observable.Subscribe(handlers.NextFunc(nextHandler))
 
-
 ```
 
 **NOTE**: Observables are not active in themselves. They need to be subscribed to make something happen. Simply having an Observable lying around doesn't make anything happen, like sitting and watching time flies.
@@ -46,10 +47,8 @@ go get -u github.com/reactivex/rxgo
 
 ```
 
-**IMPORTANT**: We are currently resolving import path issue. Meanwhile, after installing, you will have to go to the installed directory (see where you set your $GOPATH) and manually change the root directory from rxgo to rx. See [issue #7](/issues/7).
-
 ## Importing the Rx package
-Certain types, such as `observer.Observer` and `observable.Observable` are organized into subpackages for namespace-sake to avoid redundant constructor like `NewObservable`. Instead, an `Observable` can be created with `observable.New()`.
+Certain types, such as `observer.Observer` and `observable.Observable` are organized into subpackages for namespace-sake to avoid redundant constructor like `NewObservable`. 
 
 ```go
 
@@ -59,7 +58,6 @@ import (
 	"github.com/jochasinga/rxgo/observable"
 	//...
 )
-
 
 ```
 
@@ -89,7 +87,7 @@ it, _ := iterable.New([]interface{}{1, 2, 3, 4, errors.New("bang"), 5})
 source := observable.From(it)
 sub := source.Subscribe(watcher)
 
-// wait for the async operation
+// wait for the channel to emit a Subscription
 <-sub
 
 ```
@@ -148,12 +146,11 @@ An `Observable` is a synchronous stream of "emitted" values which can be either 
 
 ```bash
 
-              time -->
+                                time -->
 
-(*)-------------(e)--------------|>
- |               |               |
-Start        Event with         Done
-             value = 1
+(*)-------------(o)--------------(o)---------------(x)----------------|>
+ |               |                |                 |                 |
+Start          value            value             error              Done
 
 ```
 
@@ -189,7 +186,6 @@ if err := sub.Err(); err != nil {
 	saveToLog(err)	
 }
 
-
 ```
 
-## This is an early project and there will be breaking changes. However, discussions and contributions are welcome. Please feel free to experiment and come back with suggestions/issues. 
+## This is an early project and your contributions will help shape its direction. 
