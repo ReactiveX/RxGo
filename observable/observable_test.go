@@ -470,7 +470,7 @@ func TestObservableFirstWithEmpty(t *testing.T) {
 	assert.Exactly(t, []int{}, nums)
 }
 
-TestObservableLast(t *testing.T) {
+func TestObservableLast(t *testing.T) {
 	items := []interface{}{0, 1, 3}
 	it, err := iterable.New(items)
 	if err != nil {
