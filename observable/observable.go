@@ -116,6 +116,19 @@ func (o Observable) Filter(apply fx.FilterableFunc) Observable {
 	return Observable(out)
 }
 
+// First returns new Observable which emit only first item.
+func (o Observable) First() Observable {
+	out := make(chan interface{})
+	go func() {
+		for item := range o {
+			out <- item
+			break
+		}
+		close(out)
+	}()
+	return Observable(out)
+}
+
 // Last returns a new Observable which emit only last item.
 func (o Observable) Last() Observable {
 	out := make(chan interface{})
