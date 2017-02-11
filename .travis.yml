@@ -4,7 +4,7 @@ go:
   - 1.6
   - tip
 
-go_import_path: github.com/jochasinga/rx
+go_import_path: github.com/jochasinga/rxgo
 
 install:
   - go get github.com/mattn/goveralls

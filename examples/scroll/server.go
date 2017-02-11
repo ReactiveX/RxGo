@@ -31,9 +31,9 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/jochasinga/rx/handlers"
-	"github.com/jochasinga/rx/observable"
-	"github.com/jochasinga/rx/observer"
+	"github.com/jochasinga/rxgo/handlers"
+	"github.com/jochasinga/rxgo/observable"
+	"github.com/jochasinga/rxgo/observer"
 )
 
 var upgrader = websocket.Upgrader{
