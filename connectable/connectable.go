@@ -142,6 +142,13 @@ func (co Connectable) Subscribe(handler rx.EventHandler) Connectable {
 	return co
 }
 
+// Do is like Subscribe but subscribes a func(interface{}) as a NextHandler
+func (co Connectable) Do(nextf func(interface{})) Connectable {
+	ob := observer.Observer{NextHandler: nextf}
+	co.observers = append(co.observers, ob)
+	return co
+}
+
 // Connect activates the Observable stream and returns a channel of Subscription channel.
 func (co Connectable) Connect() <-chan (chan subscription.Subscription) {
 	done := make(chan (chan subscription.Subscription), 1)

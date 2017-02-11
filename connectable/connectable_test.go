@@ -49,6 +49,21 @@ func TestCreateConnectableWithConstructor(t *testing.T) {
 	assert.Equal("helloworld", text)
 }
 
+func TestDoOperator(t *testing.T) {
+	co := Just(1, 2, 3)
+	num := 0
+
+	nextf := func(item interface{}) {
+		num += item.(int)
+	}
+
+	co = co.Do(nextf)
+	sub := co.Connect()
+	<-sub
+
+	assert.Equal(t, 6, num)
+}
+
 func TestSubscribeToNextFunc(t *testing.T) {
 	co := Just(1, 2, 3)
 	num := 0
@@ -130,7 +145,6 @@ func TestSubscribeToObserver(t *testing.T) {
 	ob := observer.New(onError, onDone, onNext)
 
 	sub := co.Subscribe(ob).Connect()
-	//<-sub
 
 	for c := range sub {
 		for s := range c {
