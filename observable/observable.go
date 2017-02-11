@@ -115,6 +115,19 @@ func (o Observable) Filter(apply fx.FilterableFunc) Observable {
 	return Observable(out)
 }
 
+// First returns new Observable which emit only first item.
+func (o Observable) First() Observable {
+	out := make(chan interface{})
+	go func() {
+		for item := range o {
+			out <- item
+			break
+		}
+		close(out)
+	}()
+	return Observable(out)
+}
+
 //Distinct supress duplicate items in the original Observable and returns
 // a new Observable.
 func (o Observable) Distinct(apply fx.KeySelectorFunc) Observable {
