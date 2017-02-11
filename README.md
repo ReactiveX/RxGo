@@ -2,6 +2,9 @@
 [![Build Status](https://travis-ci.org/jochasinga/RxGo.svg?branch=master)](https://travis-ci.org/jochasinga/RxGo)    [![Coverage Status](https://coveralls.io/repos/github/jochasinga/RxGo/badge.svg?branch=master)](https://coveralls.io/github/jochasinga/RxGo?branch=master)    
 Reactive Extensions for the Go Language
 
+## Contributions
+We have seen a few eager pull requests coming in, and they are so much appreciated. However, before you work on a feature or fix a bug and send a PR, please *open an issue or see if it's already been opened and discussed*. This way decisions are arrived collaboratively and you know your feature is aligned to the project's direction and your contribution will be merged pretty quickly. Please see [contributions](wiki/Contributions) for more info.
+
 ## Getting Started
 [ReactiveX](http://reactivex.io/), or Rx for short, is an API for programming with observable streams. This is a ReactiveX API for the Go language.
 
@@ -39,9 +42,11 @@ sub := observable.Subscribe(handlers.NextFunc(nextHandler))
 
 ```bash
 
-go get -u github.com/jochasinga/rxgogo
+go get -u github.com/reactivex/rxgo
 
 ```
+
+**IMPORTANT**: We are currently resolving import path issue. Meanwhile, after installing, you will have to go to the installed directory (see where you set your $GOPATH) and manually change the root directory from rxgo to rx. See [issue #7](/issues/7).
 
 ## Importing the Rx package
 Certain types, such as `observer.Observer` and `observable.Observable` are organized into subpackages for namespace-sake to avoid redundant constructor like `NewObservable`. Instead, an `Observable` can be created with `observable.New()`.
