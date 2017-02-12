@@ -177,6 +177,45 @@ func (o Observable) DistinctUntilChanged(apply fx.KeySelectorFunc) Observable {
 	return Observable(out)
 }
 
+// Skip suppress the first n items in the original Observable and 
+// returns a new Observable with the rest items.
+func (o Observable) Skip(nth uint) Observable {
+	out := make(chan interface{})
+	go func() {
+		skipCount := 0
+		for item := range o {
+			if (skipCount < int(nth)) {
+				skipCount += 1
+				continue
+			}
+			out <- item
+		}
+		close(out)
+	}()
+	return Observable(out)
+}
+
+// Skip suppress the last n items in the original Observable and
+// returns a new Observable with the rest items.
+func (o Observable) SkipLast(nth uint) Observable {
+	out := make(chan interface{})
+	go func() {
+		buf := make(chan interface{}, nth)
+		for item := range o {
+			select {
+				case buf <- item:
+				default:
+					out <- (<- buf)
+					buf <- item
+			}
+		}
+		close(buf)
+		close(out)
+	}()
+	return Observable(out)
+}
+
+
 // Scan applies ScannableFunc predicate to each item in the original
 // Observable sequentially and emits each successive value on a new Observable.
 func (o Observable) Scan(apply fx.ScannableFunc) Observable {
