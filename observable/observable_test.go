@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jochasinga/rxgo/fx"
-	"github.com/jochasinga/rxgo/handlers"
-	"github.com/jochasinga/rxgo/iterable"
-	"github.com/jochasinga/rxgo/observer"
+	"github.com/reactivex/rxgo/fx"
+	"github.com/reactivex/rxgo/handlers"
+	"github.com/reactivex/rxgo/iterable"
+	"github.com/reactivex/rxgo/observer"
 
 	"github.com/stretchr/testify/assert"
 )

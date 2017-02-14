@@ -30,8 +30,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jochasinga/rxgo/handlers"
-	"github.com/jochasinga/rxgo/observable"
+	"github.com/reactivex/rxgo/handlers"
+	"github.com/reactivex/rxgo/observable"
 )
 
 func main() {
