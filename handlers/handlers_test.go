@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/jochasinga/rxgo"
+	"github.com/reactivex/rxgo"
 	"github.com/stretchr/testify/assert"
 )
 
