@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 	"time"
+	"sync"
 
 	"github.com/jochasinga/rxgo/fx"
 	"github.com/jochasinga/rxgo/handlers"
@@ -173,34 +174,50 @@ func TestSubscribeToManyObservers(t *testing.T) {
 
 	co := From(it)
 
+	var mutex = &sync.Mutex{}
+
 	ob1 := observer.Observer{
 		NextHandler: func(item interface{}) {
 			<-time.After(100 * time.Millisecond)
+			mutex.Lock()
 			nums = append(nums, item.(int))
+			mutex.Unlock()
 		},
 		ErrHandler: func(err error) {
+			mutex.Lock()
 			errs = append(errs, err)
+			mutex.Unlock()
 		},
 		DoneHandler: func() {
+			mutex.Lock()
 			dones = append(dones, "D1")
+			mutex.Unlock()
 		},
 	}
 
 	ob2 := observer.Observer{
 		NextHandler: func(item interface{}) {
+			mutex.Lock()
 			nums = append(nums, item.(int)*2)
+			mutex.Unlock()
 		},
 		ErrHandler: func(err error) {
+			mutex.Lock()
 			errs = append(errs, err)
+			mutex.Unlock()
 		},
 		DoneHandler: func() {
+			mutex.Lock()
 			dones = append(dones, "D2")
+			mutex.Unlock()
 		},
 	}
 
 	ob3 := handlers.NextFunc(func(item interface{}) {
 		<-time.After(200 * time.Millisecond)
+		mutex.Lock()
 		nums = append(nums, item.(int)*10)
+		mutex.Unlock()
 	})
 
 	co = co.Subscribe(ob1).Subscribe(ob3).Subscribe(ob2)
