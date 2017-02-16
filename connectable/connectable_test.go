@@ -409,3 +409,45 @@ func TestConnectableFirstWithEmpty(t *testing.T) {
 
 	assert.Exactly(t, []int{}, nums)
 }
+
+func TestObservableLast(t *testing.T) {
+	items := []interface{}{0, 1, 3}
+	it, err := iterable.New(items)
+	if err != nil {
+		t.Fail()
+	}
+
+	co := From(it)
+
+	co = co.Last()
+
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	subs := co.Subscribe(onNext).Connect()
+	<-subs
+
+	assert.Exactly(t, []int{3}, nums)
+}
+
+func TestObservableLastWithEmpty(t *testing.T) {
+	co := Empty()
+
+	co = co.Last()
+
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	subs := co.Subscribe(onNext).Connect()
+	<-subs
+
+	assert.Exactly(t, []int{}, nums)
+}
