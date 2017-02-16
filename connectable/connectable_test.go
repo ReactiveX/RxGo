@@ -368,3 +368,44 @@ func TestConnectableScanWithStrings(t *testing.T) {
 
 	assert.Exactly(t, expected, words)
 }
+
+func TestConnectableFirst(t *testing.T) {
+	items := []interface{}{0, 1, 3}
+	it, err := iterable.New(items)
+	if err != nil {
+		t.Fail()
+	}
+
+	co1 := From(it)
+	co2 := co1.First()
+
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	subs := co2.Subscribe(onNext).Connect()
+	<-subs
+
+	assert.Exactly(t, []int{0}, nums)
+}
+
+func TestConnectableFirstWithEmpty(t *testing.T) {
+	co1 := Empty()
+
+	co2 := co1.First()
+
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	subs := co2.Subscribe(onNext).Connect()
+	<-subs
+
+	assert.Exactly(t, []int{}, nums)
+}

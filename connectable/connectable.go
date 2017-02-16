@@ -253,3 +253,16 @@ func (co Connectable) Scan(apply fx.ScannableFunc) Connectable {
 	}()
 	return Connectable{Observable: out}
 }
+
+// First returns new Observable which emit only first item.
+func (co Connectable) First() Connectable {
+	out := make(chan interface{})
+	go func() {
+		for item := range co.Observable {
+			out <- item
+			break
+		}
+		close(out)
+	}()
+	return Connectable{Observable: out}
+}
