@@ -280,3 +280,40 @@ func (co Connectable) Last() Connectable {
 	}()
 	return Connectable{Observable: out}
 }
+
+//Distinct suppress duplicate items in the original Connectable and
+//returns a new Connectable.
+func (co Connectable) Distinct(apply fx.KeySelectorFunc) Connectable {
+	out := make(chan interface{})
+	go func() {
+		keysets := make(map[interface{}]struct{})
+		for item := range co.Observable {
+			key := apply(item)
+			_, ok := keysets[key]
+			if !ok {
+				out <- item
+			}
+			keysets[key] = struct{}{}
+		}
+		close(out)
+	}()
+	return Connectable{Observable: out}
+}
+
+//DistinctUntilChanged suppress duplicate items in the original Connectable only
+// if they are successive to one another and returns a new Connectable.
+func (co Connectable) DistinctUntilChanged(apply fx.KeySelectorFunc) Connectable {
+	out := make(chan interface{})
+	go func() {
+		var current interface{}
+		for item := range co.Observable {
+			key := apply(item)
+			if current != key {
+				out <- item
+				current = key
+			}
+		}
+		close(out)
+	}()
+	return Connectable{Observable: out}
+}

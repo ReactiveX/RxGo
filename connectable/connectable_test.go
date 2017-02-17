@@ -451,3 +451,59 @@ func TestObservableLastWithEmpty(t *testing.T) {
 
 	assert.Exactly(t, []int{}, nums)
 }
+
+func TestConnectableDistinct(t *testing.T) {
+	items := []interface{}{1, 2, 2, 1, 3}
+	it, err := iterable.New(items)
+	if err != nil {
+		t.Fail()
+	}
+
+	co := From(it)
+
+	id := func(item interface{}) interface{} {
+		return item
+	}
+
+	co = co.Distinct(id)
+
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	subs := co.Subscribe(onNext).Connect()
+	<-subs
+
+	assert.Exactly(t, []int{1, 2, 3}, nums)
+}
+
+func TestConnectableDistinctUntilChanged(t *testing.T) {
+	items := []interface{}{1, 2, 2, 1, 3}
+	it, err := iterable.New(items)
+	if err != nil {
+		t.Fail()
+	}
+
+	co := From(it)
+
+	id := func(item interface{}) interface{} {
+		return item
+	}
+
+	co = co.DistinctUntilChanged(id)
+
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	subs := co.Subscribe(onNext).Connect()
+	<-subs
+
+	assert.Exactly(t, []int{1, 2, 1, 3}, nums)
+}
