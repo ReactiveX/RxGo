@@ -445,7 +445,7 @@ func TestObservableFirst(t *testing.T) {
 			nums = append(nums, num)
 		}
 	})
-	
+
 	sub := stream2.Subscribe(onNext)
 	<-sub
 
@@ -513,59 +513,59 @@ func TestObservableLastWithEmpty(t *testing.T) {
 }
 
 func TestObservableDistinct(t *testing.T) {
-	items := []interface{}{1,2,2,1,3}
+	items := []interface{}{1, 2, 2, 1, 3}
 	it, err := iterable.New(items)
 	if err != nil {
 		t.Fail()
 	}
-	
+
 	stream1 := From(it)
-	
+
 	id := func(item interface{}) interface{} {
-			return item
+		return item
 	}
-	
+
 	stream2 := stream1.Distinct(id)
-	
+
 	nums := []int{}
 	onNext := handlers.NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
 	})
-	
+
 	sub := stream2.Subscribe(onNext)
-	<- sub
-	
-	assert.Exactly(t, []int{1,2,3}, nums)
+	<-sub
+
+	assert.Exactly(t, []int{1, 2, 3}, nums)
 }
 
 func TestObservableDistinctUntilChanged(t *testing.T) {
-	items := []interface{}{1,2,2,1,3}
+	items := []interface{}{1, 2, 2, 1, 3}
 	it, err := iterable.New(items)
 	if err != nil {
 		t.Fail()
 	}
-	
+
 	stream1 := From(it)
-	
+
 	id := func(item interface{}) interface{} {
-			return item
+		return item
 	}
-	
+
 	stream2 := stream1.DistinctUntilChanged(id)
-	
+
 	nums := []int{}
 	onNext := handlers.NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
 	})
-	
+
 	sub := stream2.Subscribe(onNext)
-	<- sub
-	
-	assert.Exactly(t, []int{1,2,1,3}, nums)
+	<-sub
+
+	assert.Exactly(t, []int{1, 2, 1, 3}, nums)
 }
 
 func TestObservableScanWithIntegers(t *testing.T) {
@@ -646,4 +646,100 @@ func TestObservableScanWithString(t *testing.T) {
 	}
 
 	assert.Exactly(t, expected, words)
+}
+
+func TestRepeatInfinityOperator(t *testing.T) {
+	myStream := Repeat("mystring")
+
+	item, err := myStream.Next()
+
+	if err != nil {
+		assert.Fail(t, "fail to emit next item", err)
+	}
+
+	if value, ok := item.(string); ok {
+		assert.Equal(t, value, "mystring")
+	} else {
+		assert.Fail(t, "fail to emit next item", err)
+	}
+}
+
+func TestRepeatNtimeOperator(t *testing.T) {
+	myStream := Repeat("mystring", 2)
+	stringarray := []string{}
+
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if value, ok := item.(string); ok {
+			stringarray = append(stringarray, value)
+		}
+	})
+
+	onDone := handlers.DoneFunc(func() {
+		stringarray = append(stringarray, "end")
+	})
+
+	sub := myStream.Subscribe(observer.New(onNext, onDone))
+	<-sub
+
+	assert.Exactly(t, []string{"mystring", "mystring", "end"}, stringarray)
+}
+
+func TestRepeatNtimeMultiVariadicOperator(t *testing.T) {
+	myStream := Repeat("mystring", 2, 2, 3, 4, 5, 6, 7)
+	stringarray := []string{}
+
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if value, ok := item.(string); ok {
+			stringarray = append(stringarray, value)
+		}
+	})
+
+	onDone := handlers.DoneFunc(func() {
+		stringarray = append(stringarray, "end")
+	})
+
+	sub := myStream.Subscribe(observer.New(onNext, onDone))
+	<-sub
+
+	assert.Exactly(t, []string{"mystring", "mystring", "end"}, stringarray)
+}
+
+func TestRepeatWithZeroNtimeOperator(t *testing.T) {
+	myStream := Repeat("mystring", 0)
+	stringarray := []string{}
+
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if value, ok := item.(string); ok {
+			stringarray = append(stringarray, value)
+		}
+	})
+
+	onDone := handlers.DoneFunc(func() {
+		stringarray = append(stringarray, "end")
+	})
+
+	sub := myStream.Subscribe(observer.New(onNext, onDone))
+	<-sub
+
+	assert.Exactly(t, []string{"end"}, stringarray)
+}
+
+func TestRepeatWithNegativeTimesOperator(t *testing.T) {
+	myStream := Repeat("mystring", -10)
+	stringarray := []string{}
+
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if value, ok := item.(string); ok {
+			stringarray = append(stringarray, value)
+		}
+	})
+
+	onDone := handlers.DoneFunc(func() {
+		stringarray = append(stringarray, "end")
+	})
+
+	sub := myStream.Subscribe(observer.New(onNext, onDone))
+	<-sub
+
+	assert.Exactly(t, []string{"end"}, stringarray)
 }
