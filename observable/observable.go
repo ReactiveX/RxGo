@@ -142,7 +142,7 @@ func (o Observable) Last() Observable {
 	return Observable(out)
 }
 
-//Distinct supress duplicate items in the original Observable and returns
+// Distinct suppresses duplicate items in the original Observable and returns
 // a new Observable.
 func (o Observable) Distinct(apply fx.KeySelectorFunc) Observable {
 	out := make(chan interface{})
@@ -161,6 +161,8 @@ func (o Observable) Distinct(apply fx.KeySelectorFunc) Observable {
 	return Observable(out)
 }
 
+// DistinctUntilChanged suppresses consecutive duplicate items in the original
+// Observable and returns a new Observable.
 func (o Observable) DistinctUntilChanged(apply fx.KeySelectorFunc) Observable {
 	out := make(chan interface{})
 	go func() {
@@ -177,7 +179,7 @@ func (o Observable) DistinctUntilChanged(apply fx.KeySelectorFunc) Observable {
 	return Observable(out)
 }
 
-// Skip suppress the first n items in the original Observable and 
+// Skip suppresses the first n items in the original Observable and 
 // returns a new Observable with the rest items.
 func (o Observable) Skip(nth uint) Observable {
 	out := make(chan interface{})
@@ -195,7 +197,7 @@ func (o Observable) Skip(nth uint) Observable {
 	return Observable(out)
 }
 
-// Skip suppress the last n items in the original Observable and
+// Skip suppresses the last n items in the original Observable and
 // returns a new Observable with the rest items.
 func (o Observable) SkipLast(nth uint) Observable {
 	out := make(chan interface{})
@@ -276,6 +278,39 @@ func Interval(term chan struct{}, timeout time.Duration) Observable {
 		close(source)
 	}(term)
 	return Observable(source)
+}
+
+// Repeat creates an Observable emitting a given item repeatedly
+func Repeat(item interface{}, ntimes ...int) Observable {
+	source := make(chan interface{})
+	
+	// this is the infinity case no ntime parameter is given
+	if len(ntimes) == 0 {
+		go func() {
+			for {
+				source <- item
+			}
+			close(source)
+		}()
+		return Observable(source)
+	}
+
+	// this repeat the item ntime
+	if len(ntimes) > 0 {
+		count := ntimes[0]
+		if count <= 0 {
+			return Empty()
+		}
+		go func() {
+			for i := 0; i < count; i++ {
+				source <- item
+			}
+			close(source)
+		}()
+		return Observable(source)
+	}
+
+	return Empty()
 }
 
 // Range creates an Observable that emits a particular range of sequential integers.
