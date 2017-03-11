@@ -30,3 +30,11 @@ _testmain.go
 # Dep directories
 bower_components
 node_modules
+
+# IntelliJ
+.idea
+*.iml
+
+# glide
+glide.lock
+vendor
