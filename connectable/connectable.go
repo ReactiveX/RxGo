@@ -136,15 +136,15 @@ func Start(f fx.EmittableFunc, fs ...fx.EmittableFunc) Connectable {
 }
 
 // Subscribe subscribes an EventHandler and returns a Connectable.
-func (co Connectable) Subscribe(handler rx.EventHandler) Connectable {
-	ob := observable.CheckEventHandler(handler)
+func (co Connectable) Subscribe(handler interface{}) Connectable {
+	ob := observer.New(handler)
 	co.observers = append(co.observers, ob)
 	return co
 }
 
 // Do is like Subscribe but subscribes a func(interface{}) as a NextHandler
 func (co Connectable) Do(nextf func(interface{})) Connectable {
-	ob := observer.Observer{NextHandler: nextf}
+	ob := observer.New(nextf)
 	co.observers = append(co.observers, ob)
 	return co
 }

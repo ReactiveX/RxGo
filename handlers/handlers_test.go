@@ -1,20 +1,12 @@
 package handlers
 
 import (
-	"errors"
 	"fmt"
 	"testing"
 
-	"github.com/reactivex/rxgo"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestHandlersImplementEventHandler(t *testing.T) {
-	assert := assert.New(t)
-	assert.Implements((*rx.EventHandler)(nil), (*NextFunc)(nil))
-	assert.Implements((*rx.EventHandler)(nil), (*ErrFunc)(nil))
-	assert.Implements((*rx.EventHandler)(nil), (*DoneFunc)(nil))
-}
 
 func TestNextFuncHandleMethod(t *testing.T) {
 	assert := assert.New(t)
@@ -24,7 +16,6 @@ func TestNextFuncHandleMethod(t *testing.T) {
 		word = "Hello"
 		pi   = 3.1416
 		ru   = 'ด'
-		err  = errors.New("Anonymous error")
 	)
 
 	samples := []interface{}{}
@@ -34,10 +25,10 @@ func TestNextFuncHandleMethod(t *testing.T) {
 		samples = append(samples, item)
 	})
 
-	nextHandleTests := []interface{}{num, word, pi, ru, err}
+	nextHandleTests := []interface{}{num, word, pi, ru}
 
 	for _, tt := range nextHandleTests {
-		nextf.Handle(tt)
+		nextf(tt)
 	}
 
 	expected := []interface{}{num, word, pi, ru}
@@ -50,7 +41,6 @@ func TestErrFuncHandleMethod(t *testing.T) {
 	var (
 		num  = 1
 		word = "Hello"
-		pi   = 3.1416
 		ru   = 'ด'
 	)
 
@@ -60,15 +50,14 @@ func TestErrFuncHandleMethod(t *testing.T) {
 		samples = append(samples, err)
 	})
 
-	errHandleTests := []interface{}{
+	errHandleTests := []error{
 		fmt.Errorf("Integer %d error", num),
 		fmt.Errorf("String %s error", word),
-		pi,
 		fmt.Errorf("Rune %U error", ru),
 	}
 
 	for _, tt := range errHandleTests {
-		errf.Handle(tt)
+		errf(tt)
 	}
 
 	expected := []error{
@@ -98,8 +87,83 @@ func TestDoneFuncHandleMethod(t *testing.T) {
 
 	doneHandleTests := []interface{}{num, word, pi, ru}
 
-	for n, tt := range doneHandleTests {
-		errf.Handle(tt)
+	for n := range doneHandleTests {
+		errf()
 		assert.Equal(samples[n], "DONE")
+	}
+}
+
+func TestReturnsAsDoneFunc(t *testing.T) {
+	// where
+	type data struct{
+		function interface{}
+		casted bool
+	}
+	testData := [...]data {
+		{ function: func() {},								casted: true,},
+		{ function: DoneFunc(func() {}),					casted: true,},
+		{ function: func(err error) {},						casted: false,},
+		{ function: func(item interface{}) {},				casted: false,},
+		{ function: NextFunc(func(item interface{}) {}),	casted: false,},
+	}
+
+	for _, singleTestData := range testData {
+
+		// when
+		result, ok := AsDoneFunc(singleTestData.function)
+
+		// then
+		assert.IsType(t, DoneFunc(nil), result)
+		assert.Equal(t, singleTestData.casted, ok)
+	}
+}
+
+func TestReturnsAsNextFunc(t *testing.T) {
+	// where
+	type data struct{
+		function interface{}
+		casted bool
+	}
+	testData := [...]data {
+		{ function: func(interface{}) {},			casted: true,},
+		{ function: NextFunc(func(interface{}) {}),	casted: true,},
+		{ function: func(err error) {},				casted: false,},
+		{ function: func() {},						casted: false,},
+		{ function: DoneFunc(func() {}),			casted: false,},
+	}
+
+	for _, singleTestData := range testData {
+
+		// when
+		result, ok := AsNextFunc(singleTestData.function)
+
+		// then
+		assert.IsType(t, NextFunc(nil), result)
+		assert.Equal(t, singleTestData.casted, ok)
+	}
+}
+
+func TestReturnsAsErrFunc(t *testing.T) {
+	// where
+	type data struct{
+		function interface{}
+		casted bool
+	}
+	testData := [...]data {
+		{ function: func(error) {},				casted: true,},
+		{ function: ErrFunc(func(error) {}),	casted: true,},
+		{ function: func(interface{}) {},		casted: false,},
+		{ function: func() {},					casted: false,},
+		{ function: DoneFunc(func() {}),		casted: false,},
+	}
+
+	for _, singleTestData := range testData {
+
+		// when
+		result, ok := AsErrFunc(singleTestData.function)
+
+		// then
+		assert.IsType(t, ErrFunc(nil), result)
+		assert.Equal(t, singleTestData.casted, ok)
 	}
 }

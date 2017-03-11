@@ -173,30 +173,30 @@ func TestSubscribeToManyObservers(t *testing.T) {
 
 	co := From(it)
 
-	ob1 := observer.Observer{
-		NextHandler: func(item interface{}) {
+	ob1 := observer.New(
+		func(item interface{}) {
 			<-time.After(100 * time.Millisecond)
 			nums = append(nums, item.(int))
 		},
-		ErrHandler: func(err error) {
+		func(err error) {
 			errs = append(errs, err)
 		},
-		DoneHandler: func() {
+		func() {
 			dones = append(dones, "D1")
 		},
-	}
+	)
 
-	ob2 := observer.Observer{
-		NextHandler: func(item interface{}) {
+	ob2 := observer.New(
+		func(item interface{}) {
 			nums = append(nums, item.(int)*2)
 		},
-		ErrHandler: func(err error) {
+		func(err error) {
 			errs = append(errs, err)
 		},
-		DoneHandler: func() {
+		func() {
 			dones = append(dones, "D2")
 		},
-	}
+	)
 
 	ob3 := handlers.NextFunc(func(item interface{}) {
 		<-time.After(200 * time.Millisecond)

@@ -12,27 +12,34 @@ type (
 	DoneFunc func()
 )
 
-// Handle registers NextFunc to EventHandler.
-func (handle NextFunc) Handle(item interface{}) {
-	switch item := item.(type) {
-	case error:
-		return
-	default:
-		handle(item)
+func AsNextFunc(handler interface{}) (NextFunc, bool) {
+	switch handler := handler.(type) {
+	case NextFunc:
+		return handler, true
+	case func(interface{}):
+		return NextFunc(handler), true
 	}
+
+	return nil, false
 }
 
-// Handle registers ErrFunc to EventHandler.
-func (handle ErrFunc) Handle(item interface{}) {
-	switch item := item.(type) {
-	case error:
-		handle(item)
-	default:
-		return
+func AsErrFunc(handler interface{}) (ErrFunc, bool) {
+	switch handler := handler.(type) {
+	case ErrFunc:
+		return handler, true
+	case func(error):
+		return ErrFunc(handler), true
 	}
-}
 
-// Handle registers DoneFunc to EventHandler.
-func (handle DoneFunc) Handle(item interface{}) {
-	handle()
+	return nil, false
+}
+func AsDoneFunc(handler interface{}) (DoneFunc, bool) {
+	switch handler := handler.(type) {
+	case DoneFunc:
+		return handler, true
+	case func():
+		return DoneFunc(handler), true
+	}
+
+	return nil, false
 }
