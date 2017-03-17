@@ -3,12 +3,12 @@
 Reactive Extensions for the Go Language
 
 ## Contributions
-All contributions are welcome, both in development and documentation! Be sure you check out [contributions](wiki/Contributions) for more.
+All contributions are welcome, both in development and documentation! Be sure you check out [contributions](https://github.com/ReactiveX/RxGo/wiki/Contributions) for more.
 
 ## Getting Started
 [ReactiveX](http://reactivex.io/), or Rx for short, is an API for programming with observable streams. This is a ReactiveX API for the Go language.
 
-*ReactiveX* is a new, alternative way of asychronous programming to callbacks, promises and deferred. It is about processing streams of events or items, with events being any occurances or changes within the system.
+*ReactiveX* is a new, alternative way of asynchronous programming to callbacks, promises and deferred. It is about processing streams of events or items, with events being any occurrences or changes within the system.
 
 >In Go, it is simpler to think of a observable stream as a channel which can `Subscribe` to a set of handler functions.
 
