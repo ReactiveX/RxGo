@@ -259,7 +259,7 @@ func Empty() Observable {
 
 // Interval creates an Observable emitting incremental integers infinitely between
 // each given time interval.
-func Interval(term chan struct{}, timeout time.Duration) Observable {
+func Interval(term chan struct{}, interval time.Duration) Observable {
 	source := make(chan interface{})
 	go func(term chan struct{}) {
 		i := 0
@@ -268,7 +268,7 @@ func Interval(term chan struct{}, timeout time.Duration) Observable {
 			select {
 			case <-term:
 				break OuterLoop
-			case <-time.After(timeout):
+			case <-time.After(interval):
 				source <- i
 			}
 			i++
