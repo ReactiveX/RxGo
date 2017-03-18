@@ -100,6 +100,45 @@ func (o Observable) Map(apply fx.MappableFunc) Observable {
 	return Observable(out)
 }
 
+// Take takes first n items in the original Obserable and returns
+// a new Observable with the taken items.
+func (o Observable) Take(nth uint) Observable {
+	out := make(chan interface{})
+	go func() {
+		takeCount := 0
+		for item := range o {
+			if (takeCount < int(nth)) {
+				takeCount += 1
+				out <- item
+				continue
+			}
+			break
+		}
+		close(out)
+	}()
+	return Observable(out)
+}
+
+// TakeLast takes last n items in the original Observable and returns
+// a new Observable with the taken items.
+func (o Observable) TakeLast(nth uint) Observable {
+	out := make(chan interface{})
+	go func() {
+		buf := make([]interface{}, nth)
+		for item := range o {
+			if (len(buf) >= int(nth)) {
+				buf = buf[1:]
+			}
+			buf = append(buf, item)
+		}
+		for _, takenItem := range buf {
+			out <- takenItem
+		}
+		close(out)
+	}()
+	return Observable(out)
+}
+
 // Filter filters items in the original Observable and returns
 // a new Observable with the filtered items.
 func (o Observable) Filter(apply fx.FilterableFunc) Observable {

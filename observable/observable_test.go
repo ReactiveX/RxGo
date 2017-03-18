@@ -394,6 +394,87 @@ func TestObservableMap(t *testing.T) {
 	assert.Exactly(t, []int{10, 20, 30}, nums)
 }
 
+func TestObservableTake(t *testing.T) {
+	items := []interface{}{1, 2, 3, 4, 5}
+	it, err := iterable.New(items)
+	if err != nil {
+		t.Fail()
+	}
+
+	stream1 := From(it)
+	stream2 := stream1.Take(3)
+
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	sub := stream2.Subscribe(onNext)
+	<-sub
+
+	assert.Exactly(t, []int{1, 2, 3}, nums)
+}
+
+func TestObservableTakeWithEmpty(t *testing.T) {
+	stream1 := Empty()
+	stream2 := stream1.Take(3)
+
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	sub := stream2.Subscribe(onNext)
+	<-sub
+
+	assert.Exactly(t, []int{}, nums)
+}
+
+func TestObservableTakeLast(t *testing.T) {
+	items := []interface{}{1, 2, 3, 4, 5}
+	it, err := iterable.New(items)
+	if err != nil {
+		t.Fail()
+	}
+
+	stream1 := From(it)
+	stream2 := stream1.TakeLast(3)
+
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	sub := stream2.Subscribe(onNext)
+	<-sub
+
+	assert.Exactly(t, []int{3, 4, 5}, nums)
+}
+
+/*
+func TestObservableTakeLastWithEmpty(t *testing.T) {
+	stream1 := Empty()
+	stream2 := stream1.TakeLast(3)
+
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	sub := stream2.Subscribe(onNext)
+	<-sub
+
+	assert.Exactly(t, []int{}, nums)
+}*/
+
 func TestObservableFilter(t *testing.T) {
 	items := []interface{}{1, 2, 3, 120, []byte("baz"), 7, 10, 13}
 	it, err := iterable.New(items)
