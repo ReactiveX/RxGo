@@ -2,7 +2,11 @@
 // sequences of empty interface such as slice and channel to an Iterator.
 package iterable
 
-import "github.com/reactivex/rxgo/errors"
+import (
+	"reflect"
+
+	"github.com/reactivex/rxgo/errors"
+)
 
 // Iterable converts channel and slice into an Iterator.
 type Iterable <-chan interface{}
@@ -16,22 +20,48 @@ func (it Iterable) Next() (interface{}, error) {
 	return nil, errors.New(errors.EndOfIteratorError)
 }
 
-// New creates a new Iterable from a slice or a channel of empty interface.
+// New creates a new Iterable from a slice or a channel or a map of empty interface.
 func New(any interface{}) (Iterable, error) {
-	switch any := any.(type) {
-	case []interface{}:
-		c := make(chan interface{}, len(any))
+	refAny := reflect.ValueOf(any)
+	switch refAny.Type().Kind() {
+	case reflect.Slice:
+		c := make(chan interface{}, refAny.Len())
 		go func() {
-			for _, val := range any {
-				c <- val
+			for i := 0; i < refAny.Len(); i++ {
+				c <- refAny.Index(i).Interface()
 			}
 			close(c)
 		}()
 		return Iterable(c), nil
-	case chan interface{}:
-		return Iterable(any), nil
-	case <-chan interface{}:
-		return Iterable(any), nil
+	case reflect.Map:
+		keys := refAny.MapKeys()
+		c := make(chan interface{}, len(keys))
+		go func() {
+			for _, key := range keys {
+				c <- []interface{}{key.Interface(), refAny.MapIndex(key).Interface()}
+			}
+			close(c)
+		}()
+		return Iterable(c), nil
+	case reflect.Chan:
+		chanDir := refAny.Type().ChanDir()
+		if chanDir == reflect.SendDir {
+			return nil, errors.New(errors.IterableError)
+		}
+		if refAny.Type().Elem().Kind() == reflect.Interface {
+			if chanDir == reflect.RecvDir {
+				return Iterable(any.(<-chan interface{})), nil
+			}
+			return Iterable(any.(chan interface{})), nil
+		}
+		c := make(chan interface{}, refAny.Cap())
+		go func() {
+			for v, ok := refAny.Recv(); ok; v, ok = refAny.Recv() {
+				c <- v.Interface()
+			}
+			close(c)
+		}()
+		return Iterable(c), nil
 	default:
 		return nil, errors.New(errors.IterableError)
 	}

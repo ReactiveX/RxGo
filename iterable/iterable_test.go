@@ -2,6 +2,7 @@ package iterable
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/reactivex/rxgo"
@@ -92,6 +93,86 @@ func TestCreateHeterogeneousIterable(t *testing.T) {
 
 		if v, err := it2.Next(); err == nil {
 			assert.Equal(item, v)
+		} else {
+			t.Fail()
+		}
+	}
+}
+
+func TestCreateSliceIterable(t *testing.T) {
+	items := []int{}
+
+	for i := 0; i < 10; i++ {
+		items = append(items, i)
+	}
+
+	it, err := New(items)
+	if err != nil {
+		t.Fail()
+	}
+
+	assert := assert.New(t)
+	assert.IsType(Iterable(nil), it)
+
+	for i := 0; i < 10; i++ {
+		if v, err := it.Next(); err == nil {
+			assert.Equal(i, v)
+		} else {
+			t.Fail()
+		}
+	}
+}
+
+func TestCreateMapIterable(t *testing.T) {
+	items := map[string][]string{
+		"a": []string{"aa", "bb"},
+		"b": []string{"ba", "bb"},
+		"c": []string{"ca", "cb"},
+	}
+
+	it, err := New(items)
+	if err != nil {
+		t.Fail()
+	}
+
+	assert := assert.New(t)
+	assert.IsType(Iterable(nil), it)
+
+	for i := 0; i < len(items); i++ {
+		if elem, err := it.Next(); err == nil {
+			vs, _ := elem.([]interface{})
+			k := vs[0].(string)
+			v := vs[1].([]string)
+			val := items[k]
+			assert.Equal(len(val), len(v))
+			assert.Equal(strings.Join(val, ""), strings.Join(v, ""))
+		} else {
+			t.Fail()
+		}
+	}
+}
+
+func TestCreateChanIntIterable(t *testing.T) {
+	ch := make(chan int)
+
+	go func() {
+		for i := 0; i < 10; i++ {
+			ch <- i
+		}
+		close(ch)
+	}()
+
+	it, err := New(ch)
+	if err != nil {
+		t.Fail()
+	}
+
+	assert := assert.New(t)
+	assert.IsType(Iterable(nil), it)
+
+	for i := 0; i < 10; i++ {
+		if v, err := it.Next(); err == nil {
+			assert.Equal(i, v)
 		} else {
 			t.Fail()
 		}
