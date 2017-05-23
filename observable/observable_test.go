@@ -31,29 +31,6 @@ func TestCreateObservableWithConstructor(t *testing.T) {
 
 }
 
-func TestCheckEventHandler(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skip testing of unexported testCheckEventHandler")
-	}
-
-	testtext := ""
-
-	df := handlers.DoneFunc(func() {
-		testtext += "done"
-	})
-
-	myObserver := observer.New(df)
-
-	ob1 := CheckEventHandler(myObserver)
-	ob2 := CheckEventHandler(df)
-
-	ob1.OnDone()
-	assert.Equal(t, "done", testtext)
-
-	ob2.OnDone()
-	assert.Equal(t, "donedone", testtext)
-}
-
 func TestEmptyOperator(t *testing.T) {
 	myStream := Empty()
 	text := ""

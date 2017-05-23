@@ -7,7 +7,6 @@ import (
 	"github.com/reactivex/rxgo"
 	"github.com/reactivex/rxgo/errors"
 	"github.com/reactivex/rxgo/fx"
-	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/observer"
 	"github.com/reactivex/rxgo/subscription"
 )
@@ -22,22 +21,6 @@ func New(buffer uint) Observable {
 	return make(Observable, int(buffer))
 }
 
-// CheckHandler checks the underlying type of an EventHandler.
-func CheckEventHandler(handler rx.EventHandler) observer.Observer {
-	ob := observer.DefaultObserver
-	switch handler := handler.(type) {
-	case handlers.NextFunc:
-		ob.NextHandler = handler
-	case handlers.ErrFunc:
-		ob.ErrHandler = handler
-	case handlers.DoneFunc:
-		ob.DoneHandler = handler
-	case observer.Observer:
-		ob = handler
-	}
-	return ob
-}
-
 // Next returns the next item on the Observable.
 func (o Observable) Next() (interface{}, error) {
 	if next, ok := <-o; ok {
@@ -47,11 +30,11 @@ func (o Observable) Next() (interface{}, error) {
 }
 
 // Subscribe subscribes an EventHandler and returns a Subscription channel.
-func (o Observable) Subscribe(handler rx.EventHandler) <-chan subscription.Subscription {
+func (o Observable) Subscribe(handler interface{}) <-chan subscription.Subscription {
 	done := make(chan subscription.Subscription)
 	sub := subscription.New().Subscribe()
 
-	ob := CheckEventHandler(handler)
+	ob := observer.New(handler)
 
 	go func() {
 	OuterLoop:
