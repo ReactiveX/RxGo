@@ -3,6 +3,7 @@ package observable
 import (
 	"errors"
 	"net/http"
+	"sort"
 	"testing"
 	"time"
 
@@ -503,7 +504,7 @@ func TestObservableFirst(t *testing.T) {
 			nums = append(nums, num)
 		}
 	})
-	
+
 	sub := stream2.Subscribe(onNext)
 	<-sub
 
@@ -571,59 +572,59 @@ func TestObservableLastWithEmpty(t *testing.T) {
 }
 
 func TestObservableDistinct(t *testing.T) {
-	items := []interface{}{1,2,2,1,3}
+	items := []interface{}{1, 2, 2, 1, 3}
 	it, err := iterable.New(items)
 	if err != nil {
 		t.Fail()
 	}
-	
+
 	stream1 := From(it)
-	
+
 	id := func(item interface{}) interface{} {
-			return item
+		return item
 	}
-	
+
 	stream2 := stream1.Distinct(id)
-	
+
 	nums := []int{}
 	onNext := handlers.NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
 	})
-	
+
 	sub := stream2.Subscribe(onNext)
-	<- sub
-	
-	assert.Exactly(t, []int{1,2,3}, nums)
+	<-sub
+
+	assert.Exactly(t, []int{1, 2, 3}, nums)
 }
 
 func TestObservableDistinctUntilChanged(t *testing.T) {
-	items := []interface{}{1,2,2,1,3}
+	items := []interface{}{1, 2, 2, 1, 3}
 	it, err := iterable.New(items)
 	if err != nil {
 		t.Fail()
 	}
-	
+
 	stream1 := From(it)
-	
+
 	id := func(item interface{}) interface{} {
-			return item
+		return item
 	}
-	
+
 	stream2 := stream1.DistinctUntilChanged(id)
-	
+
 	nums := []int{}
 	onNext := handlers.NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
 	})
-	
+
 	sub := stream2.Subscribe(onNext)
-	<- sub
-	
-	assert.Exactly(t, []int{1,2,1,3}, nums)
+	<-sub
+
+	assert.Exactly(t, []int{1, 2, 1, 3}, nums)
 }
 
 func TestObservableScanWithIntegers(t *testing.T) {
@@ -704,4 +705,46 @@ func TestObservableScanWithString(t *testing.T) {
 	}
 
 	assert.Exactly(t, expected, words)
+}
+
+func TestMergeOperator(t *testing.T) {
+	items1 := []interface{}{1, 2, 3}
+	items2 := []interface{}{4, 5, 6}
+	items3 := []interface{}{7, 8, 9}
+
+	it1, err := iterable.New(items1)
+	if err != nil {
+		t.Fail()
+	}
+	it2, err := iterable.New(items2)
+	if err != nil {
+		t.Fail()
+	}
+	it3, err := iterable.New(items3)
+	if err != nil {
+		t.Fail()
+	}
+
+	stream1 := From(it1)
+	stream2 := From(it2)
+	stream3 := From(it3)
+
+	streamMerged := Merge(stream1, stream2, stream3)
+
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	sub := streamMerged.Subscribe(onNext)
+	<-sub
+
+	sort.Ints(nums)
+	excepted := []int{
+		1, 2, 3, 4, 5, 6, 7, 8, 9,
+	}
+
+	assert.Exactly(t, excepted, nums)
 }
