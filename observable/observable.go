@@ -1,6 +1,7 @@
 package observable
 
 import (
+	"reflect"
 	"sync"
 	"time"
 
@@ -90,7 +91,7 @@ func (o Observable) Take(nth uint) Observable {
 	go func() {
 		takeCount := 0
 		for item := range o {
-			if (takeCount < int(nth)) {
+			if takeCount < int(nth) {
 				takeCount += 1
 				out <- item
 				continue
@@ -109,7 +110,7 @@ func (o Observable) TakeLast(nth uint) Observable {
 	go func() {
 		buf := make([]interface{}, nth)
 		for item := range o {
-			if (len(buf) >= int(nth)) {
+			if len(buf) >= int(nth) {
 				buf = buf[1:]
 			}
 			buf = append(buf, item)
@@ -321,4 +322,29 @@ func Start(f fx.EmittableFunc, fs ...fx.EmittableFunc) Observable {
 	}()
 
 	return Observable(source)
+}
+
+// Combine multiple Observables into one by merging their emissions
+func Merge(o1 Observable, o2 Observable, on ...Observable) Observable {
+	out := make(chan interface{})
+	go func() {
+		chans := append([]Observable{o1, o2}, on...)
+		count := len(chans)
+		cases := make([]reflect.SelectCase, count)
+		for i := range cases {
+			cases[i].Dir = reflect.SelectRecv
+			cases[i].Chan = reflect.ValueOf(chans[i])
+		}
+		for count > 0 {
+			chosen, recv, recvOk := reflect.Select(cases)
+			if recvOk {
+				out <- recv.Interface()
+			} else {
+				cases[chosen].Chan = reflect.ValueOf(nil)
+				count--
+			}
+		}
+		close(out)
+	}()
+	return Observable(out)
 }
