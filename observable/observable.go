@@ -370,14 +370,12 @@ func CombineLatest(o []Observable, apply fx.CombinableFunc) Observable {
 		for count > 0 {
 			chosen, recv, recvOk := reflect.Select(cases)
 			if recvOk {
+				if is[chosen] == none {
+					left--
+				}
+				is[chosen] = recv.Interface()
 				if left == 0 {
-					is[chosen] = recv.Interface()
 					out <- apply(is)
-				} else {
-					if is[chosen] == none {
-						left--
-					}
-					is[chosen] = recv.Interface()
 				}
 			} else {
 				cases[chosen].Chan = reflect.ValueOf(nil)

@@ -777,7 +777,7 @@ func TestCombineLatestOperator(t *testing.T) {
 	<-sub
 
 	excepted := []int{
-		1, 11, 111, 112, 122, 222,
+		0, 1, 11, 111, 112, 122, 222,
 	}
 
 	assert.Exactly(t, excepted, nums)
