@@ -17,6 +17,8 @@ type Observable <-chan interface{}
 
 var DefaultObservable = make(Observable)
 
+var none = new(int)
+
 // New creates an Observable
 func New(buffer uint) Observable {
 	return make(Observable, int(buffer))
