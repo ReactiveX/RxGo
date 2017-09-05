@@ -748,3 +748,37 @@ func TestMergeOperator(t *testing.T) {
 
 	assert.Exactly(t, excepted, nums)
 }
+
+func TestCombineLatestOperator(t *testing.T) {
+	stream1 := Interval(make(chan struct{}), 25*time.Millisecond).Take(3)
+	stream2 := Interval(make(chan struct{}), 30*time.Millisecond).Take(3).Map(func(in interface{}) interface{} {
+		return in.(int) * 10
+	})
+	stream3 := Interval(make(chan struct{}), 35*time.Millisecond).Take(3).Map(func(in interface{}) interface{} {
+		return in.(int) * 100
+	})
+
+	streamCombineLatest := CombineLatest([]Observable{stream1, stream2, stream3}, func(is []interface{}) interface{} {
+		sum := 0
+		for _, i := range is {
+			sum += i.(int)
+		}
+		return sum
+	})
+
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	sub := streamCombineLatest.Subscribe(onNext)
+	<-sub
+
+	excepted := []int{
+		1, 11, 111, 112, 122, 222,
+	}
+
+	assert.Exactly(t, excepted, nums)
+}
