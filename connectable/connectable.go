@@ -74,7 +74,7 @@ func Interval(term chan struct{}, timeout time.Duration) Connectable {
 	return Connectable{Observable: source}
 }
 
-// Range creates an Observable that emits a particular range of sequential integers.
+// Range creates an Connectable that emits a particular range of sequential integers.
 func Range(start, end int) Connectable {
 	source := make(chan interface{})
 	go func() {
