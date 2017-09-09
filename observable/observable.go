@@ -236,7 +236,7 @@ func (o Observable) Skip(nth uint) Observable {
 	return Observable(out)
 }
 
-// Skip suppresses the last n items in the original Observable and
+// SkipLast suppresses the last n items in the original Observable and
 // returns a new Observable with the rest items.
 func (o Observable) SkipLast(nth uint) Observable {
 	out := make(chan interface{})
