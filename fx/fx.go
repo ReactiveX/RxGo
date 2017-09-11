@@ -20,6 +20,6 @@ type (
 	// KeySelectorFunc defines a func that should be passed to the Distinct operator.
 	KeySelectorFunc func(interface{}) interface{}
 
-	// CombinableFunc defines a func that should should be passed to the CombinableLateast operator
+	// CombinableFunc defines a func that should should be passed to the CombinableLateast operator.
 	CombinableFunc func([]interface{}) interface{}
 )
