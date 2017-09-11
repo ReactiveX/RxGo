@@ -351,7 +351,7 @@ func Merge(o1 Observable, o2 Observable, on ...Observable) Observable {
 	return Observable(out)
 }
 
-//CombineLatest emits an item whenever any of the source Observables emits an item
+// CombineLatest emits an item whenever any of the source Observables emits an item
 func CombineLatest(o []Observable, apply fx.CombinableFunc) Observable {
 	out := make(chan interface{})
 	go func() {
