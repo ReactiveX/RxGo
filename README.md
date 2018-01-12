@@ -174,7 +174,7 @@ f2 := func() interface{} {
 	return 2
 }
 
-onNext := handlers.NextFunc(func(v iterface{}) {
+onNext := handlers.NextFunc(func(v interface{}) {
 	val := encodeVal(v)
 	saveToDB(val)
 })
