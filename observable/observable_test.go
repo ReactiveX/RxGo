@@ -12,6 +12,7 @@ import (
 	"github.com/reactivex/rxgo/observer"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestDefaultObservable(t *testing.T) {
@@ -614,7 +615,7 @@ func TestObservableSkip(t *testing.T) {
 	sub := stream2.Subscribe(onNext)
 	<-sub
 
-	assert.Exactly(t, []int{5,1,8}, nums)	
+	assert.Exactly(t, []int{5, 1, 8}, nums)
 }
 
 func TestObservableSkipWithEmpty(t *testing.T) {
@@ -632,7 +633,7 @@ func TestObservableSkipWithEmpty(t *testing.T) {
 	sub := stream2.Subscribe(onNext)
 	<-sub
 
-	assert.Exactly(t, []int{}, nums)	
+	assert.Exactly(t, []int{}, nums)
 }
 
 func TestObservableSkipLast(t *testing.T) {
@@ -656,7 +657,7 @@ func TestObservableSkipLast(t *testing.T) {
 	sub := stream2.Subscribe(onNext)
 	<-sub
 
-	assert.Exactly(t, []int{0, 1, 3}, nums)	
+	assert.Exactly(t, []int{0, 1, 3}, nums)
 }
 
 func TestObservableSkipLastWithEmpty(t *testing.T) {
@@ -674,9 +675,8 @@ func TestObservableSkipLastWithEmpty(t *testing.T) {
 	sub := stream2.Subscribe(onNext)
 	<-sub
 
-	assert.Exactly(t, []int{}, nums)	
+	assert.Exactly(t, []int{}, nums)
 }
-
 
 func TestObservableDistinct(t *testing.T) {
 	items := []interface{}{1, 2, 2, 1, 3}
@@ -908,4 +908,20 @@ func TestRepeatWithNegativeTimesOperator(t *testing.T) {
 	<-sub
 
 	assert.Exactly(t, []string{"end"}, stringarray)
+}
+
+func TestEmptyCompletesSequence(t *testing.T) {
+	// given
+	emissionObserver := observer.NewObserverMock()
+
+	// and empty sequence
+	sequence := Empty()
+
+	// when subscribes to the sequence
+	<-sequence.Subscribe(emissionObserver.Capture())
+
+	// then completes without any emission
+	emissionObserver.AssertNotCalled(t, "OnNext", mock.Anything)
+	emissionObserver.AssertNotCalled(t, "OnError", mock.Anything)
+	emissionObserver.AssertCalled(t, "OnDone")
 }

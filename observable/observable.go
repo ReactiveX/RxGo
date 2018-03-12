@@ -244,10 +244,10 @@ func (o Observable) SkipLast(nth uint) Observable {
 		buf := make(chan interface{}, nth)
 		for item := range o {
 			select {
-				case buf <- item:
-				default:
-					out <- (<- buf)
-					buf <- item
+			case buf <- item:
+			default:
+				out <- (<-buf)
+				buf <- item
 			}
 		}
 		close(buf)
@@ -255,7 +255,6 @@ func (o Observable) SkipLast(nth uint) Observable {
 	}()
 	return Observable(out)
 }
-
 
 // Scan applies ScannableFunc predicate to each item in the original
 // Observable sequentially and emits each successive value on a new Observable.
@@ -322,7 +321,7 @@ func Interval(term chan struct{}, interval time.Duration) Observable {
 // Repeat creates an Observable emitting a given item repeatedly
 func Repeat(item interface{}, ntimes ...int) Observable {
 	source := make(chan interface{})
-	
+
 	// this is the infinity case no ntime parameter is given
 	if len(ntimes) == 0 {
 		go func() {
