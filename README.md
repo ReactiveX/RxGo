@@ -103,39 +103,38 @@ never be called, and vice versa.
 The concept is to group all side effects into these handlers and let an `Observer` or any `EventHandler` to handle them. 
 
 ```go
-
 package main
-import (
-	"fmt"
-	"time"
 
-	"github.com/reactivex/rxgo"
-	"github.com/reactivex/rxgo/handlers"
+import (
+        "fmt"
+
+        "github.com/reactivex/rxgo/handlers"
+        "github.com/reactivex/rxgo/observable"
+        "github.com/reactivex/rxgo/observer"
 )
 
 func main() {
 
-	score := 9
+        score := 9
 
-	onNext := handlers.NextFunc(func(item interface{}) {
-		if num, ok := item.(int); ok {
-			score += num
-		}
-	})
+        onNext := handlers.NextFunc(func(item interface{}) {
+                if num, ok := item.(int); ok {
+                        score += num
+                }
+        })
 
-	onDone := handlers.DoneFunc(func() {
-		score *= 2
-	})
+        onDone := handlers.DoneFunc(func() {
+                score *= 2
+        })
 
-	watcher := observer.New(onNext, onDone)
+        watcher := observer.New(onNext, onDone)
 
-	// Create an `Observable` from a single item and subscribe to the observer.
-	sub := observable.Just(1).Subscribe(watcher)
-	<-sub
+        // Create an `Observable` from a single item and subscribe to the observer.
+        sub := observable.Just(1).Subscribe(watcher)
+        <-sub
 
-	fmt.Println(score) // 20
+        fmt.Println(score) // 20
 }
-
 ```
 
 Please check out the [examples](examples/) to see how it can be applied to reactive applications.
