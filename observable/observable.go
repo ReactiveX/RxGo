@@ -1,6 +1,7 @@
 package observable
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -9,7 +10,8 @@ import (
 	"github.com/reactivex/rxgo/fx"
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/observer"
-	"github.com/reactivex/rxgo/subscription"
+
+	base "github.com/reactivex/rxgo/rx"
 )
 
 // Observable is a basic observable channel
@@ -22,7 +24,7 @@ func New(buffer uint) Observable {
 	return make(Observable, int(buffer))
 }
 
-// CheckHandler checks the underlying type of an EventHandler.
+// CheckEventHandler checks the underlying type of an EventHandler.
 func CheckEventHandler(handler rx.EventHandler) observer.Observer {
 	ob := observer.DefaultObserver
 	switch handler := handler.(type) {
@@ -46,8 +48,16 @@ func (o Observable) Next() (interface{}, error) {
 	return nil, errors.New(errors.EndOfIteratorError)
 }
 
+func (o Observable) Subscribe(ob base.Observer, ctxfunc interface{}) (context.Context, context.CancelFunc) {
+	if ctxfunc == nil {
+		ctxfunc = context.WithCancel
+	}
+	ctx, cancel := ctxfunc(context.Background())
+	defer cancel()
+}
+
 // Subscribe subscribes an EventHandler and returns a Subscription channel.
-func (o Observable) Subscribe(handler rx.EventHandler) <-chan subscription.Subscription {
+/* func (o Observable) Subscribe(handler rx.EventHandler) <-chan subscription.Subscription {
 	done := make(chan subscription.Subscription)
 	sub := subscription.New().Subscribe()
 
@@ -78,7 +88,7 @@ func (o Observable) Subscribe(handler rx.EventHandler) <-chan subscription.Subsc
 	}()
 
 	return done
-}
+} */
 
 /*
 func (o Observable) Unsubscribe() subscription.Subscription {
@@ -107,7 +117,7 @@ func (o Observable) Take(nth uint) Observable {
 	go func() {
 		takeCount := 0
 		for item := range o {
-			if (takeCount < int(nth)) {
+			if takeCount < int(nth) {
 				takeCount += 1
 				out <- item
 				continue
@@ -126,7 +136,7 @@ func (o Observable) TakeLast(nth uint) Observable {
 	go func() {
 		buf := make([]interface{}, nth)
 		for item := range o {
-			if (len(buf) >= int(nth)) {
+			if len(buf) >= int(nth) {
 				buf = buf[1:]
 			}
 			buf = append(buf, item)
@@ -218,14 +228,14 @@ func (o Observable) DistinctUntilChanged(apply fx.KeySelectorFunc) Observable {
 	return Observable(out)
 }
 
-// Skip suppresses the first n items in the original Observable and 
+// Skip suppresses the first n items in the original Observable and
 // returns a new Observable with the rest items.
 func (o Observable) Skip(nth uint) Observable {
 	out := make(chan interface{})
 	go func() {
 		skipCount := 0
 		for item := range o {
-			if (skipCount < int(nth)) {
+			if skipCount < int(nth) {
 				skipCount += 1
 				continue
 			}
@@ -244,10 +254,10 @@ func (o Observable) SkipLast(nth uint) Observable {
 		buf := make(chan interface{}, nth)
 		for item := range o {
 			select {
-				case buf <- item:
-				default:
-					out <- (<- buf)
-					buf <- item
+			case buf <- item:
+			default:
+				out <- (<-buf)
+				buf <- item
 			}
 		}
 		close(buf)
@@ -255,7 +265,6 @@ func (o Observable) SkipLast(nth uint) Observable {
 	}()
 	return Observable(out)
 }
-
 
 // Scan applies ScannableFunc predicate to each item in the original
 // Observable sequentially and emits each successive value on a new Observable.
@@ -322,7 +331,7 @@ func Interval(term chan struct{}, interval time.Duration) Observable {
 // Repeat creates an Observable emitting a given item repeatedly
 func Repeat(item interface{}, ntimes ...int) Observable {
 	source := make(chan interface{})
-	
+
 	// this is the infinity case no ntime parameter is given
 	if len(ntimes) == 0 {
 		go func() {
