@@ -3,7 +3,6 @@ package rx
 import (
 	"context"
 	"time"
-	"github.com/reactivex/rxgo/fx"
 )
 
 // rx contains high-level interface types that can be extended
@@ -32,7 +31,6 @@ type Observable interface {
 	Subscribe(Observer) Emitter
 }
 
-
 // An Observer IS a Handler that CAN Observe an Observable and Handle its emitted value(s).
 // Example:
 //
@@ -47,7 +45,7 @@ type Observable interface {
 //         return n * 2
 // })
 // func (ob ObserverB) Handle(v interface{}) {
-//         // for every emission that's an int, multiply it by 2 and print the product     
+//         // for every emission that's an int, multiply it by 2 and print the product
 //         if n, ok := v.(int); ok {
 //                 num := ob(n)
 //                 fmt.Println(num)
@@ -68,4 +66,3 @@ type Observer interface {
 type Handler interface {
 	Handle(interface{})
 }
-
