@@ -110,14 +110,14 @@ never be called, and vice versa.
 The concept is to group all side effects into these handlers and let an `Observer` or any `EventHandler` to handle them. 
 
 ```go
-
 package main
+
 import (
 	"fmt"
-	"time"
 
-	"github.com/reactivex/rxgo"
 	"github.com/reactivex/rxgo/handlers"
+	"github.com/reactivex/rxgo/observable"
+	"github.com/reactivex/rxgo/observer"
 )
 
 func main() {
@@ -142,7 +142,6 @@ func main() {
 
 	fmt.Println(score) // 20
 }
-
 ```
 
 Please check out the [examples](examples/) to see how it can be applied to reactive applications.
