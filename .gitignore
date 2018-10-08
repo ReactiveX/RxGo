@@ -30,3 +30,8 @@ _testmain.go
 # Dep directories
 bower_components
 node_modules
+vendor
+
+# IDE Configuration
+.idea
+.vscode
