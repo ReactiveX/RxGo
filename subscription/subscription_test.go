@@ -17,12 +17,8 @@ func TestCreateSubscription(t *testing.T) {
 }
 
 func TestSubscription(t *testing.T) {
-	var first time.Time
-	go func() {
-		first = time.Now()
-	}()
-
 	sub := New().Subscribe()
+	first := sub.SubscribeAt
 	<-time.After(10 * time.Millisecond)
 	sub = sub.Unsubscribe()
 
