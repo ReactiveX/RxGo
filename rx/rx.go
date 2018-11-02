@@ -26,8 +26,8 @@ type Emitter interface {
 // Observable IS an Iterator that CAN Subscribe one or more
 // Observer(s) and immediately return an Emitter (see Emitter).
 type Observable interface {
-	// Iterator
-	Iterable
+	Iterator
+	//Iterable
 	Subscribe(Observer) Emitter
 }
 
