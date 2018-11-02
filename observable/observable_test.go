@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/reactivex/rxgo/rx"
+
 	"github.com/reactivex/rxgo/fx"
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/iterable"
@@ -13,6 +15,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 )
+
+func TestImplementsEmitter(t *testing.T) {
+	var observable interface{} = New(0)
+	_, isObservable := observable.(rx.Observable)
+	assert.True(t, isObservable, "observable should be implementation of Observable interface")
+}
 
 func TestDefaultObservable(t *testing.T) {
 	assert.Equal(t, 0, cap(DefaultObservable))
@@ -61,8 +69,8 @@ func TestEmptyOperator(t *testing.T) {
 	onDone := handlers.DoneFunc(func() {
 		text += "done"
 	})
-	sub := myStream.Subscribe(onDone)
-	<-sub
+	emitter := myStream.Subscribe(observer.New(onDone))
+	<-emitter.Done()
 
 	assert.Equal(t, "done", text)
 }
@@ -82,8 +90,8 @@ func TestIntervalOperator(t *testing.T) {
 		}
 	})
 
-	sub := myStream.Subscribe(onNext)
-	<-sub
+	emitter := myStream.Subscribe(observer.New(onNext))
+	<-emitter.Done()
 
 	assert.Exactly(t, []int{0, 1, 2, 3, 4, 5}, nums)
 }
@@ -102,8 +110,8 @@ func TestRangeOperator(t *testing.T) {
 		nums = append(nums, 1000)
 	})
 
-	sub := myStream.Subscribe(observer.New(onNext, onDone))
-	<-sub
+	emitter := myStream.Subscribe(observer.New(observer.New(onNext, onDone)))
+	<-emitter.Done()
 
 	assert.Exactly(t, []int{2, 3, 4, 5, 1000}, nums)
 }
@@ -118,8 +126,8 @@ func TestJustOperator(t *testing.T) {
 		stuff = append(stuff, item)
 	})
 
-	sub := myStream.Subscribe(onNext)
-	<-sub
+	emitter := myStream.Subscribe(observer.New(onNext))
+	<-emitter.Done()
 
 	expected := []interface{}{
 		1, 2.01, "foo", map[string]string{"bar": "baz"}, 'a',
@@ -145,8 +153,8 @@ func TestFromOperator(t *testing.T) {
 		}
 	})
 
-	sub := myStream.Subscribe(onNext)
-	<-sub
+	emitter := myStream.Subscribe(observer.New(onNext))
+	<-emitter.Done()
 
 	expected := []interface{}{1, 3.1416}
 	assert.Len(t, nums, 2)
@@ -247,11 +255,11 @@ func TestStartOperator(t *testing.T) {
 
 	myStream := Start(d1, d3, d4, e1, d2)
 
-	sub := myStream.Subscribe(myObserver)
-	s := <-sub
+	emitter := myStream.Subscribe(observer.New(myObserver))
+	<-emitter.Done()
 
 	assert.Exactly(t, []int{200, 301, 500}, responseCodes)
-	assert.Equal(t, "Bad URL", s.Err().Error())
+	assert.Equal(t, "Bad URL", emitter.Err().Error())
 
 	// Error should have prevented OnDone from being called
 	assert.False(t, done)
@@ -267,8 +275,8 @@ func TestSubscribeToNextFunc(t *testing.T) {
 		}
 	})
 
-	done := myStream.Subscribe(nf)
-	<-done
+	emitter := myStream.Subscribe(observer.New(nf))
+	<-emitter.Done()
 
 	assert.Equal(t, 6, mynum)
 }
@@ -282,11 +290,11 @@ func TestSubscribeToErrFunc(t *testing.T) {
 		myerr = err
 	})
 
-	done := myStream.Subscribe(ef)
-	sub := <-done
+	emitter := myStream.Subscribe(observer.New(ef))
+	<-emitter.Done()
 
 	assert.Equal(t, "bang", myerr.Error())
-	assert.Equal(t, "bang", sub.Error.Error())
+	assert.Equal(t, "bang", emitter.Err().Error())
 }
 
 func TestSubscribeToDoneFunc(t *testing.T) {
@@ -298,8 +306,8 @@ func TestSubscribeToDoneFunc(t *testing.T) {
 		donetext = "done"
 	})
 
-	done := myStream.Subscribe(df)
-	<-done
+	emitter := myStream.Subscribe(observer.New(df))
+	<-emitter.Done()
 
 	assert.Equal(t, "done", donetext)
 }
@@ -341,8 +349,8 @@ func TestSubscribeToObserver(t *testing.T) {
 
 	ob := observer.New(onNext, onError, onDone)
 
-	done := myStream.Subscribe(ob)
-	sub := <-done
+	emitter := myStream.Subscribe(ob)
+	<-emitter.Done()
 
 	assert.Empty(integers)
 	assert.False(finished)
@@ -359,7 +367,7 @@ func TestSubscribeToObserver(t *testing.T) {
 		assert.Equal(expectedChars[n], char)
 	}
 
-	assert.Equal("bang", sub.Err().Error())
+	assert.Equal("bang", emitter.Err().Error())
 }
 
 func TestObservableMap(t *testing.T) {
@@ -388,8 +396,8 @@ func TestObservableMap(t *testing.T) {
 		}
 	})
 
-	sub := stream2.Subscribe(onNext)
-	<-sub
+	emitter := stream2.Subscribe(observer.New(onNext))
+	<-emitter.Done()
 
 	assert.Exactly(t, []int{10, 20, 30}, nums)
 }
@@ -411,8 +419,8 @@ func TestObservableTake(t *testing.T) {
 		}
 	})
 
-	sub := stream2.Subscribe(onNext)
-	<-sub
+	emitter := stream2.Subscribe(observer.New(onNext))
+	<-emitter.Done()
 
 	assert.Exactly(t, []int{1, 2, 3}, nums)
 }
@@ -428,8 +436,8 @@ func TestObservableTakeWithEmpty(t *testing.T) {
 		}
 	})
 
-	sub := stream2.Subscribe(onNext)
-	<-sub
+	emitter := stream2.Subscribe(observer.New(onNext))
+	<-emitter.Done()
 
 	assert.Exactly(t, []int{}, nums)
 }
@@ -451,8 +459,8 @@ func TestObservableTakeLast(t *testing.T) {
 		}
 	})
 
-	sub := stream2.Subscribe(onNext)
-	<-sub
+	emitter := stream2.Subscribe(observer.New(onNext))
+	<-emitter.Done()
 
 	assert.Exactly(t, []int{3, 4, 5}, nums)
 }
@@ -469,8 +477,8 @@ func TestObservableTakeLastWithEmpty(t *testing.T) {
 		}
 	})
 
-	sub := stream2.Subscribe(onNext)
-	<-sub
+	emitter := stream2.Subscribe(observer.New(onNext))
+	<-emitter.Done()
 
 	assert.Exactly(t, []int{}, nums)
 }*/
@@ -504,8 +512,8 @@ func TestObservableFilter(t *testing.T) {
 		}
 	})
 
-	sub := stream2.Subscribe(onNext)
-	<-sub
+	emitter := stream2.Subscribe(observer.New(onNext))
+	<-emitter.Done()
 
 	assert.Exactly(t, []int{1, 2, 3, 7}, nums)
 }
@@ -527,8 +535,8 @@ func TestObservableFirst(t *testing.T) {
 		}
 	})
 
-	sub := stream2.Subscribe(onNext)
-	<-sub
+	emitter := stream2.Subscribe(observer.New(onNext))
+	<-emitter.Done()
 
 	assert.Exactly(t, []int{0}, nums)
 }
@@ -545,8 +553,8 @@ func TestObservableFirstWithEmpty(t *testing.T) {
 		}
 	})
 
-	sub := stream2.Subscribe(onNext)
-	<-sub
+	emitter := stream2.Subscribe(observer.New(onNext))
+	<-emitter.Done()
 
 	assert.Exactly(t, []int{}, nums)
 }
@@ -569,8 +577,8 @@ func TestObservableLast(t *testing.T) {
 		}
 	})
 
-	sub := stream2.Subscribe(onNext)
-	<-sub
+	emitter := stream2.Subscribe(observer.New(onNext))
+	<-emitter.Done()
 
 	assert.Exactly(t, []int{3}, nums)
 }
@@ -587,8 +595,8 @@ func TestObservableLastWithEmpty(t *testing.T) {
 		}
 	})
 
-	sub := stream2.Subscribe(onNext)
-	<-sub
+	emitter := stream2.Subscribe(observer.New(onNext))
+	<-emitter.Done()
 
 	assert.Exactly(t, []int{}, nums)
 }
@@ -611,10 +619,10 @@ func TestObservableSkip(t *testing.T) {
 		}
 	})
 
-	sub := stream2.Subscribe(onNext)
-	<-sub
+	emitter := stream2.Subscribe(observer.New(onNext))
+	<-emitter.Done()
 
-	assert.Exactly(t, []int{5,1,8}, nums)	
+	assert.Exactly(t, []int{5, 1, 8}, nums)
 }
 
 func TestObservableSkipWithEmpty(t *testing.T) {
@@ -629,10 +637,10 @@ func TestObservableSkipWithEmpty(t *testing.T) {
 		}
 	})
 
-	sub := stream2.Subscribe(onNext)
-	<-sub
+	emitter := stream2.Subscribe(observer.New(onNext))
+	<-emitter.Done()
 
-	assert.Exactly(t, []int{}, nums)	
+	assert.Exactly(t, []int{}, nums)
 }
 
 func TestObservableSkipLast(t *testing.T) {
@@ -653,10 +661,10 @@ func TestObservableSkipLast(t *testing.T) {
 		}
 	})
 
-	sub := stream2.Subscribe(onNext)
-	<-sub
+	emitter := stream2.Subscribe(observer.New(onNext))
+	<-emitter.Done()
 
-	assert.Exactly(t, []int{0, 1, 3}, nums)	
+	assert.Exactly(t, []int{0, 1, 3}, nums)
 }
 
 func TestObservableSkipLastWithEmpty(t *testing.T) {
@@ -671,12 +679,11 @@ func TestObservableSkipLastWithEmpty(t *testing.T) {
 		}
 	})
 
-	sub := stream2.Subscribe(onNext)
-	<-sub
+	emitter := stream2.Subscribe(observer.New(onNext))
+	<-emitter.Done()
 
-	assert.Exactly(t, []int{}, nums)	
+	assert.Exactly(t, []int{}, nums)
 }
-
 
 func TestObservableDistinct(t *testing.T) {
 	items := []interface{}{1, 2, 2, 1, 3}
@@ -700,8 +707,8 @@ func TestObservableDistinct(t *testing.T) {
 		}
 	})
 
-	sub := stream2.Subscribe(onNext)
-	<-sub
+	emitter := stream2.Subscribe(observer.New(onNext))
+	<-emitter.Done()
 
 	assert.Exactly(t, []int{1, 2, 3}, nums)
 }
@@ -728,8 +735,8 @@ func TestObservableDistinctUntilChanged(t *testing.T) {
 		}
 	})
 
-	sub := stream2.Subscribe(onNext)
-	<-sub
+	emitter := stream2.Subscribe(observer.New(onNext))
+	<-emitter.Done()
 
 	assert.Exactly(t, []int{1, 2, 1, 3}, nums)
 }
@@ -764,8 +771,8 @@ func TestObservableScanWithIntegers(t *testing.T) {
 		}
 	})
 
-	sub := stream2.Subscribe(onNext)
-	<-sub
+	emitter := stream2.Subscribe(observer.New(onNext))
+	<-emitter.Done()
 
 	assert.Exactly(t, []int{0, 1, 4, 9, 10, 18}, nums)
 }
@@ -800,8 +807,8 @@ func TestObservableScanWithString(t *testing.T) {
 		}
 	})
 
-	sub := stream2.Subscribe(onNext)
-	<-sub
+	emitter := stream2.Subscribe(observer.New(onNext))
+	<-emitter.Done()
 
 	expected := []string{
 		"hello",
@@ -844,8 +851,8 @@ func TestRepeatNtimeOperator(t *testing.T) {
 		stringarray = append(stringarray, "end")
 	})
 
-	sub := myStream.Subscribe(observer.New(onNext, onDone))
-	<-sub
+	emitter := myStream.Subscribe(observer.New(observer.New(onNext, onDone)))
+	<-emitter.Done()
 
 	assert.Exactly(t, []string{"mystring", "mystring", "end"}, stringarray)
 }
@@ -864,8 +871,8 @@ func TestRepeatNtimeMultiVariadicOperator(t *testing.T) {
 		stringarray = append(stringarray, "end")
 	})
 
-	sub := myStream.Subscribe(observer.New(onNext, onDone))
-	<-sub
+	emitter := myStream.Subscribe(observer.New(observer.New(onNext, onDone)))
+	<-emitter.Done()
 
 	assert.Exactly(t, []string{"mystring", "mystring", "end"}, stringarray)
 }
@@ -884,8 +891,8 @@ func TestRepeatWithZeroNtimeOperator(t *testing.T) {
 		stringarray = append(stringarray, "end")
 	})
 
-	sub := myStream.Subscribe(observer.New(onNext, onDone))
-	<-sub
+	emitter := myStream.Subscribe(observer.New(onNext, onDone))
+	<-emitter.Done()
 
 	assert.Exactly(t, []string{"end"}, stringarray)
 }
@@ -904,8 +911,8 @@ func TestRepeatWithNegativeTimesOperator(t *testing.T) {
 		stringarray = append(stringarray, "end")
 	})
 
-	sub := myStream.Subscribe(observer.New(onNext, onDone))
-	<-sub
+	emitter := myStream.Subscribe(observer.New(onNext, onDone))
+	<-emitter.Done()
 
 	assert.Exactly(t, []string{"end"}, stringarray)
 }

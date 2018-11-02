@@ -10,6 +10,7 @@ import (
 	"github.com/reactivex/rxgo/fx"
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/observer"
+	"github.com/reactivex/rxgo/subscription"
 
 	base "github.com/reactivex/rxgo/rx"
 )
@@ -48,47 +49,38 @@ func (o Observable) Next() (interface{}, error) {
 	return nil, errors.New(errors.EndOfIteratorError)
 }
 
-func (o Observable) Subscribe(ob base.Observer, ctxfunc interface{}) (context.Context, context.CancelFunc) {
-	if ctxfunc == nil {
-		ctxfunc = context.WithCancel
-	}
-	ctx, cancel := ctxfunc(context.Background())
-	defer cancel()
-}
-
-// Subscribe subscribes an EventHandler and returns a Subscription channel.
-/* func (o Observable) Subscribe(handler rx.EventHandler) <-chan subscription.Subscription {
-	done := make(chan subscription.Subscription)
-	sub := subscription.New().Subscribe()
-
-	ob := CheckEventHandler(handler)
+// Subscribe the observer to the observerable and makes them emit events.
+func (o Observable) Subscribe(observer base.Observer) base.Emitter {
+	subscription, signalSubscriptionComplete := o.constructSubscription()
+	subscription.Subscribe()
 
 	go func() {
-	OuterLoop:
+		var err error
+		defer func() {
+			if err == nil {
+				observer.OnDone()
+			}
+			signalSubscriptionComplete()
+		}()
 		for item := range o {
 			switch item := item.(type) {
 			case error:
-				ob.OnError(item)
-
-				// Record the error and break the loop.
-				sub.Error = item
-				break OuterLoop
+				err = item
+				subscription.Error = item
+				observer.OnError(item)
+				return
 			default:
-				ob.OnNext(item)
+				observer.OnNext(item)
 			}
 		}
-
-		// OnDone only gets executed if there's no error.
-		if sub.Error == nil {
-			ob.OnDone()
-		}
-
-		done <- sub.Unsubscribe()
-		return
 	}()
+	return &subscription
+}
 
-	return done
-} */
+func (o Observable) constructSubscription() (subscription.Subscription, context.CancelFunc) {
+	context, cancelFunc := context.WithCancel(context.Background())
+	return subscription.WithContext(context), cancelFunc
+}
 
 /*
 func (o Observable) Unsubscribe() subscription.Subscription {
