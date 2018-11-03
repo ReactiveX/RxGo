@@ -2,9 +2,10 @@ package observable
 
 import (
 	"testing"
+
 	"github.com/reactivex/rxgo/observer"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestFlatMapCompletesWhenSequenceIsEmpty(t *testing.T) {

@@ -1,9 +1,10 @@
 package observable
 
 import (
-	"github.com/reactivex/rxgo/observer"
-	"github.com/reactivex/rxgo/handlers"
 	"sync"
+
+	"github.com/reactivex/rxgo/handlers"
+	"github.com/reactivex/rxgo/observer"
 )
 
 // transforms emitted items into observables and flattens them into single observable.
