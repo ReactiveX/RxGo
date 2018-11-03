@@ -6,6 +6,9 @@ import (
 	"sync"
 )
 
+// transforms emitted items into observables and flattens them into single observable.
+// maxInParallel argument controls how many transformed observables are processed in parallel
+// For an example please take a look at flatmap_slice_test.go file in the examples directory.
 func (o Observable) FlatMap(apply func(interface{}) Observable, maxInParallel uint) Observable {
 	return o.flatMap(apply, maxInParallel, flatObservedSequence)
 }
