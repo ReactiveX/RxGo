@@ -1,9 +1,10 @@
-package flatmap
+package main
 
 import (
+	"testing"
+
 	"github.com/reactivex/rxgo/observable"
 	"github.com/reactivex/rxgo/observer"
-	"testing"
 )
 
 func TestFlatMapExample(t *testing.T) {
