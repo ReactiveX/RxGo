@@ -1,20 +1,16 @@
 package main
 
 import (
-	"testing"
+	"fmt"
 
+	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/observable"
 	"github.com/reactivex/rxgo/observer"
 )
 
-func TestFlatMapExample(t *testing.T) {
-	// given
-	observerMock := observer.NewObserverMock()
-
-	// and
+func main() {
 	primeSequence := observable.Just([]int{2, 3, 5, 7, 11, 13})
 
-	// when
 	<-primeSequence.
 		FlatMap(func(primes interface{}) observable.Observable {
 			return observable.Create(func(emitter *observer.Observer) {
@@ -25,8 +21,7 @@ func TestFlatMapExample(t *testing.T) {
 			})
 		}, 1).
 		Last().
-		Subscribe(observerMock.Capture())
-
-	// then
-	observerMock.AssertCalled(t, "OnNext", 13)
+		Subscribe(handlers.NextFunc(func(prime interface{}) {
+			fmt.Println("Prime -> ", prime)
+		}))
 }
