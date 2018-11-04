@@ -1,10 +1,11 @@
 package observable
 
 import (
+	"testing"
+
 	"github.com/reactivex/rxgo/errors"
 	"github.com/reactivex/rxgo/observer"
 	"github.com/stretchr/testify/mock"
-	"testing"
 )
 
 func TestEmitsNoElements(t *testing.T) {
@@ -88,7 +89,6 @@ func TestDoesntEmitElementsAfterDone(t *testing.T) {
 	mockedObserver.AssertNotCalled(t, "OnNext", mock.Anything)
 	mockedObserver.AssertCalled(t, "OnDone")
 }
-
 
 // to clear out error emission
 func testEmitsError(t *testing.T) {
