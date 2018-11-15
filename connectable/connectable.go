@@ -246,8 +246,9 @@ func (co Connectable) Scan(apply fx.ScannableFunc) Connectable {
 	go func() {
 		var current interface{}
 		for item := range co.Observable {
-			out <- apply(current, item)
-			current = apply(current, item)
+			tmp := apply(current, item)
+			out <- tmp
+			current = tmp
 		}
 		close(out)
 	}()
