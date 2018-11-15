@@ -107,7 +107,7 @@ func (o Observable) Take(nth uint) Observable {
 	go func() {
 		takeCount := 0
 		for item := range o {
-			if (takeCount < int(nth)) {
+			if takeCount < int(nth) {
 				takeCount += 1
 				out <- item
 				continue
@@ -126,7 +126,7 @@ func (o Observable) TakeLast(nth uint) Observable {
 	go func() {
 		buf := make([]interface{}, nth)
 		for item := range o {
-			if (len(buf) >= int(nth)) {
+			if len(buf) >= int(nth) {
 				buf = buf[1:]
 			}
 			buf = append(buf, item)
@@ -218,14 +218,14 @@ func (o Observable) DistinctUntilChanged(apply fx.KeySelectorFunc) Observable {
 	return Observable(out)
 }
 
-// Skip suppresses the first n items in the original Observable and 
+// Skip suppresses the first n items in the original Observable and
 // returns a new Observable with the rest items.
 func (o Observable) Skip(nth uint) Observable {
 	out := make(chan interface{})
 	go func() {
 		skipCount := 0
 		for item := range o {
-			if (skipCount < int(nth)) {
+			if skipCount < int(nth) {
 				skipCount += 1
 				continue
 			}
@@ -264,8 +264,9 @@ func (o Observable) Scan(apply fx.ScannableFunc) Observable {
 	go func() {
 		var current interface{}
 		for item := range o {
-			out <- apply(current, item)
-			current = apply(current, item)
+			tmp := apply(current, item)
+			out <- tmp
+			current = tmp
 		}
 		close(out)
 	}()
