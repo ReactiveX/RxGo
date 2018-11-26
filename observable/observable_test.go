@@ -623,6 +623,38 @@ func TestParallelSubscribeToObserver(t *testing.T) {
 	assert.Equal(charsCount, uint64(0x2))
 }
 
+func TestParallelSubscribeToObserverWithError(t *testing.T) {
+	assert := assert.New(t)
+
+	it, err := iterable.New([]interface{}{
+		"foo", "bar", "baz", 'a', 'b', 99, errors.New("error"),
+	})
+	if err != nil {
+		t.Fail()
+	}
+	myStream := From(it)
+
+	finished := false
+
+	onNext := handlers.NextFunc(func(item interface{}) {
+	})
+
+	onError := handlers.ErrFunc(func(err error) {
+		t.Logf("Error emitted in the stream: %v\n", err)
+	})
+
+	onDone := handlers.DoneFunc(func() {
+		finished = true
+	})
+
+	ob := observer.New(onNext, onError, onDone)
+
+	done := myStream.Subscribe(ob, WithParallelism(2))
+	<-done
+
+	assert.False(finished)
+}
+
 func TestObservableLastWithEmpty(t *testing.T) {
 	stream1 := Empty()
 
