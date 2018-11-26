@@ -15,6 +15,9 @@ import (
 // Observable is a basic observable channel
 type Observable <-chan interface{}
 
+// Int64Observable is a channel of int64
+type Int64Observable <-chan int64
+
 var DefaultObservable = make(Observable)
 
 // New creates an Observable
@@ -100,6 +103,20 @@ func (o Observable) Map(apply fx.MappableFunc) Observable {
 	return Observable(out)
 }
 
+// Count returns a new Int64Observable containing the number of items.
+func (o Observable) Count() Int64Observable {
+	out := make(chan int64)
+	go func() {
+		var count int64
+		for range o {
+			count++
+		}
+		out <- count
+		close(out)
+	}()
+	return Int64Observable(out)
+}
+
 // Take takes first n items in the original Obserable and returns
 // a new Observable with the taken items.
 func (o Observable) Take(nth uint) Observable {
@@ -107,7 +124,7 @@ func (o Observable) Take(nth uint) Observable {
 	go func() {
 		takeCount := 0
 		for item := range o {
-			if (takeCount < int(nth)) {
+			if takeCount < int(nth) {
 				takeCount += 1
 				out <- item
 				continue
@@ -126,7 +143,7 @@ func (o Observable) TakeLast(nth uint) Observable {
 	go func() {
 		buf := make([]interface{}, nth)
 		for item := range o {
-			if (len(buf) >= int(nth)) {
+			if len(buf) >= int(nth) {
 				buf = buf[1:]
 			}
 			buf = append(buf, item)
@@ -218,14 +235,14 @@ func (o Observable) DistinctUntilChanged(apply fx.KeySelectorFunc) Observable {
 	return Observable(out)
 }
 
-// Skip suppresses the first n items in the original Observable and 
+// Skip suppresses the first n items in the original Observable and
 // returns a new Observable with the rest items.
 func (o Observable) Skip(nth uint) Observable {
 	out := make(chan interface{})
 	go func() {
 		skipCount := 0
 		for item := range o {
-			if (skipCount < int(nth)) {
+			if skipCount < int(nth) {
 				skipCount += 1
 				continue
 			}

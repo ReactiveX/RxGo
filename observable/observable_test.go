@@ -394,6 +394,20 @@ func TestObservableMap(t *testing.T) {
 	assert.Exactly(t, []int{10, 20, 30}, nums)
 }
 
+func TestObservableCount(t *testing.T) {
+	items := []interface{}{1, 2, 3, "foo", "bar", errors.New("error")}
+	it, err := iterable.New(items)
+	if err != nil {
+		t.Fail()
+	}
+
+	stream := From(it)
+	count := stream.Count()
+	total := <-count
+
+	assert.Exactly(t, int64(6), total)
+}
+
 func TestObservableTake(t *testing.T) {
 	items := []interface{}{1, 2, 3, 4, 5}
 	it, err := iterable.New(items)
