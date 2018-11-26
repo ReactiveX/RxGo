@@ -533,6 +533,52 @@ func TestObservableFirst(t *testing.T) {
 	assert.Exactly(t, []int{0}, nums)
 }
 
+func TestObservableFirstOrDefault(t *testing.T) {
+	var items []interface{}
+	it, err := iterable.New(items)
+	if err != nil {
+		t.Fail()
+	}
+
+	stream1 := From(it)
+	stream2 := stream1.FirstOrDefault(7)
+
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	sub := stream2.Subscribe(onNext)
+	<-sub
+
+	assert.Exactly(t, []int{7}, nums)
+}
+
+func TestObservableFirstOrDefaultWithValue(t *testing.T) {
+	items := []interface{}{0, 1, 2}
+	it, err := iterable.New(items)
+	if err != nil {
+		t.Fail()
+	}
+
+	stream1 := From(it)
+	stream2 := stream1.FirstOrDefault(7)
+
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	sub := stream2.Subscribe(onNext)
+	<-sub
+
+	assert.Exactly(t, []int{0}, nums)
+}
+
 func TestObservableFirstWithEmpty(t *testing.T) {
 	stream1 := Empty()
 
@@ -561,6 +607,54 @@ func TestObservableLast(t *testing.T) {
 	stream1 := From(it)
 
 	stream2 := stream1.Last()
+
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	sub := stream2.Subscribe(onNext)
+	<-sub
+
+	assert.Exactly(t, []int{3}, nums)
+}
+
+func TestObservableLastOrDefault(t *testing.T) {
+	var items []interface{}
+	it, err := iterable.New(items)
+	if err != nil {
+		t.Fail()
+	}
+
+	stream1 := From(it)
+
+	stream2 := stream1.LastOrDefault(7)
+
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	sub := stream2.Subscribe(onNext)
+	<-sub
+
+	assert.Exactly(t, []int{7}, nums)
+}
+
+func TestObservableLastOrDefaultWithValue(t *testing.T) {
+	items := []interface{}{0, 1, 3}
+	it, err := iterable.New(items)
+	if err != nil {
+		t.Fail()
+	}
+
+	stream1 := From(it)
+
+	stream2 := stream1.LastOrDefault(7)
 
 	nums := []int{}
 	onNext := handlers.NextFunc(func(item interface{}) {

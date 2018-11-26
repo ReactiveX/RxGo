@@ -107,7 +107,7 @@ func (o Observable) Take(nth uint) Observable {
 	go func() {
 		takeCount := 0
 		for item := range o {
-			if (takeCount < int(nth)) {
+			if takeCount < int(nth) {
 				takeCount += 1
 				out <- item
 				continue
@@ -126,7 +126,7 @@ func (o Observable) TakeLast(nth uint) Observable {
 	go func() {
 		buf := make([]interface{}, nth)
 		for item := range o {
-			if (len(buf) >= int(nth)) {
+			if len(buf) >= int(nth) {
 				buf = buf[1:]
 			}
 			buf = append(buf, item)
@@ -167,11 +167,42 @@ func (o Observable) First() Observable {
 	return Observable(out)
 }
 
+// FirstOrDefault returns new Observable which emit only first item.
+// If the observable fails to emit any items, it emits a default value.
+func (o Observable) FirstOrDefault(defaultValue interface{}) Observable {
+	out := make(chan interface{})
+	go func() {
+		first := defaultValue
+		for item := range o {
+			first = item
+			break
+		}
+		out <- first
+		close(out)
+	}()
+	return Observable(out)
+}
+
 // Last returns a new Observable which emit only last item.
 func (o Observable) Last() Observable {
 	out := make(chan interface{})
 	go func() {
 		var last interface{}
+		for item := range o {
+			last = item
+		}
+		out <- last
+		close(out)
+	}()
+	return Observable(out)
+}
+
+// Last returns a new Observable which emit only last item.
+// If the observable fails to emit any items, it emits a default value.
+func (o Observable) LastOrDefault(defaultValue interface{}) Observable {
+	out := make(chan interface{})
+	go func() {
+		last := defaultValue
 		for item := range o {
 			last = item
 		}
@@ -218,14 +249,14 @@ func (o Observable) DistinctUntilChanged(apply fx.KeySelectorFunc) Observable {
 	return Observable(out)
 }
 
-// Skip suppresses the first n items in the original Observable and 
+// Skip suppresses the first n items in the original Observable and
 // returns a new Observable with the rest items.
 func (o Observable) Skip(nth uint) Observable {
 	out := make(chan interface{})
 	go func() {
 		skipCount := 0
 		for item := range o {
-			if (skipCount < int(nth)) {
+			if skipCount < int(nth) {
 				skipCount += 1
 				continue
 			}
