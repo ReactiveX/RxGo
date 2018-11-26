@@ -12,6 +12,7 @@ import (
 	"github.com/reactivex/rxgo/observer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"sync/atomic"
 )
 
 func TestDefaultObservable(t *testing.T) {
@@ -575,30 +576,30 @@ func TestObservableLast(t *testing.T) {
 	assert.Exactly(t, []int{3}, nums)
 }
 
-func TestObservableParallel(t *testing.T) {
+func TestParallelSubscribeToObserver(t *testing.T) {
 	assert := assert.New(t)
 
 	it, err := iterable.New([]interface{}{
-		"foo", "bar", "baz", 'a', 'b', errors.New("bang"), 99,
+		"foo", "bar", "baz", 'a', 'b', 99,
 	})
 	if err != nil {
 		t.Fail()
 	}
 	myStream := From(it)
 
-	words := []string{}
-	chars := []rune{}
-	integers := []int{}
+	var wordsCount uint64
+	var charsCount uint64
+	var integersCount uint64
 	finished := false
 
 	onNext := handlers.NextFunc(func(item interface{}) {
-		switch item := item.(type) {
+		switch item.(type) {
 		case string:
-			words = append(words, item)
+			atomic.AddUint64(&wordsCount, 1)
 		case rune:
-			chars = append(chars, item)
+			atomic.AddUint64(&charsCount, 1)
 		case int:
-			integers = append(integers, item)
+			atomic.AddUint64(&integersCount, 1)
 		}
 	})
 
@@ -613,24 +614,13 @@ func TestObservableParallel(t *testing.T) {
 	ob := observer.New(onNext, onError, onDone)
 
 	done := myStream.Subscribe(ob, WithParallelism(2))
-	sub := <-done
+	<-done
 
-	assert.Empty(integers)
-	assert.False(finished)
+	assert.True(finished)
 
-	expectedWords := []string{"foo", "bar", "baz"}
-	assert.Len(words, len(expectedWords))
-	for n, word := range words {
-		assert.Equal(expectedWords[n], word)
-	}
-
-	expectedChars := []rune{'a', 'b'}
-	assert.Len(chars, len(expectedChars))
-	for n, char := range chars {
-		assert.Equal(expectedChars[n], char)
-	}
-
-	assert.Equal("bang", sub.Err().Error())
+	assert.Equal(integersCount, uint64(0x1))
+	assert.Equal(wordsCount, uint64(0x3))
+	assert.Equal(charsCount, uint64(0x2))
 }
 
 func TestObservableLastWithEmpty(t *testing.T) {

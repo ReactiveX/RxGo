@@ -51,37 +51,72 @@ func (o Observable) Subscribe(handler rx.EventHandler, opts ...Option) <-chan su
 	done := make(chan subscription.Subscription)
 	sub := subscription.New().Subscribe()
 
+	ob := CheckEventHandler(handler)
+
 	// Parse options
 	var observableOptions options
 	for _, opt := range opts {
 		opt.apply(&observableOptions)
 	}
 
-	ob := CheckEventHandler(handler)
+	if observableOptions.parallelism == 0 {
+		go func() {
+		OuterLoop:
+			for item := range o {
+				switch item := item.(type) {
+				case error:
+					ob.OnError(item)
 
-	go func() {
-	OuterLoop:
-		for item := range o {
-			switch item := item.(type) {
-			case error:
-				ob.OnError(item)
-
-				// Record the error and break the loop.
-				sub.Error = item
-				break OuterLoop
-			default:
-				ob.OnNext(item)
+					// Record the error and break the loop.
+					sub.Error = item
+					break OuterLoop
+				default:
+					ob.OnNext(item)
+				}
 			}
+
+			// OnDone only gets executed if there's no error.
+			if sub.Error == nil {
+				ob.OnDone()
+			}
+
+			done <- sub.Unsubscribe()
+			return
+		}()
+	} else {
+		wg := sync.WaitGroup{}
+
+		for i := 0; i < observableOptions.parallelism; i++ {
+			wg.Add(1)
+
+			go func() {
+			OuterLoop:
+				for item := range o {
+					switch item := item.(type) {
+					case error:
+						ob.OnError(item)
+
+						// Record the error and break the loop.
+						sub.Error = item
+						break OuterLoop
+					default:
+						ob.OnNext(item)
+					}
+				}
+				wg.Done()
+			}()
 		}
 
-		// OnDone only gets executed if there's no error.
-		if sub.Error == nil {
-			ob.OnDone()
-		}
+		go func() {
+			wg.Wait()
+			// OnDone only gets executed if there's no error.
+			if sub.Error == nil {
+				ob.OnDone()
+			}
 
-		done <- sub.Unsubscribe()
-		return
-	}()
+			done <- sub.Unsubscribe()
+		}()
+	}
 
 	return done
 }
