@@ -3,7 +3,6 @@
 package fx
 
 type (
-
 	// EmittableFunc defines a function that should be used with Start operator.
 	// EmittableFunc can be used to wrap a blocking operation.
 	EmittableFunc func() interface{}
@@ -16,7 +15,10 @@ type (
 
 	// FilterableFunc defines a func that should be passed to the Filter operator.
 	FilterableFunc func(interface{}) bool
-		
+
 	// KeySelectorFunc defines a func that should be passed to the Distinct operator.
 	KeySelectorFunc func(interface{}) interface{}
+
+	// ReducibleFunc defines a func that should be passed to the Reduce operator.
+	ReducibleFunc func(interface{}, interface{}) interface{}
 )

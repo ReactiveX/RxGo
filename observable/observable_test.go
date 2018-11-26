@@ -10,6 +10,7 @@ import (
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/iterable"
 	"github.com/reactivex/rxgo/observer"
+	"github.com/reactivex/rxgo/optional"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -392,6 +393,70 @@ func TestObservableMap(t *testing.T) {
 	<-sub
 
 	assert.Exactly(t, []int{10, 20, 30}, nums)
+}
+
+func TestObservableReduce(t *testing.T) {
+	items := []interface{}{1, 2, 3, 4, 5}
+	it, err := iterable.New(items)
+	if err != nil {
+		t.Fail()
+	}
+
+	stream1 := From(it)
+
+	add := func(acc interface{}, elem interface{}) interface{} {
+		if a, ok := acc.(int); ok {
+			if b, ok := elem.(int); ok {
+				return a + b
+			}
+		}
+		return 0
+	}
+	sub := stream1.Reduce(add)
+	sum := <-sub
+	assert.False(t, sum.IsEmpty())
+	assert.Exactly(t, optional.Of(14), sum)
+}
+
+func TestObservableReduceEmpty(t *testing.T) {
+	it, err := iterable.New([]interface{}{})
+	if err != nil {
+		t.Fail()
+	}
+
+	add := func(acc interface{}, elem interface{}) interface{} {
+		if a, ok := acc.(int); ok {
+			if b, ok := elem.(int); ok {
+				return a + b
+			}
+		}
+		return 0
+	}
+
+	stream := From(it)
+
+	sub := stream.Reduce(add)
+	sum := <-sub
+	assert.True(t, sum.IsEmpty())
+}
+
+func TestObservableReduceNil(t *testing.T) {
+	items := []interface{}{1, 2, 3, 4, 5}
+	it, err := iterable.New(items)
+	if err != nil {
+		t.Fail()
+	}
+
+	stream := From(it)
+
+	nilReduce := func(acc interface{}, elem interface{}) interface{} {
+		return nil
+	}
+
+	sub := stream.Reduce(nilReduce)
+	sum := <-sub
+	assert.False(t, sum.IsEmpty())
+	assert.Nil(t, sum.Get())
 }
 
 func TestObservableTake(t *testing.T) {

@@ -9,11 +9,15 @@ import (
 	"github.com/reactivex/rxgo/fx"
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/observer"
+	"github.com/reactivex/rxgo/optional"
 	"github.com/reactivex/rxgo/subscription"
 )
 
 // Observable is a basic observable channel
 type Observable <-chan interface{}
+
+// OptionalObservable is a channel of optional
+type OptionalObservable <-chan optional.Optional
 
 var DefaultObservable = make(Observable)
 
@@ -107,7 +111,7 @@ func (o Observable) Take(nth uint) Observable {
 	go func() {
 		takeCount := 0
 		for item := range o {
-			if (takeCount < int(nth)) {
+			if takeCount < int(nth) {
 				takeCount += 1
 				out <- item
 				continue
@@ -126,7 +130,7 @@ func (o Observable) TakeLast(nth uint) Observable {
 	go func() {
 		buf := make([]interface{}, nth)
 		for item := range o {
-			if (len(buf) >= int(nth)) {
+			if len(buf) >= int(nth) {
 				buf = buf[1:]
 			}
 			buf = append(buf, item)
@@ -218,14 +222,14 @@ func (o Observable) DistinctUntilChanged(apply fx.KeySelectorFunc) Observable {
 	return Observable(out)
 }
 
-// Skip suppresses the first n items in the original Observable and 
+// Skip suppresses the first n items in the original Observable and
 // returns a new Observable with the rest items.
 func (o Observable) Skip(nth uint) Observable {
 	out := make(chan interface{})
 	go func() {
 		skipCount := 0
 		for item := range o {
-			if (skipCount < int(nth)) {
+			if skipCount < int(nth) {
 				skipCount += 1
 				continue
 			}
@@ -411,4 +415,28 @@ func Start(f fx.EmittableFunc, fs ...fx.EmittableFunc) Observable {
 	}()
 
 	return Observable(source)
+}
+
+// Reduce creates an OptionalObservable by applying a reducible operation
+// and emits the accumulated result asynchronously on a new OptionalObservable.
+func (o Observable) Reduce(apply fx.ReducibleFunc) OptionalObservable {
+	out := make(chan optional.Optional)
+	go func() {
+		var acc interface{}
+		empty := true
+
+		for item := range o {
+			empty = false
+			acc = apply(acc, item)
+		}
+
+		if empty {
+			out <- optional.Empty()
+		} else {
+			out <- optional.Of(acc)
+		}
+
+		close(out)
+	}()
+	return OptionalObservable(out)
 }
