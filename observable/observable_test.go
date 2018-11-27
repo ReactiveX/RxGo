@@ -813,6 +813,32 @@ func TestObservableScanWithString(t *testing.T) {
 	assert.Exactly(t, expected, words)
 }
 
+func TestObservableToList(t *testing.T) {
+	items := []interface{}{1, "hello", false, .0}
+	it, err := iterable.New(items)
+	if err != nil {
+		t.Fail()
+	}
+
+	stream1 := From(it)
+
+	stream2 := stream1.ToList()
+
+	s := <-stream2
+
+	assert.Exactly(t, []interface{}{1, "hello", false, .0}, s)
+}
+
+func TestObservableToListWithEmpty(t *testing.T) {
+	stream1 := Empty()
+
+	stream2 := stream1.ToList()
+
+	s := <-stream2
+
+	assert.Exactly(t, []interface{}{}, s)
+}
+
 func TestRepeatInfinityOperator(t *testing.T) {
 	myStream := Repeat("mystring")
 
