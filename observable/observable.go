@@ -107,8 +107,25 @@ func (o Observable) Take(nth uint) Observable {
 	go func() {
 		takeCount := 0
 		for item := range o {
-			if (takeCount < int(nth)) {
+			if takeCount < int(nth) {
 				takeCount += 1
+				out <- item
+				continue
+			}
+			break
+		}
+		close(out)
+	}()
+	return Observable(out)
+}
+
+// TakeWhile emits items emitted by an Observable as long as the
+// specified condition is true, then skip the remainder.
+func (o Observable) TakeWhile(apply fx.FilterableFunc) Observable {
+	out := make(chan interface{})
+	go func() {
+		for item := range o {
+			if apply(item) {
 				out <- item
 				continue
 			}
@@ -126,7 +143,7 @@ func (o Observable) TakeLast(nth uint) Observable {
 	go func() {
 		buf := make([]interface{}, nth)
 		for item := range o {
-			if (len(buf) >= int(nth)) {
+			if len(buf) >= int(nth) {
 				buf = buf[1:]
 			}
 			buf = append(buf, item)
@@ -218,14 +235,14 @@ func (o Observable) DistinctUntilChanged(apply fx.KeySelectorFunc) Observable {
 	return Observable(out)
 }
 
-// Skip suppresses the first n items in the original Observable and 
+// Skip suppresses the first n items in the original Observable and
 // returns a new Observable with the rest items.
 func (o Observable) Skip(nth uint) Observable {
 	out := make(chan interface{})
 	go func() {
 		skipCount := 0
 		for item := range o {
-			if (skipCount < int(nth)) {
+			if skipCount < int(nth) {
 				skipCount += 1
 				continue
 			}
