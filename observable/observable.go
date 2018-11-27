@@ -15,6 +15,9 @@ import (
 // Observable is a basic observable channel
 type Observable <-chan interface{}
 
+// MapObservable is a channel of map
+type MapObservable <-chan map[interface{}]interface{}
+
 var DefaultObservable = make(Observable)
 
 // New creates an Observable
@@ -107,7 +110,7 @@ func (o Observable) Take(nth uint) Observable {
 	go func() {
 		takeCount := 0
 		for item := range o {
-			if (takeCount < int(nth)) {
+			if takeCount < int(nth) {
 				takeCount += 1
 				out <- item
 				continue
@@ -126,7 +129,7 @@ func (o Observable) TakeLast(nth uint) Observable {
 	go func() {
 		buf := make([]interface{}, nth)
 		for item := range o {
-			if (len(buf) >= int(nth)) {
+			if len(buf) >= int(nth) {
 				buf = buf[1:]
 			}
 			buf = append(buf, item)
@@ -218,14 +221,14 @@ func (o Observable) DistinctUntilChanged(apply fx.KeySelectorFunc) Observable {
 	return Observable(out)
 }
 
-// Skip suppresses the first n items in the original Observable and 
+// Skip suppresses the first n items in the original Observable and
 // returns a new Observable with the rest items.
 func (o Observable) Skip(nth uint) Observable {
 	out := make(chan interface{})
 	go func() {
 		skipCount := 0
 		for item := range o {
-			if (skipCount < int(nth)) {
+			if skipCount < int(nth) {
 				skipCount += 1
 				continue
 			}
@@ -270,6 +273,37 @@ func (o Observable) Scan(apply fx.ScannableFunc) Observable {
 		close(out)
 	}()
 	return Observable(out)
+}
+
+// ToMap convert the sequence of items emitted by an Observable
+// into a map keyed by a specified key function
+func (o Observable) ToMap(keySelector fx.MappableFunc) MapObservable {
+	out := make(chan map[interface{}]interface{})
+	go func() {
+		m := make(map[interface{}]interface{})
+		for item := range o {
+			m[keySelector(item)] = item
+		}
+		out <- m
+		close(out)
+	}()
+	return MapObservable(out)
+}
+
+// ToMapWithValueSelector convert the sequence of items emitted by an Observable
+// into a map keyed by a specified key function and valued by another
+// value function
+func (o Observable) ToMapWithValueSelector(keySelector fx.MappableFunc, valueSelector fx.MappableFunc) MapObservable {
+	out := make(chan map[interface{}]interface{})
+	go func() {
+		m := make(map[interface{}]interface{})
+		for item := range o {
+			m[keySelector(item)] = valueSelector(item)
+		}
+		out <- m
+		close(out)
+	}()
+	return MapObservable(out)
 }
 
 // From creates a new Observable from an Iterator.

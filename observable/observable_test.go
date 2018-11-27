@@ -813,6 +813,119 @@ func TestObservableScanWithString(t *testing.T) {
 	assert.Exactly(t, expected, words)
 }
 
+func TestObservableToMap(t *testing.T) {
+	items := []interface{}{3, 4, 5, true, false}
+	it, err := iterable.New(items)
+	if err != nil {
+		t.Fail()
+	}
+
+	stream1 := From(it)
+
+	stream2 := stream1.ToMap(func(i interface{}) interface{} {
+		switch v := i.(type) {
+		case int:
+			return v
+		case bool:
+			if v {
+				return 0
+			} else {
+				return 1
+			}
+		default:
+			return i
+		}
+	})
+
+	m := <-stream2
+
+	expected := map[interface{}]interface{}{
+		3: 3,
+		4: 4,
+		5: 5,
+		0: true,
+		1: false,
+	}
+
+	assert.Exactly(t, expected, m)
+}
+
+func TestObservableToMapWithEmpty(t *testing.T) {
+	stream1 := Empty()
+
+	stream2 := stream1.ToMap(func(i interface{}) interface{} {
+		return i
+	})
+
+	m := <-stream2
+
+	assert.Exactly(t, map[interface{}]interface{}{}, m)
+}
+
+func TestObservableToMapWithValueSelector(t *testing.T) {
+	items := []interface{}{3, 4, 5, true, false}
+	it, err := iterable.New(items)
+	if err != nil {
+		t.Fail()
+	}
+
+	stream1 := From(it)
+
+	keySelector := func(i interface{}) interface{} {
+		switch v := i.(type) {
+		case int:
+			return v
+		case bool:
+			if v {
+				return 0
+			} else {
+				return 1
+			}
+		default:
+			return i
+		}
+	}
+
+	valueSelector := func(i interface{}) interface{} {
+		switch v := i.(type) {
+		case int:
+			return v * 10
+		case bool:
+			return v
+		default:
+			return i
+		}
+	}
+
+	stream2 := stream1.ToMapWithValueSelector(keySelector, valueSelector)
+
+	m := <-stream2
+
+	expected := map[interface{}]interface{}{
+		3: 30,
+		4: 40,
+		5: 50,
+		0: true,
+		1: false,
+	}
+
+	assert.Exactly(t, expected, m)
+}
+
+func TestObservableToMapWithValueSelectorWithEmpty(t *testing.T) {
+	stream1 := Empty()
+
+	f := func(i interface{}) interface{} {
+		return i
+	}
+
+	stream2 := stream1.ToMapWithValueSelector(f, f)
+
+	m := <-stream2
+
+	assert.Exactly(t, map[interface{}]interface{}{}, m)
+}
+
 func TestRepeatInfinityOperator(t *testing.T) {
 	myStream := Repeat("mystring")
 
