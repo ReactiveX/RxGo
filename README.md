@@ -163,7 +163,7 @@ func main() {
     
     <-primeSequence.
             FlatMap(func(primes interface{}) observable.Observable {
-                return observable.Create(func(emitter *observer.Observer) {
+                return observable.Create(func(emitter observer.Observer) {
                     for _, prime := range primes.([]int) {
                         emitter.OnNext(prime)
                     }

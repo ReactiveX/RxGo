@@ -7,6 +7,7 @@ import (
 
 	"github.com/reactivex/rxgo"
 	"github.com/reactivex/rxgo/fx"
+	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/observable"
 	"github.com/reactivex/rxgo/observer"
 	"github.com/reactivex/rxgo/subscription"
@@ -170,7 +171,7 @@ func (c *connector) Subscribe(handler rx.EventHandler,
 
 // Do is like Subscribe but subscribes a func(interface{}) as a NextHandler
 func (c *connector) Do(nextf func(interface{})) Connectable {
-	ob := observer.Observer{NextHandler: nextf}
+	ob := observer.New(handlers.NextFunc(nextf))
 	c.observers = append(c.observers, ob)
 	return c
 }

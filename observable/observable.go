@@ -7,7 +7,6 @@ import (
 	"github.com/reactivex/rxgo"
 	"github.com/reactivex/rxgo/errors"
 	"github.com/reactivex/rxgo/fx"
-	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/observer"
 	"github.com/reactivex/rxgo/subscription"
 )
@@ -52,18 +51,7 @@ func NewFromChannel(ch chan interface{}) Observable {
 
 // CheckHandler checks the underlying type of an EventHandler.
 func CheckEventHandler(handler rx.EventHandler) observer.Observer {
-	ob := observer.DefaultObserver
-	switch handler := handler.(type) {
-	case handlers.NextFunc:
-		ob.NextHandler = handler
-	case handlers.ErrFunc:
-		ob.ErrHandler = handler
-	case handlers.DoneFunc:
-		ob.DoneHandler = handler
-	case observer.Observer:
-		ob = handler
-	}
-	return ob
+	return observer.New(handler)
 }
 
 // Next returns the next item on the Observable.

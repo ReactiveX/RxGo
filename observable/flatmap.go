@@ -54,7 +54,7 @@ func flatObservedSequence(out chan interface{}, o Observable, apply func(interfa
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			<-(sequence.Subscribe(*emissionObserver))
+			<-(sequence.Subscribe(emissionObserver))
 		}()
 
 		if count%maxInParallel == 0 {
@@ -65,9 +65,8 @@ func flatObservedSequence(out chan interface{}, o Observable, apply func(interfa
 	wg.Wait()
 }
 
-func newFlattenEmissionObserver(out chan interface{}) *observer.Observer {
-	ob := observer.New(handlers.NextFunc(func(element interface{}) {
+func newFlattenEmissionObserver(out chan interface{}) observer.Observer {
+	return observer.New(handlers.NextFunc(func(element interface{}) {
 		out <- element
 	}))
-	return &ob
 }

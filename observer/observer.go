@@ -6,73 +6,86 @@ import (
 )
 
 // Observer represents a group of EventHandlers.
-type Observer struct {
-	NextHandler handlers.NextFunc
-	ErrHandler  handlers.ErrFunc
-	DoneHandler handlers.DoneFunc
+type Observer interface {
+	rx.EventHandler
+
+	OnNext(item interface{})
+	OnError(err error)
+	OnDone()
 }
 
-// DefaultObserver guarantees any handler won't be nil.
-var DefaultObserver = Observer{
-	NextHandler: func(interface{}) {},
-	ErrHandler:  func(err error) {},
-	DoneHandler: func() {},
-}
-
-// Handle registers Observer to EventHandler.
-func (ob Observer) Handle(item interface{}) {
-	switch item := item.(type) {
-	case error:
-		ob.ErrHandler(item)
-		return
-	default:
-		ob.NextHandler(item)
-	}
+type observator struct {
+	nextHandler handlers.NextFunc
+	errHandler  handlers.ErrFunc
+	doneHandler handlers.DoneFunc
 }
 
 // New constructs a new Observer instance with default Observer and accept
 // any number of EventHandler
 func New(eventHandlers ...rx.EventHandler) Observer {
-	ob := DefaultObserver
+	ob := observator{}
+
 	if len(eventHandlers) > 0 {
 		for _, handler := range eventHandlers {
 			switch handler := handler.(type) {
 			case handlers.NextFunc:
-				ob.NextHandler = handler
+				ob.nextHandler = handler
 			case handlers.ErrFunc:
-				ob.ErrHandler = handler
+				ob.errHandler = handler
 			case handlers.DoneFunc:
-				ob.DoneHandler = handler
-			case Observer:
-				ob = handler
+				ob.doneHandler = handler
+			case *observator:
+				ob = *handler
 			}
 		}
 	}
-	return ob
+
+	if ob.nextHandler == nil {
+		ob.nextHandler = func(interface{}) {}
+	}
+	if ob.errHandler == nil {
+		ob.errHandler = func(err error) {}
+	}
+	if ob.doneHandler == nil {
+		ob.doneHandler = func() {}
+	}
+
+	return &ob
+}
+
+// Handle registers Observer to EventHandler.
+func (o *observator) Handle(item interface{}) {
+	switch item := item.(type) {
+	case error:
+		o.errHandler(item)
+		return
+	default:
+		o.nextHandler(item)
+	}
 }
 
 // OnNext applies Observer's NextHandler to an Item
-func (ob Observer) OnNext(item interface{}) {
+func (o *observator) OnNext(item interface{}) {
 	switch item := item.(type) {
 	case error:
 		return
 	default:
-		if ob.NextHandler != nil {
-			ob.NextHandler(item)
+		if o.nextHandler != nil {
+			o.nextHandler(item)
 		}
 	}
 }
 
 // OnError applies Observer's ErrHandler to an error
-func (ob Observer) OnError(err error) {
-	if ob.ErrHandler != nil {
-		ob.ErrHandler(err)
+func (o *observator) OnError(err error) {
+	if o.errHandler != nil {
+		o.errHandler(err)
 	}
 }
 
 // OnDone terminates the Observer's internal Observable
-func (ob Observer) OnDone() {
-	if ob.DoneHandler != nil {
-		ob.DoneHandler()
+func (o *observator) OnDone() {
+	if o.doneHandler != nil {
+		o.doneHandler()
 	}
 }
