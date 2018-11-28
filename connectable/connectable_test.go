@@ -2,9 +2,9 @@ package connectable
 
 import (
 	"errors"
+	"sync"
 	"testing"
 	"time"
-	"sync"
 
 	"github.com/reactivex/rxgo/fx"
 	"github.com/reactivex/rxgo/handlers"

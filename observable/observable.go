@@ -305,8 +305,9 @@ func (o Observable) Scan(apply fx.ScannableFunc) Observable {
 	go func() {
 		var current interface{}
 		for item := range o {
-			out <- apply(current, item)
-			current = apply(current, item)
+			tmp := apply(current, item)
+			out <- tmp
+			current = tmp
 		}
 		close(out)
 	}()
