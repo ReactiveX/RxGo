@@ -6,10 +6,17 @@ import (
 )
 
 func TestWithParallelism(t *testing.T) {
-	var observableOptions options
+	var o options
 
-	option := WithParallelism(2)
-	option.apply(&observableOptions)
+	WithParallelism(2).apply(&o)
 
-	assert.Equal(t, observableOptions.parallelism, 2)
+	assert.Equal(t, o.parallelism, 2)
+}
+
+func TestParseOptions(t *testing.T) {
+	var o options
+
+	o.parseOptions(WithParallelism(2))
+
+	assert.Equal(t, o.parallelism, 2)
 }

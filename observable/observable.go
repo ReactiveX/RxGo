@@ -48,16 +48,19 @@ func (o Observable) Next() (interface{}, error) {
 
 // Subscribe subscribes an EventHandler and returns a Subscription channel.
 func (o Observable) Subscribe(handler rx.EventHandler, opts ...Option) <-chan subscription.Subscription {
-	done := make(chan subscription.Subscription)
-	sub := subscription.New().Subscribe()
-
-	ob := CheckEventHandler(handler)
-
 	// Parse options
 	var observableOptions options
-	for _, opt := range opts {
-		opt.apply(&observableOptions)
+	observableOptions.parseOptions(opts...)
+
+	var done chan subscription.Subscription
+	if observableOptions.channelBufferCapacity == 0 {
+		done = make(chan subscription.Subscription)
+	} else {
+		done = make(chan subscription.Subscription, observableOptions.channelBufferCapacity)
 	}
+
+	sub := subscription.New().Subscribe()
+	ob := CheckEventHandler(handler)
 
 	if observableOptions.parallelism == 0 {
 		go func() {

@@ -576,7 +576,7 @@ func TestObservableLast(t *testing.T) {
 	assert.Exactly(t, []int{3}, nums)
 }
 
-func TestParallelSubscribeToObserver(t *testing.T) {
+func TestSubscribeToObserverWithParallelismOption(t *testing.T) {
 	assert := assert.New(t)
 
 	it, err := iterable.New([]interface{}{
@@ -614,6 +614,53 @@ func TestParallelSubscribeToObserver(t *testing.T) {
 	ob := observer.New(onNext, onError, onDone)
 
 	done := myStream.Subscribe(ob, WithParallelism(2))
+	<-done
+
+	assert.True(finished)
+
+	assert.Equal(integersCount, uint64(0x1))
+	assert.Equal(wordsCount, uint64(0x3))
+	assert.Equal(charsCount, uint64(0x2))
+}
+
+func TestSubscribeToObserverWithBufferedChannelOption(t *testing.T) {
+	assert := assert.New(t)
+
+	it, err := iterable.New([]interface{}{
+		"foo", "bar", "baz", 'a', 'b', 99,
+	})
+	if err != nil {
+		t.Fail()
+	}
+	myStream := From(it)
+
+	var wordsCount uint64
+	var charsCount uint64
+	var integersCount uint64
+	finished := false
+
+	onNext := handlers.NextFunc(func(item interface{}) {
+		switch item.(type) {
+		case string:
+			atomic.AddUint64(&wordsCount, 1)
+		case rune:
+			atomic.AddUint64(&charsCount, 1)
+		case int:
+			atomic.AddUint64(&integersCount, 1)
+		}
+	})
+
+	onError := handlers.ErrFunc(func(err error) {
+		t.Logf("Error emitted in the stream: %v\n", err)
+	})
+
+	onDone := handlers.DoneFunc(func() {
+		finished = true
+	})
+
+	ob := observer.New(onNext, onError, onDone)
+
+	done := myStream.Subscribe(ob, WithBufferedChannel(5))
 	<-done
 
 	assert.True(finished)
