@@ -31,7 +31,8 @@ type Observable interface {
 
 // observator is a structure handling a channel of interface{} and implementing Observable
 type observator struct {
-	ch chan interface{}
+	ch                chan interface{}
+	observableFactory func() Observable
 }
 
 // New creates an Observable
@@ -148,12 +149,24 @@ func (o *observable) Unsubscribe() subscription.Subscription {
 // returns a new Observable with applied items.
 func (o *observator) Map(apply fx.MappableFunc) Observable {
 	out := make(chan interface{})
+
+	var it Observable = o
+
+	if o.observableFactory != nil {
+		it = o.observableFactory()
+	}
+
 	go func() {
-		for item := range o.ch {
+		for {
+			item, err := it.Next()
+			if err != nil {
+				break
+			}
 			out <- apply(item)
 		}
 		close(out)
 	}()
+
 	return &observator{ch: out}
 }
 
@@ -328,6 +341,14 @@ func (o *observator) Scan(apply fx.ScannableFunc) Observable {
 		close(out)
 	}()
 	return &observator{ch: out}
+}
+
+// Defer waits until an observer subscribes to it, and then it generates an Observable.
+func Defer(f func() Observable) Observable {
+	return &observator{
+		ch:                nil,
+		observableFactory: f,
+	}
 }
 
 // From creates a new Observable from an Iterator.

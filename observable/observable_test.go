@@ -411,6 +411,44 @@ func TestObservableMap(t *testing.T) {
 	assert.Exactly(t, []int{10, 20, 30}, nums)
 }
 
+func TestDefer(t *testing.T) {
+	test := 5
+
+	var value int
+	onNext := handlers.NextFunc(func(item interface{}) {
+		switch item := item.(type) {
+		case int:
+			value = item
+		}
+	})
+
+	// First subscriber
+	stream1 := Defer(func() Observable {
+		items := []interface{}{test}
+		it, err := iterable.New(items)
+		if err != nil {
+			t.Fail()
+		}
+		return From(it)
+	})
+	test = 3
+	stream2 := stream1.Map(func(i interface{}) interface{} {
+		return i
+	})
+	sub := stream2.Subscribe(onNext)
+	<-sub
+	assert.Exactly(t, 3, value)
+
+	// Second subscriber
+	test = 8
+	stream2 = stream1.Map(func(i interface{}) interface{} {
+		return i
+	})
+	sub = stream2.Subscribe(onNext)
+	<-sub
+	assert.Exactly(t, 8, value)
+}
+
 func TestObservableTake(t *testing.T) {
 	items := []interface{}{1, 2, 3, 4, 5}
 	it, err := iterable.New(items)
