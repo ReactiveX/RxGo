@@ -37,7 +37,9 @@ func Create(source func(emitter *observer.Observer, disposed bool)) Observable {
 		source(emitter, isClosed(emitted))
 	}()
 
-	return emitted
+	return &observator{
+		ch: emitted,
+	}
 }
 
 func isClosed(ch <-chan interface{}) bool {

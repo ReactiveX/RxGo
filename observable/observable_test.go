@@ -15,8 +15,16 @@ import (
 	"sync/atomic"
 )
 
-func TestDefaultObservable(t *testing.T) {
-	assert.Equal(t, 0, cap(DefaultObservable))
+func TestNewFromChannel(t *testing.T) {
+	ch := make(chan interface{}, 5)
+
+	observable := NewFromChannel(ch)
+	switch v := observable.(type) {
+	case *observator:
+		assert.Exactly(t, ch, v.ch)
+	default:
+		t.Fail()
+	}
 }
 
 func TestCreateObservableWithConstructor(t *testing.T) {
@@ -25,11 +33,19 @@ func TestCreateObservableWithConstructor(t *testing.T) {
 	stream1 := New(0)
 	stream2 := New(3)
 
-	if assert.IsType(Observable(nil), stream1) && assert.IsType(Observable(nil), stream2) {
-		assert.Equal(0, cap(stream1))
-		assert.Equal(3, cap(stream2))
+	switch v := stream1.(type) {
+	case *observator:
+		assert.Equal(0, cap(v.ch))
+	default:
+		t.Fail()
 	}
 
+	switch v := stream2.(type) {
+	case *observator:
+		assert.Equal(3, cap(v.ch))
+	default:
+		t.Fail()
+	}
 }
 
 func TestCheckEventHandler(t *testing.T) {

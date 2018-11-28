@@ -2,52 +2,26 @@ package connectable
 
 import (
 	"errors"
-	"sync"
-	"testing"
-	"time"
-
 	"github.com/reactivex/rxgo/fx"
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/iterable"
 	"github.com/reactivex/rxgo/observer"
-
 	"github.com/stretchr/testify/assert"
+	"sync"
+	"testing"
+	"time"
 )
 
-func TestCreateConnectableWithConstructor(t *testing.T) {
-	assert := assert.New(t)
-	text := "hello"
-	co1 := New(0)
-	co2 := New(3)
-	co3 := Just("world")
+func TestNew(t *testing.T) {
+	observers := make([]observer.Observer, 5, 5)
+	connectable := New(0, observers...)
 
-	cotests := []struct {
-		expect, suspect int
-	}{
-		{0, cap(co1.Observable)},
-		{3, cap(co2.Observable)},
-		{0, cap(co3.Observable)},
+	switch v := connectable.(type) {
+	case *connector:
+		assert.Exactly(t, observers, v.observers)
+	default:
+		t.Fail()
 	}
-
-	if assert.IsType(Connectable{}, co1) &&
-		assert.IsType(Connectable{}, co2) &&
-		assert.IsType(Connectable{}, co3) {
-
-		for _, tt := range cotests {
-			assert.Equal(tt.suspect, tt.expect)
-		}
-	}
-
-	ob := observer.New(handlers.NextFunc(func(item interface{}) {
-		text += item.(string)
-	}),
-	)
-
-	co4 := New(0, ob)
-	assert.Equal(0, cap(co4.Observable))
-
-	co4.observers[0].OnNext("world")
-	assert.Equal("helloworld", text)
 }
 
 func TestDoOperator(t *testing.T) {

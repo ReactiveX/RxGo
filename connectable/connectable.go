@@ -12,17 +12,30 @@ import (
 	"github.com/reactivex/rxgo/subscription"
 )
 
-// Connectable is an Observable which can subscribe several
-// EventHandlers before starting processing with Connect.
-type Connectable struct {
+// Connectable can subscribe to several EventHandlers
+// before starting processing with Connect.
+type Connectable interface {
+	Connect() <-chan (chan subscription.Subscription)
+	Do(nextf func(interface{})) Connectable
+	Subscribe(handler rx.EventHandler, opts ...observable.Option) Connectable
+	Map(fn fx.MappableFunc) Connectable
+	Filter(fn fx.FilterableFunc) Connectable
+	Scan(apply fx.ScannableFunc) Connectable
+	First() Connectable
+	Last() Connectable
+	Distinct(apply fx.KeySelectorFunc) Connectable
+	DistinctUntilChanged(apply fx.KeySelectorFunc) Connectable
+}
+
+type connector struct {
 	observable.Observable
 	observers []observer.Observer
 }
 
 // New creates a Connectable with optional observer(s) as parameters.
 func New(buffer uint, observers ...observer.Observer) Connectable {
-	return Connectable{
-		Observable: make(observable.Observable, int(buffer)),
+	return &connector{
+		Observable: observable.New(buffer),
 		observers:  observers,
 	}
 }
@@ -40,7 +53,9 @@ func From(it rx.Iterator) Connectable {
 		}
 		close(source)
 	}()
-	return Connectable{Observable: source}
+	return &connector{
+		Observable: observable.NewFromChannel(source),
+	}
 }
 
 // Empty creates a Connectable with no item and terminate immediately.
@@ -49,7 +64,9 @@ func Empty() Connectable {
 	go func() {
 		close(source)
 	}()
-	return Connectable{Observable: source}
+	return &connector{
+		Observable: observable.NewFromChannel(source),
+	}
 }
 
 // Interval creates a Connectable emitting incremental integers infinitely between
@@ -71,7 +88,9 @@ func Interval(term chan struct{}, timeout time.Duration) Connectable {
 		close(source)
 	}(term)
 
-	return Connectable{Observable: source}
+	return &connector{
+		Observable: observable.NewFromChannel(source),
+	}
 }
 
 // Range creates an Connectable that emits a particular range of sequential integers.
@@ -85,7 +104,9 @@ func Range(start, end int) Connectable {
 		}
 		close(source)
 	}()
-	return Connectable{Observable: source}
+	return &connector{
+		Observable: observable.NewFromChannel(source),
+	}
 }
 
 // Just creates an Connectable with the provided item(s).
@@ -104,7 +125,9 @@ func Just(item interface{}, items ...interface{}) Connectable {
 		close(source)
 	}()
 
-	return Connectable{Observable: source}
+	return &connector{
+		Observable: observable.NewFromChannel(source),
+	}
 }
 
 // Start creates a Connectable from one or more directive-like EmittableFunc
@@ -132,36 +155,43 @@ func Start(f fx.EmittableFunc, fs ...fx.EmittableFunc) Connectable {
 		close(source)
 	}()
 
-	return Connectable{Observable: source}
+	return &connector{
+		Observable: observable.NewFromChannel(source),
+	}
 }
 
 // Subscribe subscribes an EventHandler and returns a Connectable.
-func (co Connectable) Subscribe(handler rx.EventHandler) Connectable {
+func (c *connector) Subscribe(handler rx.EventHandler,
+	opts ...observable.Option) Connectable {
 	ob := observable.CheckEventHandler(handler)
-	co.observers = append(co.observers, ob)
-	return co
+	c.observers = append(c.observers, ob)
+	return c
 }
 
 // Do is like Subscribe but subscribes a func(interface{}) as a NextHandler
-func (co Connectable) Do(nextf func(interface{})) Connectable {
+func (c *connector) Do(nextf func(interface{})) Connectable {
 	ob := observer.Observer{NextHandler: nextf}
-	co.observers = append(co.observers, ob)
-	return co
+	c.observers = append(c.observers, ob)
+	return c
 }
 
 // Connect activates the Observable stream and returns a channel of Subscription channel.
-func (co Connectable) Connect() <-chan (chan subscription.Subscription) {
+func (c *connector) Connect() <-chan (chan subscription.Subscription) {
 	done := make(chan (chan subscription.Subscription), 1)
 	source := []interface{}{}
 
-	for item := range co.Observable {
+	for {
+		item, err := c.Observable.Next()
+		if err != nil {
+			break
+		}
 		source = append(source, item)
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(len(co.observers))
+	wg.Add(len(c.observers))
 
-	for _, ob := range co.observers {
+	for _, ob := range c.observers {
 		local := make([]interface{}, len(source))
 		copy(local, source)
 
@@ -212,109 +242,54 @@ func (co Connectable) Connect() <-chan (chan subscription.Subscription) {
 
 // Map maps a MappableFunc predicate to each item in Connectable and
 // returns a new Connectable with applied items.
-func (co Connectable) Map(fn fx.MappableFunc) Connectable {
-	source := make(chan interface{}, len(co.Observable))
-	go func() {
-		for item := range co.Observable {
-			source <- fn(item)
-		}
-		close(source)
-	}()
-	return Connectable{Observable: source}
+func (c *connector) Map(fn fx.MappableFunc) Connectable {
+	return &connector{
+		Observable: c.Observable.Map(fn),
+	}
 }
 
 // Filter filters items in the original Connectable and returns
 // a new Connectable with the filtered items.
-func (co Connectable) Filter(fn fx.FilterableFunc) Connectable {
-	source := make(chan interface{}, len(co.Observable))
-	go func() {
-		for item := range co.Observable {
-			if fn(item) {
-				source <- item
-			}
-		}
-		close(source)
-	}()
-	return Connectable{Observable: source}
+func (c *connector) Filter(fn fx.FilterableFunc) Connectable {
+	return &connector{
+		Observable: c.Observable.Filter(fn),
+	}
 }
 
 // Scan applies ScannableFunc predicate to each item in the original
 // Connectable sequentially and emits each successive value on a new Connectable.
-func (co Connectable) Scan(apply fx.ScannableFunc) Connectable {
-	out := make(chan interface{})
-
-	go func() {
-		var current interface{}
-		for item := range co.Observable {
-			tmp := apply(current, item)
-			out <- tmp
-			current = tmp
-		}
-		close(out)
-	}()
-	return Connectable{Observable: out}
+func (c *connector) Scan(apply fx.ScannableFunc) Connectable {
+	return &connector{
+		Observable: c.Observable.Scan(apply),
+	}
 }
 
 // First returns new Connectable which emits only first item.
-func (co Connectable) First() Connectable {
-	out := make(chan interface{})
-	go func() {
-		for item := range co.Observable {
-			out <- item
-			break
-		}
-		close(out)
-	}()
-	return Connectable{Observable: out}
+func (c *connector) First() Connectable {
+	return &connector{
+		Observable: c.Observable.First(),
+	}
 }
 
 // Last returns a new Connectable which emits only last item.
-func (co Connectable) Last() Connectable {
-	out := make(chan interface{})
-	go func() {
-		var last interface{}
-		for item := range co.Observable {
-			last = item
-		}
-		out <- last
-		close(out)
-	}()
-	return Connectable{Observable: out}
+func (c *connector) Last() Connectable {
+	return &connector{
+		Observable: c.Observable.Last(),
+	}
 }
 
 //Distinct suppress duplicate items in the original Connectable and
 //returns a new Connectable.
-func (co Connectable) Distinct(apply fx.KeySelectorFunc) Connectable {
-	out := make(chan interface{})
-	go func() {
-		keysets := make(map[interface{}]struct{})
-		for item := range co.Observable {
-			key := apply(item)
-			_, ok := keysets[key]
-			if !ok {
-				out <- item
-			}
-			keysets[key] = struct{}{}
-		}
-		close(out)
-	}()
-	return Connectable{Observable: out}
+func (c *connector) Distinct(apply fx.KeySelectorFunc) Connectable {
+	return &connector{
+		Observable: c.Observable.Distinct(apply),
+	}
 }
 
 //DistinctUntilChanged suppress duplicate items in the original Connectable only
 // if they are successive to one another and returns a new Connectable.
-func (co Connectable) DistinctUntilChanged(apply fx.KeySelectorFunc) Connectable {
-	out := make(chan interface{})
-	go func() {
-		var current interface{}
-		for item := range co.Observable {
-			key := apply(item)
-			if current != key {
-				out <- item
-				current = key
-			}
-		}
-		close(out)
-	}()
-	return Connectable{Observable: out}
+func (c *connector) DistinctUntilChanged(apply fx.KeySelectorFunc) Connectable {
+	return &connector{
+		Observable: c.Observable.DistinctUntilChanged(apply),
+	}
 }
