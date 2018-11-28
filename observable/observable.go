@@ -47,6 +47,7 @@ func (o Observable) Next() (interface{}, error) {
 }
 
 // Subscribe subscribes an EventHandler and returns a Subscription channel.
+// Options: WithParallelism, WithBufferedChannel.
 func (o Observable) Subscribe(handler rx.EventHandler, opts ...Option) <-chan subscription.Subscription {
 	// Parse options
 	var observableOptions options
@@ -133,8 +134,18 @@ func (o Observable) Unsubscribe() subscription.Subscription {
 
 // Map maps a MappableFunc predicate to each item in Observable and
 // returns a new Observable with applied items.
-func (o Observable) Map(apply fx.MappableFunc) Observable {
-	out := make(chan interface{})
+// Option: WithBufferedChannel
+func (o Observable) Map(apply fx.MappableFunc, opts ...Option) Observable {
+	var observableOptions options
+	observableOptions.parseOptions(opts...)
+
+	var out chan interface{}
+	if observableOptions.channelBufferCapacity == 0 {
+		out = make(chan interface{})
+	} else {
+		out = make(chan interface{}, observableOptions.channelBufferCapacity)
+	}
+
 	go func() {
 		for item := range o {
 			out <- apply(item)

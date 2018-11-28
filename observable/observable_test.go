@@ -395,6 +395,38 @@ func TestObservableMap(t *testing.T) {
 	assert.Exactly(t, []int{10, 20, 30}, nums)
 }
 
+func TestObservableMapWithBufferedChannelOption(t *testing.T) {
+	items := []interface{}{1, 2, 3, "foo", "bar", []byte("baz")}
+	it, err := iterable.New(items)
+	if err != nil {
+		t.Fail()
+	}
+
+	stream1 := From(it)
+
+	multiplyAllIntBy := func(factor interface{}) fx.MappableFunc {
+		return func(item interface{}) interface{} {
+			if num, ok := item.(int); ok {
+				return num * factor.(int)
+			}
+			return item
+		}
+	}
+	stream2 := stream1.Map(multiplyAllIntBy(10), WithBufferedChannel(5))
+
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	sub := stream2.Subscribe(onNext)
+	<-sub
+
+	assert.Exactly(t, []int{10, 20, 30}, nums)
+}
+
 func TestObservableTake(t *testing.T) {
 	items := []interface{}{1, 2, 3, 4, 5}
 	it, err := iterable.New(items)
