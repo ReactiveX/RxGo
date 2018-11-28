@@ -16,7 +16,7 @@ type (
 
 	// FilterableFunc defines a func that should be passed to the Filter operator.
 	FilterableFunc func(interface{}) bool
-		
+
 	// KeySelectorFunc defines a func that should be passed to the Distinct operator.
 	KeySelectorFunc func(interface{}) interface{}
 )
