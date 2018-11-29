@@ -28,6 +28,8 @@ type Observable interface {
 	TakeLast(nth uint) Observable
 	TakeWhile(apply fx.Predicate) Observable
 	ToList() Observable
+	ToMap(keySelector fx.Function) Observable
+	ToMapWithValueSelector(keySelector fx.Function, valueSelector fx.Function) Observable
 
 	Reduce(apply fx.Function2) OptionalSingle
 
@@ -598,6 +600,37 @@ func (o *observable) ToList() Observable {
 			s = append(s, item)
 		}
 		out <- s
+		close(out)
+	}()
+	return &observable{ch: out}
+}
+
+// ToMap convert the sequence of items emitted by an Observable
+// into a map keyed by a specified key function
+func (o *observable) ToMap(keySelector fx.Function) Observable {
+	out := make(chan interface{})
+	go func() {
+		m := make(map[interface{}]interface{})
+		for item := range o.ch {
+			m[keySelector(item)] = item
+		}
+		out <- m
+		close(out)
+	}()
+	return &observable{ch: out}
+}
+
+// ToMapWithValueSelector convert the sequence of items emitted by an Observable
+// into a map keyed by a specified key function and valued by another
+// value function
+func (o *observable) ToMapWithValueSelector(keySelector fx.Function, valueSelector fx.Function) Observable {
+	out := make(chan interface{})
+	go func() {
+		m := make(map[interface{}]interface{})
+		for item := range o.ch {
+			m[keySelector(item)] = valueSelector(item)
+		}
+		out <- m
 		close(out)
 	}()
 	return &observable{ch: out}
