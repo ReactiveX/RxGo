@@ -23,7 +23,7 @@ type Observable interface {
 	Scan(apply fx.Function2) Observable
 	Skip(nth uint) Observable
 	SkipLast(nth uint) Observable
-	Subscribe(handler rx.EventHandler, opts ...Option) <-chan Subscription
+	Subscribe(handler rx.EventHandler, opts ...Option) Observer
 	Take(nth uint) Observable
 	TakeLast(nth uint) Observable
 
@@ -70,10 +70,7 @@ func (o *observator) Next() (interface{}, error) {
 }
 
 // Subscribe subscribes an EventHandler and returns a Subscription channel.
-func (o *observator) Subscribe(handler rx.EventHandler, opts ...Option) <-chan Subscription {
-	done := make(chan Subscription)
-	sub := NewSubscription().Subscribe()
-
+func (o *observator) Subscribe(handler rx.EventHandler, opts ...Option) Observer {
 	ob := CheckEventHandler(handler)
 
 	// Parse options
@@ -85,13 +82,13 @@ func (o *observator) Subscribe(handler rx.EventHandler, opts ...Option) <-chan S
 	if o.errorOnSubscription != nil {
 		go func() {
 			ob.OnError(o.errorOnSubscription)
-			close(done)
 		}()
-		return done
+		return ob
 	}
 
 	if observableOptions.parallelism == 0 {
 		go func() {
+			var e error
 		OuterLoop:
 			for item := range o.ch {
 				switch item := item.(type) {
@@ -99,7 +96,7 @@ func (o *observator) Subscribe(handler rx.EventHandler, opts ...Option) <-chan S
 					ob.OnError(item)
 
 					// Record the error and break the loop.
-					sub.Error = item
+					e = item
 					break OuterLoop
 				default:
 					ob.OnNext(item)
@@ -107,16 +104,16 @@ func (o *observator) Subscribe(handler rx.EventHandler, opts ...Option) <-chan S
 			}
 
 			// OnDone only gets executed if there's no error.
-			if sub.Error == nil {
+			if e == nil {
 				ob.OnDone()
 			}
 
-			done <- sub.Unsubscribe()
 			return
 		}()
 	} else {
 		wg := sync.WaitGroup{}
 
+		var e error
 		for i := 0; i < observableOptions.parallelism; i++ {
 			wg.Add(1)
 
@@ -128,7 +125,7 @@ func (o *observator) Subscribe(handler rx.EventHandler, opts ...Option) <-chan S
 						ob.OnError(item)
 
 						// Record the error and break the loop.
-						sub.Error = item
+						e = item
 						break OuterLoop
 					default:
 						ob.OnNext(item)
@@ -141,15 +138,13 @@ func (o *observator) Subscribe(handler rx.EventHandler, opts ...Option) <-chan S
 		go func() {
 			wg.Wait()
 			// OnDone only gets executed if there's no error.
-			if sub.Error == nil {
+			if e == nil {
 				ob.OnDone()
 			}
-
-			done <- sub.Unsubscribe()
 		}()
 	}
 
-	return done
+	return ob
 }
 
 /*

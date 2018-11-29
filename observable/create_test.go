@@ -17,7 +17,7 @@ func TestEmitsNoElements(t *testing.T) {
 	})
 
 	// when
-	<-sequence.Subscribe(mockedObserver.Capture())
+	sequence.Subscribe(mockedObserver.Capture()).Block()
 
 	// then emits no elements
 	mockedObserver.AssertNotCalled(t, "OnNext", mock.Anything)
@@ -41,7 +41,7 @@ func TestEmitsElements(t *testing.T) {
 	})
 
 	// when
-	<-sequence.Subscribe(mockedObserver.Capture())
+	sequence.Subscribe(mockedObserver.Capture()).Block()
 
 	// then emits elements
 	for _, emitted := range elementsToEmit {
@@ -62,7 +62,7 @@ func TestOnlyFirstDoneCounts(t *testing.T) {
 	})
 
 	// when
-	<-sequence.Subscribe(mockedObserver.Capture())
+	sequence.Subscribe(mockedObserver.Capture()).Block()
 
 	// then emits first done
 	mockedObserver.AssertNotCalled(t, "OnError", mock.Anything)
@@ -81,7 +81,7 @@ func TestDoesntEmitElementsAfterDone(t *testing.T) {
 	})
 
 	// when
-	<-sequence.Subscribe(mockedObserver.Capture())
+	sequence.Subscribe(mockedObserver.Capture()).Block()
 
 	// then stops emission after done
 	mockedObserver.AssertNotCalled(t, "OnError", mock.Anything)
@@ -103,7 +103,7 @@ func testEmitsError(t *testing.T) {
 	})
 
 	// when
-	<-sequence.Subscribe(mockedObserver.Capture())
+	sequence.Subscribe(mockedObserver.Capture()).Block()
 
 	// then emits error
 	mockedObserver.AssertCalled(t, "OnError", expectedError)
@@ -127,7 +127,7 @@ func testFinishEmissionOnError(t *testing.T) {
 	})
 
 	// when
-	<-sequence.Subscribe(mockedObserver.Capture())
+	sequence.Subscribe(mockedObserver.Capture()).Block()
 
 	// then emits error
 	mockedObserver.AssertCalled(t, "OnError", expectedError)

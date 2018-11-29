@@ -8,16 +8,21 @@ import (
 // Observer represents a group of EventHandlers.
 type Observer interface {
 	rx.EventHandler
+	rx.Disposable
 
 	OnNext(item interface{})
 	OnError(err error)
 	OnDone()
+
+	Block() error
 }
 
 type observer struct {
+	disposed    bool
 	nextHandler handlers.NextFunc
 	errHandler  handlers.ErrFunc
 	doneHandler handlers.DoneFunc
+	done        chan error
 }
 
 // NewObserver constructs a new Observer instance with default Observer and accept
@@ -49,6 +54,7 @@ func NewObserver(eventHandlers ...rx.EventHandler) Observer {
 	if ob.doneHandler == nil {
 		ob.doneHandler = func() {}
 	}
+	ob.done = make(chan error, 1)
 
 	return &ob
 }
@@ -64,28 +70,68 @@ func (o *observer) Handle(item interface{}) {
 	}
 }
 
+func (o *observer) Dispose() {
+	o.disposed = true
+}
+
+func (o *observer) IsDisposed() bool {
+	return o.disposed
+}
+
 // OnNext applies Observer's NextHandler to an Item
 func (o *observer) OnNext(item interface{}) {
-	switch item := item.(type) {
-	case error:
-		return
-	default:
-		if o.nextHandler != nil {
-			o.nextHandler(item)
+	if !o.disposed {
+		switch item := item.(type) {
+		case error:
+			return
+		default:
+			if o.nextHandler != nil {
+				o.nextHandler(item)
+			}
 		}
+	} else {
+		// TODO
 	}
 }
 
 // OnError applies Observer's ErrHandler to an error
 func (o *observer) OnError(err error) {
-	if o.errHandler != nil {
-		o.errHandler(err)
+	if !o.disposed {
+		if o.errHandler != nil {
+			o.errHandler(err)
+			o.Dispose()
+			if o.done != nil {
+				o.done <- err
+				close(o.done)
+			}
+		}
+	} else {
+		// TODO
 	}
 }
 
 // OnDone terminates the Observer's internal Observable
 func (o *observer) OnDone() {
-	if o.doneHandler != nil {
-		o.doneHandler()
+	if !o.disposed {
+		if o.doneHandler != nil {
+			o.doneHandler()
+			o.Dispose()
+			if o.done != nil {
+				o.done <- nil
+				close(o.done)
+			}
+		}
+	} else {
+		// TODO
 	}
+}
+
+// OnDone terminates the Observer's internal Observable
+func (o *observer) Block() error {
+	if !o.disposed {
+		for v := range o.done {
+			return v
+		}
+	}
+	return nil
 }

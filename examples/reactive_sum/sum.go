@@ -65,14 +65,12 @@ func main() {
 	for {
 		fmt.Print("type> ")
 
-		sub := observable.Start(func() interface{} {
+		observable.Start(func() interface{} {
 			text, err := reader.ReadString('\n')
 			if err != nil {
 				return err
 			}
 			return text
-		}).Subscribe(onNext)
-
-		<-sub
+		}).Subscribe(onNext).Block()
 	}
 }

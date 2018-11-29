@@ -14,7 +14,7 @@ import (
 // Connectable can subscribe to several EventHandlers
 // before starting processing with Connect.
 type Connectable interface {
-	Connect() <-chan (chan observable.Subscription)
+	Connect() <-chan observable.Observer
 	Do(nextf func(interface{})) Connectable
 	Subscribe(handler rx.EventHandler, opts ...observable.Option) Connectable
 	Map(fn fx.Function) Connectable
@@ -175,8 +175,8 @@ func (c *connector) Do(nextf func(interface{})) Connectable {
 }
 
 // Connect activates the Observable stream and returns a channel of Subscription channel.
-func (c *connector) Connect() <-chan (chan observable.Subscription) {
-	done := make(chan (chan observable.Subscription), 1)
+func (c *connector) Connect() <-chan observable.Observer {
+	done := make(chan observable.Observer, 1)
 	source := []interface{}{}
 
 	for {
@@ -195,8 +195,8 @@ func (c *connector) Connect() <-chan (chan observable.Subscription) {
 		copy(local, source)
 
 		fin := make(chan struct{})
-		sub := observable.NewSubscription().Subscribe()
 
+		var e error
 		go func(ob observable.Observer) {
 		OuterLoop:
 			for _, item := range local {
@@ -205,7 +205,7 @@ func (c *connector) Connect() <-chan (chan observable.Subscription) {
 					ob.OnError(item)
 
 					// Record error
-					sub.Error = item
+					e = item
 					break OuterLoop
 				default:
 					ob.OnNext(item)
@@ -214,19 +214,12 @@ func (c *connector) Connect() <-chan (chan observable.Subscription) {
 			fin <- struct{}{}
 		}(ob)
 
-		temp := make(chan observable.Subscription)
-
 		go func(ob observable.Observer) {
 			<-fin
-			if sub.Error == nil {
+			if e == nil {
 				ob.OnDone()
-				sub.Unsubscribe()
 			}
 
-			go func() {
-				temp <- sub
-				done <- temp
-			}()
 			wg.Done()
 		}(ob)
 	}

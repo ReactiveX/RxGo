@@ -14,7 +14,7 @@ func TestFlatMapExample(t *testing.T) {
 	primeSequence := observable.Just([]int{2, 3, 5, 7, 11, 13})
 
 	// when
-	<-primeSequence.
+	primeSequence.
 		FlatMap(func(primes interface{}) observable.Observable {
 			return observable.Create(func(emitter observable.Observer, disposed bool) {
 				for _, prime := range primes.([]int) {
@@ -24,7 +24,7 @@ func TestFlatMapExample(t *testing.T) {
 			})
 		}, 1).
 		Last().
-		Subscribe(observerMock.Capture())
+		Subscribe(observerMock.Capture()).Block()
 
 	// then
 	observerMock.AssertCalled(t, "OnNext", 13)

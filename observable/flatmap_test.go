@@ -17,7 +17,7 @@ func TestFlatMapCompletesWhenSequenceIsEmpty(t *testing.T) {
 	sequence = sequence.FlatMap(identity, 1)
 
 	// when subscribes to the sequence
-	<-sequence.Subscribe(emissionObserver.Capture())
+	sequence.Subscribe(emissionObserver.Capture()).Block()
 
 	// then completes without any emission
 	emissionObserver.AssertNotCalled(t, "OnNext", mock.Anything)
@@ -37,7 +37,7 @@ func TestFlatMapReturnsSameElementBecauseIdentifyApplied(t *testing.T) {
 	sequence = sequence.FlatMap(identity, 1)
 
 	// when subscribes to the sequence
-	<-sequence.Subscribe(emissionObserver.Capture())
+	sequence.Subscribe(emissionObserver.Capture()).Block()
 
 	// then completes with emission of the same element
 	emissionObserver.AssertNotCalled(t, "OnError", mock.Anything)
@@ -60,7 +60,7 @@ func TestFlatMapReturnsSliceElements(t *testing.T) {
 	sequence = sequence.FlatMap(flattenThreeElementSlice, 1)
 
 	// when subscribes to the sequence
-	<-sequence.Subscribe(emissionObserver.Capture())
+	sequence.Subscribe(emissionObserver.Capture()).Block()
 
 	// then completes with emission of flatten elements
 	emissionObserver.AssertNotCalled(t, "OnError", mock.Anything)

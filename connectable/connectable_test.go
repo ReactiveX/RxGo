@@ -122,9 +122,8 @@ func TestSubscribeToObserver(t *testing.T) {
 	sub := co.Subscribe(ob).Connect()
 
 	for c := range sub {
-		for s := range c {
-			assert.Equal("bang", s.Error.Error())
-		}
+		s := c.Block()
+		assert.Equal("bang", s.Error())
 	}
 
 	assert.Equal(6, num)
@@ -192,9 +191,8 @@ func TestSubscribeToManyObservers(t *testing.T) {
 	subs := co.Connect()
 
 	for sub := range subs {
-		for s := range sub {
-			assert.Equal("bang", s.Error.Error())
-		}
+		s := sub.Block()
+		assert.Equal("bang", s.Error())
 	}
 
 	expectedNums := []int{2, 4, 6, 1, 10, 2, 3, 20, 30}
