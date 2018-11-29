@@ -44,6 +44,7 @@ type Observable interface {
 type observable struct {
 	ch                  chan interface{}
 	errorOnSubscription error
+	observableFactory   func() Observable
 }
 
 // NewObservable creates an Observable
@@ -154,8 +155,18 @@ func (o *observable) Subscribe(handler EventHandler, opts ...Option) Observer {
 // returns a new Observable with applied items.
 func (o *observable) Map(apply fx.Function) Observable {
 	out := make(chan interface{})
+
+	var it Observable = o
+	if o.observableFactory != nil {
+		it = o.observableFactory()
+	}
+
 	go func() {
-		for item := range o.ch {
+		for {
+			item, err := it.Next()
+			if err != nil {
+				break
+			}
 			out <- apply(item)
 		}
 		close(out)
@@ -359,6 +370,14 @@ func (o *observable) Scan(apply fx.Function2) Observable {
 		close(out)
 	}()
 	return &observable{ch: out}
+}
+
+// Defer waits until an observer subscribes to it, and then it generates an Observable.
+func Defer(f func() Observable) Observable {
+	return &observable{
+		ch:                nil,
+		observableFactory: f,
+	}
 }
 
 // From creates a new Observable from an Iterator.
