@@ -1151,6 +1151,7 @@ func TestObservableLastOrDefault(t *testing.T) {
 	}
 	assert.Exactly(t, 7, v)
 }
+
 func TestObservableLastOrDefaultWithValue(t *testing.T) {
 	items := []interface{}{0, 1, 3}
 	it, err := iterable.New(items)
@@ -1162,4 +1163,38 @@ func TestObservableLastOrDefaultWithValue(t *testing.T) {
 		t.Fail()
 	}
 	assert.Exactly(t, 3, v)
+}
+
+func TestObservableTakeWhile(t *testing.T) {
+	items := []interface{}{1, 2, 3, 4, 5}
+	it, err := iterable.New(items)
+	if err != nil {
+		t.Fail()
+	}
+	stream1 := From(it)
+	stream2 := stream1.TakeWhile(func(item interface{}) bool {
+		return item != 3
+	})
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+	stream2.Subscribe(onNext).Block()
+	assert.Exactly(t, []int{1, 2}, nums)
+}
+func TestObservableTakeWhileWithEmpty(t *testing.T) {
+	stream1 := Empty()
+	stream2 := stream1.TakeWhile(func(item interface{}) bool {
+		return item != 3
+	})
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+	stream2.Subscribe(onNext).Block()
+	assert.Exactly(t, []int{}, nums)
 }

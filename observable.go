@@ -26,6 +26,7 @@ type Observable interface {
 	Subscribe(handler EventHandler, opts ...Option) Observer
 	Take(nth uint) Observable
 	TakeLast(nth uint) Observable
+	TakeWhile(apply fx.Predicate) Observable
 
 	Reduce(apply fx.Function2) OptionalSingle
 
@@ -568,4 +569,21 @@ func (o *observable) LastOrDefault(defaultValue interface{}) Single {
 		close(out)
 	}()
 	return NewSingleFromChannel(out)
+}
+
+// TakeWhile emits items emitted by an Observable as long as the
+// specified condition is true, then skip the remainder.
+func (o *observable) TakeWhile(apply fx.Predicate) Observable {
+	out := make(chan interface{})
+	go func() {
+		for item := range o.ch {
+			if apply(item) {
+				out <- item
+				continue
+			}
+			break
+		}
+		close(out)
+	}()
+	return &observable{ch: out}
 }
