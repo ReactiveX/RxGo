@@ -52,3 +52,16 @@ func TestSingleFilterMatching(t *testing.T) {
 
 	assert.Equal(t, 0, got)
 }
+
+func TestSingleMap(t *testing.T) {
+	got := 0
+
+	Just(1, 2, 3).ElementAt(1).Map(func(i interface{}) interface{} {
+		return i
+	}).Subscribe(handlers.NextFunc(func(i interface{}) {
+		got = i.(int) + 10
+	})).Block()
+
+	assert.Equal(t, 12, got)
+
+}
