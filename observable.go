@@ -31,6 +31,8 @@ type Observable interface {
 
 	Count() Single
 	ElementAt(index uint) Single
+	FirstOrDefault(defaultValue interface{}) Single
+	LastOrDefault(defaultValue interface{}) Single
 }
 
 // observable is a structure handling a channel of interface{} and implementing Observable
@@ -532,6 +534,37 @@ func (o *observable) Count() Single {
 			count++
 		}
 		out <- count
+		close(out)
+	}()
+	return NewSingleFromChannel(out)
+}
+
+// FirstOrDefault returns new Observable which emit only first item.
+// If the observable fails to emit any items, it emits a default value.
+func (o *observable) FirstOrDefault(defaultValue interface{}) Single {
+	out := make(chan interface{})
+	go func() {
+		first := defaultValue
+		for item := range o.ch {
+			first = item
+			break
+		}
+		out <- first
+		close(out)
+	}()
+	return NewSingleFromChannel(out)
+}
+
+// Last returns a new Observable which emit only last item.
+// If the observable fails to emit any items, it emits a default value.
+func (o *observable) LastOrDefault(defaultValue interface{}) Single {
+	out := make(chan interface{})
+	go func() {
+		last := defaultValue
+		for item := range o.ch {
+			last = item
+		}
+		out <- last
 		close(out)
 	}()
 	return NewSingleFromChannel(out)

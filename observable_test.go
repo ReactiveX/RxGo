@@ -1112,3 +1112,54 @@ func TestObservableCount(t *testing.T) {
 	}
 	assert.Exactly(t, int64(6), count)
 }
+
+func TestObservableFirstOrDefault(t *testing.T) {
+	var items []interface{}
+	it, err := iterable.New(items)
+	if err != nil {
+		t.Fail()
+	}
+	v, err := From(it).FirstOrDefault(7).Subscribe(nil).Block()
+	if err != nil {
+		t.Fail()
+	}
+	assert.Exactly(t, 7, v)
+}
+
+func TestObservableFirstOrDefaultWithValue(t *testing.T) {
+	items := []interface{}{0, 1, 2}
+	it, err := iterable.New(items)
+	if err != nil {
+		t.Fail()
+	}
+	v, err := From(it).FirstOrDefault(7).Subscribe(nil).Block()
+	if err != nil {
+		t.Fail()
+	}
+	assert.Exactly(t, 0, v)
+}
+
+func TestObservableLastOrDefault(t *testing.T) {
+	var items []interface{}
+	it, err := iterable.New(items)
+	if err != nil {
+		t.Fail()
+	}
+	v, err := From(it).LastOrDefault(7).Subscribe(nil).Block()
+	if err != nil {
+		t.Fail()
+	}
+	assert.Exactly(t, 7, v)
+}
+func TestObservableLastOrDefaultWithValue(t *testing.T) {
+	items := []interface{}{0, 1, 3}
+	it, err := iterable.New(items)
+	if err != nil {
+		t.Fail()
+	}
+	v, err := From(it).LastOrDefault(7).Subscribe(nil).Block()
+	if err != nil {
+		t.Fail()
+	}
+	assert.Exactly(t, 3, v)
+}
