@@ -1,14 +1,13 @@
-package observable
+package rx
 
 import (
-	"github.com/reactivex/rxgo"
 	"github.com/reactivex/rxgo/handlers"
 )
 
 // Observer represents a group of EventHandlers.
 type Observer interface {
-	rx.EventHandler
-	rx.Disposable
+	EventHandler
+	Disposable
 
 	OnNext(item interface{})
 	OnError(err error)
@@ -27,7 +26,7 @@ type observer struct {
 
 // NewObserver constructs a new Observer instance with default Observer and accept
 // any number of EventHandler
-func NewObserver(eventHandlers ...rx.EventHandler) Observer {
+func NewObserver(eventHandlers ...EventHandler) Observer {
 	ob := observer{}
 
 	if len(eventHandlers) > 0 {

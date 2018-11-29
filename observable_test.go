@@ -1,4 +1,4 @@
-package observable
+package rx
 
 import (
 	"errors"

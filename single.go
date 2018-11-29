@@ -1,7 +1,6 @@
-package single
+package rx
 
 import (
-	"github.com/reactivex/rxgo"
 	"github.com/reactivex/rxgo/fx"
 )
 
@@ -9,7 +8,7 @@ import (
 type Single interface {
 	Filter(apply fx.Predicate) Single
 	Map(apply fx.Function) Single
-	Subscribe(handler rx.EventHandler, opts ...Option) Observer
+	Subscribe(handler EventHandler, opts ...Option) SingleObserver
 }
 
 type single struct {
@@ -17,8 +16,8 @@ type single struct {
 }
 
 // CheckHandler checks the underlying type of an EventHandler.
-func CheckEventHandler(handler rx.EventHandler) Observer {
-	return NewObserver(handler)
+func CheckSingleEventHandler(handler EventHandler) SingleObserver {
+	return NewSingleObserver(handler)
 }
 
 func NewSingle() Single {
@@ -55,8 +54,8 @@ func (s *single) Map(apply fx.Function) Single {
 	return &single{ch: out}
 }
 
-func (s *single) Subscribe(handler rx.EventHandler, opts ...Option) Observer {
-	ob := CheckEventHandler(handler)
+func (s *single) Subscribe(handler EventHandler, opts ...Option) SingleObserver {
+	ob := CheckSingleEventHandler(handler)
 
 	// Parse options
 	var observableOptions options

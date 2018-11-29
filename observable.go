@@ -1,18 +1,16 @@
-package observable
+package rx
 
 import (
 	"sync"
 	"time"
 
-	"github.com/reactivex/rxgo"
 	"github.com/reactivex/rxgo/errors"
 	"github.com/reactivex/rxgo/fx"
-	"github.com/reactivex/rxgo/single"
 )
 
 // Observable is a basic observable interface
 type Observable interface {
-	rx.Iterator
+	Iterator
 
 	Distinct(apply fx.Function) Observable
 	DistinctUntilChanged(apply fx.Function) Observable
@@ -24,11 +22,11 @@ type Observable interface {
 	Scan(apply fx.Function2) Observable
 	Skip(nth uint) Observable
 	SkipLast(nth uint) Observable
-	Subscribe(handler rx.EventHandler, opts ...Option) Observer
+	Subscribe(handler EventHandler, opts ...Option) Observer
 	Take(nth uint) Observable
 	TakeLast(nth uint) Observable
 
-	ElementAt(index uint) single.Single
+	ElementAt(index uint) Single
 }
 
 // observator is a structure handling a channel of interface{} and implementing Observable
@@ -53,7 +51,7 @@ func NewObservableFromChannel(ch chan interface{}) Observable {
 }
 
 // CheckHandler checks the underlying type of an EventHandler.
-func CheckEventHandler(handler rx.EventHandler) Observer {
+func CheckEventHandler(handler EventHandler) Observer {
 	return NewObserver(handler)
 }
 
@@ -66,7 +64,7 @@ func (o *observator) Next() (interface{}, error) {
 }
 
 // Subscribe subscribes an EventHandler and returns a Subscription channel.
-func (o *observator) Subscribe(handler rx.EventHandler, opts ...Option) Observer {
+func (o *observator) Subscribe(handler EventHandler, opts ...Option) Observer {
 	ob := CheckEventHandler(handler)
 
 	// Parse options
@@ -163,7 +161,7 @@ func (o *observator) Map(apply fx.Function) Observable {
 	return &observator{ch: out}
 }
 
-func (o *observator) ElementAt(index uint) single.Single {
+func (o *observator) ElementAt(index uint) Single {
 	out := make(chan interface{})
 	go func() {
 		takeCount := 0
@@ -178,7 +176,7 @@ func (o *observator) ElementAt(index uint) single.Single {
 		out <- errors.New(errors.ElementAtError)
 		close(out)
 	}()
-	return single.NewSingleFromChannel(out)
+	return NewSingleFromChannel(out)
 }
 
 // Take takes first n items in the original Obserable and returns
@@ -355,7 +353,7 @@ func (o *observator) Scan(apply fx.Function2) Observable {
 }
 
 // From creates a new Observable from an Iterator.
-func From(it rx.Iterator) Observable {
+func From(it Iterator) Observable {
 	source := make(chan interface{})
 	go func() {
 		for {

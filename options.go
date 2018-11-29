@@ -1,4 +1,4 @@
-package single
+package rx
 
 // Option is the configuration of an observable
 type Option interface {
