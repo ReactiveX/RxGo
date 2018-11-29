@@ -27,6 +27,7 @@ type Observable interface {
 	Take(nth uint) Observable
 	TakeLast(nth uint) Observable
 	TakeWhile(apply fx.Predicate) Observable
+	ToList() Observable
 
 	Reduce(apply fx.Function2) OptionalSingle
 
@@ -583,6 +584,20 @@ func (o *observable) TakeWhile(apply fx.Predicate) Observable {
 			}
 			break
 		}
+		close(out)
+	}()
+	return &observable{ch: out}
+}
+
+// ToList collects all items from an Observable and emit them as a single List.
+func (o *observable) ToList() Observable {
+	out := make(chan interface{})
+	go func() {
+		s := make([]interface{}, 0)
+		for item := range o.ch {
+			s = append(s, item)
+		}
+		out <- s
 		close(out)
 	}()
 	return &observable{ch: out}

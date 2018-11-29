@@ -1184,6 +1184,7 @@ func TestObservableTakeWhile(t *testing.T) {
 	stream2.Subscribe(onNext).Block()
 	assert.Exactly(t, []int{1, 2}, nums)
 }
+
 func TestObservableTakeWhileWithEmpty(t *testing.T) {
 	stream1 := Empty()
 	stream2 := stream1.TakeWhile(func(item interface{}) bool {
@@ -1197,4 +1198,27 @@ func TestObservableTakeWhileWithEmpty(t *testing.T) {
 	})
 	stream2.Subscribe(onNext).Block()
 	assert.Exactly(t, []int{}, nums)
+}
+
+func TestObservableToList(t *testing.T) {
+	items := []interface{}{1, "hello", false, .0}
+	it, err := iterable.New(items)
+	if err != nil {
+		t.Fail()
+	}
+	var got interface{}
+	stream1 := From(it)
+	stream1.ToList().Subscribe(handlers.NextFunc(func(i interface{}) {
+		got = i
+	})).Block()
+	assert.Exactly(t, []interface{}{1, "hello", false, .0}, got)
+}
+
+func TestObservableToListWithEmpty(t *testing.T) {
+	stream1 := Empty()
+	var got interface{}
+	stream1.ToList().Subscribe(handlers.NextFunc(func(i interface{}) {
+		got = i
+	})).Block()
+	assert.Exactly(t, []interface{}{}, got)
 }
