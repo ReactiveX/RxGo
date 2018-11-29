@@ -80,9 +80,7 @@ func (o *observable) Subscribe(handler EventHandler, opts ...Option) Observer {
 
 	// Parse options
 	var observableOptions options
-	for _, opt := range opts {
-		opt.apply(&observableOptions)
-	}
+	observableOptions.parseOptions(opts...)
 
 	if o.errorOnSubscription != nil {
 		go func() {

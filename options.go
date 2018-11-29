@@ -7,7 +7,8 @@ type Option interface {
 
 // options configurable for an observable
 type options struct {
-	parallelism int
+	parallelism           int
+	channelBufferCapacity int
 }
 
 // funcOption wraps a function that modifies options into an
@@ -30,5 +31,20 @@ func newFuncOption(f func(*options)) *funcOption {
 func WithParallelism(parallelism int) Option {
 	return newFuncOption(func(options *options) {
 		options.parallelism = parallelism
+	})
+}
+
+// parseOptions parse the given options and mutate the options
+// structure
+func (o *options) parseOptions(opts ...Option) {
+	for _, opt := range opts {
+		opt.apply(o)
+	}
+}
+
+// WithBufferedChannel allows to configure the capacity of a buffered channel
+func WithBufferedChannel(capacity int) Option {
+	return newFuncOption(func(options *options) {
+		options.channelBufferCapacity = capacity
 	})
 }
