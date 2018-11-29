@@ -1,4 +1,4 @@
-package observer
+package observable
 
 import (
 	"github.com/reactivex/rxgo/handlers"
@@ -33,7 +33,7 @@ func (m *ObserverMock) OnNext(item interface{}) {
 }
 
 func (m *ObserverMock) Capture() Observer {
-	ob := New(
+	ob := NewObserver(
 		handlers.NextFunc(func(el interface{}) {
 			m.OnNext(el)
 		}),

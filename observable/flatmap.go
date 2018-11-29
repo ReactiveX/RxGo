@@ -4,7 +4,6 @@ import (
 	"sync"
 
 	"github.com/reactivex/rxgo/handlers"
-	"github.com/reactivex/rxgo/observer"
 )
 
 // transforms emitted items into observables and flattens them into single observable.
@@ -65,8 +64,8 @@ func flatObservedSequence(out chan interface{}, o Observable, apply func(interfa
 	wg.Wait()
 }
 
-func newFlattenEmissionObserver(out chan interface{}) observer.Observer {
-	return observer.New(handlers.NextFunc(func(element interface{}) {
+func newFlattenEmissionObserver(out chan interface{}) Observer {
+	return NewObserver(handlers.NextFunc(func(element interface{}) {
 		out <- element
 	}))
 }

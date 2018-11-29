@@ -1,4 +1,4 @@
-package subscription
+package observable
 
 import (
 	"testing"
@@ -8,7 +8,7 @@ import (
 )
 
 func TestCreateSubscription(t *testing.T) {
-	sub := New()
+	sub := NewSubscription()
 
 	assert := assert.New(t)
 	assert.Equal(time.Time{}, sub.SubscribeAt)
@@ -17,7 +17,7 @@ func TestCreateSubscription(t *testing.T) {
 }
 
 func TestSubscription(t *testing.T) {
-	sub := New().Subscribe()
+	sub := NewSubscription().Subscribe()
 	first := sub.SubscribeAt
 	<-time.After(10 * time.Millisecond)
 	sub = sub.Unsubscribe()

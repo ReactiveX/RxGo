@@ -1,4 +1,4 @@
-package observer
+package observable
 
 import (
 	"testing"
@@ -9,7 +9,7 @@ import (
 )
 
 func TestCreateNewObserverWithConstructor(t *testing.T) {
-	ob := New()
+	ob := NewObserver()
 	ob.OnDone()
 	ob.OnError(errors.New(""))
 	ob.OnNext("")
@@ -30,7 +30,7 @@ func TestCreateNewObserverWithObserver(t *testing.T) {
 		donetext = "Hello"
 	})
 
-	ob := New(donef, nextf)
+	ob := NewObserver(donef, nextf)
 
 	ob.OnNext("Next")
 	ob.OnDone()
@@ -50,7 +50,7 @@ func TestHandle(t *testing.T) {
 		i = i + 2
 	})
 
-	ob := New(nextf, errorf)
+	ob := NewObserver(nextf, errorf)
 	ob.Handle("")
 	ob.Handle(errors.New(""))
 	assert.Equal(t, 7, i)

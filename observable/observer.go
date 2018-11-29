@@ -1,4 +1,4 @@
-package observer
+package observable
 
 import (
 	"github.com/reactivex/rxgo"
@@ -14,16 +14,16 @@ type Observer interface {
 	OnDone()
 }
 
-type observator struct {
+type observer struct {
 	nextHandler handlers.NextFunc
 	errHandler  handlers.ErrFunc
 	doneHandler handlers.DoneFunc
 }
 
-// New constructs a new Observer instance with default Observer and accept
+// NewObserver constructs a new Observer instance with default Observer and accept
 // any number of EventHandler
-func New(eventHandlers ...rx.EventHandler) Observer {
-	ob := observator{}
+func NewObserver(eventHandlers ...rx.EventHandler) Observer {
+	ob := observer{}
 
 	if len(eventHandlers) > 0 {
 		for _, handler := range eventHandlers {
@@ -34,7 +34,7 @@ func New(eventHandlers ...rx.EventHandler) Observer {
 				ob.errHandler = handler
 			case handlers.DoneFunc:
 				ob.doneHandler = handler
-			case *observator:
+			case *observer:
 				ob = *handler
 			}
 		}
@@ -54,7 +54,7 @@ func New(eventHandlers ...rx.EventHandler) Observer {
 }
 
 // Handle registers Observer to EventHandler.
-func (o *observator) Handle(item interface{}) {
+func (o *observer) Handle(item interface{}) {
 	switch item := item.(type) {
 	case error:
 		o.errHandler(item)
@@ -65,7 +65,7 @@ func (o *observator) Handle(item interface{}) {
 }
 
 // OnNext applies Observer's NextHandler to an Item
-func (o *observator) OnNext(item interface{}) {
+func (o *observer) OnNext(item interface{}) {
 	switch item := item.(type) {
 	case error:
 		return
@@ -77,14 +77,14 @@ func (o *observator) OnNext(item interface{}) {
 }
 
 // OnError applies Observer's ErrHandler to an error
-func (o *observator) OnError(err error) {
+func (o *observer) OnError(err error) {
 	if o.errHandler != nil {
 		o.errHandler(err)
 	}
 }
 
 // OnDone terminates the Observer's internal Observable
-func (o *observator) OnDone() {
+func (o *observer) OnDone() {
 	if o.doneHandler != nil {
 		o.doneHandler()
 	}

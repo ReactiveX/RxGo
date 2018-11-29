@@ -2,7 +2,6 @@ package observable
 
 import (
 	"github.com/reactivex/rxgo/handlers"
-	"github.com/reactivex/rxgo/observer"
 )
 
 // Creates observable from based on source function. Keep it mind to call emitter.OnDone()
@@ -15,9 +14,9 @@ import (
 //		emitter.OnNext("one element")
 //		emitter.OnDone()
 // })
-func Create(source func(emitter observer.Observer, disposed bool)) Observable {
+func Create(source func(emitter Observer, disposed bool)) Observable {
 	emitted := make(chan interface{})
-	emitter := observer.New(
+	emitter := NewObserver(
 		handlers.NextFunc(func(el interface{}) {
 			if !isClosed(emitted) {
 				emitted <- el

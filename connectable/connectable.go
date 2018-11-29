@@ -9,14 +9,12 @@ import (
 	"github.com/reactivex/rxgo/fx"
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/observable"
-	"github.com/reactivex/rxgo/observer"
-	"github.com/reactivex/rxgo/subscription"
 )
 
 // Connectable can subscribe to several EventHandlers
 // before starting processing with Connect.
 type Connectable interface {
-	Connect() <-chan (chan subscription.Subscription)
+	Connect() <-chan (chan observable.Subscription)
 	Do(nextf func(interface{})) Connectable
 	Subscribe(handler rx.EventHandler, opts ...observable.Option) Connectable
 	Map(fn fx.MappableFunc) Connectable
@@ -30,13 +28,13 @@ type Connectable interface {
 
 type connector struct {
 	observable.Observable
-	observers []observer.Observer
+	observers []observable.Observer
 }
 
 // New creates a Connectable with optional observer(s) as parameters.
-func New(buffer uint, observers ...observer.Observer) Connectable {
+func New(buffer uint, observers ...observable.Observer) Connectable {
 	return &connector{
-		Observable: observable.New(buffer),
+		Observable: observable.NewObservable(buffer),
 		observers:  observers,
 	}
 }
@@ -171,14 +169,14 @@ func (c *connector) Subscribe(handler rx.EventHandler,
 
 // Do is like Subscribe but subscribes a func(interface{}) as a NextHandler
 func (c *connector) Do(nextf func(interface{})) Connectable {
-	ob := observer.New(handlers.NextFunc(nextf))
+	ob := observable.NewObserver(handlers.NextFunc(nextf))
 	c.observers = append(c.observers, ob)
 	return c
 }
 
 // Connect activates the Observable stream and returns a channel of Subscription channel.
-func (c *connector) Connect() <-chan (chan subscription.Subscription) {
-	done := make(chan (chan subscription.Subscription), 1)
+func (c *connector) Connect() <-chan (chan observable.Subscription) {
+	done := make(chan (chan observable.Subscription), 1)
 	source := []interface{}{}
 
 	for {
@@ -197,9 +195,9 @@ func (c *connector) Connect() <-chan (chan subscription.Subscription) {
 		copy(local, source)
 
 		fin := make(chan struct{})
-		sub := subscription.New().Subscribe()
+		sub := observable.NewSubscription().Subscribe()
 
-		go func(ob observer.Observer) {
+		go func(ob observable.Observer) {
 		OuterLoop:
 			for _, item := range local {
 				switch item := item.(type) {
@@ -216,9 +214,9 @@ func (c *connector) Connect() <-chan (chan subscription.Subscription) {
 			fin <- struct{}{}
 		}(ob)
 
-		temp := make(chan subscription.Subscription)
+		temp := make(chan observable.Subscription)
 
-		go func(ob observer.Observer) {
+		go func(ob observable.Observer) {
 			<-fin
 			if sub.Error == nil {
 				ob.OnDone()

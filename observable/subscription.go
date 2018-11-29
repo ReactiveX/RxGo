@@ -1,4 +1,4 @@
-package subscription
+package observable
 
 import "time"
 
@@ -12,8 +12,8 @@ type Subscription struct {
 // DefaultSubscription is a default Subscription.
 var DefaultSubscription = Subscription{}
 
-// New creates a DefaultSubscription.
-func New() Subscription {
+// NewSubscription creates a DefaultSubscription.
+func NewSubscription() Subscription {
 	return DefaultSubscription
 }
 

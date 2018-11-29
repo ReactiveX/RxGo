@@ -7,8 +7,6 @@ import (
 	"github.com/reactivex/rxgo"
 	"github.com/reactivex/rxgo/errors"
 	"github.com/reactivex/rxgo/fx"
-	"github.com/reactivex/rxgo/observer"
-	"github.com/reactivex/rxgo/subscription"
 )
 
 // Observable is a basic observable interface
@@ -25,7 +23,7 @@ type Observable interface {
 	Scan(apply fx.ScannableFunc) Observable
 	Skip(nth uint) Observable
 	SkipLast(nth uint) Observable
-	Subscribe(handler rx.EventHandler, opts ...Option) <-chan subscription.Subscription
+	Subscribe(handler rx.EventHandler, opts ...Option) <-chan Subscription
 	Take(nth uint) Observable
 	TakeLast(nth uint) Observable
 
@@ -43,8 +41,8 @@ type observator struct {
 	errorOnSubscription error
 }
 
-// New creates an Observable
-func New(buffer uint) Observable {
+// NewObservable creates an Observable
+func NewObservable(buffer uint) Observable {
 	ch := make(chan interface{}, int(buffer))
 	return &observator{
 		ch: ch,
@@ -59,8 +57,8 @@ func NewFromChannel(ch chan interface{}) Observable {
 }
 
 // CheckHandler checks the underlying type of an EventHandler.
-func CheckEventHandler(handler rx.EventHandler) observer.Observer {
-	return observer.New(handler)
+func CheckEventHandler(handler rx.EventHandler) Observer {
+	return NewObserver(handler)
 }
 
 // Next returns the next item on the Observable.
@@ -72,9 +70,9 @@ func (o *observator) Next() (interface{}, error) {
 }
 
 // Subscribe subscribes an EventHandler and returns a Subscription channel.
-func (o *observator) Subscribe(handler rx.EventHandler, opts ...Option) <-chan subscription.Subscription {
-	done := make(chan subscription.Subscription)
-	sub := subscription.New().Subscribe()
+func (o *observator) Subscribe(handler rx.EventHandler, opts ...Option) <-chan Subscription {
+	done := make(chan Subscription)
+	sub := NewSubscription().Subscribe()
 
 	ob := CheckEventHandler(handler)
 

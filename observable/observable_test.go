@@ -9,7 +9,6 @@ import (
 	"github.com/reactivex/rxgo/fx"
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/iterable"
-	"github.com/reactivex/rxgo/observer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"sync/atomic"
@@ -30,8 +29,8 @@ func TestNewFromChannel(t *testing.T) {
 func TestCreateObservableWithConstructor(t *testing.T) {
 	assert := assert.New(t)
 
-	stream1 := New(0)
-	stream2 := New(3)
+	stream1 := NewObservable(0)
+	stream2 := NewObservable(3)
 
 	switch v := stream1.(type) {
 	case *observator:
@@ -59,7 +58,7 @@ func TestCheckEventHandler(t *testing.T) {
 		testtext += "done"
 	})
 
-	myObserver := observer.New(df)
+	myObserver := NewObserver(df)
 
 	ob1 := CheckEventHandler(myObserver)
 	ob2 := CheckEventHandler(df)
@@ -119,7 +118,7 @@ func TestRangeOperator(t *testing.T) {
 		nums = append(nums, 1000)
 	})
 
-	sub := myStream.Subscribe(observer.New(onNext, onDone))
+	sub := myStream.Subscribe(NewObserver(onNext, onDone))
 	<-sub
 
 	assert.Exactly(t, []int{2, 3, 4, 5, 1000}, nums)
@@ -260,7 +259,7 @@ func TestStartOperator(t *testing.T) {
 		done = true
 	})
 
-	myObserver := observer.New(onNext, onError, onDone)
+	myObserver := NewObserver(onNext, onError, onDone)
 
 	myStream := Start(d1, d3, d4, e1, d2)
 
@@ -356,7 +355,7 @@ func TestSubscribeToObserver(t *testing.T) {
 		finished = true
 	})
 
-	ob := observer.New(onNext, onError, onDone)
+	ob := NewObserver(onNext, onError, onDone)
 
 	done := myStream.Subscribe(ob)
 	sub := <-done
@@ -627,7 +626,7 @@ func TestParallelSubscribeToObserver(t *testing.T) {
 		finished = true
 	})
 
-	ob := observer.New(onNext, onError, onDone)
+	ob := NewObserver(onNext, onError, onDone)
 
 	done := myStream.Subscribe(ob, WithParallelism(2))
 	<-done
@@ -663,7 +662,7 @@ func TestParallelSubscribeToObserverWithError(t *testing.T) {
 		finished = true
 	})
 
-	ob := observer.New(onNext, onError, onDone)
+	ob := NewObserver(onNext, onError, onDone)
 
 	done := myStream.Subscribe(ob, WithParallelism(2))
 	<-done
@@ -939,7 +938,7 @@ func TestRepeatNtimeOperator(t *testing.T) {
 		stringarray = append(stringarray, "end")
 	})
 
-	sub := myStream.Subscribe(observer.New(onNext, onDone))
+	sub := myStream.Subscribe(NewObserver(onNext, onDone))
 	<-sub
 
 	assert.Exactly(t, []string{"mystring", "mystring", "end"}, stringarray)
@@ -959,7 +958,7 @@ func TestRepeatNtimeMultiVariadicOperator(t *testing.T) {
 		stringarray = append(stringarray, "end")
 	})
 
-	sub := myStream.Subscribe(observer.New(onNext, onDone))
+	sub := myStream.Subscribe(NewObserver(onNext, onDone))
 	<-sub
 
 	assert.Exactly(t, []string{"mystring", "mystring", "end"}, stringarray)
@@ -979,7 +978,7 @@ func TestRepeatWithZeroNtimeOperator(t *testing.T) {
 		stringarray = append(stringarray, "end")
 	})
 
-	sub := myStream.Subscribe(observer.New(onNext, onDone))
+	sub := myStream.Subscribe(NewObserver(onNext, onDone))
 	<-sub
 
 	assert.Exactly(t, []string{"end"}, stringarray)
@@ -999,7 +998,7 @@ func TestRepeatWithNegativeTimesOperator(t *testing.T) {
 		stringarray = append(stringarray, "end")
 	})
 
-	sub := myStream.Subscribe(observer.New(onNext, onDone))
+	sub := myStream.Subscribe(NewObserver(onNext, onDone))
 	<-sub
 
 	assert.Exactly(t, []string{"end"}, stringarray)
@@ -1007,7 +1006,7 @@ func TestRepeatWithNegativeTimesOperator(t *testing.T) {
 
 func TestEmptyCompletesSequence(t *testing.T) {
 	// given
-	emissionObserver := observer.NewObserverMock()
+	emissionObserver := NewObserverMock()
 
 	// and empty sequence
 	sequence := Empty()

@@ -5,7 +5,6 @@ import (
 
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/observable"
-	"github.com/reactivex/rxgo/observer"
 )
 
 func main() {
@@ -13,7 +12,7 @@ func main() {
 
 	<-primeSequence.
 		FlatMap(func(primes interface{}) observable.Observable {
-			return observable.Create(func(emitter observer.Observer, disposed bool) {
+			return observable.Create(func(emitter observable.Observer, disposed bool) {
 				for _, prime := range primes.([]int) {
 					emitter.OnNext(prime)
 				}
