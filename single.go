@@ -41,6 +41,12 @@ func NewSingleFromChannel(ch chan interface{}) Single {
 	}
 }
 
+func NewOptionalSingleFromChannel(ch chan optional.Optional) OptionalSingle {
+	return &optionalSingle{
+		ch: ch,
+	}
+}
+
 func (s *single) Filter(apply fx.Predicate) OptionalSingle {
 	out := make(chan optional.Optional)
 	go func() {

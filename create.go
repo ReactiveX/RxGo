@@ -37,7 +37,7 @@ func Create(source func(emitter Observer, disposed bool)) Observable {
 		source(emitter, isClosed(emitted))
 	}()
 
-	return &observator{
+	return &observable{
 		ch: emitted,
 	}
 }

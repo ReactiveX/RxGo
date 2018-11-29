@@ -6,6 +6,7 @@ import (
 
 	"github.com/reactivex/rxgo/errors"
 	"github.com/reactivex/rxgo/fx"
+	"github.com/reactivex/rxgo/optional"
 )
 
 // Observable is a basic observable interface
@@ -26,11 +27,13 @@ type Observable interface {
 	Take(nth uint) Observable
 	TakeLast(nth uint) Observable
 
+	Reduce(apply fx.Function2) OptionalSingle
+
 	ElementAt(index uint) Single
 }
 
-// observator is a structure handling a channel of interface{} and implementing Observable
-type observator struct {
+// observable is a structure handling a channel of interface{} and implementing Observable
+type observable struct {
 	ch                  chan interface{}
 	errorOnSubscription error
 }
@@ -38,14 +41,14 @@ type observator struct {
 // NewObservable creates an Observable
 func NewObservable(buffer uint) Observable {
 	ch := make(chan interface{}, int(buffer))
-	return &observator{
+	return &observable{
 		ch: ch,
 	}
 }
 
 // NewObservableFromChannel creates an Observable from a given channel
 func NewObservableFromChannel(ch chan interface{}) Observable {
-	return &observator{
+	return &observable{
 		ch: ch,
 	}
 }
@@ -56,7 +59,7 @@ func CheckEventHandler(handler EventHandler) Observer {
 }
 
 // Next returns the next item on the Observable.
-func (o *observator) Next() (interface{}, error) {
+func (o *observable) Next() (interface{}, error) {
 	if next, ok := <-o.ch; ok {
 		return next, nil
 	}
@@ -64,7 +67,7 @@ func (o *observator) Next() (interface{}, error) {
 }
 
 // Subscribe subscribes an EventHandler and returns a Subscription channel.
-func (o *observator) Subscribe(handler EventHandler, opts ...Option) Observer {
+func (o *observable) Subscribe(handler EventHandler, opts ...Option) Observer {
 	ob := CheckEventHandler(handler)
 
 	// Parse options
@@ -141,16 +144,9 @@ func (o *observator) Subscribe(handler EventHandler, opts ...Option) Observer {
 	return ob
 }
 
-/*
-func (o *observable) Unsubscribe() subscription.Subscription {
-	// Stub: to be implemented
-	return subscription.New()
-}
-*/
-
 // Map maps a Function predicate to each item in Observable and
 // returns a new Observable with applied items.
-func (o *observator) Map(apply fx.Function) Observable {
+func (o *observable) Map(apply fx.Function) Observable {
 	out := make(chan interface{})
 	go func() {
 		for item := range o.ch {
@@ -158,10 +154,17 @@ func (o *observator) Map(apply fx.Function) Observable {
 		}
 		close(out)
 	}()
-	return &observator{ch: out}
+	return &observable{ch: out}
 }
 
-func (o *observator) ElementAt(index uint) Single {
+/*
+func (o *observable) Unsubscribe() subscription.Subscription {
+	// Stub: to be implemented
+	return subscription.New()
+}
+*/
+
+func (o *observable) ElementAt(index uint) Single {
 	out := make(chan interface{})
 	go func() {
 		takeCount := 0
@@ -181,7 +184,7 @@ func (o *observator) ElementAt(index uint) Single {
 
 // Take takes first n items in the original Obserable and returns
 // a new Observable with the taken items.
-func (o *observator) Take(nth uint) Observable {
+func (o *observable) Take(nth uint) Observable {
 	out := make(chan interface{})
 	go func() {
 		takeCount := 0
@@ -195,12 +198,12 @@ func (o *observator) Take(nth uint) Observable {
 		}
 		close(out)
 	}()
-	return &observator{ch: out}
+	return &observable{ch: out}
 }
 
 // TakeLast takes last n items in the original Observable and returns
 // a new Observable with the taken items.
-func (o *observator) TakeLast(nth uint) Observable {
+func (o *observable) TakeLast(nth uint) Observable {
 	out := make(chan interface{})
 	go func() {
 		buf := make([]interface{}, nth)
@@ -215,12 +218,12 @@ func (o *observator) TakeLast(nth uint) Observable {
 		}
 		close(out)
 	}()
-	return &observator{ch: out}
+	return &observable{ch: out}
 }
 
 // Filter filters items in the original Observable and returns
 // a new Observable with the filtered items.
-func (o *observator) Filter(apply fx.Predicate) Observable {
+func (o *observable) Filter(apply fx.Predicate) Observable {
 	out := make(chan interface{})
 	go func() {
 		for item := range o.ch {
@@ -230,11 +233,11 @@ func (o *observator) Filter(apply fx.Predicate) Observable {
 		}
 		close(out)
 	}()
-	return &observator{ch: out}
+	return &observable{ch: out}
 }
 
 // First returns new Observable which emit only first item.
-func (o *observator) First() Observable {
+func (o *observable) First() Observable {
 	out := make(chan interface{})
 	go func() {
 		for item := range o.ch {
@@ -243,11 +246,11 @@ func (o *observator) First() Observable {
 		}
 		close(out)
 	}()
-	return &observator{ch: out}
+	return &observable{ch: out}
 }
 
 // Last returns a new Observable which emit only last item.
-func (o *observator) Last() Observable {
+func (o *observable) Last() Observable {
 	out := make(chan interface{})
 	go func() {
 		var last interface{}
@@ -257,12 +260,12 @@ func (o *observator) Last() Observable {
 		out <- last
 		close(out)
 	}()
-	return &observator{ch: out}
+	return &observable{ch: out}
 }
 
 // Distinct suppresses duplicate items in the original Observable and returns
 // a new Observable.
-func (o *observator) Distinct(apply fx.Function) Observable {
+func (o *observable) Distinct(apply fx.Function) Observable {
 	out := make(chan interface{})
 	go func() {
 		keysets := make(map[interface{}]struct{})
@@ -276,12 +279,12 @@ func (o *observator) Distinct(apply fx.Function) Observable {
 		}
 		close(out)
 	}()
-	return &observator{ch: out}
+	return &observable{ch: out}
 }
 
 // DistinctUntilChanged suppresses consecutive duplicate items in the original
 // Observable and returns a new Observable.
-func (o *observator) DistinctUntilChanged(apply fx.Function) Observable {
+func (o *observable) DistinctUntilChanged(apply fx.Function) Observable {
 	out := make(chan interface{})
 	go func() {
 		var current interface{}
@@ -294,12 +297,12 @@ func (o *observator) DistinctUntilChanged(apply fx.Function) Observable {
 		}
 		close(out)
 	}()
-	return &observator{ch: out}
+	return &observable{ch: out}
 }
 
 // Skip suppresses the first n items in the original Observable and
 // returns a new Observable with the rest items.
-func (o *observator) Skip(nth uint) Observable {
+func (o *observable) Skip(nth uint) Observable {
 	out := make(chan interface{})
 	go func() {
 		skipCount := 0
@@ -312,12 +315,12 @@ func (o *observator) Skip(nth uint) Observable {
 		}
 		close(out)
 	}()
-	return &observator{ch: out}
+	return &observable{ch: out}
 }
 
 // SkipLast suppresses the last n items in the original Observable and
 // returns a new Observable with the rest items.
-func (o *observator) SkipLast(nth uint) Observable {
+func (o *observable) SkipLast(nth uint) Observable {
 	out := make(chan interface{})
 	go func() {
 		buf := make(chan interface{}, nth)
@@ -332,12 +335,12 @@ func (o *observator) SkipLast(nth uint) Observable {
 		close(buf)
 		close(out)
 	}()
-	return &observator{ch: out}
+	return &observable{ch: out}
 }
 
 // Scan applies Function2 predicate to each item in the original
 // Observable sequentially and emits each successive value on a new Observable.
-func (o *observator) Scan(apply fx.Function2) Observable {
+func (o *observable) Scan(apply fx.Function2) Observable {
 	out := make(chan interface{})
 
 	go func() {
@@ -349,7 +352,7 @@ func (o *observator) Scan(apply fx.Function2) Observable {
 		}
 		close(out)
 	}()
-	return &observator{ch: out}
+	return &observable{ch: out}
 }
 
 // From creates a new Observable from an Iterator.
@@ -365,13 +368,13 @@ func From(it Iterator) Observable {
 		}
 		close(source)
 	}()
-	return &observator{ch: source}
+	return &observable{ch: source}
 }
 
 // Error returns an Observable that invokes an Observer's onError method
 // when the Observer subscribes to it.
 func Error(err error) Observable {
-	return &observator{
+	return &observable{
 		ch:                  nil,
 		errorOnSubscription: err,
 	}
@@ -383,7 +386,7 @@ func Empty() Observable {
 	go func() {
 		close(source)
 	}()
-	return &observator{ch: source}
+	return &observable{ch: source}
 }
 
 // Interval creates an Observable emitting incremental integers infinitely between
@@ -404,7 +407,7 @@ func Interval(term chan struct{}, interval time.Duration) Observable {
 		}
 		close(source)
 	}(term)
-	return &observator{ch: source}
+	return &observable{ch: source}
 }
 
 // Repeat creates an Observable emitting a given item repeatedly
@@ -418,7 +421,7 @@ func Repeat(item interface{}, ntimes ...int) Observable {
 				source <- item
 			}
 		}()
-		return &observator{ch: source}
+		return &observable{ch: source}
 	}
 
 	// this repeat the item ntime
@@ -433,7 +436,7 @@ func Repeat(item interface{}, ntimes ...int) Observable {
 			}
 			close(source)
 		}()
-		return &observator{ch: source}
+		return &observable{ch: source}
 	}
 
 	return Empty()
@@ -450,7 +453,7 @@ func Range(start, end int) Observable {
 		}
 		close(source)
 	}()
-	return &observator{ch: source}
+	return &observable{ch: source}
 }
 
 // Just creates an Observable with the provided item(s).
@@ -469,7 +472,7 @@ func Just(item interface{}, items ...interface{}) Observable {
 		close(source)
 	}()
 
-	return &observator{ch: source}
+	return &observable{ch: source}
 }
 
 // Start creates an Observable from one or more directive-like Supplier
@@ -498,5 +501,24 @@ func Start(f fx.Supplier, fs ...fx.Supplier) Observable {
 		close(source)
 	}()
 
-	return &observator{ch: source}
+	return &observable{ch: source}
+}
+
+func (o *observable) Reduce(apply fx.Function2) OptionalSingle {
+	out := make(chan optional.Optional)
+	go func() {
+		var acc interface{}
+		empty := true
+		for item := range o.ch {
+			empty = false
+			acc = apply(acc, item)
+		}
+		if empty {
+			out <- optional.Empty()
+		} else {
+			out <- optional.Of(acc)
+		}
+		close(out)
+	}()
+	return NewOptionalSingleFromChannel(out)
 }

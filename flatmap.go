@@ -9,11 +9,11 @@ import (
 // transforms emitted items into observables and flattens them into single observable.
 // maxInParallel argument controls how many transformed observables are processed in parallel
 // For an example please take a look at flatmap_slice_test.go file in the examples directory.
-func (o *observator) FlatMap(apply func(interface{}) Observable, maxInParallel uint) Observable {
+func (o *observable) FlatMap(apply func(interface{}) Observable, maxInParallel uint) Observable {
 	return o.flatMap(apply, maxInParallel, flatObservedSequence)
 }
 
-func (o *observator) flatMap(
+func (o *observable) flatMap(
 	apply func(interface{}) Observable,
 	maxInParallel uint,
 	flatteningFunc func(out chan interface{}, o Observable, apply func(interface{}) Observable, maxInParallel uint)) Observable {
@@ -26,7 +26,7 @@ func (o *observator) flatMap(
 
 	go flatteningFunc(out, o, apply, maxInParallel)
 
-	return &observator{
+	return &observable{
 		ch: out,
 	}
 }
