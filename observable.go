@@ -29,6 +29,7 @@ type Observable interface {
 
 	Reduce(apply fx.Function2) OptionalSingle
 
+	Count() Single
 	ElementAt(index uint) Single
 }
 
@@ -521,4 +522,17 @@ func (o *observable) Reduce(apply fx.Function2) OptionalSingle {
 		close(out)
 	}()
 	return NewOptionalSingleFromChannel(out)
+}
+
+func (o *observable) Count() Single {
+	out := make(chan interface{})
+	go func() {
+		var count int64
+		for range o.ch {
+			count++
+		}
+		out <- count
+		close(out)
+	}()
+	return NewSingleFromChannel(out)
 }

@@ -1098,3 +1098,15 @@ func TestObservableReduceNil(t *testing.T) {
 	assert.False(t, got.IsEmpty())
 	assert.Nil(t, got.Get())
 }
+
+func TestObservableCount(t *testing.T) {
+	items := []interface{}{1, 2, 3, "foo", "bar", errors.New("error")}
+	it, err := iterable.New(items)
+	if err != nil {
+		t.Fail()
+	}
+	stream := From(it)
+	stream.Count().Subscribe(nil).Block()
+	//total := <-count
+	//assert.Exactly(t, int64(6), total)
+}
