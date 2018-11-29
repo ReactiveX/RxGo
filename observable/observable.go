@@ -7,6 +7,7 @@ import (
 	"github.com/reactivex/rxgo"
 	"github.com/reactivex/rxgo/errors"
 	"github.com/reactivex/rxgo/fx"
+	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/observer"
 	"github.com/reactivex/rxgo/subscription"
 )
@@ -24,6 +25,8 @@ type Observable interface {
 	Scan(apply fx.ScannableFunc) Observable
 	Skip(nth uint) Observable
 	SkipLast(nth uint) Observable
+	ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFunc,
+		doneFunc handlers.DoneFunc, opts ...Option) <-chan subscription.Subscription
 	Subscribe(handler rx.EventHandler, opts ...Option) <-chan subscription.Subscription
 	Take(nth uint) Observable
 	TakeLast(nth uint) Observable
@@ -55,12 +58,22 @@ func CheckEventHandler(handler rx.EventHandler) observer.Observer {
 	return observer.New(handler)
 }
 
+// CheckHandler checks the underlying type of an EventHandler.
+func CheckEventHandlers(handler ...rx.EventHandler) observer.Observer {
+	return observer.New(handler...)
+}
+
 // Next returns the next item on the Observable.
 func (o *observator) Next() (interface{}, error) {
 	if next, ok := <-o.ch; ok {
 		return next, nil
 	}
 	return nil, errors.New(errors.EndOfIteratorError)
+}
+
+func (o *observator) ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFunc,
+	doneFunc handlers.DoneFunc, opts ...Option) <-chan subscription.Subscription {
+	return o.Subscribe(CheckEventHandlers(nextFunc, errFunc, doneFunc), opts...)
 }
 
 // Subscribe subscribes an EventHandler and returns a Subscription channel.

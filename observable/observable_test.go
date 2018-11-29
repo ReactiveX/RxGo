@@ -71,6 +71,23 @@ func TestCheckEventHandler(t *testing.T) {
 	assert.Equal(t, "donedone", testtext)
 }
 
+func TestCheckEventHandlers(t *testing.T) {
+	i := 0
+
+	nf := handlers.NextFunc(func(interface{}) {
+		i = i + 2
+	})
+	df := handlers.DoneFunc(func() {
+		i = i + 5
+	})
+
+	ob1 := CheckEventHandlers(nf, df)
+
+	ob1.OnNext("")
+	ob1.OnDone()
+	assert.Equal(t, 7, i)
+}
+
 func TestEmptyOperator(t *testing.T) {
 	myStream := Empty()
 	text := ""
@@ -288,6 +305,62 @@ func TestSubscribeToNextFunc(t *testing.T) {
 	<-done
 
 	assert.Equal(t, 6, mynum)
+}
+
+func TestObservableForEach(t *testing.T) {
+	assert := assert.New(t)
+
+	it, err := iterable.New([]interface{}{
+		"foo", "bar", "baz", 'a', 'b', errors.New("bang"), 99,
+	})
+	if err != nil {
+		t.Fail()
+	}
+	myStream := From(it)
+
+	words := []string{}
+	chars := []rune{}
+	integers := []int{}
+	finished := false
+
+	onNext := handlers.NextFunc(func(item interface{}) {
+		switch item := item.(type) {
+		case string:
+			words = append(words, item)
+		case rune:
+			chars = append(chars, item)
+		case int:
+			integers = append(integers, item)
+		}
+	})
+
+	onError := handlers.ErrFunc(func(err error) {
+		t.Logf("Error emitted in the stream: %v\n", err)
+	})
+
+	onDone := handlers.DoneFunc(func() {
+		finished = true
+	})
+
+	done := myStream.ForEach(onNext, onError, onDone)
+	sub := <-done
+
+	assert.Empty(integers)
+	assert.False(finished)
+
+	expectedWords := []string{"foo", "bar", "baz"}
+	assert.Len(words, len(expectedWords))
+	for n, word := range words {
+		assert.Equal(expectedWords[n], word)
+	}
+
+	expectedChars := []rune{'a', 'b'}
+	assert.Len(chars, len(expectedChars))
+	for n, char := range chars {
+		assert.Equal(expectedChars[n], char)
+	}
+
+	assert.Equal("bang", sub.Err().Error())
 }
 
 func TestSubscribeToErrFunc(t *testing.T) {
