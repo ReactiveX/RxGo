@@ -31,8 +31,8 @@ import (
 
 	"github.com/gorilla/websocket"
 
+	"github.com/reactivex/rxgo"
 	"github.com/reactivex/rxgo/handlers"
-	"github.com/reactivex/rxgo/observable"
 )
 
 var upgrader = websocket.Upgrader{
@@ -67,7 +67,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		source := observable.Just(p)
+		source := rx.Just(p)
 
 		onNext := handlers.NextFunc(func(item interface{}) {
 			if item, ok := item.([]byte); ok {
@@ -77,7 +77,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		})
 
-		_ = source.Subscribe(observable.NewObserver(onNext))
+		_ = source.Subscribe(rx.NewObserver(onNext))
 	}
 
 }

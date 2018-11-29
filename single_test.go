@@ -2,6 +2,7 @@ package rx
 
 import (
 	"github.com/reactivex/rxgo/handlers"
+	"github.com/reactivex/rxgo/optional"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -18,7 +19,12 @@ func TestSingleFilterNotMatching(t *testing.T) {
 		}
 		return false
 	}).Subscribe(handlers.NextFunc(func(i interface{}) {
-		got = i.(int)
+		switch i := i.(type) {
+		case optional.Optional:
+			if !i.IsEmpty() {
+				got = i.Get().(int)
+			}
+		}
 	})).Block()
 
 	assert.Equal(t, 2, got)
@@ -36,8 +42,13 @@ func TestSingleFilterMatching(t *testing.T) {
 		}
 		return true
 	}).Subscribe(handlers.NextFunc(func(i interface{}) {
-		got = i.(int)
+		switch i := i.(type) {
+		case optional.Optional:
+			if !i.IsEmpty() {
+				got = i.Get().(int)
+			}
+		}
 	})).Block()
 
-	assert.Equal(t, 2, got)
+	assert.Equal(t, 0, got)
 }

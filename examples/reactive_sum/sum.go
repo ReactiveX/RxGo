@@ -30,8 +30,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/reactivex/rxgo"
 	"github.com/reactivex/rxgo/handlers"
-	"github.com/reactivex/rxgo/observable"
 )
 
 func main() {
@@ -65,7 +65,7 @@ func main() {
 	for {
 		fmt.Print("type> ")
 
-		observable.Start(func() interface{} {
+		rx.Start(func() interface{} {
 			text, err := reader.ReadString('\n')
 			if err != nil {
 				return err

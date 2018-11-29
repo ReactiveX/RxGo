@@ -2,10 +2,10 @@ package connectable
 
 import (
 	"errors"
+	"github.com/reactivex/rxgo"
 	"github.com/reactivex/rxgo/fx"
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/iterable"
-	"github.com/reactivex/rxgo/observable"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
@@ -13,7 +13,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	observers := make([]observable.Observer, 5, 5)
+	observers := make([]rx.Observer, 5, 5)
 	connectable := New(0, observers...)
 
 	switch v := connectable.(type) {
@@ -117,7 +117,7 @@ func TestSubscribeToObserver(t *testing.T) {
 		done = "done"
 	})
 
-	ob := observable.NewObserver(onError, onDone, onNext)
+	ob := rx.NewObserver(onError, onDone, onNext)
 
 	sub := co.Subscribe(ob).Connect()
 
@@ -149,7 +149,7 @@ func TestSubscribeToManyObservers(t *testing.T) {
 
 	var mutex = &sync.Mutex{}
 
-	ob1 := observable.NewObserver(
+	ob1 := rx.NewObserver(
 		handlers.NextFunc(func(item interface{}) {
 			<-time.After(100 * time.Millisecond)
 			mutex.Lock()
@@ -165,7 +165,7 @@ func TestSubscribeToManyObservers(t *testing.T) {
 			mutex.Unlock()
 		}))
 
-	ob2 := observable.NewObserver(
+	ob2 := rx.NewObserver(
 		handlers.NextFunc(func(item interface{}) {
 			mutex.Lock()
 			nums = append(nums, item.(int)*2)
