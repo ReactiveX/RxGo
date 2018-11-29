@@ -1328,3 +1328,122 @@ func TestObservableToMapWithValueSelectorWithEmpty(t *testing.T) {
 	})).Block()
 	assert.Exactly(t, map[interface{}]interface{}{}, got)
 }
+
+func TestObservableZip(t *testing.T) {
+	items := []interface{}{1, 2, 3}
+	it, err := iterable.New(items)
+	if err != nil {
+		t.Fail()
+	}
+	stream1 := From(it)
+	items2 := []interface{}{10, 20, 30}
+	it2, err := iterable.New(items2)
+	if err != nil {
+		t.Fail()
+	}
+	stream2 := From(it2)
+	zipper := func(elem1 interface{}, elem2 interface{}) interface{} {
+		switch v1 := elem1.(type) {
+		case int:
+			switch v2 := elem2.(type) {
+			case int:
+				return v1 + v2
+			}
+		}
+		return 0
+	}
+	zip := stream1.ZipFromObservable(stream2, zipper)
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+	zip.Subscribe(onNext).Block()
+	assert.Exactly(t, []int{11, 22, 33}, nums)
+}
+
+func TestObservableZipWithDifferentLength1(t *testing.T) {
+	items := []interface{}{1, 2, 3}
+	it, err := iterable.New(items)
+	if err != nil {
+		t.Fail()
+	}
+	stream1 := From(it)
+	items2 := []interface{}{10, 20}
+	it2, err := iterable.New(items2)
+	if err != nil {
+		t.Fail()
+	}
+	stream2 := From(it2)
+	zipper := func(elem1 interface{}, elem2 interface{}) interface{} {
+		switch v1 := elem1.(type) {
+		case int:
+			switch v2 := elem2.(type) {
+			case int:
+				return v1 + v2
+			}
+		}
+		return 0
+	}
+	zip := stream1.ZipFromObservable(stream2, zipper)
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+	zip.Subscribe(onNext).Block()
+	assert.Exactly(t, []int{11, 22}, nums)
+}
+
+func TestObservableZipWithDifferentLength2(t *testing.T) {
+	items := []interface{}{1, 2}
+	it, err := iterable.New(items)
+	if err != nil {
+		t.Fail()
+	}
+	stream1 := From(it)
+	items2 := []interface{}{10, 20, 30}
+	it2, err := iterable.New(items2)
+	if err != nil {
+		t.Fail()
+	}
+	stream2 := From(it2)
+	zipper := func(elem1 interface{}, elem2 interface{}) interface{} {
+		switch v1 := elem1.(type) {
+		case int:
+			switch v2 := elem2.(type) {
+			case int:
+				return v1 + v2
+			}
+		}
+		return 0
+	}
+	zip := stream1.ZipFromObservable(stream2, zipper)
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+	zip.Subscribe(onNext).Block()
+	assert.Exactly(t, []int{11, 22}, nums)
+}
+
+func TestObservableZipWithEmpty(t *testing.T) {
+	stream1 := Empty()
+	stream2 := Empty()
+	zipper := func(elem1 interface{}, elem2 interface{}) interface{} {
+		return 0
+	}
+	zip := stream1.ZipFromObservable(stream2, zipper)
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+	zip.Subscribe(onNext).Block()
+	assert.Exactly(t, []int{}, nums)
+}

@@ -30,6 +30,7 @@ type Observable interface {
 	ToList() Observable
 	ToMap(keySelector fx.Function) Observable
 	ToMapWithValueSelector(keySelector fx.Function, valueSelector fx.Function) Observable
+	ZipFromObservable(publisher Observable, zipper fx.Function2) Observable
 
 	Reduce(apply fx.Function2) OptionalSingle
 
@@ -631,6 +632,28 @@ func (o *observable) ToMapWithValueSelector(keySelector fx.Function, valueSelect
 			m[keySelector(item)] = valueSelector(item)
 		}
 		out <- m
+		close(out)
+	}()
+	return &observable{ch: out}
+}
+
+// ZipFromObservable che emissions of multiple Observables together via a specified function
+// and emit single items for each combination based on the results of this function
+func (o *observable) ZipFromObservable(publisher Observable, zipper fx.Function2) Observable {
+	out := make(chan interface{})
+	go func() {
+	OuterLoop:
+		for item1 := range o.ch {
+			for {
+				item2, err := publisher.Next()
+				if err != nil {
+					break
+				}
+				out <- zipper(item1, item2)
+				continue OuterLoop
+			}
+			break OuterLoop
+		}
 		close(out)
 	}()
 	return &observable{ch: out}
