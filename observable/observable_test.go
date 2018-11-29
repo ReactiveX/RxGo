@@ -17,7 +17,7 @@ import (
 func TestNewFromChannel(t *testing.T) {
 	ch := make(chan interface{}, 5)
 
-	observable := NewFromChannel(ch)
+	observable := NewObservableFromChannel(ch)
 	switch v := observable.(type) {
 	case *observator:
 		assert.Exactly(t, ch, v.ch)

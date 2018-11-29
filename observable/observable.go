@@ -7,6 +7,7 @@ import (
 	"github.com/reactivex/rxgo"
 	"github.com/reactivex/rxgo/errors"
 	"github.com/reactivex/rxgo/fx"
+	"github.com/reactivex/rxgo/single"
 )
 
 // Observable is a basic observable interface
@@ -27,12 +28,7 @@ type Observable interface {
 	Take(nth uint) Observable
 	TakeLast(nth uint) Observable
 
-	ElementAt(index uint) Single
-}
-
-// Single is similar to an Observable but emits only one single element or an error notification.
-type Single interface {
-	Observable
+	ElementAt(index uint) single.Single
 }
 
 // observator is a structure handling a channel of interface{} and implementing Observable
@@ -49,8 +45,8 @@ func NewObservable(buffer uint) Observable {
 	}
 }
 
-// NewFromChannel creates an Observable from a given channel
-func NewFromChannel(ch chan interface{}) Observable {
+// NewObservableFromChannel creates an Observable from a given channel
+func NewObservableFromChannel(ch chan interface{}) Observable {
 	return &observator{
 		ch: ch,
 	}
@@ -167,7 +163,7 @@ func (o *observator) Map(apply fx.Function) Observable {
 	return &observator{ch: out}
 }
 
-func (o *observator) ElementAt(index uint) Single {
+func (o *observator) ElementAt(index uint) single.Single {
 	out := make(chan interface{})
 	go func() {
 		takeCount := 0
@@ -182,7 +178,7 @@ func (o *observator) ElementAt(index uint) Single {
 		out <- errors.New(errors.ElementAtError)
 		close(out)
 	}()
-	return &observator{ch: out}
+	return single.NewSingleFromChannel(out)
 }
 
 // Take takes first n items in the original Obserable and returns

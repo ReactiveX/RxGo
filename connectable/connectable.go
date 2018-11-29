@@ -53,7 +53,7 @@ func From(it rx.Iterator) Connectable {
 		close(source)
 	}()
 	return &connector{
-		Observable: observable.NewFromChannel(source),
+		Observable: observable.NewObservableFromChannel(source),
 	}
 }
 
@@ -64,7 +64,7 @@ func Empty() Connectable {
 		close(source)
 	}()
 	return &connector{
-		Observable: observable.NewFromChannel(source),
+		Observable: observable.NewObservableFromChannel(source),
 	}
 }
 
@@ -88,7 +88,7 @@ func Interval(term chan struct{}, timeout time.Duration) Connectable {
 	}(term)
 
 	return &connector{
-		Observable: observable.NewFromChannel(source),
+		Observable: observable.NewObservableFromChannel(source),
 	}
 }
 
@@ -104,7 +104,7 @@ func Range(start, end int) Connectable {
 		close(source)
 	}()
 	return &connector{
-		Observable: observable.NewFromChannel(source),
+		Observable: observable.NewObservableFromChannel(source),
 	}
 }
 
@@ -125,7 +125,7 @@ func Just(item interface{}, items ...interface{}) Connectable {
 	}()
 
 	return &connector{
-		Observable: observable.NewFromChannel(source),
+		Observable: observable.NewObservableFromChannel(source),
 	}
 }
 
@@ -155,7 +155,7 @@ func Start(f fx.Supplier, fs ...fx.Supplier) Connectable {
 	}()
 
 	return &connector{
-		Observable: observable.NewFromChannel(source),
+		Observable: observable.NewObservableFromChannel(source),
 	}
 }
 
