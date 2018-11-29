@@ -31,7 +31,8 @@ type Observable interface {
 
 // observator is a structure handling a channel of interface{} and implementing Observable
 type observator struct {
-	ch chan interface{}
+	ch                  chan interface{}
+	errorOnSubscription error
 }
 
 // New creates an Observable
@@ -73,6 +74,14 @@ func (o *observator) Subscribe(handler rx.EventHandler, opts ...Option) <-chan s
 	var observableOptions options
 	for _, opt := range opts {
 		opt.apply(&observableOptions)
+	}
+
+	if o.errorOnSubscription != nil {
+		go func() {
+			ob.OnError(o.errorOnSubscription)
+			close(done)
+		}()
+		return done
 	}
 
 	if observableOptions.parallelism == 0 {
@@ -344,6 +353,15 @@ func From(it rx.Iterator) Observable {
 		close(source)
 	}()
 	return &observator{ch: source}
+}
+
+// Error returns an Observable that invokes an Observer's onError method
+// when the Observer subscribes to it.
+func Error(err error) Observable {
+	return &observator{
+		ch:                  nil,
+		errorOnSubscription: err,
+	}
 }
 
 // Empty creates an Observable with no item and terminate immediately.

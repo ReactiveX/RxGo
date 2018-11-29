@@ -1020,3 +1020,14 @@ func TestEmptyCompletesSequence(t *testing.T) {
 	emissionObserver.AssertNotCalled(t, "OnError", mock.Anything)
 	emissionObserver.AssertCalled(t, "OnDone")
 }
+
+func TestError(t *testing.T) {
+	var got error
+	err := errors.New("foo")
+	stream := Error(err)
+	<-stream.Subscribe(handlers.ErrFunc(func(e error) {
+		got = e
+	}))
+
+	assert.Equal(t, err, got)
+}
