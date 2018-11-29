@@ -14,6 +14,7 @@ import (
 // Observable is a basic observable interface
 type Observable interface {
 	rx.Iterator
+
 	Distinct(apply fx.KeySelectorFunc) Observable
 	DistinctUntilChanged(apply fx.KeySelectorFunc) Observable
 	Filter(apply fx.FilterableFunc) Observable
@@ -27,6 +28,13 @@ type Observable interface {
 	Subscribe(handler rx.EventHandler, opts ...Option) <-chan subscription.Subscription
 	Take(nth uint) Observable
 	TakeLast(nth uint) Observable
+
+	ElementAt(index uint) Single
+}
+
+// Single is similar to an Observable but emits only one single element or an error notification.
+type Single interface {
+	Observable
 }
 
 // observator is a structure handling a channel of interface{} and implementing Observable
@@ -161,6 +169,24 @@ func (o *observator) Map(apply fx.MappableFunc) Observable {
 		for item := range o.ch {
 			out <- apply(item)
 		}
+		close(out)
+	}()
+	return &observator{ch: out}
+}
+
+func (o *observator) ElementAt(index uint) Single {
+	out := make(chan interface{})
+	go func() {
+		takeCount := 0
+		for item := range o.ch {
+			if takeCount == int(index) {
+				out <- item
+				close(out)
+				return
+			}
+			takeCount += 1
+		}
+		out <- errors.New(errors.ElementAtError)
 		close(out)
 	}()
 	return &observator{ch: out}

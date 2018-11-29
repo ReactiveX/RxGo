@@ -1031,3 +1031,28 @@ func TestError(t *testing.T) {
 
 	assert.Equal(t, err, got)
 }
+
+func TestElementAt(t *testing.T) {
+	got := 0
+	just := Just(0, 1, 2, 3, 4)
+	single := just.ElementAt(2)
+	<-single.Subscribe(handlers.NextFunc(func(i interface{}) {
+		switch i := i.(type) {
+		case int:
+			got = i
+		}
+	}))
+
+	assert.Equal(t, 2, got)
+}
+
+func TestElementAtWithError(t *testing.T) {
+	got := 0
+	just := Just(0, 1, 2, 3, 4)
+	single := just.ElementAt(10)
+	<-single.Subscribe(handlers.ErrFunc(func(error) {
+		got = 10
+	}))
+
+	assert.Equal(t, 10, got)
+}
