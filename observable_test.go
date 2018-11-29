@@ -1043,7 +1043,7 @@ func TestObservableReduce(t *testing.T) {
 	}
 
 	var got optional.Optional
-	err = stream1.Reduce(add).Subscribe(handlers.NextFunc(func(i interface{}) {
+	_, err = stream1.Reduce(add).Subscribe(handlers.NextFunc(func(i interface{}) {
 		got = i.(optional.Optional)
 	})).Block()
 	if err != nil {
@@ -1069,7 +1069,7 @@ func TestObservableReduceEmpty(t *testing.T) {
 	stream := From(it)
 
 	var got optional.Optional
-	err = stream.Reduce(add).Subscribe(handlers.NextFunc(func(i interface{}) {
+	_, err = stream.Reduce(add).Subscribe(handlers.NextFunc(func(i interface{}) {
 		got = i.(optional.Optional)
 	})).Block()
 	if err != nil {
@@ -1089,7 +1089,7 @@ func TestObservableReduceNil(t *testing.T) {
 		return nil
 	}
 	var got optional.Optional
-	err = stream.Reduce(nilReduce).Subscribe(handlers.NextFunc(func(i interface{}) {
+	_, err = stream.Reduce(nilReduce).Subscribe(handlers.NextFunc(func(i interface{}) {
 		got = i.(optional.Optional)
 	})).Block()
 	if err != nil {
@@ -1106,7 +1106,9 @@ func TestObservableCount(t *testing.T) {
 		t.Fail()
 	}
 	stream := From(it)
-	stream.Count().Subscribe(nil).Block()
-	//total := <-count
-	//assert.Exactly(t, int64(6), total)
+	count, err := stream.Count().Subscribe(nil).Block()
+	if err != nil {
+		t.Fail()
+	}
+	assert.Exactly(t, int64(6), count)
 }

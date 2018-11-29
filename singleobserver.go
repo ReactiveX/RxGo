@@ -12,14 +12,14 @@ type SingleObserver interface {
 	OnSuccess(item interface{})
 	OnError(err error)
 
-	Block() error
+	Block() (interface{}, error)
 }
 
 type singleObserver struct {
 	disposed    bool
 	nextHandler handlers.NextFunc
 	errHandler  handlers.ErrFunc
-	done        chan error
+	done        chan interface{}
 }
 
 // NewSinglesingleObserver constructs a new SingleObserver instance with default SingleObserver and accept
@@ -46,7 +46,7 @@ func NewSingleObserver(eventHandlers ...EventHandler) SingleObserver {
 	if ob.errHandler == nil {
 		ob.errHandler = func(err error) {}
 	}
-	ob.done = make(chan error, 1)
+	ob.done = make(chan interface{}, 1)
 
 	return &ob
 }
@@ -81,7 +81,7 @@ func (o *singleObserver) OnSuccess(item interface{}) {
 				o.nextHandler(item)
 				o.Dispose()
 				if o.done != nil {
-					o.done <- nil
+					o.done <- item
 					close(o.done)
 				}
 			}
@@ -108,11 +108,16 @@ func (o *singleObserver) OnError(err error) {
 }
 
 // OnDone terminates the SingleObserver's internal Observable
-func (o *singleObserver) Block() error {
+func (o *singleObserver) Block() (interface{}, error) {
 	if !o.disposed {
 		for v := range o.done {
-			return v
+			switch v := v.(type) {
+			case error:
+				return nil, v
+			default:
+				return v, nil
+			}
 		}
 	}
-	return nil
+	return nil, nil
 }
