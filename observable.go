@@ -6,6 +6,7 @@ import (
 
 	"github.com/reactivex/rxgo/errors"
 	"github.com/reactivex/rxgo/fx"
+	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/optional"
 )
 
@@ -31,6 +32,8 @@ type Observable interface {
 	ToMap(keySelector fx.Function) Observable
 	ToMapWithValueSelector(keySelector fx.Function, valueSelector fx.Function) Observable
 	ZipFromObservable(publisher Observable, zipper fx.Function2) Observable
+	ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFunc,
+		doneFunc handlers.DoneFunc, opts ...Option) Observer
 
 	Reduce(apply fx.Function2) OptionalSingle
 
@@ -65,6 +68,11 @@ func NewObservableFromChannel(ch chan interface{}) Observable {
 // CheckHandler checks the underlying type of an EventHandler.
 func CheckEventHandler(handler EventHandler) Observer {
 	return NewObserver(handler)
+}
+
+// CheckHandler checks the underlying type of an EventHandler.
+func CheckEventHandlers(handler ...EventHandler) Observer {
+	return NewObserver(handler...)
 }
 
 // Next returns the next item on the Observable.
@@ -674,4 +682,9 @@ func (o *observable) ZipFromObservable(publisher Observable, zipper fx.Function2
 		close(out)
 	}()
 	return &observable{ch: out}
+}
+
+func (o *observable) ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFunc,
+	doneFunc handlers.DoneFunc, opts ...Option) Observer {
+	return o.Subscribe(CheckEventHandlers(nextFunc, errFunc, doneFunc), opts...)
 }

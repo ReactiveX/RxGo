@@ -15,19 +15,6 @@ import (
 	"sync/atomic"
 )
 
-// TODO
-//func TestNewFromChannel(t *testing.T) {
-//	ch := make(chan interface{}, 5)
-//
-//	observable := NewObservableFromChannel(ch)
-//	switch v := observable.(type) {
-//	case *observable:
-//		assert.Exactly(t, ch, v.ch)
-//	default:
-//		t.Fail()
-//	}
-//}
-
 func TestCreateObservableWithConstructor(t *testing.T) {
 	assert := assert.New(t)
 
@@ -1479,4 +1466,63 @@ func TestDefer(t *testing.T) {
 	})
 	stream2.Subscribe(onNext).Block()
 	assert.Exactly(t, 8, value)
+}
+
+func TestCheckEventHandlers(t *testing.T) {
+	i := 0
+	nf := handlers.NextFunc(func(interface{}) {
+		i = i + 2
+	})
+	df := handlers.DoneFunc(func() {
+		i = i + 5
+	})
+	ob1 := CheckEventHandlers(nf, df)
+	ob1.OnNext("")
+	ob1.OnDone()
+	assert.Equal(t, 7, i)
+}
+
+func TestObservableForEach(t *testing.T) {
+	assert := assert.New(t)
+	it, err := iterable.New([]interface{}{
+		"foo", "bar", "baz", 'a', 'b', errors.New("bang"), 99,
+	})
+	if err != nil {
+		t.Fail()
+	}
+	myStream := From(it)
+	words := []string{}
+	chars := []rune{}
+	integers := []int{}
+	finished := false
+	onNext := handlers.NextFunc(func(item interface{}) {
+		switch item := item.(type) {
+		case string:
+			words = append(words, item)
+		case rune:
+			chars = append(chars, item)
+		case int:
+			integers = append(integers, item)
+		}
+	})
+	onError := handlers.ErrFunc(func(err error) {
+		t.Logf("Error emitted in the stream: %v\n", err)
+	})
+	onDone := handlers.DoneFunc(func() {
+		finished = true
+	})
+	sub := myStream.ForEach(onNext, onError, onDone).Block()
+	assert.Empty(integers)
+	assert.False(finished)
+	expectedWords := []string{"foo", "bar", "baz"}
+	assert.Len(words, len(expectedWords))
+	for n, word := range words {
+		assert.Equal(expectedWords[n], word)
+	}
+	expectedChars := []rune{'a', 'b'}
+	assert.Len(chars, len(expectedChars))
+	for n, char := range chars {
+		assert.Equal(expectedChars[n], char)
+	}
+	assert.Equal("bang", sub.Error())
 }
