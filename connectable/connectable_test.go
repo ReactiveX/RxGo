@@ -217,7 +217,7 @@ func TestConnectableMap(t *testing.T) {
 
 	stream := From(it)
 
-	multiplyAllIntBy := func(factor interface{}) fx.MappableFunc {
+	multiplyAllIntBy := func(factor interface{}) fx.Function {
 		return func(item interface{}) interface{} {
 			if num, ok := item.(int); ok {
 				return num * factor.(int)
@@ -249,7 +249,7 @@ func TestConnectableFilter(t *testing.T) {
 
 	stream := From(it)
 
-	lt := func(target interface{}) fx.FilterableFunc {
+	lt := func(target interface{}) fx.Predicate {
 		return func(item interface{}) bool {
 			if num, ok := item.(int); ok {
 				if num < 9 {

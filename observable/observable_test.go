@@ -185,7 +185,7 @@ func TestStartOperator(t *testing.T) {
 	responseCodes := []int{}
 	done := false
 
-	d1 := fx.EmittableFunc(func() interface{} {
+	d1 := fx.Supplier(func() interface{} {
 		result := &http.Response{
 			Status:     "200 OK",
 			StatusCode: 200,
@@ -198,7 +198,7 @@ func TestStartOperator(t *testing.T) {
 		return res
 	})
 
-	d2 := fx.EmittableFunc(func() interface{} {
+	d2 := fx.Supplier(func() interface{} {
 		result := &http.Response{
 			Status:     "301 Moved Permanently",
 			StatusCode: 301,
@@ -211,7 +211,7 @@ func TestStartOperator(t *testing.T) {
 		return res
 	})
 
-	d3 := fx.EmittableFunc(func() interface{} {
+	d3 := fx.Supplier(func() interface{} {
 		result := &http.Response{
 			Status:     "500 Server Error",
 			StatusCode: 500,
@@ -224,7 +224,7 @@ func TestStartOperator(t *testing.T) {
 		return res
 	})
 
-	e1 := fx.EmittableFunc(func() interface{} {
+	e1 := fx.Supplier(func() interface{} {
 		err := errors.New("Bad URL")
 		res, err := fakeGet("badurl.err", 100*time.Millisecond, err)
 		if err != nil {
@@ -233,7 +233,7 @@ func TestStartOperator(t *testing.T) {
 		return res
 	})
 
-	d4 := fx.EmittableFunc(func() interface{} {
+	d4 := fx.Supplier(func() interface{} {
 		result := &http.Response{
 			Status:     "404 Not Found",
 			StatusCode: 400,
@@ -387,7 +387,7 @@ func TestObservableMap(t *testing.T) {
 
 	stream1 := From(it)
 
-	multiplyAllIntBy := func(factor interface{}) fx.MappableFunc {
+	multiplyAllIntBy := func(factor interface{}) fx.Function {
 		return func(item interface{}) interface{} {
 			if num, ok := item.(int); ok {
 				return num * factor.(int)
@@ -500,7 +500,7 @@ func TestObservableFilter(t *testing.T) {
 
 	stream1 := From(it)
 
-	lt := func(target interface{}) fx.FilterableFunc {
+	lt := func(target interface{}) fx.Predicate {
 		return func(item interface{}) bool {
 			if num, ok := item.(int); ok {
 				if num < 9 {

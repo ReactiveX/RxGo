@@ -17,13 +17,13 @@ type Connectable interface {
 	Connect() <-chan (chan observable.Subscription)
 	Do(nextf func(interface{})) Connectable
 	Subscribe(handler rx.EventHandler, opts ...observable.Option) Connectable
-	Map(fn fx.MappableFunc) Connectable
-	Filter(fn fx.FilterableFunc) Connectable
-	Scan(apply fx.ScannableFunc) Connectable
+	Map(fn fx.Function) Connectable
+	Filter(fn fx.Predicate) Connectable
+	Scan(apply fx.Function2) Connectable
 	First() Connectable
 	Last() Connectable
-	Distinct(apply fx.KeySelectorFunc) Connectable
-	DistinctUntilChanged(apply fx.KeySelectorFunc) Connectable
+	Distinct(apply fx.Function) Connectable
+	DistinctUntilChanged(apply fx.Function) Connectable
 }
 
 type connector struct {
@@ -129,13 +129,13 @@ func Just(item interface{}, items ...interface{}) Connectable {
 	}
 }
 
-// Start creates a Connectable from one or more directive-like EmittableFunc
+// Start creates a Connectable from one or more directive-like Supplier
 // and emits the result of each operation asynchronously on a new Connectable.
-func Start(f fx.EmittableFunc, fs ...fx.EmittableFunc) Connectable {
+func Start(f fx.Supplier, fs ...fx.Supplier) Connectable {
 	if len(fs) > 0 {
-		fs = append([]fx.EmittableFunc{f}, fs...)
+		fs = append([]fx.Supplier{f}, fs...)
 	} else {
-		fs = []fx.EmittableFunc{f}
+		fs = []fx.Supplier{f}
 	}
 
 	source := make(chan interface{})
@@ -143,7 +143,7 @@ func Start(f fx.EmittableFunc, fs ...fx.EmittableFunc) Connectable {
 	var wg sync.WaitGroup
 	for _, f := range fs {
 		wg.Add(1)
-		go func(f fx.EmittableFunc) {
+		go func(f fx.Supplier) {
 			source <- f()
 			wg.Done()
 		}(f)
@@ -239,9 +239,9 @@ func (c *connector) Connect() <-chan (chan observable.Subscription) {
 	return done
 }
 
-// Map maps a MappableFunc predicate to each item in Connectable and
+// Map maps a Function predicate to each item in Connectable and
 // returns a new Connectable with applied items.
-func (c *connector) Map(fn fx.MappableFunc) Connectable {
+func (c *connector) Map(fn fx.Function) Connectable {
 	return &connector{
 		Observable: c.Observable.Map(fn),
 	}
@@ -249,15 +249,15 @@ func (c *connector) Map(fn fx.MappableFunc) Connectable {
 
 // Filter filters items in the original Connectable and returns
 // a new Connectable with the filtered items.
-func (c *connector) Filter(fn fx.FilterableFunc) Connectable {
+func (c *connector) Filter(fn fx.Predicate) Connectable {
 	return &connector{
 		Observable: c.Observable.Filter(fn),
 	}
 }
 
-// Scan applies ScannableFunc predicate to each item in the original
+// Scan applies Function2 predicate to each item in the original
 // Connectable sequentially and emits each successive value on a new Connectable.
-func (c *connector) Scan(apply fx.ScannableFunc) Connectable {
+func (c *connector) Scan(apply fx.Function2) Connectable {
 	return &connector{
 		Observable: c.Observable.Scan(apply),
 	}
@@ -279,7 +279,7 @@ func (c *connector) Last() Connectable {
 
 //Distinct suppress duplicate items in the original Connectable and
 //returns a new Connectable.
-func (c *connector) Distinct(apply fx.KeySelectorFunc) Connectable {
+func (c *connector) Distinct(apply fx.Function) Connectable {
 	return &connector{
 		Observable: c.Observable.Distinct(apply),
 	}
@@ -287,7 +287,7 @@ func (c *connector) Distinct(apply fx.KeySelectorFunc) Connectable {
 
 //DistinctUntilChanged suppress duplicate items in the original Connectable only
 // if they are successive to one another and returns a new Connectable.
-func (c *connector) DistinctUntilChanged(apply fx.KeySelectorFunc) Connectable {
+func (c *connector) DistinctUntilChanged(apply fx.Function) Connectable {
 	return &connector{
 		Observable: c.Observable.DistinctUntilChanged(apply),
 	}

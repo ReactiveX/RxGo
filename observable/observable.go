@@ -13,14 +13,14 @@ import (
 type Observable interface {
 	rx.Iterator
 
-	Distinct(apply fx.KeySelectorFunc) Observable
-	DistinctUntilChanged(apply fx.KeySelectorFunc) Observable
-	Filter(apply fx.FilterableFunc) Observable
+	Distinct(apply fx.Function) Observable
+	DistinctUntilChanged(apply fx.Function) Observable
+	Filter(apply fx.Predicate) Observable
 	First() Observable
 	FlatMap(apply func(interface{}) Observable, maxInParallel uint) Observable
 	Last() Observable
-	Map(apply fx.MappableFunc) Observable
-	Scan(apply fx.ScannableFunc) Observable
+	Map(apply fx.Function) Observable
+	Scan(apply fx.Function2) Observable
 	Skip(nth uint) Observable
 	SkipLast(nth uint) Observable
 	Subscribe(handler rx.EventHandler, opts ...Option) <-chan Subscription
@@ -159,9 +159,9 @@ func (o *observable) Unsubscribe() subscription.Subscription {
 }
 */
 
-// Map maps a MappableFunc predicate to each item in Observable and
+// Map maps a Function predicate to each item in Observable and
 // returns a new Observable with applied items.
-func (o *observator) Map(apply fx.MappableFunc) Observable {
+func (o *observator) Map(apply fx.Function) Observable {
 	out := make(chan interface{})
 	go func() {
 		for item := range o.ch {
@@ -231,7 +231,7 @@ func (o *observator) TakeLast(nth uint) Observable {
 
 // Filter filters items in the original Observable and returns
 // a new Observable with the filtered items.
-func (o *observator) Filter(apply fx.FilterableFunc) Observable {
+func (o *observator) Filter(apply fx.Predicate) Observable {
 	out := make(chan interface{})
 	go func() {
 		for item := range o.ch {
@@ -273,7 +273,7 @@ func (o *observator) Last() Observable {
 
 // Distinct suppresses duplicate items in the original Observable and returns
 // a new Observable.
-func (o *observator) Distinct(apply fx.KeySelectorFunc) Observable {
+func (o *observator) Distinct(apply fx.Function) Observable {
 	out := make(chan interface{})
 	go func() {
 		keysets := make(map[interface{}]struct{})
@@ -292,7 +292,7 @@ func (o *observator) Distinct(apply fx.KeySelectorFunc) Observable {
 
 // DistinctUntilChanged suppresses consecutive duplicate items in the original
 // Observable and returns a new Observable.
-func (o *observator) DistinctUntilChanged(apply fx.KeySelectorFunc) Observable {
+func (o *observator) DistinctUntilChanged(apply fx.Function) Observable {
 	out := make(chan interface{})
 	go func() {
 		var current interface{}
@@ -346,9 +346,9 @@ func (o *observator) SkipLast(nth uint) Observable {
 	return &observator{ch: out}
 }
 
-// Scan applies ScannableFunc predicate to each item in the original
+// Scan applies Function2 predicate to each item in the original
 // Observable sequentially and emits each successive value on a new Observable.
-func (o *observator) Scan(apply fx.ScannableFunc) Observable {
+func (o *observator) Scan(apply fx.Function2) Observable {
 	out := make(chan interface{})
 
 	go func() {
@@ -483,13 +483,13 @@ func Just(item interface{}, items ...interface{}) Observable {
 	return &observator{ch: source}
 }
 
-// Start creates an Observable from one or more directive-like EmittableFunc
+// Start creates an Observable from one or more directive-like Supplier
 // and emits the result of each operation asynchronously on a new Observable.
-func Start(f fx.EmittableFunc, fs ...fx.EmittableFunc) Observable {
+func Start(f fx.Supplier, fs ...fx.Supplier) Observable {
 	if len(fs) > 0 {
-		fs = append([]fx.EmittableFunc{f}, fs...)
+		fs = append([]fx.Supplier{f}, fs...)
 	} else {
-		fs = []fx.EmittableFunc{f}
+		fs = []fx.Supplier{f}
 	}
 
 	source := make(chan interface{})
@@ -497,7 +497,7 @@ func Start(f fx.EmittableFunc, fs ...fx.EmittableFunc) Observable {
 	var wg sync.WaitGroup
 	for _, f := range fs {
 		wg.Add(1)
-		go func(f fx.EmittableFunc) {
+		go func(f fx.Supplier) {
 			source <- f()
 			wg.Done()
 		}(f)

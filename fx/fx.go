@@ -3,20 +3,18 @@
 package fx
 
 type (
+	// Predicate defines a func that returns a bool from an input value.
+	Predicate func(interface{}) bool
 
-	// EmittableFunc defines a function that should be used with Start operator.
-	// EmittableFunc can be used to wrap a blocking operation.
-	EmittableFunc func() interface{}
+	// Consumer defines a func that accepts a single value
+	Consumer func(interface{})
 
-	// MappableFunc defines a function that acts as a predicate to the Map operator.
-	MappableFunc func(interface{}) interface{}
+	// Supplier defines a function that supplies a result from nothing.
+	Supplier func() interface{}
 
-	// ScannableFunc defines a function that acts as a predicate to the Scan operator.
-	ScannableFunc func(interface{}, interface{}) interface{}
+	// Function defines a function that computes a value from an input value.
+	Function func(interface{}) interface{}
 
-	// FilterableFunc defines a func that should be passed to the Filter operator.
-	FilterableFunc func(interface{}) bool
-
-	// KeySelectorFunc defines a func that should be passed to the Distinct operator.
-	KeySelectorFunc func(interface{}) interface{}
+	// Function2 defines a function that computes a value from two input values.
+	Function2 func(interface{}, interface{}) interface{}
 )
