@@ -1084,7 +1084,9 @@ func TestObservableReduceNil(t *testing.T) {
 		t.Fail()
 	}
 	assert.False(t, got.IsEmpty())
-	assert.Nil(t, got.Get())
+	g, err := got.Get()
+	assert.Nil(t, err)
+	assert.Nil(t, g)
 }
 
 func TestObservableCount(t *testing.T) {

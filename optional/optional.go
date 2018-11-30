@@ -1,10 +1,14 @@
 package optional
 
+import "github.com/reactivex/rxgo/errors"
+
 var emptyOptional = new(empty)
 
 // Optional defines a container for empty values
 type Optional interface {
-	Get() interface{}
+	// Get returns the content and an optional error is the optional is empty
+	Get() (interface{}, error)
+	// IsEmpty returns whether the optional is empty
 	IsEmpty() bool
 }
 
@@ -15,23 +19,27 @@ type some struct {
 type empty struct {
 }
 
-func (s *some) Get() interface{} {
-	return s.content
+// Get returns the content and an optional error is the optional is empty
+func (s *some) Get() (interface{}, error) {
+	return s.content, nil
 }
 
+// IsEmpty returns whether the optional is empty
 func (s *some) IsEmpty() bool {
 	return false
 }
 
-func (e *empty) Get() interface{} {
-	return nil
+// Get returns the content and an optional error is the optional is empty
+func (e *empty) Get() (interface{}, error) {
+	return nil, errors.New(errors.NoSuchElementError)
 }
 
+// IsEmpty returns whether the optional is empty
 func (e *empty) IsEmpty() bool {
 	return true
 }
 
-// Of returns a non empty optional
+// Of returns a non-empty optional
 func Of(data interface{}) Optional {
 	return &some{
 		content: data,

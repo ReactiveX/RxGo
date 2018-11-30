@@ -22,7 +22,8 @@ func TestSingleFilterNotMatching(t *testing.T) {
 		switch i := i.(type) {
 		case optional.Optional:
 			if !i.IsEmpty() {
-				got = i.Get().(int)
+				g, _ := i.Get()
+				got = g.(int)
 			}
 		}
 	})).Block()
@@ -45,7 +46,8 @@ func TestSingleFilterMatching(t *testing.T) {
 		switch i := i.(type) {
 		case optional.Optional:
 			if !i.IsEmpty() {
-				got = i.Get().(int)
+				g, _ := i.Get()
+				got = g.(int)
 			}
 		}
 	})).Block()
