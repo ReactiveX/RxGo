@@ -46,8 +46,9 @@ func (c *connectableObservable) Connect() Observer {
 		local := make([]interface{}, len(source))
 		copy(local, source)
 
-		var e error
 		go func(ob Observer) {
+			defer wg.Done()
+			var e error
 		OuterLoop:
 			for _, item := range local {
 				switch item := item.(type) {
@@ -62,7 +63,11 @@ func (c *connectableObservable) Connect() Observer {
 				}
 			}
 
-			wg.Done()
+			if e == nil {
+				ob.OnDone()
+			} else {
+				ob.OnError(e)
+			}
 		}(ob)
 	}
 
