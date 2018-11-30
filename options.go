@@ -1,4 +1,4 @@
-package rx
+package rxgo
 
 // Option is the configuration of an observable
 type Option interface {

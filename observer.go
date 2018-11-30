@@ -1,4 +1,4 @@
-package rx
+package rxgo
 
 import (
 	"github.com/reactivex/rxgo/handlers"

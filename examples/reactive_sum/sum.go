@@ -65,7 +65,7 @@ func main() {
 	for {
 		fmt.Print("type> ")
 
-		rx.Start(func() interface{} {
+		rxgo.Start(func() interface{} {
 			text, err := reader.ReadString('\n')
 			if err != nil {
 				return err

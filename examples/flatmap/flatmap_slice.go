@@ -8,11 +8,11 @@ import (
 )
 
 func main() {
-	primeSequence := rx.Just([]int{2, 3, 5, 7, 11, 13})
+	primeSequence := rxgo.Just([]int{2, 3, 5, 7, 11, 13})
 
 	primeSequence.
-		FlatMap(func(primes interface{}) rx.Observable {
-			return rx.Create(func(emitter rx.Observer, disposed bool) {
+		FlatMap(func(primes interface{}) rxgo.Observable {
+			return rxgo.Create(func(emitter rxgo.Observer, disposed bool) {
 				for _, prime := range primes.([]int) {
 					emitter.OnNext(prime)
 				}

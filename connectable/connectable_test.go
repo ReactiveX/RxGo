@@ -13,7 +13,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	observers := make([]rx.Observer, 5, 5)
+	observers := make([]rxgo.Observer, 5, 5)
 	connectable := New(0, observers...)
 
 	switch v := connectable.(type) {
@@ -117,7 +117,7 @@ func TestSubscribeToObserver(t *testing.T) {
 		done = "done"
 	})
 
-	ob := rx.NewObserver(onError, onDone, onNext)
+	ob := rxgo.NewObserver(onError, onDone, onNext)
 
 	sub := co.Subscribe(ob).Connect()
 
@@ -149,7 +149,7 @@ func TestSubscribeToManyObservers(t *testing.T) {
 
 	var mutex = &sync.Mutex{}
 
-	ob1 := rx.NewObserver(
+	ob1 := rxgo.NewObserver(
 		handlers.NextFunc(func(item interface{}) {
 			<-time.After(100 * time.Millisecond)
 			mutex.Lock()
@@ -165,7 +165,7 @@ func TestSubscribeToManyObservers(t *testing.T) {
 			mutex.Unlock()
 		}))
 
-	ob2 := rx.NewObserver(
+	ob2 := rxgo.NewObserver(
 		handlers.NextFunc(func(item interface{}) {
 			mutex.Lock()
 			nums = append(nums, item.(int)*2)

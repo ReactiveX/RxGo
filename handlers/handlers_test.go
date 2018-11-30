@@ -3,9 +3,9 @@ package handlers
 //
 //func TestHandlersImplementEventHandler(t *testing.T) {
 //	assert := assert.New(t)
-//	assert.Implements((*rx.EventHandler)(nil), (*NextFunc)(nil))
-//	assert.Implements((*rx.EventHandler)(nil), (*ErrFunc)(nil))
-//	assert.Implements((*rx.EventHandler)(nil), (*DoneFunc)(nil))
+//	assert.Implements((*rxgo.EventHandler)(nil), (*NextFunc)(nil))
+//	assert.Implements((*rxgo.EventHandler)(nil), (*ErrFunc)(nil))
+//	assert.Implements((*rxgo.EventHandler)(nil), (*DoneFunc)(nil))
 //}
 //
 //func TestNextFuncHandleMethod(t *testing.T) {

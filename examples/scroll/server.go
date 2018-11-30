@@ -67,7 +67,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		source := rx.Just(p)
+		source := rxgo.Just(p)
 
 		onNext := handlers.NextFunc(func(item interface{}) {
 			if item, ok := item.([]byte); ok {
@@ -77,7 +77,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		})
 
-		_ = source.Subscribe(rx.NewObserver(onNext))
+		_ = source.Subscribe(rxgo.NewObserver(onNext))
 	}
 
 }

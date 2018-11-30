@@ -13,9 +13,9 @@ import (
 // Connectable can subscribe to several EventHandlers
 // before starting processing with Connect.
 type Connectable interface {
-	Connect() <-chan rx.Observer
+	Connect() <-chan rxgo.Observer
 	Do(nextf func(interface{})) Connectable
-	Subscribe(handler rx.EventHandler, opts ...rx.Option) Connectable
+	Subscribe(handler rxgo.EventHandler, opts ...rxgo.Option) Connectable
 	Map(fn fx.Function) Connectable
 	Filter(fn fx.Predicate) Connectable
 	Scan(apply fx.Function2) Connectable
@@ -26,20 +26,20 @@ type Connectable interface {
 }
 
 type connector struct {
-	rx.Observable
-	observers []rx.Observer
+	rxgo.Observable
+	observers []rxgo.Observer
 }
 
 // New creates a Connectable with optional observer(s) as parameters.
-func New(buffer uint, observers ...rx.Observer) Connectable {
+func New(buffer uint, observers ...rxgo.Observer) Connectable {
 	return &connector{
-		Observable: rx.NewObservable(buffer),
+		Observable: rxgo.NewObservable(buffer),
 		observers:  observers,
 	}
 }
 
 // From creates a Connectable from an Iterator.
-func From(it rx.Iterator) Connectable {
+func From(it rxgo.Iterator) Connectable {
 	source := make(chan interface{})
 	go func() {
 		for {
@@ -52,7 +52,7 @@ func From(it rx.Iterator) Connectable {
 		close(source)
 	}()
 	return &connector{
-		Observable: rx.NewObservableFromChannel(source),
+		Observable: rxgo.NewObservableFromChannel(source),
 	}
 }
 
@@ -63,7 +63,7 @@ func Empty() Connectable {
 		close(source)
 	}()
 	return &connector{
-		Observable: rx.NewObservableFromChannel(source),
+		Observable: rxgo.NewObservableFromChannel(source),
 	}
 }
 
@@ -87,7 +87,7 @@ func Interval(term chan struct{}, timeout time.Duration) Connectable {
 	}(term)
 
 	return &connector{
-		Observable: rx.NewObservableFromChannel(source),
+		Observable: rxgo.NewObservableFromChannel(source),
 	}
 }
 
@@ -103,7 +103,7 @@ func Range(start, end int) Connectable {
 		close(source)
 	}()
 	return &connector{
-		Observable: rx.NewObservableFromChannel(source),
+		Observable: rxgo.NewObservableFromChannel(source),
 	}
 }
 
@@ -124,7 +124,7 @@ func Just(item interface{}, items ...interface{}) Connectable {
 	}()
 
 	return &connector{
-		Observable: rx.NewObservableFromChannel(source),
+		Observable: rxgo.NewObservableFromChannel(source),
 	}
 }
 
@@ -154,28 +154,28 @@ func Start(f fx.Supplier, fs ...fx.Supplier) Connectable {
 	}()
 
 	return &connector{
-		Observable: rx.NewObservableFromChannel(source),
+		Observable: rxgo.NewObservableFromChannel(source),
 	}
 }
 
 // Subscribe subscribes an EventHandler and returns a Connectable.
-func (c *connector) Subscribe(handler rx.EventHandler,
-	opts ...rx.Option) Connectable {
-	ob := rx.CheckEventHandler(handler)
+func (c *connector) Subscribe(handler rxgo.EventHandler,
+	opts ...rxgo.Option) Connectable {
+	ob := rxgo.CheckEventHandler(handler)
 	c.observers = append(c.observers, ob)
 	return c
 }
 
 // Do is like Subscribe but subscribes a func(interface{}) as a NextHandler
 func (c *connector) Do(nextf func(interface{})) Connectable {
-	ob := rx.NewObserver(handlers.NextFunc(nextf))
+	ob := rxgo.NewObserver(handlers.NextFunc(nextf))
 	c.observers = append(c.observers, ob)
 	return c
 }
 
 // Connect activates the Observable stream and returns a channel of Subscription channel.
-func (c *connector) Connect() <-chan rx.Observer {
-	done := make(chan rx.Observer, 1)
+func (c *connector) Connect() <-chan rxgo.Observer {
+	done := make(chan rxgo.Observer, 1)
 	source := []interface{}{}
 
 	for {
@@ -196,7 +196,7 @@ func (c *connector) Connect() <-chan rx.Observer {
 		fin := make(chan struct{})
 
 		var e error
-		go func(ob rx.Observer) {
+		go func(ob rxgo.Observer) {
 		OuterLoop:
 			for _, item := range local {
 				switch item := item.(type) {
@@ -213,7 +213,7 @@ func (c *connector) Connect() <-chan rx.Observer {
 			fin <- struct{}{}
 		}(ob)
 
-		go func(ob rx.Observer) {
+		go func(ob rxgo.Observer) {
 			<-fin
 			if e == nil {
 				ob.OnDone()
