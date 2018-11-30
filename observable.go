@@ -38,6 +38,7 @@ type Observable interface {
 
 	Reduce(apply fx.Function2) OptionalSingle
 
+	Publish() ConnectableObservable
 	Count() Single
 	ElementAt(index uint) Single
 	FirstOrDefault(defaultValue interface{}) Single
@@ -686,4 +687,8 @@ func (o *observable) ZipFromObservable(publisher Observable, zipper fx.Function2
 func (o *observable) ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFunc,
 	doneFunc handlers.DoneFunc, opts ...options.Option) Observer {
 	return o.Subscribe(CheckEventHandlers(nextFunc, errFunc, doneFunc), opts...)
+}
+
+func (o *observable) Publish() ConnectableObservable {
+	return NewConnectableObservable(o)
 }
