@@ -1,7 +1,7 @@
 package rxgo
 
 import (
-	"github.com/pkg/errors"
+	"errors"
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/stretchr/testify/assert"
 	"testing"
