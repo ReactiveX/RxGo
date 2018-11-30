@@ -6,7 +6,7 @@ import (
 
 // SingleObserver represents a group of EventHandlers.
 type SingleObserver interface {
-	EventHandler
+	handlers.EventHandler
 	Disposable
 
 	OnSuccess(item interface{})
@@ -24,7 +24,7 @@ type singleObserver struct {
 
 // NewSinglesingleObserver constructs a new SingleObserver instance with default SingleObserver and accept
 // any number of EventHandler
-func NewSingleObserver(eventHandlers ...EventHandler) SingleObserver {
+func NewSingleObserver(eventHandlers ...handlers.EventHandler) SingleObserver {
 	ob := singleObserver{}
 
 	if len(eventHandlers) > 0 {

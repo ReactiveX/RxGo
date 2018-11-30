@@ -6,7 +6,7 @@ import (
 
 // Observer represents a group of EventHandlers.
 type Observer interface {
-	EventHandler
+	handlers.EventHandler
 	Disposable
 
 	OnNext(item interface{})
@@ -26,7 +26,7 @@ type observer struct {
 
 // NewObserver constructs a new Observer instance with default Observer and accept
 // any number of EventHandler
-func NewObserver(eventHandlers ...EventHandler) Observer {
+func NewObserver(eventHandlers ...handlers.EventHandler) Observer {
 	ob := observer{}
 
 	if len(eventHandlers) > 0 {

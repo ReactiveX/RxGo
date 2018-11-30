@@ -25,7 +25,7 @@ type Observable interface {
 	Scan(apply fx.Function2) Observable
 	Skip(nth uint) Observable
 	SkipLast(nth uint) Observable
-	Subscribe(handler EventHandler, opts ...options.Option) Observer
+	Subscribe(handler handlers.EventHandler, opts ...options.Option) Observer
 	Take(nth uint) Observable
 	TakeLast(nth uint) Observable
 	TakeWhile(apply fx.Predicate) Observable
@@ -67,12 +67,12 @@ func NewObservableFromChannel(ch chan interface{}) Observable {
 }
 
 // CheckHandler checks the underlying type of an EventHandler.
-func CheckEventHandler(handler EventHandler) Observer {
+func CheckEventHandler(handler handlers.EventHandler) Observer {
 	return NewObserver(handler)
 }
 
 // CheckHandler checks the underlying type of an EventHandler.
-func CheckEventHandlers(handler ...EventHandler) Observer {
+func CheckEventHandlers(handler ...handlers.EventHandler) Observer {
 	return NewObserver(handler...)
 }
 
@@ -85,7 +85,7 @@ func (o *observable) Next() (interface{}, error) {
 }
 
 // Subscribe subscribes an EventHandler and returns a Subscription channel.
-func (o *observable) Subscribe(handler EventHandler, opts ...options.Option) Observer {
+func (o *observable) Subscribe(handler handlers.EventHandler, opts ...options.Option) Observer {
 	ob := CheckEventHandler(handler)
 
 	observableOptions := options.ParseOptions(opts...)
