@@ -10,6 +10,7 @@ import (
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/iterable"
 	"github.com/reactivex/rxgo/optional"
+	"github.com/reactivex/rxgo/options"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"sync/atomic"
@@ -600,7 +601,7 @@ func TestParallelSubscribeToObserver(t *testing.T) {
 
 	ob := NewObserver(onNext, onError, onDone)
 
-	myStream.Subscribe(ob, WithParallelism(2)).Block()
+	myStream.Subscribe(ob, options.WithParallelism(2)).Block()
 
 	assert.True(finished)
 
@@ -635,7 +636,7 @@ func TestParallelSubscribeToObserverWithError(t *testing.T) {
 
 	ob := NewObserver(onNext, onError, onDone)
 
-	myStream.Subscribe(ob, WithParallelism(2)).Block()
+	myStream.Subscribe(ob, options.WithParallelism(2)).Block()
 
 	assert.False(finished)
 }

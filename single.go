@@ -3,17 +3,18 @@ package rxgo
 import (
 	"github.com/reactivex/rxgo/fx"
 	"github.com/reactivex/rxgo/optional"
+	"github.com/reactivex/rxgo/options"
 )
 
 // Single is similar to an Observable but emits only one single element or an error notification.
 type Single interface {
 	Filter(apply fx.Predicate) OptionalSingle
 	Map(apply fx.Function) Single
-	Subscribe(handler EventHandler, opts ...Option) SingleObserver
+	Subscribe(handler EventHandler, opts ...options.Option) SingleObserver
 }
 
 type OptionalSingle interface {
-	Subscribe(handler EventHandler, opts ...Option) SingleObserver
+	Subscribe(handler EventHandler, opts ...options.Option) SingleObserver
 }
 
 type single struct {
@@ -75,14 +76,8 @@ func (s *single) Map(apply fx.Function) Single {
 	return &single{ch: out}
 }
 
-func (s *single) Subscribe(handler EventHandler, opts ...Option) SingleObserver {
+func (s *single) Subscribe(handler EventHandler, opts ...options.Option) SingleObserver {
 	ob := CheckSingleEventHandler(handler)
-
-	// Parse options
-	var observableOptions options
-	for _, opt := range opts {
-		opt.apply(&observableOptions)
-	}
 
 	go func() {
 		for item := range s.ch {
@@ -103,14 +98,8 @@ func (s *single) Subscribe(handler EventHandler, opts ...Option) SingleObserver 
 	return ob
 }
 
-func (s *optionalSingle) Subscribe(handler EventHandler, opts ...Option) SingleObserver {
+func (s *optionalSingle) Subscribe(handler EventHandler, opts ...options.Option) SingleObserver {
 	ob := CheckSingleEventHandler(handler)
-
-	// Parse options
-	var observableOptions options
-	for _, opt := range opts {
-		opt.apply(&observableOptions)
-	}
 
 	go func() {
 		for item := range s.ch {

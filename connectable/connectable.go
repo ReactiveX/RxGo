@@ -8,6 +8,7 @@ import (
 	"github.com/reactivex/rxgo"
 	"github.com/reactivex/rxgo/fx"
 	"github.com/reactivex/rxgo/handlers"
+	"github.com/reactivex/rxgo/options"
 )
 
 // Connectable can subscribe to several EventHandlers
@@ -15,7 +16,7 @@ import (
 type Connectable interface {
 	Connect() <-chan rxgo.Observer
 	Do(nextf func(interface{})) Connectable
-	Subscribe(handler rxgo.EventHandler, opts ...rxgo.Option) Connectable
+	Subscribe(handler rxgo.EventHandler, opts ...options.Option) Connectable
 	Map(fn fx.Function) Connectable
 	Filter(fn fx.Predicate) Connectable
 	Scan(apply fx.Function2) Connectable
@@ -160,7 +161,7 @@ func Start(f fx.Supplier, fs ...fx.Supplier) Connectable {
 
 // Subscribe subscribes an EventHandler and returns a Connectable.
 func (c *connector) Subscribe(handler rxgo.EventHandler,
-	opts ...rxgo.Option) Connectable {
+	opts ...options.Option) Connectable {
 	ob := rxgo.CheckEventHandler(handler)
 	c.observers = append(c.observers, ob)
 	return c

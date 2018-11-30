@@ -8,6 +8,7 @@ import (
 	"github.com/reactivex/rxgo/fx"
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/optional"
+	"github.com/reactivex/rxgo/options"
 )
 
 // Observable is a basic observable interface
@@ -24,7 +25,7 @@ type Observable interface {
 	Scan(apply fx.Function2) Observable
 	Skip(nth uint) Observable
 	SkipLast(nth uint) Observable
-	Subscribe(handler EventHandler, opts ...Option) Observer
+	Subscribe(handler EventHandler, opts ...options.Option) Observer
 	Take(nth uint) Observable
 	TakeLast(nth uint) Observable
 	TakeWhile(apply fx.Predicate) Observable
@@ -33,7 +34,7 @@ type Observable interface {
 	ToMapWithValueSelector(keySelector fx.Function, valueSelector fx.Function) Observable
 	ZipFromObservable(publisher Observable, zipper fx.Function2) Observable
 	ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFunc,
-		doneFunc handlers.DoneFunc, opts ...Option) Observer
+		doneFunc handlers.DoneFunc, opts ...options.Option) Observer
 
 	Reduce(apply fx.Function2) OptionalSingle
 
@@ -84,12 +85,10 @@ func (o *observable) Next() (interface{}, error) {
 }
 
 // Subscribe subscribes an EventHandler and returns a Subscription channel.
-func (o *observable) Subscribe(handler EventHandler, opts ...Option) Observer {
+func (o *observable) Subscribe(handler EventHandler, opts ...options.Option) Observer {
 	ob := CheckEventHandler(handler)
 
-	// Parse options
-	var observableOptions options
-	observableOptions.parseOptions(opts...)
+	observableOptions := options.ParseOptions(opts...)
 
 	if o.errorOnSubscription != nil {
 		go func() {
@@ -98,7 +97,7 @@ func (o *observable) Subscribe(handler EventHandler, opts ...Option) Observer {
 		return ob
 	}
 
-	if observableOptions.parallelism == 0 {
+	if observableOptions.Parallelism() == 0 {
 		go func() {
 			var e error
 		OuterLoop:
@@ -126,7 +125,7 @@ func (o *observable) Subscribe(handler EventHandler, opts ...Option) Observer {
 		wg := sync.WaitGroup{}
 
 		var e error
-		for i := 0; i < observableOptions.parallelism; i++ {
+		for i := 0; i < observableOptions.Parallelism(); i++ {
 			wg.Add(1)
 
 			go func() {
@@ -685,6 +684,6 @@ func (o *observable) ZipFromObservable(publisher Observable, zipper fx.Function2
 }
 
 func (o *observable) ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFunc,
-	doneFunc handlers.DoneFunc, opts ...Option) Observer {
+	doneFunc handlers.DoneFunc, opts ...options.Option) Observer {
 	return o.Subscribe(CheckEventHandlers(nextFunc, errFunc, doneFunc), opts...)
 }
