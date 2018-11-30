@@ -1,9 +1,13 @@
 # RxGo
-[![Build Status](https://travis-ci.org/ReactiveX/RxGo.svg?branch=master)](https://travis-ci.org/ReactiveX/RxGo)    [![Coverage Status](https://coveralls.io/repos/github/jochasinga/RxGo/badge.svg?branch=master)](https://coveralls.io/github/jochasinga/RxGo?branch=master)    
+[![Join the chat at https://gitter.im/reactivex-go/Lobby](https://badges.gitter.im/reactivex-go/Lobby.svg)](https://gitter.im/reactivex-go/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Build Status](https://travis-ci.org/ReactiveX/RxGo.svg?branch=master)](https://travis-ci.org/ReactiveX/RxGo)
+[![Coverage Status](https://coveralls.io/repos/github/ReactiveX/RxGo/badge.svg?branch=master)](https://coveralls.io/github/ReactiveX/RxGo?branch=master)
+[![Go Report Card](https://goreportcard.com/badge/github.com/reactivex/rxgo)](https://goreportcard.com/report/github.com/reactivex/rxgo) [![Join the chat at https://gitter.im/ReactiveX/RxGo](https://badges.gitter.im/ReactiveX/RxGo.svg)](https://gitter.im/ReactiveX/RxGo?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 Reactive Extensions for the Go Language
 
 ## Call for Maintainers
-This project hasn't been active for a while due to myself not having enough time and not using Go on a regular basis. 
+This project hasn't been active for a while due to myself not having enough time and not using Go on a regular basis.
 I'm welcoming anyone who's willing to help maintaining or would like to become a core developer to get in touch with me.
 I'd like to see this project continues and it'd be such a shame to let it just sinks.
 
@@ -37,7 +41,7 @@ nextHandler := func(item interface{}) interface{} {
 	}
 }
 
-// Only next item will be handled. 
+// Only next item will be handled.
 sub := observable.Subscribe(handlers.NextFunc(nextHandler))
 
 ```
@@ -53,7 +57,7 @@ go get -u github.com/reactivex/rxgo
 ```
 
 ## Importing the Rx package
-Certain types, such as `observer.Observer` and `observable.Observable` are organized into subpackages for namespace-sake to avoid redundant constructor like `NewObservable`. 
+Certain types, such as `observer.Observer` and `observable.Observable` are organized into subpackages for namespace-sake to avoid redundant constructor like `NewObservable`.
 
 ```go
 
@@ -101,21 +105,21 @@ The above will:
 - print the format string for every number in the slice up to 4.
 - print the error "bang"
 
-It is important to remember that only an `OnError` or `OnDone` can be called in a 
+It is important to remember that only an `OnError` or `OnDone` can be called in a
 stream. If there's an error in the stream, the processing stops and `OnDone` will
 never be called, and vice versa.
 
-The concept is to group all side effects into these handlers and let an `Observer` or any `EventHandler` to handle them. 
+The concept is to group all side effects into these handlers and let an `Observer` or any `EventHandler` to handle them.
 
 ```go
-
 package main
+
 import (
 	"fmt"
-	"time"
 
-	"github.com/reactivex/rxgo"
 	"github.com/reactivex/rxgo/handlers"
+	"github.com/reactivex/rxgo/observable"
+	"github.com/reactivex/rxgo/observer"
 )
 
 func main() {
@@ -140,7 +144,37 @@ func main() {
 
 	fmt.Println(score) // 20
 }
+```
 
+FlatMap example:
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/reactivex/rxgo/handlers"
+	"github.com/reactivex/rxgo/observable"
+	"github.com/reactivex/rxgo/observer"
+)
+
+func main() {
+    primeSequence := observable.Just([]int{2, 3, 5, 7, 11, 13})
+    
+    <-primeSequence.
+            FlatMap(func(primes interface{}) observable.Observable {
+                return observable.Create(func(emitter *observer.Observer) {
+                    for _, prime := range primes.([]int) {
+                        emitter.OnNext(prime)
+                    }
+                    emitter.OnDone()
+                })
+            }, 1).
+            Last().
+            Subscribe(handlers.NextFunc(func(prime interface{}) {
+                fmt.Println("Prime -> ", prime)
+            }))
+}
 ```
 
 Please check out the [examples](examples/) to see how it can be applied to reactive applications.
@@ -166,10 +200,10 @@ Most Observable methods and operators will return the Observable itself, making 
 ```go
 
 f1 := func() interface{} {
-	
+
 	// Simulate a blocking I/O
 	time.Sleep(2 * time.Second)
-	return 1 
+	return 1
 }
 
 f2 := func() interface{} {
@@ -179,7 +213,7 @@ f2 := func() interface{} {
 	return 2
 }
 
-onNext := handlers.NextFunc(func(v iterface{}) {
+onNext := handlers.NextFunc(func(v interface{}) {
 	val := encodeVal(v)
 	saveToDB(val)
 })
@@ -188,9 +222,9 @@ wait := observable.Start(f1, f2).Subscribe(onNext)
 sub := <-wait
 
 if err := sub.Err(); err != nil {
-	saveToLog(err)	
+	saveToLog(err)
 }
 
 ```
 
-## This is an early project and your contributions will help shape its direction. 
+## This is an early project and your contributions will help shape its direction.
