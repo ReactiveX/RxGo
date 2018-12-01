@@ -12,6 +12,7 @@ import (
 	"github.com/reactivex/rxgo/optional"
 	"github.com/reactivex/rxgo/options"
 	"github.com/stretchr/testify/assert"
+	"strconv"
 	"sync/atomic"
 )
 
@@ -1355,4 +1356,23 @@ func TestObservableForEach(t *testing.T) {
 		assert.Equal(expectedChars[n], char)
 	}
 	assert.Equal("bang", sub.Error())
+}
+
+func TestOnErrorReturn(t *testing.T) {
+	got := make([]int, 0)
+
+	obs := Just(1, 2, 3, errors.New("7"), 4).
+		OnErrorReturn(func(e error) interface{} {
+			i, err := strconv.Atoi(e.Error())
+			if err != nil {
+				t.Fail()
+			}
+			return i
+		})
+
+	obs.Subscribe(handlers.NextFunc(func(i interface{}) {
+		got = append(got, i.(int))
+	})).Block()
+
+	assert.Equal(t, []int{1, 2, 3, 7, 4}, got)
 }

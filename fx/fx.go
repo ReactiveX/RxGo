@@ -17,4 +17,7 @@ type (
 
 	// Function2 defines a function that computes a value from two input values.
 	Function2 func(interface{}, interface{}) interface{}
+
+	// ErrorFunction defines a function that computes a value from an error.
+	ErrorFunction func(error) interface{}
 )

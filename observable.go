@@ -12,7 +12,6 @@ import (
 // Observable is a basic observable interface
 type Observable interface {
 	Iterator
-
 	Distinct(apply fx.Function) Observable
 	DistinctUntilChanged(apply fx.Function) Observable
 	Filter(apply fx.Predicate) Observable
@@ -33,9 +32,8 @@ type Observable interface {
 	ZipFromObservable(publisher Observable, zipper fx.Function2) Observable
 	ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFunc,
 		doneFunc handlers.DoneFunc, opts ...options.Option) Observer
-
+	OnErrorReturn(resumeFunc fx.ErrorFunction) Observable
 	Reduce(apply fx.Function2) OptionalSingle
-
 	Publish() ConnectableObservable
 	Count() Single
 	ElementAt(index uint) Single
@@ -48,6 +46,7 @@ type observable struct {
 	ch                  chan interface{}
 	errorOnSubscription error
 	observableFactory   func() Observable
+	onErrorReturn       fx.ErrorFunction
 }
 
 // NewObservable creates an Observable
@@ -103,11 +102,14 @@ func (o *observable) Subscribe(handler handlers.EventHandler, opts ...options.Op
 			for item := range o.ch {
 				switch item := item.(type) {
 				case error:
-					ob.OnError(item)
-
-					// Record the error and break the loop.
-					e = item
-					break OuterLoop
+					if o.onErrorReturn == nil {
+						ob.OnError(item)
+						// Record the error and break the loop.
+						e = item
+						break OuterLoop
+					} else {
+						ob.OnNext(o.onErrorReturn(item))
+					}
 				default:
 					ob.OnNext(item)
 				}
@@ -132,11 +134,14 @@ func (o *observable) Subscribe(handler handlers.EventHandler, opts ...options.Op
 				for item := range o.ch {
 					switch item := item.(type) {
 					case error:
-						ob.OnError(item)
-
-						// Record the error and break the loop.
-						e = item
-						break OuterLoop
+						if o.onErrorReturn == nil {
+							ob.OnError(item)
+							// Record the error and break the loop.
+							e = item
+							break OuterLoop
+						} else {
+							ob.OnNext(o.onErrorReturn(item))
+						}
 					default:
 						ob.OnNext(item)
 					}
@@ -532,4 +537,17 @@ func (o *observable) ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFun
 
 func (o *observable) Publish() ConnectableObservable {
 	return NewConnectableObservable(o)
+}
+
+func (o *observable) OnErrorReturn(resumeFunc fx.ErrorFunction) Observable {
+	copy := &observable{
+		ch:                  o.ch,
+		errorOnSubscription: o.errorOnSubscription,
+		observableFactory:   o.observableFactory,
+		onErrorReturn:       resumeFunc,
+	}
+
+	o.onErrorReturn = resumeFunc
+
+	return copy
 }
