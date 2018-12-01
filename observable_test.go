@@ -347,25 +347,8 @@ func TestObservableMap(t *testing.T) {
 }
 
 func TestObservableTake(t *testing.T) {
-	items := []interface{}{1, 2, 3, 4, 5}
-	it, err := iterable.New(items)
-	if err != nil {
-		t.Fail()
-	}
-
-	stream1 := From(it)
-	stream2 := stream1.Take(3)
-
-	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
-		if num, ok := item.(int); ok {
-			nums = append(nums, num)
-		}
-	})
-
-	stream2.Subscribe(onNext).Block()
-
-	assert.Exactly(t, []int{1, 2, 3}, nums)
+	stream := Just(1, 2, 3, 4, 5).Take(3)
+	AssertThatObservable(t, stream, HasItems(1, 2, 3))
 }
 
 func TestObservableTakeWithEmpty(t *testing.T) {
