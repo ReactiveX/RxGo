@@ -27,6 +27,7 @@ type Observable interface {
 	Take(nth uint) Observable
 	TakeLast(nth uint) Observable
 	TakeWhile(apply fx.Predicate) Observable
+	SkipWhile(apply fx.Predicate) Observable
 	ToList() Observable
 	ToMap(keySelector fx.Function) Observable
 	ToMapWithValueSelector(keySelector fx.Function, valueSelector fx.Function) Observable
@@ -452,6 +453,26 @@ func (o *observable) TakeWhile(apply fx.Predicate) Observable {
 				continue
 			}
 			break
+		}
+		close(out)
+	}()
+	return &observable{ch: out}
+}
+
+// SkipWhile discard items emitted by an Observable until a specified condition becomes false.
+func (o *observable) SkipWhile(apply fx.Predicate) Observable {
+	out := make(chan interface{})
+	go func() {
+		skip := true
+		for item := range o.ch {
+			if !skip {
+				out <- item
+			} else {
+				if !apply(item) {
+					out <- item
+					skip = false
+				}
+			}
 		}
 		close(out)
 	}()
