@@ -4,12 +4,13 @@ import (
 	"testing"
 
 	"errors"
+	"time"
+
 	rxerrors "github.com/reactivex/rxgo/errors"
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/iterable"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"time"
 )
 
 func TestEmitsNoElements(t *testing.T) {
