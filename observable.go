@@ -92,6 +92,8 @@ func iterate(observable Observable, observer Observer) error {
 			case error:
 				if observable.getOnonErrorReturn() != nil {
 					observer.OnNext(observable.getOnonErrorReturn()(item))
+					// Stop the subscription
+					return nil
 				} else if observable.getOnErrorResumeNext() != nil {
 					observable = observable.getOnErrorResumeNext()(item)
 				} else {

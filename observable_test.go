@@ -1373,7 +1373,7 @@ func TestOnErrorReturn(t *testing.T) {
 		got = append(got, i.(int))
 	})).Block()
 
-	assert.Equal(t, []int{1, 2, 3, 7, 4}, got)
+	assert.Equal(t, []int{1, 2, 3, 7}, got)
 }
 
 func TestOnErrorResumeNext(t *testing.T) {
