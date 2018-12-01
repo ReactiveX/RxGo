@@ -1,9 +1,10 @@
 package rxgo
 
 import (
+	"testing"
+
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 // Assertion lists the assertions which may be configured.
