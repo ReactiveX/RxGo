@@ -39,6 +39,8 @@ type Observable interface {
 	ElementAt(index uint) Single
 	FirstOrDefault(defaultValue interface{}) Single
 	LastOrDefault(defaultValue interface{}) Single
+	getOnonErrorReturn() ErrorFunction
+	getOnErrorResumeNext() ErrorToObservableFunction
 }
 
 // observable is a structure handling a channel of interface{} and implementing Observable
@@ -75,32 +77,43 @@ func CheckEventHandlers(handler ...handlers.EventHandler) Observer {
 	return NewObserver(handler...)
 }
 
+func iterate(observable Observable, observer Observer) error {
+	for {
+		item, err := observable.Next()
+		if err != nil {
+			switch err := err.(type) {
+			case errors.BaseError:
+				if errors.ErrorCode(err.Code()) == errors.EndOfIteratorError {
+					return nil
+				}
+			}
+		} else {
+			switch item := item.(type) {
+			case error:
+				if observable.getOnonErrorReturn() != nil {
+					observer.OnNext(observable.getOnonErrorReturn()(item))
+				} else if observable.getOnErrorResumeNext() != nil {
+					observable = observable.getOnErrorResumeNext()(item)
+				} else {
+					observer.OnError(item)
+					return item
+				}
+			default:
+				observer.OnNext(item)
+			}
+
+		}
+	}
+
+	return nil
+}
+
 // Next returns the next item on the Observable.
 func (o *observable) Next() (interface{}, error) {
 	if next, ok := <-o.ch; ok {
 		return next, nil
 	}
 	return nil, errors.New(errors.EndOfIteratorError)
-}
-
-func subscribeIteration(observable *observable, observer Observer) error {
-	for item := range observable.ch {
-		switch item := item.(type) {
-		case error:
-			if observable.onErrorReturn != nil {
-				observer.OnNext(observable.onErrorReturn(item))
-			} else if observable.onErrorResumeNext != nil {
-				//o = o.
-			} else {
-				observer.OnError(item)
-				return item
-			}
-		default:
-			observer.OnNext(item)
-		}
-	}
-
-	return nil
 }
 
 // Subscribe subscribes an EventHandler and returns a Subscription channel.
@@ -118,7 +131,7 @@ func (o *observable) Subscribe(handler handlers.EventHandler, opts ...options.Op
 
 	if observableOptions.Parallelism() == 0 {
 		go func() {
-			e := subscribeIteration(o, ob)
+			e := iterate(o, ob)
 			if e == nil {
 				ob.OnDone()
 			}
@@ -131,7 +144,7 @@ func (o *observable) Subscribe(handler handlers.EventHandler, opts ...options.Op
 			wg.Add(1)
 
 			go func() {
-				e = subscribeIteration(o, ob)
+				e = iterate(o, ob)
 				wg.Done()
 			}()
 		}
@@ -516,23 +529,38 @@ func (o *observable) ZipFromObservable(publisher Observable, zipper Function2) O
 	return &observable{ch: out}
 }
 
+// ForEach subscribes to the Observable and receives notifications for each element.
 func (o *observable) ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFunc,
 	doneFunc handlers.DoneFunc, opts ...options.Option) Observer {
 	return o.Subscribe(CheckEventHandlers(nextFunc, errFunc, doneFunc), opts...)
 }
 
+// Publish returns a ConnectableObservable which waits until its connect method
+// is called before it begins emitting items to those Observers that have subscribed to it.
 func (o *observable) Publish() ConnectableObservable {
 	return NewConnectableObservable(o)
 }
 
+// OnErrorReturn instructs an Observable to emit an item (returned by a specified function)
+// rather than invoking onError if it encounters an error.
 func (o *observable) OnErrorReturn(resumeFunc ErrorFunction) Observable {
 	o.onErrorReturn = resumeFunc
 	o.onErrorResumeNext = nil
 	return o
 }
 
+// OnErrorResumeNext Instructs an Observable to pass control to another Observable rather than invoking
+// onError if it encounters an error.
 func (o *observable) OnErrorResumeNext(resumeSequence ErrorToObservableFunction) Observable {
 	o.onErrorResumeNext = resumeSequence
 	o.onErrorReturn = nil
 	return o
+}
+
+func (o *observable) getOnonErrorReturn() ErrorFunction {
+	return o.onErrorReturn
+}
+
+func (o *observable) getOnErrorResumeNext() ErrorToObservableFunction {
+	return o.onErrorResumeNext
 }

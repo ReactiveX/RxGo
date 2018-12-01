@@ -1376,17 +1376,18 @@ func TestOnErrorReturn(t *testing.T) {
 	assert.Equal(t, []int{1, 2, 3, 7, 4}, got)
 }
 
-//func TestOnErrorResumeNext(t *testing.T) {
-//	got := make([]int, 0)
-//
-//	obs := Just(1, 2, 3, errors.New("7"), 4).
-//		OnErrorResumeNext(func(e error) Observable {
-//			return Just(5, 6)
-//		})
-//
-//	obs.Subscribe(handlers.NextFunc(func(i interface{}) {
-//		got = append(got, i.(int))
-//	})).Block()
-//
-//	assert.Equal(t, []int{1, 2, 3, 5, 6}, got)
-//}
+func TestOnErrorResumeNext(t *testing.T) {
+	got := make([]int, 0)
+
+	obs := Just(1, 2, 3, errors.New("7"), 4).
+		OnErrorResumeNext(func(e error) Observable {
+			return Just(5, 6, errors.New("8"), 9)
+		})
+
+	err := obs.Subscribe(handlers.NextFunc(func(i interface{}) {
+		got = append(got, i.(int))
+	})).Block()
+
+	assert.Equal(t, []int{1, 2, 3, 5, 6}, got)
+	assert.NotNil(t, err)
+}
