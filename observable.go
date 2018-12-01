@@ -41,6 +41,7 @@ type Observable interface {
 	ElementAt(index uint) Single
 	FirstOrDefault(defaultValue interface{}) Single
 	LastOrDefault(defaultValue interface{}) Single
+	DefaultIfEmpty(defaultValue interface{}) Observable
 }
 
 // observable is a structure handling a channel of interface{} and implementing Observable
@@ -532,4 +533,22 @@ func (o *observable) ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFun
 
 func (o *observable) Publish() ConnectableObservable {
 	return NewConnectableObservable(o)
+}
+
+// DefaultIfEmpty returns an Observable that emits the items emitted by the source
+// Observable or a specified default item if the source Observable is empty.
+func (o *observable) DefaultIfEmpty(defaultValue interface{}) Observable {
+	out := make(chan interface{})
+	go func() {
+		empty := true
+		for item := range o.ch {
+			empty = false
+			out <- item
+		}
+		if empty {
+			out <- defaultValue
+		}
+		close(out)
+	}()
+	return &observable{ch: out}
 }

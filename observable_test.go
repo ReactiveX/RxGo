@@ -1356,3 +1356,19 @@ func TestObservableForEach(t *testing.T) {
 	}
 	assert.Equal("bang", sub.Error())
 }
+
+func TestDefaultIfEmpty(t *testing.T) {
+	got1 := 0
+	Empty().DefaultIfEmpty(3).Subscribe(handlers.NextFunc(func(i interface{}) {
+		got1 = i.(int)
+	})).Block()
+	assert.Equal(t, 3, got1)
+}
+
+func TestDefaultIfEmptyWithNonEmpty(t *testing.T) {
+	got1 := 0
+	Just(1).DefaultIfEmpty(3).Subscribe(handlers.NextFunc(func(i interface{}) {
+		got1 = i.(int)
+	})).Block()
+	assert.Equal(t, 1, got1)
+}
