@@ -540,14 +540,6 @@ func (o *observable) Publish() ConnectableObservable {
 }
 
 func (o *observable) OnErrorReturn(resumeFunc fx.ErrorFunction) Observable {
-	copy := &observable{
-		ch:                  o.ch,
-		errorOnSubscription: o.errorOnSubscription,
-		observableFactory:   o.observableFactory,
-		onErrorReturn:       resumeFunc,
-	}
-
 	o.onErrorReturn = resumeFunc
-
-	return copy
+	return o
 }
