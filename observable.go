@@ -41,6 +41,7 @@ type Observable interface {
 	ElementAt(index uint) Single
 	FirstOrDefault(defaultValue interface{}) Single
 	LastOrDefault(defaultValue interface{}) Single
+	DoOnEach(onNotification fx.Consumer) Observable
 }
 
 // observable is a structure handling a channel of interface{} and implementing Observable
@@ -532,4 +533,18 @@ func (o *observable) ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFun
 
 func (o *observable) Publish() ConnectableObservable {
 	return NewConnectableObservable(o)
+}
+
+// DoOnEach operator allows you to establish a callback that the resulting Observable
+// will call each time it emits an item
+func (o *observable) DoOnEach(onNotification fx.Consumer) Observable {
+	out := make(chan interface{})
+	go func() {
+		for item := range o.ch {
+			out <- item
+			onNotification(item)
+		}
+		close(out)
+	}()
+	return &observable{ch: out}
 }

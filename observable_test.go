@@ -1316,3 +1316,23 @@ func TestObservableForEach(t *testing.T) {
 	}
 	assert.Equal("bang", sub.Error())
 }
+
+func TestDoOnEach(t *testing.T) {
+	sum := 0
+	stream := Just(1, 2, 3).DoOnEach(func(i interface{}) {
+		sum += i.(int)
+	})
+
+	AssertThatObservable(t, stream, HasItems(1, 2, 3))
+	assert.Equal(t, 6, sum)
+}
+
+func TestDoOnEachWithEmpty(t *testing.T) {
+	sum := 0
+	stream := Empty().DoOnEach(func(i interface{}) {
+		sum += i.(int)
+	})
+
+	AssertThatObservable(t, stream, HasSize(0))
+	assert.Equal(t, 0, sum)
+}
