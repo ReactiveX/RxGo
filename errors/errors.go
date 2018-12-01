@@ -12,6 +12,8 @@ const (
 	ObserverError
 	IterableError
 	UndefinedError
+	ElementAtError
+	NoSuchElementError
 )
 
 // BaseError provides a base template for more package-specific errors

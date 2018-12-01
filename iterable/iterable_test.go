@@ -9,7 +9,7 @@ import (
 )
 
 func TestIterableImplementsIterator(t *testing.T) {
-	assert.Implements(t, (*rx.Iterator)(nil), Iterable(nil))
+	assert.Implements(t, (*rxgo.Iterator)(nil), Iterable(nil))
 }
 
 func TestCreateHomogenousIterable(t *testing.T) {

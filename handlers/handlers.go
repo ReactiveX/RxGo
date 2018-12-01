@@ -12,6 +12,11 @@ type (
 	DoneFunc func()
 )
 
+// EventHandler type is implemented by all handlers and Observer.
+type EventHandler interface {
+	Handle(interface{})
+}
+
 // Handle registers NextFunc to EventHandler.
 func (handle NextFunc) Handle(item interface{}) {
 	switch item := item.(type) {

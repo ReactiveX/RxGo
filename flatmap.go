@@ -1,20 +1,19 @@
-package observable
+package rxgo
 
 import (
 	"sync"
 
 	"github.com/reactivex/rxgo/handlers"
-	"github.com/reactivex/rxgo/observer"
 )
 
 // transforms emitted items into observables and flattens them into single observable.
 // maxInParallel argument controls how many transformed observables are processed in parallel
 // For an example please take a look at flatmap_slice_test.go file in the examples directory.
-func (o Observable) FlatMap(apply func(interface{}) Observable, maxInParallel uint) Observable {
+func (o *observable) FlatMap(apply func(interface{}) Observable, maxInParallel uint) Observable {
 	return o.flatMap(apply, maxInParallel, flatObservedSequence)
 }
 
-func (o Observable) flatMap(
+func (o *observable) flatMap(
 	apply func(interface{}) Observable,
 	maxInParallel uint,
 	flatteningFunc func(out chan interface{}, o Observable, apply func(interface{}) Observable, maxInParallel uint)) Observable {
@@ -27,7 +26,9 @@ func (o Observable) flatMap(
 
 	go flatteningFunc(out, o, apply, maxInParallel)
 
-	return Observable(out)
+	return &observable{
+		ch: out,
+	}
 }
 
 func flatObservedSequence(out chan interface{}, o Observable, apply func(interface{}) Observable, maxInParallel uint) {
@@ -41,13 +42,18 @@ func flatObservedSequence(out chan interface{}, o Observable, apply func(interfa
 	emissionObserver := newFlattenEmissionObserver(out)
 
 	count = 0
-	for element := range o {
+
+	for {
+		element, err := o.Next()
+		if err != nil {
+			break
+		}
 		sequence = apply(element)
 		count++
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			<-(sequence.Subscribe(*emissionObserver))
+			sequence.Subscribe(emissionObserver).Block()
 		}()
 
 		if count%maxInParallel == 0 {
@@ -58,9 +64,8 @@ func flatObservedSequence(out chan interface{}, o Observable, apply func(interfa
 	wg.Wait()
 }
 
-func newFlattenEmissionObserver(out chan interface{}) *observer.Observer {
-	ob := observer.New(handlers.NextFunc(func(element interface{}) {
+func newFlattenEmissionObserver(out chan interface{}) Observer {
+	return NewObserver(handlers.NextFunc(func(element interface{}) {
 		out <- element
 	}))
-	return &ob
 }
