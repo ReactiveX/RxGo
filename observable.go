@@ -41,6 +41,7 @@ type Observable interface {
 	ElementAt(index uint) Single
 	FirstOrDefault(defaultValue interface{}) Single
 	LastOrDefault(defaultValue interface{}) Single
+	Contains(equal fx.Predicate) Single
 }
 
 // observable is a structure handling a channel of interface{} and implementing Observable
@@ -532,4 +533,22 @@ func (o *observable) ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFun
 
 func (o *observable) Publish() ConnectableObservable {
 	return NewConnectableObservable(o)
+}
+
+// Contains returns an Observable that emits a Boolean that indicates whether
+// the source Observable emitted an item (the comparison is made against a predicate).
+func (o *observable) Contains(equal fx.Predicate) Single {
+	out := make(chan interface{})
+	go func() {
+		for item := range o.ch {
+			if equal(item) {
+				out <- true
+				close(out)
+				return
+			}
+		}
+		out <- false
+		close(out)
+	}()
+	return NewSingleFromChannel(out)
 }

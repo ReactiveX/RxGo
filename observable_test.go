@@ -1356,3 +1356,28 @@ func TestObservableForEach(t *testing.T) {
 	}
 	assert.Equal("bang", sub.Error())
 }
+
+func TestContain(t *testing.T) {
+	predicate := func(i interface{}) bool {
+		switch i := i.(type) {
+		case int:
+			return i == 2
+		default:
+			return false
+		}
+	}
+
+	var got1, got2 bool
+
+	Just(1, 2, 3).Contains(predicate).
+		Subscribe(handlers.NextFunc(func(i interface{}) {
+			got1 = i.(bool)
+		})).Block()
+	assert.True(t, got1)
+
+	Just(1, 5, 3).Contains(predicate).
+		Subscribe(handlers.NextFunc(func(i interface{}) {
+			got2 = i.(bool)
+		})).Block()
+	assert.False(t, got2)
+}
