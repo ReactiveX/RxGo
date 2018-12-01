@@ -6,13 +6,14 @@ import (
 	"testing"
 	"time"
 
+	"strconv"
+	"sync/atomic"
+
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/iterable"
 	"github.com/reactivex/rxgo/optional"
 	"github.com/reactivex/rxgo/options"
 	"github.com/stretchr/testify/assert"
-	"strconv"
-	"sync/atomic"
 )
 
 func TestCreateObservableWithConstructor(t *testing.T) {

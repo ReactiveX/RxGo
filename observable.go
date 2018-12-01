@@ -1,11 +1,12 @@
 package rxgo
 
 import (
+	"sync"
+
 	"github.com/reactivex/rxgo/errors"
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/optional"
 	"github.com/reactivex/rxgo/options"
-	"sync"
 )
 
 // Observable is a basic observable interface
