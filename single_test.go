@@ -1,10 +1,11 @@
 package rxgo
 
 import (
+	"testing"
+
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/optional"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestSingleFilterNotMatching(t *testing.T) {

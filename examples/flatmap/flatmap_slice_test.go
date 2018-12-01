@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/reactivex/rxgo"
 	"testing"
+
+	"github.com/reactivex/rxgo"
 )
 
 func TestFlatMapExample(t *testing.T) {
