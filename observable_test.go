@@ -1356,3 +1356,28 @@ func TestObservableForEach(t *testing.T) {
 	}
 	assert.Equal("bang", sub.Error())
 }
+
+func TestAll(t *testing.T) {
+	predicateAllInt := func(i interface{}) bool {
+		switch i.(type) {
+		case int:
+			return true
+		default:
+			return false
+		}
+	}
+
+	var got1, got2 bool
+
+	Just(1, 2, 3).All(predicateAllInt).
+		Subscribe(handlers.NextFunc(func(i interface{}) {
+			got1 = i.(bool)
+		})).Block()
+	assert.True(t, got1)
+
+	Just(1, "x", 3).All(predicateAllInt).
+		Subscribe(handlers.NextFunc(func(i interface{}) {
+			got2 = i.(bool)
+		})).Block()
+	assert.False(t, got2)
+}

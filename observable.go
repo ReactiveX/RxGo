@@ -41,6 +41,7 @@ type Observable interface {
 	ElementAt(index uint) Single
 	FirstOrDefault(defaultValue interface{}) Single
 	LastOrDefault(defaultValue interface{}) Single
+	All(predicate fx.Predicate) Observable
 }
 
 // observable is a structure handling a channel of interface{} and implementing Observable
@@ -532,4 +533,22 @@ func (o *observable) ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFun
 
 func (o *observable) Publish() ConnectableObservable {
 	return NewConnectableObservable(o)
+}
+
+// All returns an Observable that emits a Boolean that indicates whether
+// all of the items emitted by the source Observable satisfy a condition.
+func (o *observable) All(predicate fx.Predicate) Observable {
+	out := make(chan interface{})
+	go func() {
+		for item := range o.ch {
+			if !predicate(item) {
+				out <- false
+				close(out)
+				return
+			}
+		}
+		out <- true
+		close(out)
+	}()
+	return &observable{ch: out}
 }
