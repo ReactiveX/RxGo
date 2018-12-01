@@ -12,7 +12,6 @@ import (
 	"github.com/reactivex/rxgo/optional"
 	"github.com/reactivex/rxgo/options"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"sync/atomic"
 )
 
@@ -70,26 +69,6 @@ func TestEmptyOperator(t *testing.T) {
 	myStream.Subscribe(onDone).Block()
 
 	assert.Equal(t, "done", text)
-}
-
-func TestIntervalOperator(t *testing.T) {
-	fin := make(chan struct{})
-	myStream := Interval(fin, 10*time.Millisecond)
-	nums := []int{}
-
-	onNext := handlers.NextFunc(func(item interface{}) {
-		if num, ok := item.(int); ok {
-			if num >= 5 {
-				fin <- struct{}{}
-				close(fin)
-			}
-			nums = append(nums, num)
-		}
-	})
-
-	myStream.Subscribe(onNext).Block()
-
-	assert.Exactly(t, []int{0, 1, 2, 3, 4, 5}, nums)
 }
 
 func TestRangeOperator(t *testing.T) {
@@ -870,125 +849,6 @@ func TestObservableScanWithString(t *testing.T) {
 	assert.Exactly(t, expected, words)
 }
 
-func TestRepeatInfinityOperator(t *testing.T) {
-	myStream := Repeat("mystring")
-
-	item, err := myStream.Next()
-
-	if err != nil {
-		assert.Fail(t, "fail to emit next item", err)
-	}
-
-	if value, ok := item.(string); ok {
-		assert.Equal(t, value, "mystring")
-	} else {
-		assert.Fail(t, "fail to emit next item", err)
-	}
-}
-
-func TestRepeatNtimeOperator(t *testing.T) {
-	myStream := Repeat("mystring", 2)
-	stringarray := []string{}
-
-	onNext := handlers.NextFunc(func(item interface{}) {
-		if value, ok := item.(string); ok {
-			stringarray = append(stringarray, value)
-		}
-	})
-
-	onDone := handlers.DoneFunc(func() {
-		stringarray = append(stringarray, "end")
-	})
-
-	myStream.Subscribe(NewObserver(onNext, onDone)).Block()
-
-	assert.Exactly(t, []string{"mystring", "mystring", "end"}, stringarray)
-}
-
-func TestRepeatNtimeMultiVariadicOperator(t *testing.T) {
-	myStream := Repeat("mystring", 2, 2, 3, 4, 5, 6, 7)
-	stringarray := []string{}
-
-	onNext := handlers.NextFunc(func(item interface{}) {
-		if value, ok := item.(string); ok {
-			stringarray = append(stringarray, value)
-		}
-	})
-
-	onDone := handlers.DoneFunc(func() {
-		stringarray = append(stringarray, "end")
-	})
-
-	myStream.Subscribe(NewObserver(onNext, onDone)).Block()
-
-	assert.Exactly(t, []string{"mystring", "mystring", "end"}, stringarray)
-}
-
-func TestRepeatWithZeroNtimeOperator(t *testing.T) {
-	myStream := Repeat("mystring", 0)
-	stringarray := []string{}
-
-	onNext := handlers.NextFunc(func(item interface{}) {
-		if value, ok := item.(string); ok {
-			stringarray = append(stringarray, value)
-		}
-	})
-
-	onDone := handlers.DoneFunc(func() {
-		stringarray = append(stringarray, "end")
-	})
-
-	myStream.Subscribe(NewObserver(onNext, onDone)).Block()
-
-	assert.Exactly(t, []string{"end"}, stringarray)
-}
-
-func TestRepeatWithNegativeTimesOperator(t *testing.T) {
-	myStream := Repeat("mystring", -10)
-	stringarray := []string{}
-
-	onNext := handlers.NextFunc(func(item interface{}) {
-		if value, ok := item.(string); ok {
-			stringarray = append(stringarray, value)
-		}
-	})
-
-	onDone := handlers.DoneFunc(func() {
-		stringarray = append(stringarray, "end")
-	})
-
-	myStream.Subscribe(NewObserver(onNext, onDone)).Block()
-
-	assert.Exactly(t, []string{"end"}, stringarray)
-}
-
-func TestEmptyCompletesSequence(t *testing.T) {
-	// given
-	emissionObserver := NewObserverMock()
-
-	// and empty sequence
-	sequence := Empty()
-
-	// when subscribes to the sequence
-	sequence.Subscribe(emissionObserver.Capture()).Block()
-
-	// then completes without any emission
-	emissionObserver.AssertNotCalled(t, "OnNext", mock.Anything)
-	emissionObserver.AssertNotCalled(t, "OnError", mock.Anything)
-	emissionObserver.AssertCalled(t, "OnDone")
-}
-
-func TestError(t *testing.T) {
-	var got error
-	err := errors.New("foo")
-	stream := Error(err)
-	stream.Subscribe(handlers.ErrFunc(func(e error) {
-		got = e
-	})).Block()
-
-	assert.Equal(t, err, got)
-}
-
 func TestElementAt(t *testing.T) {
 	got := 0
 	just := Just(0, 1, 2, 3, 4)
@@ -1436,39 +1296,6 @@ func TestObservableZipWithEmpty(t *testing.T) {
 	})
 	zip.Subscribe(onNext).Block()
 	assert.Exactly(t, []int{}, nums)
-}
-
-func TestDefer(t *testing.T) {
-	test := 5
-	var value int
-	onNext := handlers.NextFunc(func(item interface{}) {
-		switch item := item.(type) {
-		case int:
-			value = item
-		}
-	})
-	// First subscriber
-	stream1 := Defer(func() Observable {
-		items := []interface{}{test}
-		it, err := iterable.New(items)
-		if err != nil {
-			t.Fail()
-		}
-		return From(it)
-	})
-	test = 3
-	stream2 := stream1.Map(func(i interface{}) interface{} {
-		return i
-	})
-	stream2.Subscribe(onNext).Block()
-	assert.Exactly(t, 3, value)
-	// Second subscriber
-	test = 8
-	stream2 = stream1.Map(func(i interface{}) interface{} {
-		return i
-	})
-	stream2.Subscribe(onNext).Block()
-	assert.Exactly(t, 8, value)
 }
 
 func TestCheckEventHandlers(t *testing.T) {
