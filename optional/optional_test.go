@@ -1,9 +1,10 @@
 package optional
 
 import (
+	"testing"
+
 	"github.com/reactivex/rxgo/errors"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestOf(t *testing.T) {
