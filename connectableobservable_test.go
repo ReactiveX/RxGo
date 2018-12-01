@@ -2,9 +2,10 @@ package rxgo
 
 import (
 	"errors"
+	"testing"
+
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestConnect(t *testing.T) {
