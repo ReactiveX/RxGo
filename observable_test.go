@@ -3,12 +3,10 @@ package rxgo
 import (
 	"errors"
 	"net/http"
-	"testing"
-	"time"
-
 	"strconv"
 	"sync/atomic"
-
+	"testing"
+	"time"
 
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/iterable"
