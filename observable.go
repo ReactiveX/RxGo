@@ -2,7 +2,6 @@ package rxgo
 
 import (
 	"github.com/reactivex/rxgo/errors"
-	"github.com/reactivex/rxgo/fx"
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/optional"
 	"github.com/reactivex/rxgo/options"
@@ -12,28 +11,29 @@ import (
 // Observable is a basic observable interface
 type Observable interface {
 	Iterator
-	Distinct(apply fx.Function) Observable
-	DistinctUntilChanged(apply fx.Function) Observable
-	Filter(apply fx.Predicate) Observable
+	Distinct(apply Function) Observable
+	DistinctUntilChanged(apply Function) Observable
+	Filter(apply Predicate) Observable
 	First() Observable
 	FlatMap(apply func(interface{}) Observable, maxInParallel uint) Observable
 	Last() Observable
-	Map(apply fx.Function) Observable
-	Scan(apply fx.Function2) Observable
+	Map(apply Function) Observable
+	Scan(apply Function2) Observable
 	Skip(nth uint) Observable
 	SkipLast(nth uint) Observable
 	Subscribe(handler handlers.EventHandler, opts ...options.Option) Observer
 	Take(nth uint) Observable
 	TakeLast(nth uint) Observable
-	TakeWhile(apply fx.Predicate) Observable
+	TakeWhile(apply Predicate) Observable
 	ToList() Observable
-	ToMap(keySelector fx.Function) Observable
-	ToMapWithValueSelector(keySelector fx.Function, valueSelector fx.Function) Observable
-	ZipFromObservable(publisher Observable, zipper fx.Function2) Observable
+	ToMap(keySelector Function) Observable
+	ToMapWithValueSelector(keySelector Function, valueSelector Function) Observable
+	ZipFromObservable(publisher Observable, zipper Function2) Observable
 	ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFunc,
 		doneFunc handlers.DoneFunc, opts ...options.Option) Observer
-	OnErrorReturn(resumeFunc fx.ErrorFunction) Observable
-	Reduce(apply fx.Function2) OptionalSingle
+	OnErrorReturn(resumeFunc ErrorFunction) Observable
+	OnErrorResumeNext(resumeSequence ErrorToObservableFunction) Observable
+	Reduce(apply Function2) OptionalSingle
 	Publish() ConnectableObservable
 	Count() Single
 	ElementAt(index uint) Single
@@ -46,7 +46,8 @@ type observable struct {
 	ch                  chan interface{}
 	errorOnSubscription error
 	observableFactory   func() Observable
-	onErrorReturn       fx.ErrorFunction
+	onErrorReturn       ErrorFunction
+	onErrorResumeNext   ErrorToObservableFunction
 }
 
 // NewObservable creates an Observable
@@ -82,6 +83,26 @@ func (o *observable) Next() (interface{}, error) {
 	return nil, errors.New(errors.EndOfIteratorError)
 }
 
+func subscribeIteration(observable *observable, observer Observer) error {
+	for item := range observable.ch {
+		switch item := item.(type) {
+		case error:
+			if observable.onErrorReturn != nil {
+				observer.OnNext(observable.onErrorReturn(item))
+			} else if observable.onErrorResumeNext != nil {
+				//o = o.
+			} else {
+				observer.OnError(item)
+				return item
+			}
+		default:
+			observer.OnNext(item)
+		}
+	}
+
+	return nil
+}
+
 // Subscribe subscribes an EventHandler and returns a Subscription channel.
 func (o *observable) Subscribe(handler handlers.EventHandler, opts ...options.Option) Observer {
 	ob := CheckEventHandler(handler)
@@ -97,30 +118,10 @@ func (o *observable) Subscribe(handler handlers.EventHandler, opts ...options.Op
 
 	if observableOptions.Parallelism() == 0 {
 		go func() {
-			var e error
-		OuterLoop:
-			for item := range o.ch {
-				switch item := item.(type) {
-				case error:
-					if o.onErrorReturn == nil {
-						ob.OnError(item)
-						// Record the error and break the loop.
-						e = item
-						break OuterLoop
-					} else {
-						ob.OnNext(o.onErrorReturn(item))
-					}
-				default:
-					ob.OnNext(item)
-				}
-			}
-
-			// OnDone only gets executed if there's no error.
+			e := subscribeIteration(o, ob)
 			if e == nil {
 				ob.OnDone()
 			}
-
-			return
 		}()
 	} else {
 		wg := sync.WaitGroup{}
@@ -130,22 +131,7 @@ func (o *observable) Subscribe(handler handlers.EventHandler, opts ...options.Op
 			wg.Add(1)
 
 			go func() {
-			OuterLoop:
-				for item := range o.ch {
-					switch item := item.(type) {
-					case error:
-						if o.onErrorReturn == nil {
-							ob.OnError(item)
-							// Record the error and break the loop.
-							e = item
-							break OuterLoop
-						} else {
-							ob.OnNext(o.onErrorReturn(item))
-						}
-					default:
-						ob.OnNext(item)
-					}
-				}
+				e = subscribeIteration(o, ob)
 				wg.Done()
 			}()
 		}
@@ -164,7 +150,7 @@ func (o *observable) Subscribe(handler handlers.EventHandler, opts ...options.Op
 
 // Map maps a Function predicate to each item in Observable and
 // returns a new Observable with applied items.
-func (o *observable) Map(apply fx.Function) Observable {
+func (o *observable) Map(apply Function) Observable {
 	out := make(chan interface{})
 
 	var it Observable = o
@@ -251,7 +237,7 @@ func (o *observable) TakeLast(nth uint) Observable {
 
 // Filter filters items in the original Observable and returns
 // a new Observable with the filtered items.
-func (o *observable) Filter(apply fx.Predicate) Observable {
+func (o *observable) Filter(apply Predicate) Observable {
 	out := make(chan interface{})
 	go func() {
 		for item := range o.ch {
@@ -293,7 +279,7 @@ func (o *observable) Last() Observable {
 
 // Distinct suppresses duplicate items in the original Observable and returns
 // a new Observable.
-func (o *observable) Distinct(apply fx.Function) Observable {
+func (o *observable) Distinct(apply Function) Observable {
 	out := make(chan interface{})
 	go func() {
 		keysets := make(map[interface{}]struct{})
@@ -312,7 +298,7 @@ func (o *observable) Distinct(apply fx.Function) Observable {
 
 // DistinctUntilChanged suppresses consecutive duplicate items in the original
 // Observable and returns a new Observable.
-func (o *observable) DistinctUntilChanged(apply fx.Function) Observable {
+func (o *observable) DistinctUntilChanged(apply Function) Observable {
 	out := make(chan interface{})
 	go func() {
 		var current interface{}
@@ -368,7 +354,7 @@ func (o *observable) SkipLast(nth uint) Observable {
 
 // Scan applies Function2 predicate to each item in the original
 // Observable sequentially and emits each successive value on a new Observable.
-func (o *observable) Scan(apply fx.Function2) Observable {
+func (o *observable) Scan(apply Function2) Observable {
 	out := make(chan interface{})
 
 	go func() {
@@ -383,7 +369,7 @@ func (o *observable) Scan(apply fx.Function2) Observable {
 	return &observable{ch: out}
 }
 
-func (o *observable) Reduce(apply fx.Function2) OptionalSingle {
+func (o *observable) Reduce(apply Function2) OptionalSingle {
 	out := make(chan optional.Optional)
 	go func() {
 		var acc interface{}
@@ -448,7 +434,7 @@ func (o *observable) LastOrDefault(defaultValue interface{}) Single {
 
 // TakeWhile emits items emitted by an Observable as long as the
 // specified condition is true, then skip the remainder.
-func (o *observable) TakeWhile(apply fx.Predicate) Observable {
+func (o *observable) TakeWhile(apply Predicate) Observable {
 	out := make(chan interface{})
 	go func() {
 		for item := range o.ch {
@@ -479,7 +465,7 @@ func (o *observable) ToList() Observable {
 
 // ToMap convert the sequence of items emitted by an Observable
 // into a map keyed by a specified key function
-func (o *observable) ToMap(keySelector fx.Function) Observable {
+func (o *observable) ToMap(keySelector Function) Observable {
 	out := make(chan interface{})
 	go func() {
 		m := make(map[interface{}]interface{})
@@ -495,7 +481,7 @@ func (o *observable) ToMap(keySelector fx.Function) Observable {
 // ToMapWithValueSelector convert the sequence of items emitted by an Observable
 // into a map keyed by a specified key function and valued by another
 // value function
-func (o *observable) ToMapWithValueSelector(keySelector fx.Function, valueSelector fx.Function) Observable {
+func (o *observable) ToMapWithValueSelector(keySelector Function, valueSelector Function) Observable {
 	out := make(chan interface{})
 	go func() {
 		m := make(map[interface{}]interface{})
@@ -510,7 +496,7 @@ func (o *observable) ToMapWithValueSelector(keySelector fx.Function, valueSelect
 
 // ZipFromObservable che emissions of multiple Observables together via a specified function
 // and emit single items for each combination based on the results of this function
-func (o *observable) ZipFromObservable(publisher Observable, zipper fx.Function2) Observable {
+func (o *observable) ZipFromObservable(publisher Observable, zipper Function2) Observable {
 	out := make(chan interface{})
 	go func() {
 	OuterLoop:
@@ -539,7 +525,14 @@ func (o *observable) Publish() ConnectableObservable {
 	return NewConnectableObservable(o)
 }
 
-func (o *observable) OnErrorReturn(resumeFunc fx.ErrorFunction) Observable {
+func (o *observable) OnErrorReturn(resumeFunc ErrorFunction) Observable {
 	o.onErrorReturn = resumeFunc
+	o.onErrorResumeNext = nil
+	return o
+}
+
+func (o *observable) OnErrorResumeNext(resumeSequence ErrorToObservableFunction) Observable {
+	o.onErrorResumeNext = resumeSequence
+	o.onErrorReturn = nil
 	return o
 }

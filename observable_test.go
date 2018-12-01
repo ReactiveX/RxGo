@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/reactivex/rxgo/fx"
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/iterable"
 	"github.com/reactivex/rxgo/optional"
@@ -150,7 +149,7 @@ func TestStartOperator(t *testing.T) {
 	responseCodes := []int{}
 	done := false
 
-	d1 := fx.Supplier(func() interface{} {
+	d1 := Supplier(func() interface{} {
 		result := &http.Response{
 			Status:     "200 OK",
 			StatusCode: 200,
@@ -163,7 +162,7 @@ func TestStartOperator(t *testing.T) {
 		return res
 	})
 
-	d2 := fx.Supplier(func() interface{} {
+	d2 := Supplier(func() interface{} {
 		result := &http.Response{
 			Status:     "301 Moved Permanently",
 			StatusCode: 301,
@@ -176,7 +175,7 @@ func TestStartOperator(t *testing.T) {
 		return res
 	})
 
-	d3 := fx.Supplier(func() interface{} {
+	d3 := Supplier(func() interface{} {
 		result := &http.Response{
 			Status:     "500 Server Error",
 			StatusCode: 500,
@@ -189,7 +188,7 @@ func TestStartOperator(t *testing.T) {
 		return res
 	})
 
-	e1 := fx.Supplier(func() interface{} {
+	e1 := Supplier(func() interface{} {
 		err := errors.New("Bad URL")
 		res, err := fakeGet("badurl.err", 100*time.Millisecond, err)
 		if err != nil {
@@ -198,7 +197,7 @@ func TestStartOperator(t *testing.T) {
 		return res
 	})
 
-	d4 := fx.Supplier(func() interface{} {
+	d4 := Supplier(func() interface{} {
 		result := &http.Response{
 			Status:     "404 Not Found",
 			StatusCode: 400,
@@ -348,7 +347,7 @@ func TestObservableMap(t *testing.T) {
 
 	stream1 := From(it)
 
-	multiplyAllIntBy := func(factor interface{}) fx.Function {
+	multiplyAllIntBy := func(factor interface{}) Function {
 		return func(item interface{}) interface{} {
 			if num, ok := item.(int); ok {
 				return num * factor.(int)
@@ -457,7 +456,7 @@ func TestObservableFilter(t *testing.T) {
 
 	stream1 := From(it)
 
-	lt := func(target interface{}) fx.Predicate {
+	lt := func(target interface{}) Predicate {
 		return func(item interface{}) bool {
 			if num, ok := item.(int); ok {
 				if num < 9 {
@@ -1376,3 +1375,18 @@ func TestOnErrorReturn(t *testing.T) {
 
 	assert.Equal(t, []int{1, 2, 3, 7, 4}, got)
 }
+
+//func TestOnErrorResumeNext(t *testing.T) {
+//	got := make([]int, 0)
+//
+//	obs := Just(1, 2, 3, errors.New("7"), 4).
+//		OnErrorResumeNext(func(e error) Observable {
+//			return Just(5, 6)
+//		})
+//
+//	obs.Subscribe(handlers.NextFunc(func(i interface{}) {
+//		got = append(got, i.(int))
+//	})).Block()
+//
+//	assert.Equal(t, []int{1, 2, 3, 5, 6}, got)
+//}
