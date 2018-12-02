@@ -4,9 +4,9 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"sync/atomic"
 	"testing"
 	"time"
-	"sync/atomic"
 
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/iterable"
