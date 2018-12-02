@@ -1391,3 +1391,24 @@ func TestOnErrorResumeNext(t *testing.T) {
 	assert.Equal(t, []int{1, 2, 3, 5, 6}, got)
 	assert.NotNil(t, err)
 }
+
+func TestAll(t *testing.T) {
+	predicateAllInt := func(i interface{}) bool {
+		switch i.(type) {
+		case int:
+			return true
+		default:
+			return false
+		}
+	}
+
+	got1, err := Just(1, 2, 3).All(predicateAllInt).
+		Subscribe(nil).Block()
+	assert.Nil(t, err)
+	assert.Equal(t, true, got1)
+
+	got2, err := Just(1, "x", 3).All(predicateAllInt).
+		Subscribe(nil).Block()
+	assert.Nil(t, err)
+	assert.Equal(t, false, got2)
+}

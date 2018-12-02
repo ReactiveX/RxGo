@@ -40,6 +40,7 @@ type Observable interface {
 	ElementAt(index uint) Single
 	FirstOrDefault(defaultValue interface{}) Single
 	LastOrDefault(defaultValue interface{}) Single
+	All(predicate Predicate) Single
 	getOnonErrorReturn() ErrorFunction
 	getOnErrorResumeNext() ErrorToObservableFunction
 }
@@ -542,6 +543,22 @@ func (o *observable) ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFun
 // is called before it begins emitting items to those Observers that have subscribed to it.
 func (o *observable) Publish() ConnectableObservable {
 	return NewConnectableObservable(o)
+}
+
+func (o *observable) All(predicate Predicate) Single {
+	out := make(chan interface{})
+	go func() {
+		for item := range o.ch {
+			if !predicate(item) {
+				out <- false
+				close(out)
+				return
+			}
+		}
+		out <- true
+		close(out)
+	}()
+	return NewSingleFromChannel(out)
 }
 
 // OnErrorReturn instructs an Observable to emit an item (returned by a specified function)
