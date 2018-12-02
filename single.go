@@ -1,7 +1,6 @@
 package rxgo
 
 import (
-	"github.com/reactivex/rxgo/fx"
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/optional"
 	"github.com/reactivex/rxgo/options"
@@ -9,8 +8,8 @@ import (
 
 // Single is similar to an Observable but emits only one single element or an error notification.
 type Single interface {
-	Filter(apply fx.Predicate) OptionalSingle
-	Map(apply fx.Function) Single
+	Filter(apply Predicate) OptionalSingle
+	Map(apply Function) Single
 	Subscribe(handler handlers.EventHandler, opts ...options.Option) SingleObserver
 }
 
@@ -49,7 +48,7 @@ func NewOptionalSingleFromChannel(ch chan optional.Optional) OptionalSingle {
 	}
 }
 
-func (s *single) Filter(apply fx.Predicate) OptionalSingle {
+func (s *single) Filter(apply Predicate) OptionalSingle {
 	out := make(chan optional.Optional)
 	go func() {
 		item := <-s.ch
@@ -67,7 +66,7 @@ func (s *single) Filter(apply fx.Predicate) OptionalSingle {
 	}
 }
 
-func (s *single) Map(apply fx.Function) Single {
+func (s *single) Map(apply Function) Single {
 	out := make(chan interface{})
 	go func() {
 		item := <-s.ch
