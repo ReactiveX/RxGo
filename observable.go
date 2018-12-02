@@ -40,8 +40,10 @@ type Observable interface {
 	ElementAt(index uint) Single
 	FirstOrDefault(defaultValue interface{}) Single
 	LastOrDefault(defaultValue interface{}) Single
+	All(predicate Predicate) Single
 	getOnonErrorReturn() ErrorFunction
 	getOnErrorResumeNext() ErrorToObservableFunction
+	Contains(equal Predicate) Single
 	DefaultIfEmpty(defaultValue interface{}) Observable
 }
 
@@ -545,6 +547,22 @@ func (o *observable) Publish() ConnectableObservable {
 	return NewConnectableObservable(o)
 }
 
+func (o *observable) All(predicate Predicate) Single {
+	out := make(chan interface{})
+	go func() {
+		for item := range o.ch {
+			if !predicate(item) {
+				out <- false
+				close(out)
+				return
+			}
+		}
+		out <- true
+		close(out)
+	}()
+	return NewSingleFromChannel(out)
+}
+
 // OnErrorReturn instructs an Observable to emit an item (returned by a specified function)
 // rather than invoking onError if it encounters an error.
 func (o *observable) OnErrorReturn(resumeFunc ErrorFunction) Observable {
@@ -567,6 +585,24 @@ func (o *observable) getOnonErrorReturn() ErrorFunction {
 
 func (o *observable) getOnErrorResumeNext() ErrorToObservableFunction {
 	return o.onErrorResumeNext
+}
+
+// Contains returns an Observable that emits a Boolean that indicates whether
+// the source Observable emitted an item (the comparison is made against a predicate).
+func (o *observable) Contains(equal Predicate) Single {
+	out := make(chan interface{})
+	go func() {
+		for item := range o.ch {
+			if equal(item) {
+				out <- true
+				close(out)
+				return
+			}
+		}
+		out <- false
+		close(out)
+	}()
+	return NewSingleFromChannel(out)
 }
 
 // DefaultIfEmpty returns an Observable that emits the items emitted by the source

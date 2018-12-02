@@ -1392,6 +1392,52 @@ func TestOnErrorResumeNext(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
+func TestAll(t *testing.T) {
+	predicateAllInt := func(i interface{}) bool {
+		switch i.(type) {
+		case int:
+			return true
+		default:
+			return false
+		}
+	}
+
+	got1, err := Just(1, 2, 3).All(predicateAllInt).
+		Subscribe(nil).Block()
+	assert.Nil(t, err)
+	assert.Equal(t, true, got1)
+
+	got2, err := Just(1, "x", 3).All(predicateAllInt).
+		Subscribe(nil).Block()
+	assert.Nil(t, err)
+	assert.Equal(t, false, got2)
+}
+
+func TestContain(t *testing.T) {
+	predicate := func(i interface{}) bool {
+		switch i := i.(type) {
+		case int:
+			return i == 2
+		default:
+			return false
+		}
+	}
+
+	var got1, got2 bool
+
+	Just(1, 2, 3).Contains(predicate).
+		Subscribe(handlers.NextFunc(func(i interface{}) {
+			got1 = i.(bool)
+		})).Block()
+	assert.True(t, got1)
+
+	Just(1, 5, 3).Contains(predicate).
+		Subscribe(handlers.NextFunc(func(i interface{}) {
+			got2 = i.(bool)
+		})).Block()
+	assert.False(t, got2)
+}
+
 func TestDefaultIfEmpty(t *testing.T) {
 	got1 := 0
 	Empty().DefaultIfEmpty(3).Subscribe(handlers.NextFunc(func(i interface{}) {
