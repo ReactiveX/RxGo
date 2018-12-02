@@ -1,7 +1,7 @@
 # RxGo
 [![Join the chat at https://gitter.im/reactivex-go/Lobby](https://badges.gitter.im/reactivex-go/Lobby.svg)](https://gitter.im/reactivex-go/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Build Status](https://travis-ci.org/ReactiveX/RxGo.svg?branch=master)](https://travis-ci.org/ReactiveX/RxGo)
-[![Coverage Status](https://coveralls.io/repos/github/ReactiveX/RxGo/badge.svg?branch=master)](https://coveralls.io/github/ReactiveX/RxGo?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/ReactiveX/RxGo/badge.svg?branch=v2)](https://coveralls.io/github/ReactiveX/RxGo?branch=v2)
 [![Go Report Card](https://goreportcard.com/badge/github.com/reactivex/rxgo)](https://goreportcard.com/report/github.com/reactivex/rxgo)
 
 Reactive Extensions for the Go Language
