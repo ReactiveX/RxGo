@@ -17,6 +17,7 @@ func TestCreateNewSingleObserverWithConstructor(t *testing.T) {
 	v, err := single.Block()
 
 	assert.Nil(t, err)
+	assert.Equal(t, int64(3), got)
 	assert.Equal(t, int64(3), v)
 	assert.True(t, single.IsDisposed())
 }
@@ -31,6 +32,7 @@ func TestCreateNewSingleObserverFromSingleObserver(t *testing.T) {
 	v, err := single.Block()
 
 	assert.Nil(t, err)
+	assert.Equal(t, int64(3), got)
 	assert.Equal(t, int64(3), v)
 	assert.True(t, single.IsDisposed())
 }
