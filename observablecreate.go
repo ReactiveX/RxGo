@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/reactivex/rxgo/handlers"
-
 )
 
 // Creates observable from based on source function. Keep it mind to call emitter.OnDone()
