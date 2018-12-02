@@ -118,38 +118,6 @@ func Interval(term chan struct{}, interval time.Duration) Observable {
 	return &observable{ch: source}
 }
 
-// Repeat creates an Observable emitting a given item repeatedly
-func Repeat(item interface{}, ntimes ...int) Observable {
-	source := make(chan interface{})
-
-	// this is the infinity case no ntime parameter is given
-	if len(ntimes) == 0 {
-		go func() {
-			for {
-				source <- item
-			}
-		}()
-		return &observable{ch: source}
-	}
-
-	// this repeat the item ntime
-	if len(ntimes) > 0 {
-		count := ntimes[0]
-		if count <= 0 {
-			return Empty()
-		}
-		go func() {
-			for i := 0; i < count; i++ {
-				source <- item
-			}
-			close(source)
-		}()
-		return &observable{ch: source}
-	}
-
-	return Empty()
-}
-
 // Range creates an Observable that emits a particular range of sequential integers.
 func Range(start, end int) Observable {
 	source := make(chan interface{})

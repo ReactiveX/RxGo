@@ -1372,3 +1372,28 @@ func TestAll(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, false, got2)
 }
+
+func TestRepeat(t *testing.T) {
+	repeat := Just(1, 2, 3).Repeat(1, nil)
+	AssertThatObservable(t, repeat, HasItems(1, 2, 3, 1, 2, 3))
+}
+
+func TestRepeatZeroTimes(t *testing.T) {
+	repeat := Just(1, 2, 3).Repeat(0, nil)
+	AssertThatObservable(t, repeat, HasItems(1, 2, 3))
+}
+
+func TestRepeatWithNegativeCount(t *testing.T) {
+	repeat := Just(1, 2, 3).Repeat(-2, nil)
+	AssertThatObservable(t, repeat, HasItems(1, 2, 3))
+}
+
+func TestRepeatWithFrequency(t *testing.T) {
+	frequency := new(mockDuration)
+	frequency.On("duration").Return(time.Millisecond)
+
+	repeat := Just(1, 2, 3).Repeat(1, frequency)
+	AssertThatObservable(t, repeat, HasItems(1, 2, 3, 1, 2, 3))
+	frequency.AssertNumberOfCalls(t, "duration", 1)
+	frequency.AssertExpectations(t)
+}
