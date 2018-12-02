@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/reactivex/rxgo/errors"
-	"github.com/reactivex/rxgo/fx"
 	"github.com/reactivex/rxgo/handlers"
 )
 
@@ -195,11 +194,11 @@ func Just(item interface{}, items ...interface{}) Observable {
 
 // Start creates an Observable from one or more directive-like Supplier
 // and emits the result of each operation asynchronously on a new Observable.
-func Start(f fx.Supplier, fs ...fx.Supplier) Observable {
+func Start(f Supplier, fs ...Supplier) Observable {
 	if len(fs) > 0 {
-		fs = append([]fx.Supplier{f}, fs...)
+		fs = append([]Supplier{f}, fs...)
 	} else {
-		fs = []fx.Supplier{f}
+		fs = []Supplier{f}
 	}
 
 	source := make(chan interface{})
@@ -207,7 +206,7 @@ func Start(f fx.Supplier, fs ...fx.Supplier) Observable {
 	var wg sync.WaitGroup
 	for _, f := range fs {
 		wg.Add(1)
-		go func(f fx.Supplier) {
+		go func(f Supplier) {
 			source <- f()
 			wg.Done()
 		}(f)
