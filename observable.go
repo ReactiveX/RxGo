@@ -46,6 +46,7 @@ type Observable interface {
 	getOnErrorResumeNext() ErrorToObservableFunction
 	Contains(equal Predicate) Single
 	DefaultIfEmpty(defaultValue interface{}) Observable
+	DoOnEach(onNotification Consumer) Observable
 }
 
 // observable is a structure handling a channel of interface{} and implementing Observable
@@ -638,6 +639,20 @@ func (o *observable) DefaultIfEmpty(defaultValue interface{}) Observable {
 		}
 		if empty {
 			out <- defaultValue
+		}
+		close(out)
+	}()
+	return &observable{ch: out}
+}
+
+// DoOnEach operator allows you to establish a callback that the resulting Observable
+// will call each time it emits an item
+func (o *observable) DoOnEach(onNotification Consumer) Observable {
+	out := make(chan interface{})
+	go func() {
+		for item := range o.ch {
+			out <- item
+			onNotification(item)
 		}
 		close(out)
 	}()
