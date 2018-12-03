@@ -344,56 +344,16 @@ func TestSubscribeToObserver(t *testing.T) {
 }
 
 func TestObservableMap(t *testing.T) {
-	items := []interface{}{1, 2, 3, "foo", "bar", []byte("baz")}
-	it, err := iterable.New(items)
-	if err != nil {
-		t.Fail()
-	}
-
-	stream1 := From(it)
-
-	multiplyAllIntBy := func(factor interface{}) Function {
-		return func(item interface{}) interface{} {
-			if num, ok := item.(int); ok {
-				return num * factor.(int)
-			}
-			return item
-		}
-	}
-	stream2 := stream1.Map(multiplyAllIntBy(10))
-
-	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
-		if num, ok := item.(int); ok {
-			nums = append(nums, num)
-		}
+	stream := Just(1, 2, 3).Map(func(i interface{}) interface{} {
+		return i.(int) * 10
 	})
 
-	stream2.Subscribe(onNext).Block()
-
-	assert.Exactly(t, []int{10, 20, 30}, nums)
+	AssertThatObservable(t, stream, HasItems(10, 20, 30))
 }
 
 func TestObservableTake(t *testing.T) {
-	items := []interface{}{1, 2, 3, 4, 5}
-	it, err := iterable.New(items)
-	if err != nil {
-		t.Fail()
-	}
-
-	stream1 := From(it)
-	stream2 := stream1.Take(3)
-
-	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
-		if num, ok := item.(int); ok {
-			nums = append(nums, num)
-		}
-	})
-
-	stream2.Subscribe(onNext).Block()
-
-	assert.Exactly(t, []int{1, 2, 3}, nums)
+	stream := Just(1, 2, 3, 4, 5).Take(3)
+	AssertThatObservable(t, stream, HasItems(1, 2, 3))
 }
 
 func TestObservableTakeWithEmpty(t *testing.T) {
