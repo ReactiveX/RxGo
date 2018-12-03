@@ -710,6 +710,7 @@ func (o *observable) Repeat(count int64, frequency Duration) Observable {
 	return &observable{ch: out}
 }
 
+// AverageInt calculates the average of numbers emitted by an Observable and emits this average int.
 func (o *observable) AverageInt() Single {
 	out := make(chan interface{})
 	go func() {
@@ -735,6 +736,7 @@ func (o *observable) AverageInt() Single {
 	return NewSingleFromChannel(out)
 }
 
+// AverageInt8 calculates the average of numbers emitted by an Observable and emits this average int8.
 func (o *observable) AverageInt8() Single {
 	out := make(chan interface{})
 	go func() {
@@ -760,6 +762,7 @@ func (o *observable) AverageInt8() Single {
 	return NewSingleFromChannel(out)
 }
 
+// AverageInt16 calculates the average of numbers emitted by an Observable and emits this average int16.
 func (o *observable) AverageInt16() Single {
 	out := make(chan interface{})
 	go func() {
@@ -785,6 +788,7 @@ func (o *observable) AverageInt16() Single {
 	return NewSingleFromChannel(out)
 }
 
+// AverageInt32 calculates the average of numbers emitted by an Observable and emits this average int32.
 func (o *observable) AverageInt32() Single {
 	out := make(chan interface{})
 	go func() {
@@ -810,6 +814,7 @@ func (o *observable) AverageInt32() Single {
 	return NewSingleFromChannel(out)
 }
 
+// AverageInt64 calculates the average of numbers emitted by an Observable and emits this average int64.
 func (o *observable) AverageInt64() Single {
 	out := make(chan interface{})
 	go func() {
@@ -835,6 +840,7 @@ func (o *observable) AverageInt64() Single {
 	return NewSingleFromChannel(out)
 }
 
+// AverageFloat32 calculates the average of numbers emitted by an Observable and emits this average float32.
 func (o *observable) AverageFloat32() Single {
 	out := make(chan interface{})
 	go func() {
@@ -860,6 +866,7 @@ func (o *observable) AverageFloat32() Single {
 	return NewSingleFromChannel(out)
 }
 
+// AverageFloat64 calculates the average of numbers emitted by an Observable and emits this average float64.
 func (o *observable) AverageFloat64() Single {
 	out := make(chan interface{})
 	go func() {

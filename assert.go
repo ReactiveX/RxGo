@@ -10,16 +10,16 @@ import (
 // ObservableAssertion lists the assertions which may be configured on an Observable.
 type ObservableAssertion interface {
 	apply(*assertion)
-	HasItems() (bool, []interface{})
-	HasSize() (bool, int)
+	hasItemsFunc() (bool, []interface{})
+	hasSizeFunc() (bool, int)
 }
 
 // Single lists the assertions which may be configured on a Single.
 type SingleAssertion interface {
 	apply(*assertion)
-	HasValue() (bool, interface{})
-	HasRaisedError() (bool, error)
-	HasRaisedAnError() bool
+	hasValueFunc() (bool, interface{})
+	hasRaisedErrorFunc() (bool, error)
+	hasRaisedAnErrorFunc() bool
 }
 
 type assertion struct {
@@ -35,23 +35,24 @@ type assertion struct {
 	checkHasRaisedAnError bool
 }
 
-func (ass *assertion) HasItems() (bool, []interface{}) {
+//
+func (ass *assertion) hasItemsFunc() (bool, []interface{}) {
 	return ass.checkHasItems, ass.hasItems
 }
 
-func (ass *assertion) HasSize() (bool, int) {
+func (ass *assertion) hasSizeFunc() (bool, int) {
 	return ass.checkHasSize, ass.hasSize
 }
 
-func (ass *assertion) HasValue() (bool, interface{}) {
+func (ass *assertion) hasValueFunc() (bool, interface{}) {
 	return ass.checkHasValue, ass.hasValue
 }
 
-func (ass *assertion) HasRaisedError() (bool, error) {
+func (ass *assertion) hasRaisedErrorFunc() (bool, error) {
 	return ass.checkHasRaisedError, ass.hasRaisedError
 }
 
-func (ass *assertion) HasRaisedAnError() bool {
+func (ass *assertion) hasRaisedAnErrorFunc() bool {
 	return ass.checkHasRaisedAnError
 }
 
@@ -128,23 +129,24 @@ func AssertThatObservable(t *testing.T, observable Observable, assertions ...Obs
 		got = append(got, i)
 	})).Block()
 
-	checkHasItems, items := ass.HasItems()
+	checkHasItems, items := ass.hasItemsFunc()
 	if checkHasItems {
 		assert.Equal(t, items, got)
 	}
 
-	checkHasSize, size := ass.HasSize()
+	checkHasSize, size := ass.hasSizeFunc()
 	if checkHasSize {
 		assert.Equal(t, size, len(got))
 	}
 }
 
+// AssertThatSingle asserts the result of a single against a list of assertions.
 func AssertThatSingle(t *testing.T, single Single, assertions ...SingleAssertion) {
 	ass := parseSingleAssertions(assertions...)
 
 	v, err := single.Subscribe(nil).Block()
 
-	checkHasValue, value := ass.HasValue()
+	checkHasValue, value := ass.hasValueFunc()
 	if checkHasValue {
 		if err != nil {
 			assert.Fail(t, "error is not nil")
@@ -153,12 +155,12 @@ func AssertThatSingle(t *testing.T, single Single, assertions ...SingleAssertion
 		}
 	}
 
-	checkHasRaisedAnError := ass.HasRaisedAnError()
+	checkHasRaisedAnError := ass.hasRaisedAnErrorFunc()
 	if checkHasRaisedAnError {
 		assert.NotNil(t, err)
 	}
 
-	checkHasRaisedError, value := ass.HasRaisedError()
+	checkHasRaisedError, value := ass.hasRaisedErrorFunc()
 	if checkHasRaisedError {
 		assert.Equal(t, value, err)
 	}

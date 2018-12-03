@@ -10,29 +10,29 @@ import (
 func TestHasItems(t *testing.T) {
 	ass := parseObservableAssertions(HasItems(1, 2, 3))
 
-	configured, items := ass.HasItems()
+	configured, items := ass.hasItemsFunc()
 	assert.True(t, configured)
 	assert.Equal(t, []interface{}{1, 2, 3}, items)
 
-	configured, _ = ass.HasSize()
+	configured, _ = ass.hasSizeFunc()
 	assert.False(t, configured)
 }
 
 func TestHasSize(t *testing.T) {
 	ass := parseObservableAssertions(HasSize(3))
 
-	configured, size := ass.HasSize()
+	configured, size := ass.hasSizeFunc()
 	assert.True(t, configured)
 	assert.Equal(t, 3, size)
 
-	configured, _ = ass.HasItems()
+	configured, _ = ass.hasItemsFunc()
 	assert.False(t, configured)
 }
 
 func TestHasValue(t *testing.T) {
 	ass := parseSingleAssertions(HasValue(1))
 
-	configured, value := ass.HasValue()
+	configured, value := ass.hasValueFunc()
 	assert.True(t, configured)
 	assert.Equal(t, 1, value)
 }
@@ -40,7 +40,7 @@ func TestHasValue(t *testing.T) {
 func TestHasRaisedError(t *testing.T) {
 	ass := parseSingleAssertions(HasRaisedError(errors.New("foo")))
 
-	configured, error := ass.HasRaisedError()
+	configured, error := ass.hasRaisedErrorFunc()
 	assert.True(t, configured)
 	assert.Equal(t, errors.New("foo"), error)
 }
@@ -48,7 +48,7 @@ func TestHasRaisedError(t *testing.T) {
 func TestHasRaisedAnError(t *testing.T) {
 	ass := parseSingleAssertions(HasRaisedAnError())
 
-	configured := ass.HasRaisedAnError()
+	configured := ass.hasRaisedAnErrorFunc()
 	assert.True(t, configured)
 }
 
