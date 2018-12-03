@@ -44,6 +44,7 @@ type Observable interface {
 	getOnonErrorReturn() ErrorFunction
 	getOnErrorResumeNext() ErrorToObservableFunction
 	Contains(equal Predicate) Single
+	DefaultIfEmpty(defaultValue interface{}) Observable
 }
 
 // observable is a structure handling a channel of interface{} and implementing Observable
@@ -602,4 +603,22 @@ func (o *observable) Contains(equal Predicate) Single {
 		close(out)
 	}()
 	return NewSingleFromChannel(out)
+}
+
+// DefaultIfEmpty returns an Observable that emits the items emitted by the source
+// Observable or a specified default item if the source Observable is empty.
+func (o *observable) DefaultIfEmpty(defaultValue interface{}) Observable {
+	out := make(chan interface{})
+	go func() {
+		empty := true
+		for item := range o.ch {
+			empty = false
+			out <- item
+		}
+		if empty {
+			out <- defaultValue
+		}
+		close(out)
+	}()
+	return &observable{ch: out}
 }
