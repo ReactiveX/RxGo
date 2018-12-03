@@ -1050,6 +1050,38 @@ func TestObservableTakeWhileWithEmpty(t *testing.T) {
 	assert.Exactly(t, []int{}, nums)
 }
 
+func TestObservableSkipWhile(t *testing.T) {
+	got := []interface{}{}
+	Just(1, 2, 3, 4, 5).SkipWhile(func(i interface{}) bool {
+		switch i := i.(type) {
+		case int:
+			return i != 3
+		default:
+			return true
+		}
+	}).Subscribe(handlers.NextFunc(func(i interface{}) {
+		got = append(got, i)
+	})).Block()
+
+	assert.Equal(t, []interface{}{3, 4, 5}, got)
+}
+
+func TestObservableSkipWhileWithEmpty(t *testing.T) {
+	got := []interface{}{}
+	Empty().SkipWhile(func(i interface{}) bool {
+		switch i := i.(type) {
+		case int:
+			return i != 3
+		default:
+			return false
+		}
+	}).Subscribe(handlers.NextFunc(func(i interface{}) {
+		got = append(got, i)
+	})).Block()
+
+	assert.Equal(t, []interface{}{}, got)
+}
+
 func TestObservableToList(t *testing.T) {
 	items := []interface{}{1, "hello", false, .0}
 	it, err := iterable.New(items)
