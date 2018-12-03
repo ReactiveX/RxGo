@@ -39,6 +39,8 @@ type Observable interface {
 	Last() Observable
 	LastOrDefault(defaultValue interface{}) Single
 	Map(apply Function) Observable
+	Max(comparator Comparator) OptionalSingle
+	Min(comparator Comparator) OptionalSingle
 	OnErrorResumeNext(resumeSequence ErrorToObservableFunction) Observable
 	OnErrorReturn(resumeFunc ErrorFunction) Observable
 	Publish() ConnectableObservable
@@ -890,4 +892,58 @@ func (o *observable) AverageFloat64() Single {
 		close(out)
 	}()
 	return NewSingleFromChannel(out)
+}
+
+// Max determines and emits the maximum-valued item emitted by an Observable according to a comparator.
+func (o *observable) Max(comparator Comparator) OptionalSingle {
+	out := make(chan optional.Optional)
+	go func() {
+		empty := true
+		var max interface{} = nil
+		for item := range o.ch {
+			empty = false
+
+			if max == nil {
+				max = item
+			} else {
+				if comparator(max, item) == Smaller {
+					max = item
+				}
+			}
+		}
+		if empty {
+			out <- optional.Empty()
+		} else {
+			out <- optional.Of(max)
+		}
+		close(out)
+	}()
+	return &optionalSingle{ch: out}
+}
+
+// Min determines and emits the minimum-valued item emitted by an Observable according to a comparator.
+func (o *observable) Min(comparator Comparator) OptionalSingle {
+	out := make(chan optional.Optional)
+	go func() {
+		empty := true
+		var min interface{} = nil
+		for item := range o.ch {
+			empty = false
+
+			if min == nil {
+				min = item
+			} else {
+				if comparator(min, item) == Greater {
+					min = item
+				}
+			}
+		}
+		if empty {
+			out <- optional.Empty()
+		} else {
+			out <- optional.Of(min)
+		}
+		close(out)
+	}()
+	return &optionalSingle{ch: out}
 }

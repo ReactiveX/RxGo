@@ -38,6 +38,19 @@ func newSingleFrom(item interface{}) Single {
 	return &s
 }
 
+func newOptionalSingleFrom(opt optional.Optional) OptionalSingle {
+	s := optionalSingle{
+		ch: make(chan optional.Optional),
+	}
+
+	go func() {
+		s.ch <- opt
+		close(s.ch)
+	}()
+
+	return &s
+}
+
 // CheckHandler checks the underlying type of an EventHandler.
 func CheckSingleEventHandler(handler handlers.EventHandler) SingleObserver {
 	return NewSingleObserver(handler)

@@ -1544,3 +1544,55 @@ func TestAverageFloat64(t *testing.T) {
 	AssertThatSingle(t, Empty().AverageFloat64(), HasValue(0))
 	AssertThatSingle(t, Just("x").AverageFloat64(), HasRaisedAnError())
 }
+
+func TestMax(t *testing.T) {
+	comparator := func(e1, e2 interface{}) Comparison {
+		i1 := e1.(int)
+		i2 := e2.(int)
+		if i1 > i2 {
+			return Greater
+		} else if i1 < i2 {
+			return Smaller
+		} else {
+			return Equals
+		}
+	}
+
+	optionalSingle := Just(1, 5, 1).Max(comparator)
+	AssertThatOptionalSingle(t, optionalSingle, HasValue(5))
+}
+
+func TestMaxWithEmpty(t *testing.T) {
+	comparator := func(interface{}, interface{}) Comparison {
+		return Equals
+	}
+
+	optionalSingle := Empty().Max(comparator)
+	AssertThatOptionalSingle(t, optionalSingle, IsEmpty())
+}
+
+func TestMin(t *testing.T) {
+	comparator := func(e1, e2 interface{}) Comparison {
+		i1 := e1.(int)
+		i2 := e2.(int)
+		if i1 > i2 {
+			return Greater
+		} else if i1 < i2 {
+			return Smaller
+		} else {
+			return Equals
+		}
+	}
+
+	optionalSingle := Just(5, 1, 5).Min(comparator)
+	AssertThatOptionalSingle(t, optionalSingle, HasValue(1))
+}
+
+func TestMinWithEmpty(t *testing.T) {
+	comparator := func(interface{}, interface{}) Comparison {
+		return Equals
+	}
+
+	optionalSingle := Empty().Min(comparator)
+	AssertThatOptionalSingle(t, optionalSingle, IsEmpty())
+}
