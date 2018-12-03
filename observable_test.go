@@ -1495,3 +1495,52 @@ func TestRepeatWithFrequency(t *testing.T) {
 	frequency.AssertNumberOfCalls(t, "duration", 1)
 	frequency.AssertExpectations(t)
 }
+
+func TestAverageInt(t *testing.T) {
+	AssertThatSingle(t, Just(1, 2, 3).AverageInt(), HasValue(2))
+	AssertThatSingle(t, Just(1, 20).AverageInt(), HasValue(10))
+	AssertThatSingle(t, Empty().AverageInt(), HasValue(0))
+	AssertThatSingle(t, Just(1.1, 2.2, 3.3).AverageInt(), HasRaisedAnError())
+}
+
+func TestAverageInt8(t *testing.T) {
+	AssertThatSingle(t, Just(int8(1), int8(2), int8(3)).AverageInt8(), HasValue(int8(2)))
+	AssertThatSingle(t, Just(int8(1), int8(20)).AverageInt8(), HasValue(int8(10)))
+	AssertThatSingle(t, Empty().AverageInt8(), HasValue(0))
+	AssertThatSingle(t, Just(1.1, 2.2, 3.3).AverageInt8(), HasRaisedAnError())
+}
+
+func TestAverageInt16(t *testing.T) {
+	AssertThatSingle(t, Just(int16(1), int16(2), int16(3)).AverageInt16(), HasValue(int16(2)))
+	AssertThatSingle(t, Just(int16(1), int16(20)).AverageInt16(), HasValue(int16(10)))
+	AssertThatSingle(t, Empty().AverageInt16(), HasValue(0))
+	AssertThatSingle(t, Just(1.1, 2.2, 3.3).AverageInt16(), HasRaisedAnError())
+}
+
+func TestAverageInt32(t *testing.T) {
+	AssertThatSingle(t, Just(int32(1), int32(2), int32(3)).AverageInt32(), HasValue(int32(2)))
+	AssertThatSingle(t, Just(int32(1), int32(20)).AverageInt32(), HasValue(int32(10)))
+	AssertThatSingle(t, Empty().AverageInt32(), HasValue(0))
+	AssertThatSingle(t, Just(1.1, 2.2, 3.3).AverageInt32(), HasRaisedAnError())
+}
+
+func TestAverageInt64(t *testing.T) {
+	AssertThatSingle(t, Just(int64(1), int64(2), int64(3)).AverageInt64(), HasValue(int64(2)))
+	AssertThatSingle(t, Just(int64(1), int64(20)).AverageInt64(), HasValue(int64(10)))
+	AssertThatSingle(t, Empty().AverageInt64(), HasValue(0))
+	AssertThatSingle(t, Just(1.1, 2.2, 3.3).AverageInt64(), HasRaisedAnError())
+}
+
+func TestAverageFloat32(t *testing.T) {
+	AssertThatSingle(t, Just(float32(1), float32(2), float32(3)).AverageFloat32(), HasValue(float32(2)))
+	AssertThatSingle(t, Just(float32(1), float32(20)).AverageFloat32(), HasValue(float32(10.5)))
+	AssertThatSingle(t, Empty().AverageFloat32(), HasValue(0))
+	AssertThatSingle(t, Just("x").AverageFloat32(), HasRaisedAnError())
+}
+
+func TestAverageFloat64(t *testing.T) {
+	AssertThatSingle(t, Just(float64(1), float64(2), float64(3)).AverageFloat64(), HasValue(float64(2)))
+	AssertThatSingle(t, Just(float64(1), float64(20)).AverageFloat64(), HasValue(float64(10.5)))
+	AssertThatSingle(t, Empty().AverageFloat64(), HasValue(0))
+	AssertThatSingle(t, Just("x").AverageFloat64(), HasRaisedAnError())
+}

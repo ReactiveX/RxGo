@@ -2,8 +2,9 @@ package rxgo
 
 import (
 	"sync"
-
 	"time"
+
+	"fmt"
 
 	"github.com/reactivex/rxgo/errors"
 	"github.com/reactivex/rxgo/handlers"
@@ -14,42 +15,49 @@ import (
 // Observable is a basic observable interface
 type Observable interface {
 	Iterator
+	All(predicate Predicate) Single
+	AverageFloat32() Single
+	AverageFloat64() Single
+	AverageInt() Single
+	AverageInt8() Single
+	AverageInt16() Single
+	AverageInt32() Single
+	AverageInt64() Single
+	Contains(equal Predicate) Single
+	Count() Single
+	DefaultIfEmpty(defaultValue interface{}) Observable
 	Distinct(apply Function) Observable
 	DistinctUntilChanged(apply Function) Observable
+	DoOnEach(onNotification Consumer) Observable
+	ElementAt(index uint) Single
 	Filter(apply Predicate) Observable
 	First() Observable
+	FirstOrDefault(defaultValue interface{}) Single
 	FlatMap(apply func(interface{}) Observable, maxInParallel uint) Observable
+	ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFunc,
+		doneFunc handlers.DoneFunc, opts ...options.Option) Observer
 	Last() Observable
+	LastOrDefault(defaultValue interface{}) Single
 	Map(apply Function) Observable
+	OnErrorResumeNext(resumeSequence ErrorToObservableFunction) Observable
+	OnErrorReturn(resumeFunc ErrorFunction) Observable
+	Publish() ConnectableObservable
+	Reduce(apply Function2) OptionalSingle
+	Repeat(count int64, frequency Duration) Observable
 	Scan(apply Function2) Observable
 	Skip(nth uint) Observable
 	SkipLast(nth uint) Observable
+	SkipWhile(apply Predicate) Observable
 	Subscribe(handler handlers.EventHandler, opts ...options.Option) Observer
 	Take(nth uint) Observable
 	TakeLast(nth uint) Observable
 	TakeWhile(apply Predicate) Observable
-	SkipWhile(apply Predicate) Observable
 	ToList() Observable
 	ToMap(keySelector Function) Observable
 	ToMapWithValueSelector(keySelector Function, valueSelector Function) Observable
 	ZipFromObservable(publisher Observable, zipper Function2) Observable
-	ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFunc,
-		doneFunc handlers.DoneFunc, opts ...options.Option) Observer
-	OnErrorReturn(resumeFunc ErrorFunction) Observable
-	OnErrorResumeNext(resumeSequence ErrorToObservableFunction) Observable
-	Reduce(apply Function2) OptionalSingle
-	Publish() ConnectableObservable
-	Count() Single
-	ElementAt(index uint) Single
-	FirstOrDefault(defaultValue interface{}) Single
-	LastOrDefault(defaultValue interface{}) Single
-	All(predicate Predicate) Single
-	getOnonErrorReturn() ErrorFunction
 	getOnErrorResumeNext() ErrorToObservableFunction
-	Contains(equal Predicate) Single
-	DefaultIfEmpty(defaultValue interface{}) Observable
-	DoOnEach(onNotification Consumer) Observable
-	Repeat(count int64, frequency Duration) Observable
+	getOnErrorReturn() ErrorFunction
 }
 
 // observable is a structure handling a channel of interface{} and implementing Observable
@@ -99,8 +107,8 @@ func iterate(observable Observable, observer Observer) error {
 		} else {
 			switch item := item.(type) {
 			case error:
-				if observable.getOnonErrorReturn() != nil {
-					observer.OnNext(observable.getOnonErrorReturn()(item))
+				if observable.getOnErrorReturn() != nil {
+					observer.OnNext(observable.getOnErrorReturn()(item))
 					// Stop the subscription
 					return nil
 				} else if observable.getOnErrorResumeNext() != nil {
@@ -604,7 +612,7 @@ func (o *observable) OnErrorResumeNext(resumeSequence ErrorToObservableFunction)
 	return o
 }
 
-func (o *observable) getOnonErrorReturn() ErrorFunction {
+func (o *observable) getOnErrorReturn() ErrorFunction {
 	return o.onErrorReturn
 }
 
@@ -700,4 +708,179 @@ func (o *observable) Repeat(count int64, frequency Duration) Observable {
 		close(out)
 	}()
 	return &observable{ch: out}
+}
+
+func (o *observable) AverageInt() Single {
+	out := make(chan interface{})
+	go func() {
+		sum := 0
+		count := 0
+		for item := range o.ch {
+			if v, ok := item.(int); ok {
+				sum = sum + v
+				count = count + 1
+			} else {
+				out <- errors.New(errors.IllegalInputError, fmt.Sprintf("type: %t", item))
+				close(out)
+				return
+			}
+		}
+		if count == 0 {
+			out <- 0
+		} else {
+			out <- sum / count
+		}
+		close(out)
+	}()
+	return NewSingleFromChannel(out)
+}
+
+func (o *observable) AverageInt8() Single {
+	out := make(chan interface{})
+	go func() {
+		var sum int8 = 0
+		var count int8 = 0
+		for item := range o.ch {
+			if v, ok := item.(int8); ok {
+				sum = sum + v
+				count = count + 1
+			} else {
+				out <- errors.New(errors.IllegalInputError, fmt.Sprintf("type: %t", item))
+				close(out)
+				return
+			}
+		}
+		if count == 0 {
+			out <- 0
+		} else {
+			out <- sum / count
+		}
+		close(out)
+	}()
+	return NewSingleFromChannel(out)
+}
+
+func (o *observable) AverageInt16() Single {
+	out := make(chan interface{})
+	go func() {
+		var sum int16 = 0
+		var count int16 = 0
+		for item := range o.ch {
+			if v, ok := item.(int16); ok {
+				sum = sum + v
+				count = count + 1
+			} else {
+				out <- errors.New(errors.IllegalInputError, fmt.Sprintf("type: %t", item))
+				close(out)
+				return
+			}
+		}
+		if count == 0 {
+			out <- 0
+		} else {
+			out <- sum / count
+		}
+		close(out)
+	}()
+	return NewSingleFromChannel(out)
+}
+
+func (o *observable) AverageInt32() Single {
+	out := make(chan interface{})
+	go func() {
+		var sum int32 = 0
+		var count int32 = 0
+		for item := range o.ch {
+			if v, ok := item.(int32); ok {
+				sum = sum + v
+				count = count + 1
+			} else {
+				out <- errors.New(errors.IllegalInputError, fmt.Sprintf("type: %t", item))
+				close(out)
+				return
+			}
+		}
+		if count == 0 {
+			out <- 0
+		} else {
+			out <- sum / count
+		}
+		close(out)
+	}()
+	return NewSingleFromChannel(out)
+}
+
+func (o *observable) AverageInt64() Single {
+	out := make(chan interface{})
+	go func() {
+		var sum int64 = 0
+		var count int64 = 0
+		for item := range o.ch {
+			if v, ok := item.(int64); ok {
+				sum = sum + v
+				count = count + 1
+			} else {
+				out <- errors.New(errors.IllegalInputError, fmt.Sprintf("type: %t", item))
+				close(out)
+				return
+			}
+		}
+		if count == 0 {
+			out <- 0
+		} else {
+			out <- sum / count
+		}
+		close(out)
+	}()
+	return NewSingleFromChannel(out)
+}
+
+func (o *observable) AverageFloat32() Single {
+	out := make(chan interface{})
+	go func() {
+		var sum float32 = 0
+		var count float32 = 0
+		for item := range o.ch {
+			if v, ok := item.(float32); ok {
+				sum = sum + v
+				count = count + 1
+			} else {
+				out <- errors.New(errors.IllegalInputError, fmt.Sprintf("type: %t", item))
+				close(out)
+				return
+			}
+		}
+		if count == 0 {
+			out <- 0
+		} else {
+			out <- sum / count
+		}
+		close(out)
+	}()
+	return NewSingleFromChannel(out)
+}
+
+func (o *observable) AverageFloat64() Single {
+	out := make(chan interface{})
+	go func() {
+		var sum float64 = 0
+		var count float64 = 0
+		for item := range o.ch {
+			if v, ok := item.(float64); ok {
+				sum = sum + v
+				count = count + 1
+			} else {
+				out <- errors.New(errors.IllegalInputError, fmt.Sprintf("type: %t", item))
+				close(out)
+				return
+			}
+		}
+		if count == 0 {
+			out <- 0
+		} else {
+			out <- sum / count
+		}
+		close(out)
+	}()
+	return NewSingleFromChannel(out)
 }

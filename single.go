@@ -25,6 +25,19 @@ type optionalSingle struct {
 	ch chan optional.Optional
 }
 
+func newSingleFrom(item interface{}) Single {
+	s := single{
+		ch: make(chan interface{}),
+	}
+
+	go func() {
+		s.ch <- item
+		close(s.ch)
+	}()
+
+	return &s
+}
+
 // CheckHandler checks the underlying type of an EventHandler.
 func CheckSingleEventHandler(handler handlers.EventHandler) SingleObserver {
 	return NewSingleObserver(handler)
