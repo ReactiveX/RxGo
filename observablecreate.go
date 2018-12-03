@@ -1,9 +1,11 @@
 package rxgo
 
 import (
+	"math"
 	"sync"
 	"time"
 
+	"github.com/reactivex/rxgo/errors"
 	"github.com/reactivex/rxgo/handlers"
 )
 
@@ -151,17 +153,24 @@ func Repeat(item interface{}, ntimes ...int) Observable {
 }
 
 // Range creates an Observable that emits a particular range of sequential integers.
-func Range(start, end int) Observable {
+func Range(start, count int) (Observable, error) {
+	if count < 0 {
+		return nil, errors.New(errors.IllegalInputError, "count must be positive")
+	}
+	if start+count-1 > math.MaxInt32 {
+		return nil, errors.New(errors.IllegalInputError, "max value is bigger than MaxInt32")
+	}
+
 	source := make(chan interface{})
 	go func() {
 		i := start
-		for i < end {
+		for i < count+start {
 			source <- i
 			i++
 		}
 		close(source)
 	}()
-	return &observable{ch: source}
+	return &observable{ch: source}, nil
 }
 
 // Just creates an Observable with the provided item(s).
@@ -209,5 +218,14 @@ func Start(f Supplier, fs ...Supplier) Observable {
 		close(source)
 	}()
 
+	return &observable{ch: source}
+}
+
+// Never create an Observable that emits no items and does not terminate
+func Never() Observable {
+	source := make(chan interface{})
+	go func() {
+		select {}
+	}()
 	return &observable{ch: source}
 }

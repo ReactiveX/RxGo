@@ -26,6 +26,7 @@ type Observable interface {
 	Take(nth uint) Observable
 	TakeLast(nth uint) Observable
 	TakeWhile(apply Predicate) Observable
+	SkipWhile(apply Predicate) Observable
 	ToList() Observable
 	ToMap(keySelector Function) Observable
 	ToMapWithValueSelector(keySelector Function, valueSelector Function) Observable
@@ -40,8 +41,11 @@ type Observable interface {
 	ElementAt(index uint) Single
 	FirstOrDefault(defaultValue interface{}) Single
 	LastOrDefault(defaultValue interface{}) Single
+	All(predicate Predicate) Single
 	getOnonErrorReturn() ErrorFunction
 	getOnErrorResumeNext() ErrorToObservableFunction
+	Contains(equal Predicate) Single
+	DefaultIfEmpty(defaultValue interface{}) Observable
 	DoOnEach(onNotification Consumer) Observable
 }
 
@@ -466,6 +470,26 @@ func (o *observable) TakeWhile(apply Predicate) Observable {
 	return &observable{ch: out}
 }
 
+// SkipWhile discard items emitted by an Observable until a specified condition becomes false.
+func (o *observable) SkipWhile(apply Predicate) Observable {
+	out := make(chan interface{})
+	go func() {
+		skip := true
+		for item := range o.ch {
+			if !skip {
+				out <- item
+			} else {
+				if !apply(item) {
+					out <- item
+					skip = false
+				}
+			}
+		}
+		close(out)
+	}()
+	return &observable{ch: out}
+}
+
 // ToList collects all items from an Observable and emit them as a single List.
 func (o *observable) ToList() Observable {
 	out := make(chan interface{})
@@ -545,6 +569,22 @@ func (o *observable) Publish() ConnectableObservable {
 	return NewConnectableObservable(o)
 }
 
+func (o *observable) All(predicate Predicate) Single {
+	out := make(chan interface{})
+	go func() {
+		for item := range o.ch {
+			if !predicate(item) {
+				out <- false
+				close(out)
+				return
+			}
+		}
+		out <- true
+		close(out)
+	}()
+	return NewSingleFromChannel(out)
+}
+
 // OnErrorReturn instructs an Observable to emit an item (returned by a specified function)
 // rather than invoking onError if it encounters an error.
 func (o *observable) OnErrorReturn(resumeFunc ErrorFunction) Observable {
@@ -567,6 +607,42 @@ func (o *observable) getOnonErrorReturn() ErrorFunction {
 
 func (o *observable) getOnErrorResumeNext() ErrorToObservableFunction {
 	return o.onErrorResumeNext
+}
+
+// Contains returns an Observable that emits a Boolean that indicates whether
+// the source Observable emitted an item (the comparison is made against a predicate).
+func (o *observable) Contains(equal Predicate) Single {
+	out := make(chan interface{})
+	go func() {
+		for item := range o.ch {
+			if equal(item) {
+				out <- true
+				close(out)
+				return
+			}
+		}
+		out <- false
+		close(out)
+	}()
+	return NewSingleFromChannel(out)
+}
+
+// DefaultIfEmpty returns an Observable that emits the items emitted by the source
+// Observable or a specified default item if the source Observable is empty.
+func (o *observable) DefaultIfEmpty(defaultValue interface{}) Observable {
+	out := make(chan interface{})
+	go func() {
+		empty := true
+		for item := range o.ch {
+			empty = false
+			out <- item
+		}
+		if empty {
+			out <- defaultValue
+		}
+		close(out)
+	}()
+	return &observable{ch: out}
 }
 
 // DoOnEach operator allows you to establish a callback that the resulting Observable
