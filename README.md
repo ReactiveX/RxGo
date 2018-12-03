@@ -1,6 +1,6 @@
 # RxGo
 [![Join the chat at https://gitter.im/ReactiveX/RxGo](https://badges.gitter.im/ReactiveX/RxGo.svg)](https://gitter.im/ReactiveX/RxGo?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Build Status](https://travis-ci.org/ReactiveX/RxGo.svg?branch=master)](https://travis-ci.org/ReactiveX/RxGo)
+[![Build Status](https://travis-ci.org/ReactiveX/RxGo.svg?branch=v2)](https://travis-ci.org/ReactiveX/RxGo)
 [![Coverage Status](https://coveralls.io/repos/github/ReactiveX/RxGo/badge.svg?branch=v2)](https://coveralls.io/github/ReactiveX/RxGo?branch=v2)
 [![Go Report Card](https://goreportcard.com/badge/github.com/reactivex/rxgo)](https://goreportcard.com/report/github.com/reactivex/rxgo)
 

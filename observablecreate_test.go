@@ -220,3 +220,8 @@ func TestEmptyCompletesSequence(t *testing.T) {
 	emissionObserver.AssertNotCalled(t, "OnError", mock.Anything)
 	emissionObserver.AssertCalled(t, "OnDone")
 }
+
+func TestNever(t *testing.T) {
+	never := Never()
+	assert.NotNil(t, never)
+}

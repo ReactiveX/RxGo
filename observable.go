@@ -28,6 +28,7 @@ type Observable interface {
 	Take(nth uint) Observable
 	TakeLast(nth uint) Observable
 	TakeWhile(apply Predicate) Observable
+	SkipWhile(apply Predicate) Observable
 	ToList() Observable
 	ToMap(keySelector Function) Observable
 	ToMapWithValueSelector(keySelector Function, valueSelector Function) Observable
@@ -45,6 +46,9 @@ type Observable interface {
 	All(predicate Predicate) Single
 	getOnonErrorReturn() ErrorFunction
 	getOnErrorResumeNext() ErrorToObservableFunction
+	Contains(equal Predicate) Single
+	DefaultIfEmpty(defaultValue interface{}) Observable
+	DoOnEach(onNotification Consumer) Observable
 	Repeat(count int64, frequency Duration) Observable
 }
 
@@ -469,6 +473,26 @@ func (o *observable) TakeWhile(apply Predicate) Observable {
 	return &observable{ch: out}
 }
 
+// SkipWhile discard items emitted by an Observable until a specified condition becomes false.
+func (o *observable) SkipWhile(apply Predicate) Observable {
+	out := make(chan interface{})
+	go func() {
+		skip := true
+		for item := range o.ch {
+			if !skip {
+				out <- item
+			} else {
+				if !apply(item) {
+					out <- item
+					skip = false
+				}
+			}
+		}
+		close(out)
+	}()
+	return &observable{ch: out}
+}
+
 // ToList collects all items from an Observable and emit them as a single List.
 func (o *observable) ToList() Observable {
 	out := make(chan interface{})
@@ -586,6 +610,56 @@ func (o *observable) getOnonErrorReturn() ErrorFunction {
 
 func (o *observable) getOnErrorResumeNext() ErrorToObservableFunction {
 	return o.onErrorResumeNext
+}
+
+// Contains returns an Observable that emits a Boolean that indicates whether
+// the source Observable emitted an item (the comparison is made against a predicate).
+func (o *observable) Contains(equal Predicate) Single {
+	out := make(chan interface{})
+	go func() {
+		for item := range o.ch {
+			if equal(item) {
+				out <- true
+				close(out)
+				return
+			}
+		}
+		out <- false
+		close(out)
+	}()
+	return NewSingleFromChannel(out)
+}
+
+// DefaultIfEmpty returns an Observable that emits the items emitted by the source
+// Observable or a specified default item if the source Observable is empty.
+func (o *observable) DefaultIfEmpty(defaultValue interface{}) Observable {
+	out := make(chan interface{})
+	go func() {
+		empty := true
+		for item := range o.ch {
+			empty = false
+			out <- item
+		}
+		if empty {
+			out <- defaultValue
+		}
+		close(out)
+	}()
+	return &observable{ch: out}
+}
+
+// DoOnEach operator allows you to establish a callback that the resulting Observable
+// will call each time it emits an item
+func (o *observable) DoOnEach(onNotification Consumer) Observable {
+	out := make(chan interface{})
+	go func() {
+		for item := range o.ch {
+			out <- item
+			onNotification(item)
+		}
+		close(out)
+	}()
+	return &observable{ch: out}
 }
 
 // Repeat returns an Observable that repeats the sequence of items emitted by the source Observable

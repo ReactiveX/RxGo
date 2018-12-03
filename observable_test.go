@@ -71,23 +71,28 @@ func TestEmptyOperator(t *testing.T) {
 	assert.Equal(t, "done", text)
 }
 
-func TestRangeOperator(t *testing.T) {
-	myStream := Range(2, 6)
-	nums := []int{}
+func TestRange(t *testing.T) {
+	got := []interface{}{}
+	r, err := Range(1, 5)
+	if err != nil {
+		t.Fail()
+	}
+	r.Subscribe(handlers.NextFunc(func(i interface{}) {
+		got = append(got, i)
+	})).Block()
+	assert.Equal(t, []interface{}{1, 2, 3, 4, 5}, got)
+}
 
-	onNext := handlers.NextFunc(func(item interface{}) {
-		if num, ok := item.(int); ok {
-			nums = append(nums, num)
-		}
-	})
+func TestRangeWithNegativeCount(t *testing.T) {
+	r, err := Range(1, -5)
+	assert.NotNil(t, err)
+	assert.Nil(t, r)
+}
 
-	onDone := handlers.DoneFunc(func() {
-		nums = append(nums, 1000)
-	})
-
-	myStream.Subscribe(NewObserver(onNext, onDone)).Block()
-
-	assert.Exactly(t, []int{2, 3, 4, 5, 1000}, nums)
+func TestRangeWithMaximumExceeded(t *testing.T) {
+	r, err := Range(1<<31, 1)
+	assert.NotNil(t, err)
+	assert.Nil(t, r)
 }
 
 func TestJustOperator(t *testing.T) {
@@ -1010,6 +1015,38 @@ func TestObservableTakeWhileWithEmpty(t *testing.T) {
 	assert.Exactly(t, []int{}, nums)
 }
 
+func TestObservableSkipWhile(t *testing.T) {
+	got := []interface{}{}
+	Just(1, 2, 3, 4, 5).SkipWhile(func(i interface{}) bool {
+		switch i := i.(type) {
+		case int:
+			return i != 3
+		default:
+			return true
+		}
+	}).Subscribe(handlers.NextFunc(func(i interface{}) {
+		got = append(got, i)
+	})).Block()
+
+	assert.Equal(t, []interface{}{3, 4, 5}, got)
+}
+
+func TestObservableSkipWhileWithEmpty(t *testing.T) {
+	got := []interface{}{}
+	Empty().SkipWhile(func(i interface{}) bool {
+		switch i := i.(type) {
+		case int:
+			return i != 3
+		default:
+			return false
+		}
+	}).Subscribe(handlers.NextFunc(func(i interface{}) {
+		got = append(got, i)
+	})).Block()
+
+	assert.Equal(t, []interface{}{}, got)
+}
+
 func TestObservableToList(t *testing.T) {
 	items := []interface{}{1, "hello", false, .0}
 	it, err := iterable.New(items)
@@ -1371,6 +1408,67 @@ func TestAll(t *testing.T) {
 		Subscribe(nil).Block()
 	assert.Nil(t, err)
 	assert.Equal(t, false, got2)
+}
+
+func TestContain(t *testing.T) {
+	predicate := func(i interface{}) bool {
+		switch i := i.(type) {
+		case int:
+			return i == 2
+		default:
+			return false
+		}
+	}
+
+	var got1, got2 bool
+
+	Just(1, 2, 3).Contains(predicate).
+		Subscribe(handlers.NextFunc(func(i interface{}) {
+			got1 = i.(bool)
+		})).Block()
+	assert.True(t, got1)
+
+	Just(1, 5, 3).Contains(predicate).
+		Subscribe(handlers.NextFunc(func(i interface{}) {
+			got2 = i.(bool)
+		})).Block()
+	assert.False(t, got2)
+}
+
+func TestDefaultIfEmpty(t *testing.T) {
+	got1 := 0
+	Empty().DefaultIfEmpty(3).Subscribe(handlers.NextFunc(func(i interface{}) {
+		got1 = i.(int)
+	})).Block()
+	assert.Equal(t, 3, got1)
+}
+
+func TestDefaultIfEmptyWithNonEmpty(t *testing.T) {
+	got1 := 0
+	Just(1).DefaultIfEmpty(3).Subscribe(handlers.NextFunc(func(i interface{}) {
+		got1 = i.(int)
+	})).Block()
+	assert.Equal(t, 1, got1)
+}
+
+func TestDoOnEach(t *testing.T) {
+	sum := 0
+	stream := Just(1, 2, 3).DoOnEach(func(i interface{}) {
+		sum += i.(int)
+	})
+
+	AssertThatObservable(t, stream, HasItems(1, 2, 3))
+	assert.Equal(t, 6, sum)
+}
+
+func TestDoOnEachWithEmpty(t *testing.T) {
+	sum := 0
+	stream := Empty().DoOnEach(func(i interface{}) {
+		sum += i.(int)
+	})
+
+	AssertThatObservable(t, stream, HasSize(0))
+	assert.Equal(t, 0, sum)
 }
 
 func TestRepeat(t *testing.T) {
