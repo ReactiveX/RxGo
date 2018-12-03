@@ -3,6 +3,8 @@ package rxgo
 import (
 	"sync"
 
+	"time"
+
 	"github.com/reactivex/rxgo/errors"
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/optional"
@@ -47,6 +49,7 @@ type Observable interface {
 	Contains(equal Predicate) Single
 	DefaultIfEmpty(defaultValue interface{}) Observable
 	DoOnEach(onNotification Consumer) Observable
+	Repeat(count int64, frequency Duration) Observable
 }
 
 // observable is a structure handling a channel of interface{} and implementing Observable
@@ -653,6 +656,46 @@ func (o *observable) DoOnEach(onNotification Consumer) Observable {
 		for item := range o.ch {
 			out <- item
 			onNotification(item)
+		}
+		close(out)
+	}()
+	return &observable{ch: out}
+}
+
+// Repeat returns an Observable that repeats the sequence of items emitted by the source Observable
+// at most count times, at a particular frequency.
+func (o *observable) Repeat(count int64, frequency Duration) Observable {
+	out := make(chan interface{})
+
+	if count != Indefinitely {
+		if count < 0 {
+			count = 0
+		}
+	}
+
+	go func() {
+		persist := make([]interface{}, 0)
+		for item := range o.ch {
+			out <- item
+			persist = append(persist, item)
+		}
+
+		for {
+			if count != Indefinitely {
+				if count == 0 {
+					break
+				}
+			}
+
+			if frequency != nil {
+				time.Sleep(frequency.duration())
+			}
+
+			for _, v := range persist {
+				out <- v
+			}
+
+			count = count - 1
 		}
 		close(out)
 	}()
