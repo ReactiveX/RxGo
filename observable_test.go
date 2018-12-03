@@ -71,23 +71,28 @@ func TestEmptyOperator(t *testing.T) {
 	assert.Equal(t, "done", text)
 }
 
-func TestRangeOperator(t *testing.T) {
-	myStream := Range(2, 6)
-	nums := []int{}
+func TestRange(t *testing.T) {
+	got := []interface{}{}
+	r, err := Range(1, 5)
+	if err != nil {
+		t.Fail()
+	}
+	r.Subscribe(handlers.NextFunc(func(i interface{}) {
+		got = append(got, i)
+	})).Block()
+	assert.Equal(t, []interface{}{1, 2, 3, 4, 5}, got)
+}
 
-	onNext := handlers.NextFunc(func(item interface{}) {
-		if num, ok := item.(int); ok {
-			nums = append(nums, num)
-		}
-	})
+func TestRangeWithNegativeCount(t *testing.T) {
+	r, err := Range(1, -5)
+	assert.NotNil(t, err)
+	assert.Nil(t, r)
+}
 
-	onDone := handlers.DoneFunc(func() {
-		nums = append(nums, 1000)
-	})
-
-	myStream.Subscribe(NewObserver(onNext, onDone)).Block()
-
-	assert.Exactly(t, []int{2, 3, 4, 5, 1000}, nums)
+func TestRangeWithMaximumExceeded(t *testing.T) {
+	r, err := Range(1<<31, 1)
+	assert.NotNil(t, err)
+	assert.Nil(t, r)
 }
 
 func TestJustOperator(t *testing.T) {
