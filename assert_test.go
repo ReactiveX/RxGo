@@ -29,6 +29,14 @@ func TestHasSize(t *testing.T) {
 	assert.False(t, configured)
 }
 
+func TestIsEmpty(t *testing.T) {
+	ass := parseObservableAssertions(IsEmpty())
+
+	configured, size := ass.hasSizeFunc()
+	assert.True(t, configured)
+	assert.Equal(t, 0, size)
+}
+
 func TestHasValue(t *testing.T) {
 	ass := parseSingleAssertions(HasValue(1))
 

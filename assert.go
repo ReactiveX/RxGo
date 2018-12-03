@@ -98,6 +98,14 @@ func HasSize(size int) ObservableAssertion {
 	})
 }
 
+// IsEmpty checks that an observable produces zero items.
+func IsEmpty() ObservableAssertion {
+	return newAssertion(func(a *assertion) {
+		a.checkHasSize = true
+		a.hasSize = 0
+	})
+}
+
 // HasValue checks that a single produces the corresponding value.
 func HasValue(value interface{}) SingleAssertion {
 	return newAssertion(func(a *assertion) {

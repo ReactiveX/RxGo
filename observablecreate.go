@@ -9,6 +9,16 @@ import (
 	"github.com/reactivex/rxgo/handlers"
 )
 
+func isClosed(ch <-chan interface{}) bool {
+	select {
+	case <-ch:
+		return true
+	default:
+	}
+
+	return false
+}
+
 // Creates observable from based on source function. Keep it mind to call emitter.OnDone()
 // to signal sequence's end.
 // Example:
@@ -47,14 +57,45 @@ func Create(source func(emitter Observer, disposed bool)) Observable {
 	}
 }
 
-func isClosed(ch <-chan interface{}) bool {
-	select {
-	case <-ch:
-		return true
-	default:
-	}
+// Concat emit the emissions from two or more Observables without interleaving them
+func Concat(observable1 Observable, observables ...Observable) Observable {
+	source := make(chan interface{})
+	go func() {
+	OuterLoop:
+		for {
+			item, err := observable1.Next()
+			if err != nil {
+				switch err := err.(type) {
+				case errors.BaseError:
+					if errors.ErrorCode(err.Code()) == errors.EndOfIteratorError {
+						break OuterLoop
+					}
+				}
+			} else {
+				source <- item
+			}
+		}
 
-	return false
+		for _, it := range observables {
+		OuterLoop2:
+			for {
+				item, err := it.Next()
+				if err != nil {
+					switch err := err.(type) {
+					case errors.BaseError:
+						if errors.ErrorCode(err.Code()) == errors.EndOfIteratorError {
+							break OuterLoop2
+						}
+					}
+				} else {
+					source <- item
+				}
+			}
+		}
+
+		close(source)
+	}()
+	return &observable{ch: source}
 }
 
 // Defer waits until an observer subscribes to it, and then it generates an Observable.
