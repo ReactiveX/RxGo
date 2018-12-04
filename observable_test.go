@@ -1597,185 +1597,185 @@ func TestMinWithEmpty(t *testing.T) {
 	AssertThatOptionalSingle(t, optionalSingle, IsEmpty())
 }
 
-func TestBufferWithCountWithCountAndSkipEqual(t *testing.T) {
-	obs := Just(1, 2, 3, 4, 5, 6).BufferWithCount(3, 3)
-	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2, 3}, []interface{}{4, 5, 6}))
-}
-
-func TestBufferWithCountWithCountAndSkipNotEqual(t *testing.T) {
-	obs := Just(1, 2, 3, 4, 5, 6).BufferWithCount(2, 3)
-	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2}, []interface{}{4, 5}))
-}
-
-func TestBufferWithCountWithEmpty(t *testing.T) {
-	obs := Empty().BufferWithCount(2, 3)
-	AssertThatObservable(t, obs, IsEmpty())
-}
-
-func TestBufferWithCountWithIncompleteLastItem(t *testing.T) {
-	obs := Just(1, 2, 3, 4).BufferWithCount(2, 3)
-	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2}, []interface{}{4}))
-}
-
-func TestBufferWithCountWithError(t *testing.T) {
-	obs := Just(1, 2, 3, 4, errors.New("")).BufferWithCount(3, 3)
-	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2, 3}, []interface{}{4}))
-	AssertThatObservable(t, obs, HasRaisedError(errors.New("")))
-}
-
-func TestBufferWithInvalidInputs(t *testing.T) {
-	obs := Just(1, 2, 3, 4, errors.New("")).BufferWithCount(0, 5)
-	AssertThatObservable(t, obs, HasRaisedError(errors.New("")))
-
-	obs = Just(1, 2, 3, 4, errors.New("")).BufferWithCount(5, 0)
-	AssertThatObservable(t, obs, HasRaisedError(errors.New("")))
-}
-
-func TestBufferWithTimeWithMockedTime(t *testing.T) {
-	just := Just(1, 2, 3)
-
-	timespan := new(mockDuration)
-	timespan.On("duration").Return(10 * time.Second)
-
-	timeshift := new(mockDuration)
-	timeshift.On("duration").Return(10 * time.Second)
-
-	obs := just.BufferWithTime(timespan, timeshift)
-
-	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2, 3}))
-	timespan.AssertNumberOfCalls(t, "duration", 1)
-	timeshift.AssertNotCalled(t, "duration")
-}
-
-func TestBufferWithTimeWithMinorMockedTime(t *testing.T) {
-	ch := make(chan interface{})
-	it, err := iterable.New(ch)
-	if err != nil {
-		t.Fail()
-	}
-	from := From(it)
-
-	timespan := new(mockDuration)
-	timespan.On("duration").Return(1 * time.Millisecond)
-
-	timeshift := new(mockDuration)
-	timeshift.On("duration").Return(1 * time.Millisecond)
-
-	obs := from.BufferWithTime(timespan, timeshift)
-
-	time.Sleep(10 * time.Millisecond)
-	ch <- 1
-	close(ch)
-
-	obs.Subscribe(nil).Block()
-
-	timespan.AssertCalled(t, "duration")
-}
-
-func TestBufferWithTimeWithIllegalInput(t *testing.T) {
-	AssertThatObservable(t, Empty().BufferWithTime(nil, nil), HasRaisedAnError())
-	AssertThatObservable(t, Empty().BufferWithTime(WithDuration(0*time.Second), nil), HasRaisedAnError())
-}
-
-func TestBufferWithTimeWithNilTimeshift(t *testing.T) {
-	just := Just(1, 2, 3)
-	obs := just.BufferWithTime(WithDuration(1*time.Second), nil)
-	AssertThatObservable(t, obs, IsNotEmpty())
-}
-
-func TestBufferWithTimeWithError(t *testing.T) {
-	just := Just(1, 2, 3, errors.New(""))
-	obs := just.BufferWithTime(WithDuration(1*time.Second), nil)
-	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2, 3}), HasRaisedAnError())
-}
-
-func TestBufferWithTimeWithEmpty(t *testing.T) {
-	obs := Empty().BufferWithTime(WithDuration(1*time.Second), WithDuration(1*time.Second))
-	AssertThatObservable(t, obs, IsEmpty())
-}
-
-func TestBufferWithTimeOrCountWithInvalidInputs(t *testing.T) {
-	obs := Empty().BufferWithTimeOrCount(nil, 5)
-	AssertThatObservable(t, obs, HasRaisedAnError())
-
-	obs = Empty().BufferWithTimeOrCount(WithDuration(0), 5)
-	AssertThatObservable(t, obs, HasRaisedAnError())
-
-	obs = Empty().BufferWithTimeOrCount(WithDuration(time.Millisecond*5), 0)
-	AssertThatObservable(t, obs, HasRaisedAnError())
-}
-
-func TestBufferWithTimeOrCountWithCount(t *testing.T) {
-	just := Just(1, 2, 3)
-	obs := just.BufferWithTimeOrCount(WithDuration(1*time.Second), 2)
-	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2}, []interface{}{3}))
-}
-
-func TestBufferWithTimeOrCountWithTime(t *testing.T) {
-	ch := make(chan interface{})
-	it, err := iterable.New(ch)
-	if err != nil {
-		t.Fail()
-	}
-	from := From(it)
-
-	got := make([]interface{}, 0)
-
-	obs := from.BufferWithTimeOrCount(WithDuration(1*time.Millisecond), 10).
-		Subscribe(handlers.NextFunc(func(i interface{}) {
-			got = append(got, i)
-		}))
-	ch <- 1
-	time.Sleep(50 * time.Millisecond)
-	ch <- 2
-	close(ch)
-	obs.Block()
-
-	// Check items are included
-	got1 := false
-	got2 := false
-	for _, v := range got {
-		switch v := v.(type) {
-		case []interface{}:
-			if len(v) == 1 {
-				if v[0] == 1 {
-					got1 = true
-				} else if v[0] == 2 {
-					got2 = true
-				}
-			}
-		}
-	}
-
-	assert.True(t, got1)
-	assert.True(t, got2)
-}
-
-func TestBufferWithTimeOrCountWithMockedTime(t *testing.T) {
-	ch := make(chan interface{})
-	it, err := iterable.New(ch)
-	if err != nil {
-		t.Fail()
-	}
-	from := From(it)
-
-	timespan := new(mockDuration)
-	timespan.On("duration").Return(1 * time.Millisecond)
-
-	obs := from.BufferWithTimeOrCount(timespan, 5)
-
-	time.Sleep(50 * time.Millisecond)
-	ch <- 1
-	close(ch)
-
-	obs.Subscribe(nil).Block()
-
-	timespan.AssertCalled(t, "duration")
-}
-
-func TestBufferWithTimeOrCountWithError(t *testing.T) {
-	just := Just(1, 2, 3, errors.New(""), 4)
-	obs := just.BufferWithTimeOrCount(WithDuration(1*time.Second), 2)
-	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2}, []interface{}{3}),
-		HasRaisedAnError())
-}
+//func TestBufferWithCountWithCountAndSkipEqual(t *testing.T) {
+//	obs := Just(1, 2, 3, 4, 5, 6).BufferWithCount(3, 3)
+//	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2, 3}, []interface{}{4, 5, 6}))
+//}
+//
+//func TestBufferWithCountWithCountAndSkipNotEqual(t *testing.T) {
+//	obs := Just(1, 2, 3, 4, 5, 6).BufferWithCount(2, 3)
+//	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2}, []interface{}{4, 5}))
+//}
+//
+//func TestBufferWithCountWithEmpty(t *testing.T) {
+//	obs := Empty().BufferWithCount(2, 3)
+//	AssertThatObservable(t, obs, IsEmpty())
+//}
+//
+//func TestBufferWithCountWithIncompleteLastItem(t *testing.T) {
+//	obs := Just(1, 2, 3, 4).BufferWithCount(2, 3)
+//	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2}, []interface{}{4}))
+//}
+//
+//func TestBufferWithCountWithError(t *testing.T) {
+//	obs := Just(1, 2, 3, 4, errors.New("")).BufferWithCount(3, 3)
+//	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2, 3}, []interface{}{4}))
+//	AssertThatObservable(t, obs, HasRaisedError(errors.New("")))
+//}
+//
+//func TestBufferWithInvalidInputs(t *testing.T) {
+//	obs := Just(1, 2, 3, 4, errors.New("")).BufferWithCount(0, 5)
+//	AssertThatObservable(t, obs, HasRaisedError(errors.New("")))
+//
+//	obs = Just(1, 2, 3, 4, errors.New("")).BufferWithCount(5, 0)
+//	AssertThatObservable(t, obs, HasRaisedError(errors.New("")))
+//}
+//
+//func TestBufferWithTimeWithMockedTime(t *testing.T) {
+//	just := Just(1, 2, 3)
+//
+//	timespan := new(mockDuration)
+//	timespan.On("duration").Return(10 * time.Second)
+//
+//	timeshift := new(mockDuration)
+//	timeshift.On("duration").Return(10 * time.Second)
+//
+//	obs := just.BufferWithTime(timespan, timeshift)
+//
+//	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2, 3}))
+//	timespan.AssertNumberOfCalls(t, "duration", 1)
+//	timeshift.AssertNotCalled(t, "duration")
+//}
+//
+//func TestBufferWithTimeWithMinorMockedTime(t *testing.T) {
+//	ch := make(chan interface{})
+//	it, err := iterable.New(ch)
+//	if err != nil {
+//		t.Fail()
+//	}
+//	from := From(it)
+//
+//	timespan := new(mockDuration)
+//	timespan.On("duration").Return(1 * time.Millisecond)
+//
+//	timeshift := new(mockDuration)
+//	timeshift.On("duration").Return(1 * time.Millisecond)
+//
+//	obs := from.BufferWithTime(timespan, timeshift)
+//
+//	time.Sleep(10 * time.Millisecond)
+//	ch <- 1
+//	close(ch)
+//
+//	obs.Subscribe(nil).Block()
+//
+//	timespan.AssertCalled(t, "duration")
+//}
+//
+//func TestBufferWithTimeWithIllegalInput(t *testing.T) {
+//	AssertThatObservable(t, Empty().BufferWithTime(nil, nil), HasRaisedAnError())
+//	AssertThatObservable(t, Empty().BufferWithTime(WithDuration(0*time.Second), nil), HasRaisedAnError())
+//}
+//
+//func TestBufferWithTimeWithNilTimeshift(t *testing.T) {
+//	just := Just(1, 2, 3)
+//	obs := just.BufferWithTime(WithDuration(1*time.Second), nil)
+//	AssertThatObservable(t, obs, IsNotEmpty())
+//}
+//
+//func TestBufferWithTimeWithError(t *testing.T) {
+//	just := Just(1, 2, 3, errors.New(""))
+//	obs := just.BufferWithTime(WithDuration(1*time.Second), nil)
+//	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2, 3}), HasRaisedAnError())
+//}
+//
+//func TestBufferWithTimeWithEmpty(t *testing.T) {
+//	obs := Empty().BufferWithTime(WithDuration(1*time.Second), WithDuration(1*time.Second))
+//	AssertThatObservable(t, obs, IsEmpty())
+//}
+//
+//func TestBufferWithTimeOrCountWithInvalidInputs(t *testing.T) {
+//	obs := Empty().BufferWithTimeOrCount(nil, 5)
+//	AssertThatObservable(t, obs, HasRaisedAnError())
+//
+//	obs = Empty().BufferWithTimeOrCount(WithDuration(0), 5)
+//	AssertThatObservable(t, obs, HasRaisedAnError())
+//
+//	obs = Empty().BufferWithTimeOrCount(WithDuration(time.Millisecond*5), 0)
+//	AssertThatObservable(t, obs, HasRaisedAnError())
+//}
+//
+//func TestBufferWithTimeOrCountWithCount(t *testing.T) {
+//	just := Just(1, 2, 3)
+//	obs := just.BufferWithTimeOrCount(WithDuration(1*time.Second), 2)
+//	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2}, []interface{}{3}))
+//}
+//
+//func TestBufferWithTimeOrCountWithTime(t *testing.T) {
+//	ch := make(chan interface{})
+//	it, err := iterable.New(ch)
+//	if err != nil {
+//		t.Fail()
+//	}
+//	from := From(it)
+//
+//	got := make([]interface{}, 0)
+//
+//	obs := from.BufferWithTimeOrCount(WithDuration(1*time.Millisecond), 10).
+//		Subscribe(handlers.NextFunc(func(i interface{}) {
+//			got = append(got, i)
+//		}))
+//	ch <- 1
+//	time.Sleep(50 * time.Millisecond)
+//	ch <- 2
+//	close(ch)
+//	obs.Block()
+//
+//	// Check items are included
+//	got1 := false
+//	got2 := false
+//	for _, v := range got {
+//		switch v := v.(type) {
+//		case []interface{}:
+//			if len(v) == 1 {
+//				if v[0] == 1 {
+//					got1 = true
+//				} else if v[0] == 2 {
+//					got2 = true
+//				}
+//			}
+//		}
+//	}
+//
+//	assert.True(t, got1)
+//	assert.True(t, got2)
+//}
+//
+//func TestBufferWithTimeOrCountWithMockedTime(t *testing.T) {
+//	ch := make(chan interface{})
+//	it, err := iterable.New(ch)
+//	if err != nil {
+//		t.Fail()
+//	}
+//	from := From(it)
+//
+//	timespan := new(mockDuration)
+//	timespan.On("duration").Return(1 * time.Millisecond)
+//
+//	obs := from.BufferWithTimeOrCount(timespan, 5)
+//
+//	time.Sleep(50 * time.Millisecond)
+//	ch <- 1
+//	close(ch)
+//
+//	obs.Subscribe(nil).Block()
+//
+//	timespan.AssertCalled(t, "duration")
+//}
+//
+//func TestBufferWithTimeOrCountWithError(t *testing.T) {
+//	just := Just(1, 2, 3, errors.New(""), 4)
+//	obs := just.BufferWithTimeOrCount(WithDuration(1*time.Second), 2)
+//	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2}, []interface{}{3}),
+//		HasRaisedAnError())
+//}

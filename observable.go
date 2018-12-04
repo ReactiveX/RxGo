@@ -1112,39 +1112,28 @@ func (o *observable) BufferWithTimeOrCount(timespan Duration, count int) Observa
 			return
 		}
 
-		// Send channel.
-		// The value represents the action to be done by the sender goroutine
-		// 0: Send the current buffer
-		// 1: Send the current buffer, stop the channel and return
-		// 2: Return
-		sendCh := make(chan int)
-		var mux sync.Mutex
+		sendCh := make(chan []interface{})
+		// Channel argument: send the current buffer before to close
+		stopCh := make(chan bool)
 		buffer := make([]interface{}, 0)
 
 		// First sender goroutine
 		go func() {
 			for {
 				select {
-				case status := <-sendCh:
-					if status == 0 { // Send on count
-						mux.Lock()
-						out <- buffer
-						buffer = make([]interface{}, 0)
-						mux.Unlock()
-					} else if status == 1 {
+				case currentBuffer := <-sendCh:
+					out <- currentBuffer
+				case sendBuffer := <-stopCh:
+					if sendBuffer {
 						if len(buffer) > 0 {
 							out <- buffer
 						}
 						close(out)
-						return
-					} else {
-						return
 					}
+					return
 				case <-time.After(timespan.duration()): // Send on timer
-					mux.Lock()
 					out <- buffer
 					buffer = make([]interface{}, 0)
-					mux.Unlock()
 				}
 			}
 		}()
@@ -1154,26 +1143,22 @@ func (o *observable) BufferWithTimeOrCount(timespan Duration, count int) Observa
 			for item := range o.ch {
 				switch item := item.(type) {
 				case error:
-					mux.Lock()
 					if len(buffer) > 0 {
 						out <- buffer
 					}
 					out <- item
 					close(out)
-					sendCh <- 2
-					mux.Unlock()
+					stopCh <- false
 					return
 				default:
-					mux.Lock()
 					buffer = append(buffer, item)
-					mux.Unlock()
-
 					if len(buffer) >= count {
-						sendCh <- 0
+						sendCh <- buffer
 					}
+					buffer = make([]interface{}, 0)
 				}
 			}
-			sendCh <- 1
+			stopCh <- true
 		}()
 
 	}()
