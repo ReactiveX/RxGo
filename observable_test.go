@@ -1399,15 +1399,11 @@ func TestAll(t *testing.T) {
 		}
 	}
 
-	got1, err := Just(1, 2, 3).All(predicateAllInt).
-		Subscribe(nil).Block()
-	assert.Nil(t, err)
-	assert.Equal(t, true, got1)
+	AssertThatSingle(t, Just(1, 2, 3).All(predicateAllInt),
+		HasValue(true), HasNotRaisedAnError())
 
-	got2, err := Just(1, "x", 3).All(predicateAllInt).
-		Subscribe(nil).Block()
-	assert.Nil(t, err)
-	assert.Equal(t, false, got2)
+	AssertThatSingle(t, Just(1, "x", 3).All(predicateAllInt),
+		HasValue(false), HasNotRaisedAnError())
 }
 
 func TestContain(t *testing.T) {
@@ -1778,4 +1774,88 @@ func TestBufferWithTimeOrCountWithError(t *testing.T) {
 	obs := just.BufferWithTimeOrCount(WithDuration(10*time.Second), 2)
 	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2}, []interface{}{3}),
 		HasRaisedAnError())
+}
+
+func TestStartWithItems(t *testing.T) {
+	obs := Just(1, 2, 3).StartWithItems(10, 20)
+	AssertThatObservable(t, obs, HasItems(10, 20, 1, 2, 3))
+}
+
+func TestStartWithItemsWithError(t *testing.T) {
+	obs := Just(1, 2, 3).StartWithItems(10, errors.New(""))
+	AssertThatObservable(t, obs, HasItems(10), HasRaisedError(errors.New("")))
+}
+
+func TestStartWithItemsFromEmpty(t *testing.T) {
+	obs := Empty().StartWithItems(1, 2)
+	AssertThatObservable(t, obs, HasItems(1, 2))
+}
+
+func TestStartWithItemsWithoutItems(t *testing.T) {
+	obs := Just(1, 2, 3).StartWithItems()
+	AssertThatObservable(t, obs, HasItems(1, 2, 3))
+}
+
+func TestStartWithIterable(t *testing.T) {
+	ch := make(chan interface{})
+	it, err := iterable.New(ch)
+	if err != nil {
+		t.Fail()
+	}
+	obs := Just(1, 2, 3).StartWithIterable(it)
+	ch <- 10
+	close(ch)
+	AssertThatObservable(t, obs, HasItems(10, 1, 2, 3))
+}
+
+func TestStartWithIterableWithError(t *testing.T) {
+	ch := make(chan interface{})
+	it, err := iterable.New(ch)
+	if err != nil {
+		t.Fail()
+	}
+	obs := Just(1, 2, 3).StartWithIterable(it)
+	ch <- errors.New("")
+	close(ch)
+	AssertThatObservable(t, obs, IsEmpty(), HasRaisedError(errors.New("")))
+}
+
+func TestStartWithIterableFromEmpty(t *testing.T) {
+	ch := make(chan interface{})
+	it, err := iterable.New(ch)
+	if err != nil {
+		t.Fail()
+	}
+	obs := Empty().StartWithIterable(it)
+	ch <- 1
+	close(ch)
+	AssertThatObservable(t, obs, HasItems(1))
+}
+
+func TestStartWithIterableWithoutItems(t *testing.T) {
+	ch := make(chan interface{})
+	it, err := iterable.New(ch)
+	if err != nil {
+		t.Fail()
+	}
+	obs := Just(1, 2, 3).StartWithIterable(it)
+	close(ch)
+	AssertThatObservable(t, obs, HasItems(1, 2, 3))
+}
+
+func TestStartWithObservable(t *testing.T) {
+	obs := Just(10, 20)
+	just := Just(1, 2, 3).StartWithObservable(obs)
+	AssertThatObservable(t, just, HasItems(10, 20, 1, 2, 3))
+}
+
+func TestStartWithObservableWithError(t *testing.T) {
+	obs := Just(10, errors.New(""))
+	just := Just(1, 2, 3).StartWithObservable(obs)
+	AssertThatObservable(t, just, HasItems(10), HasRaisedError(errors.New("")))
+}
+
+func TestStartWithObservableFromEmpty(t *testing.T) {
+	obs := Just(1, 2, 3).StartWithObservable(Empty())
+	AssertThatObservable(t, obs, HasItems(1, 2, 3))
 }

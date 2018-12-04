@@ -32,6 +32,10 @@ func TestAssertThatSingleError(t *testing.T) {
 		HasRaisedAnError(), HasRaisedError(errors.New("foo")))
 }
 
+func TestAssertThatSingleNotError(t *testing.T) {
+	AssertThatSingle(t, newSingleFrom(1), HasNotRaisedAnError())
+}
+
 func TestAssertThatOptionalSingleIsEmpty(t *testing.T) {
 	AssertThatOptionalSingle(t, newOptionalSingleFrom(optional.Empty()), IsEmpty())
 }
