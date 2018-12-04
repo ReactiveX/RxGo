@@ -1779,3 +1779,29 @@ func TestBufferWithTimeOrCountWithError(t *testing.T) {
 	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2}, []interface{}{3}),
 		HasRaisedAnError())
 }
+
+func TestSumInt64(t *testing.T) {
+	AssertThatSingle(t, Just(1, 2, 3).SumInt64(), HasValue(int64(6)))
+	AssertThatSingle(t, Just(int8(1), int(2), int16(3), int32(4), int64(5)).SumInt64(),
+		HasValue(int64(15)))
+	AssertThatSingle(t, Just(1.1, 2.2, 3.3).SumInt64(), HasRaisedAnError())
+	AssertThatSingle(t, Empty().SumInt64(), HasValue(int64(0)))
+}
+
+func TestSumFloat32(t *testing.T) {
+	AssertThatSingle(t, Just(float32(1.0), float32(2.0), float32(3.0)).SumFloat32(),
+		HasValue(float32(6.)))
+	AssertThatSingle(t, Just(float32(1.1), 2, int8(3), int16(1), int32(1), int64(1)).SumFloat32(),
+		HasValue(float32(9.1)))
+	AssertThatSingle(t, Just(1.1, 2.2, 3.3).SumFloat32(), HasRaisedAnError())
+	AssertThatSingle(t, Empty().SumFloat32(), HasValue(float32(0)))
+}
+
+func TestSumFloat64(t *testing.T) {
+	AssertThatSingle(t, Just(1.1, 2.2, 3.3).SumFloat64(),
+		HasValue(6.6))
+	AssertThatSingle(t, Just(float32(1.0), 2, int8(3), 4., int16(1), int32(1), int64(1)).SumFloat64(),
+		HasValue(float64(13.)))
+	AssertThatSingle(t, Just("x").SumFloat64(), HasRaisedAnError())
+	AssertThatSingle(t, Empty().SumFloat64(), HasValue(float64(0)))
+}
