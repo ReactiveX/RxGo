@@ -1,37 +1,53 @@
 package rxgo
 
 import (
+	"errors"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/reactivex/rxgo/optional"
 )
 
-func TestHasItems(t *testing.T) {
-	ass := parseAssertions(HasItems(1, 2, 3))
-
-	configured, items := ass.HasItems()
-	assert.True(t, configured)
-	assert.Equal(t, []interface{}{1, 2, 3}, items)
-
-	configured, _ = ass.HasSize()
-	assert.False(t, configured)
-}
-
-func TestHasSize(t *testing.T) {
-	ass := parseAssertions(HasSize(3))
-
-	configured, size := ass.HasSize()
-	assert.True(t, configured)
-	assert.Equal(t, 3, size)
-
-	configured, _ = ass.HasItems()
-	assert.False(t, configured)
-}
-
-func TestAssertHasItems(t *testing.T) {
+func TestAssertThatObservableHasItems(t *testing.T) {
 	AssertThatObservable(t, Just(1, 2, 3), HasItems(1, 2, 3))
 }
 
-func TestAssertHasSize(t *testing.T) {
+func TestAssertThatObservableHasSize(t *testing.T) {
 	AssertThatObservable(t, Just(1, 2, 3), HasSize(3))
+}
+
+func TestAssertThatObservableIsEmpty(t *testing.T) {
+	AssertThatObservable(t, Empty(), IsEmpty())
+}
+
+func TestAssertThatObservableIsNotEmpty(t *testing.T) {
+	AssertThatObservable(t, Just(1), IsNotEmpty())
+}
+
+func TestAssertThatSingleHasValue(t *testing.T) {
+	AssertThatSingle(t, newSingleFrom(1), HasValue(1))
+}
+
+func TestAssertThatSingleError(t *testing.T) {
+	AssertThatSingle(t, newSingleFrom(errors.New("foo")),
+		HasRaisedAnError(), HasRaisedError(errors.New("foo")))
+}
+
+func TestAssertThatOptionalSingleIsEmpty(t *testing.T) {
+	AssertThatOptionalSingle(t, newOptionalSingleFrom(optional.Empty()), IsEmpty())
+}
+
+func TestAssertThatOptionalSingleIsNotEmpty(t *testing.T) {
+	AssertThatOptionalSingle(t, newOptionalSingleFrom(optional.Of(1)), IsNotEmpty())
+}
+
+func TestAssertThatOptionalSingleHasValue(t *testing.T) {
+	AssertThatOptionalSingle(t, newOptionalSingleFrom(optional.Of(1)), HasValue(1))
+}
+
+func TestAssertThatOptionalSingleHasRaisedAnError(t *testing.T) {
+	AssertThatOptionalSingle(t, newOptionalSingleFrom(optional.Of(errors.New("foo"))), HasRaisedAnError())
+}
+
+func TestAssertThatOptionalSingleHasRaisedError(t *testing.T) {
+	AssertThatOptionalSingle(t, newOptionalSingleFrom(optional.Of(errors.New("foo"))), HasRaisedError(errors.New("foo")))
 }

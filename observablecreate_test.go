@@ -225,3 +225,31 @@ func TestNever(t *testing.T) {
 	never := Never()
 	assert.NotNil(t, never)
 }
+
+func TestConcatWithOneObservable(t *testing.T) {
+	obs := Concat(Just(1, 2, 3))
+	AssertThatObservable(t, obs, HasItems(1, 2, 3))
+}
+
+func TestConcatWithTwoObservables(t *testing.T) {
+	obs := Concat(Just(1, 2, 3), Just(4, 5, 6))
+	AssertThatObservable(t, obs, HasItems(1, 2, 3, 4, 5, 6))
+}
+
+func TestConcatWithMoreThanTwoObservables(t *testing.T) {
+	obs := Concat(Just(1, 2, 3), Just(4, 5, 6), Just(7, 8, 9))
+	AssertThatObservable(t, obs, HasItems(1, 2, 3, 4, 5, 6, 7, 8, 9))
+}
+
+func TestConcatWithEmptyObservables(t *testing.T) {
+	obs := Concat(Empty(), Empty(), Empty())
+	AssertThatObservable(t, obs, IsEmpty())
+}
+
+func TestConcatWithAnEmptyObservable(t *testing.T) {
+	obs := Concat(Empty(), Just(1, 2, 3))
+	AssertThatObservable(t, obs, HasItems(1, 2, 3))
+
+	obs = Concat(Just(1, 2, 3), Empty())
+	AssertThatObservable(t, obs, HasItems(1, 2, 3))
+}
