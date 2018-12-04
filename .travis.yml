@@ -19,8 +19,8 @@ install:
   - go get github.com/gorilla/websocket
 
 script:
-  - go test -v -cover -race -coverprofile=coverage.out ./...
-  - goveralls -coverprofile coverage.out -service travis-ci -repotoken $COVERALLS_TOKEN
+  - go test -v -race -cover -coverprofile=/tmp/coverage.out
+  - goveralls -coverprofile /tmp/coverage.out -service travis-ci -repotoken $COVERALLS_TOKEN
 
 notifications:
   webhooks:
