@@ -1596,3 +1596,37 @@ func TestMinWithEmpty(t *testing.T) {
 	optionalSingle := Empty().Min(comparator)
 	AssertThatOptionalSingle(t, optionalSingle, IsEmpty())
 }
+
+func TestBufferWithCountWithCountAndSkipEqual(t *testing.T) {
+	obs := Just(1, 2, 3, 4, 5, 6).BufferWithCount(3, 3)
+	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2, 3}, []interface{}{4, 5, 6}))
+}
+
+func TestBufferWithCountWithCountAndSkipNotEqual(t *testing.T) {
+	obs := Just(1, 2, 3, 4, 5, 6).BufferWithCount(2, 3)
+	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2}, []interface{}{4, 5}))
+}
+
+func TestBufferWithCountWithEmpty(t *testing.T) {
+	obs := Empty().BufferWithCount(2, 3)
+	AssertThatObservable(t, obs, IsEmpty())
+}
+
+func TestBufferWithCountWithIncompleteLastItem(t *testing.T) {
+	obs := Just(1, 2, 3, 4).BufferWithCount(2, 3)
+	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2}, []interface{}{4}))
+}
+
+func TestBufferWithCountWithError(t *testing.T) {
+	obs := Just(1, 2, 3, 4, errors.New("")).BufferWithCount(3, 3)
+	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2, 3}, []interface{}{4}))
+	AssertThatObservable(t, obs, HasRaisedError(errors.New("")))
+}
+
+func TestBufferWithInvalidInputs(t *testing.T) {
+	obs := Just(1, 2, 3, 4, errors.New("")).BufferWithCount(0, 5)
+	AssertThatObservable(t, obs, HasRaisedError(errors.New("")))
+
+	obs = Just(1, 2, 3, 4, errors.New("")).BufferWithCount(5, 0)
+	AssertThatObservable(t, obs, HasRaisedError(errors.New("")))
+}

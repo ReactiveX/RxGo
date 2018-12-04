@@ -23,6 +23,7 @@ type Observable interface {
 	AverageInt16() Single
 	AverageInt32() Single
 	AverageInt64() Single
+	BufferWithCount(count, skip int) Observable
 	Contains(equal Predicate) Single
 	Count() Single
 	DefaultIfEmpty(defaultValue interface{}) Observable
@@ -946,4 +947,64 @@ func (o *observable) Min(comparator Comparator) OptionalSingle {
 		close(out)
 	}()
 	return &optionalSingle{ch: out}
+}
+
+// BufferWithCount returns an Observable that emits buffers of items it collects
+// from the source Observable.
+// The resulting Observable emits buffers every skip items, each containing a slice of count items.
+// When the source Observable completes or encounters an error,
+// the resulting Observable emits the current buffer and propagates
+// the notification from the source Observable.
+func (o *observable) BufferWithCount(count, skip int) Observable {
+	out := make(chan interface{})
+	go func() {
+		if count <= 0 {
+			out <- errors.New(errors.IllegalInputError, "count must be positive")
+			close(out)
+			return
+		}
+
+		if skip <= 0 {
+			out <- errors.New(errors.IllegalInputError, "skip must be positive")
+			close(out)
+			return
+		}
+
+		buffer := make([]interface{}, count, count)
+		iCount := 0
+		iSkip := 0
+		for item := range o.ch {
+			switch item := item.(type) {
+			case error:
+				if iCount != 0 {
+					out <- buffer[:iCount]
+				}
+				out <- item
+				close(out)
+				return
+			default:
+				if iCount >= count { // Skip
+					iSkip++
+				} else { // Add to buffer
+					buffer[iCount] = item
+					iCount++
+					iSkip++
+				}
+
+				if iSkip == skip { // Send current buffer
+					out <- buffer
+					buffer = make([]interface{}, count, count)
+					iCount = 0
+					iSkip = 0
+				}
+			}
+		}
+
+		if iCount != 0 {
+			out <- buffer[:iCount]
+		}
+
+		close(out)
+	}()
+	return &observable{ch: out}
 }
