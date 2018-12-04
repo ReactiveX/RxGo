@@ -51,6 +51,9 @@ type Observable interface {
 	SkipLast(nth uint) Observable
 	SkipWhile(apply Predicate) Observable
 	Subscribe(handler handlers.EventHandler, opts ...options.Option) Observer
+	SumFloat32() Single
+	SumFloat64() Single
+	SumInt64() Single
 	Take(nth uint) Observable
 	TakeLast(nth uint) Observable
 	TakeWhile(apply Predicate) Observable
@@ -946,4 +949,100 @@ func (o *observable) Min(comparator Comparator) OptionalSingle {
 		close(out)
 	}()
 	return &optionalSingle{ch: out}
+}
+
+// SumInt64 calculates the average of integers emitted by an Observable and emits an int64.
+func (o *observable) SumInt64() Single {
+	out := make(chan interface{})
+	go func() {
+		var sum int64
+		for item := range o.ch {
+			switch item := item.(type) {
+			case int:
+				sum = sum + int64(item)
+			case int8:
+				sum = sum + int64(item)
+			case int16:
+				sum = sum + int64(item)
+			case int32:
+				sum = sum + int64(item)
+			case int64:
+				sum = sum + item
+			default:
+				out <- errors.New(errors.IllegalInputError,
+					fmt.Sprintf("expected type: int, int8, int16, int32 or int64, got %t", item))
+				close(out)
+				return
+			}
+		}
+		out <- sum
+		close(out)
+	}()
+	return NewSingleFromChannel(out)
+}
+
+// SumFloat32 calculates the average of float32 emitted by an Observable and emits a float32.
+func (o *observable) SumFloat32() Single {
+	out := make(chan interface{})
+	go func() {
+		var sum float32
+		for item := range o.ch {
+			switch item := item.(type) {
+			case int:
+				sum = sum + float32(item)
+			case int8:
+				sum = sum + float32(item)
+			case int16:
+				sum = sum + float32(item)
+			case int32:
+				sum = sum + float32(item)
+			case int64:
+				sum = sum + float32(item)
+			case float32:
+				sum = sum + item
+			default:
+				out <- errors.New(errors.IllegalInputError,
+					fmt.Sprintf("expected type: float32, int, int8, int16, int32 or int64, got %t", item))
+				close(out)
+				return
+			}
+		}
+		out <- sum
+		close(out)
+	}()
+	return NewSingleFromChannel(out)
+}
+
+// SumFloat64 calculates the average of float64 emitted by an Observable and emits a float64.
+func (o *observable) SumFloat64() Single {
+	out := make(chan interface{})
+	go func() {
+		var sum float64
+		for item := range o.ch {
+			switch item := item.(type) {
+			case int:
+				sum = sum + float64(item)
+			case int8:
+				sum = sum + float64(item)
+			case int16:
+				sum = sum + float64(item)
+			case int32:
+				sum = sum + float64(item)
+			case int64:
+				sum = sum + float64(item)
+			case float32:
+				sum = sum + float64(item)
+			case float64:
+				sum = sum + item
+			default:
+				out <- errors.New(errors.IllegalInputError,
+					fmt.Sprintf("expected type: float32, float64, int, int8, int16, int32 or int64, got %t", item))
+				close(out)
+				return
+			}
+		}
+		out <- sum
+		close(out)
+	}()
+	return NewSingleFromChannel(out)
 }
