@@ -25,6 +25,7 @@ type Observable interface {
 	AverageInt64() Single
 	BufferWithCount(count, skip int) Observable
 	BufferWithTime(timespan, timeshift Duration) Observable
+	BufferWithTimeOrCount(timespan Duration, count int) Observable
 	Contains(equal Predicate) Single
 	Count() Single
 	DefaultIfEmpty(defaultValue interface{}) Observable
@@ -1084,6 +1085,95 @@ func (o *observable) BufferWithTime(timespan, timeshift Duration) Observable {
 			close(out)
 			stop = true
 			mux.Unlock()
+		}()
+
+	}()
+	return &observable{ch: out}
+}
+
+// BufferWithTimeOrCount returns an Observable that emits buffers of items it collects
+// from the source Observable. The resulting Observable emits connected,
+// non-overlapping buffers, each of a fixed duration specified by the timespan argument
+// or a maximum size specified by the count argument (whichever is reached first).
+// When the source Observable completes or encounters an error, the resulting Observable
+// emits the current buffer and propagates the notification from the source Observable.
+func (o *observable) BufferWithTimeOrCount(timespan Duration, count int) Observable {
+	out := make(chan interface{})
+	go func() {
+		if timespan == nil || timespan.duration() == 0 {
+			out <- errors.New(errors.IllegalInputError, "timespan must not be nil")
+			close(out)
+			return
+		}
+
+		if count <= 0 {
+			out <- errors.New(errors.IllegalInputError, "count must be positive")
+			close(out)
+			return
+		}
+
+		// Send channel.
+		// The value represents the action to be done by the sender goroutine
+		// 0: Send the current buffer
+		// 1: Send the current buffer, stop the channel and return
+		// 2: Return
+		sendCh := make(chan int)
+		var mux sync.Mutex
+		buffer := make([]interface{}, 0)
+
+		// First sender goroutine
+		go func() {
+			for {
+				select {
+				case status := <-sendCh:
+					if status == 0 { // Send on count
+						mux.Lock()
+						out <- buffer
+						buffer = make([]interface{}, 0)
+						mux.Unlock()
+					} else if status == 1 {
+						if len(buffer) > 0 {
+							out <- buffer
+						}
+						close(out)
+						return
+					} else {
+						return
+					}
+				case <-time.After(timespan.duration()): // Send on timer
+					mux.Lock()
+					out <- buffer
+					buffer = make([]interface{}, 0)
+					mux.Unlock()
+				}
+			}
+		}()
+
+		// Second goroutine in charge to retrieve the items from the source observable
+		go func() {
+			for item := range o.ch {
+				switch item := item.(type) {
+				case error:
+					mux.Lock()
+					if len(buffer) > 0 {
+						out <- buffer
+					}
+					out <- item
+					close(out)
+					sendCh <- 2
+					mux.Unlock()
+					return
+				default:
+					mux.Lock()
+					buffer = append(buffer, item)
+					mux.Unlock()
+
+					if len(buffer) >= count {
+						sendCh <- 0
+					}
+				}
+			}
+			sendCh <- 1
 		}()
 
 	}()
