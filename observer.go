@@ -1,6 +1,8 @@
 package rxgo
 
 import (
+	"sync"
+
 	"github.com/reactivex/rxgo/handlers"
 )
 
@@ -17,11 +19,12 @@ type Observer interface {
 }
 
 type observer struct {
-	disposed    bool
-	nextHandler handlers.NextFunc
-	errHandler  handlers.ErrFunc
-	doneHandler handlers.DoneFunc
-	done        chan error
+	disposedMutex sync.Mutex
+	disposed      bool
+	nextHandler   handlers.NextFunc
+	errHandler    handlers.ErrFunc
+	doneHandler   handlers.DoneFunc
+	done          chan error
 }
 
 // NewObserver constructs a new Observer instance with default Observer and accept
@@ -70,16 +73,24 @@ func (o *observer) Handle(item interface{}) {
 }
 
 func (o *observer) Dispose() {
+	o.disposedMutex.Lock()
 	o.disposed = true
+	o.disposedMutex.Unlock()
 }
 
 func (o *observer) IsDisposed() bool {
+	o.disposedMutex.Lock()
+	defer o.disposedMutex.Unlock()
 	return o.disposed
 }
 
 // OnNext applies Observer's NextHandler to an Item
 func (o *observer) OnNext(item interface{}) {
-	if !o.disposed {
+	o.disposedMutex.Lock()
+	disposed := o.disposed
+	o.disposedMutex.Unlock()
+
+	if !disposed {
 		switch item := item.(type) {
 		case error:
 			return
@@ -95,7 +106,10 @@ func (o *observer) OnNext(item interface{}) {
 
 // OnError applies Observer's ErrHandler to an error
 func (o *observer) OnError(err error) {
-	if !o.disposed {
+	o.disposedMutex.Lock()
+	disposed := o.disposed
+	o.disposedMutex.Unlock()
+	if !disposed {
 		if o.errHandler != nil {
 			o.errHandler(err)
 			o.Dispose()
@@ -111,7 +125,10 @@ func (o *observer) OnError(err error) {
 
 // OnDone terminates the Observer's internal Observable
 func (o *observer) OnDone() {
-	if !o.disposed {
+	o.disposedMutex.Lock()
+	disposed := o.disposed
+	o.disposedMutex.Unlock()
+	if !disposed {
 		if o.doneHandler != nil {
 			o.doneHandler()
 			o.Dispose()
@@ -127,7 +144,10 @@ func (o *observer) OnDone() {
 
 // OnDone terminates the Observer's internal Observable
 func (o *observer) Block() error {
-	if !o.disposed {
+	o.disposedMutex.Lock()
+	disposed := o.disposed
+	o.disposedMutex.Unlock()
+	if !disposed {
 		for v := range o.done {
 			return v
 		}

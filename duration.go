@@ -29,8 +29,8 @@ func (d *duration) duration() time.Duration {
 	return d.d
 }
 
-func WithFrequency(frequency time.Duration) Duration {
+func WithDuration(d time.Duration) Duration {
 	return &duration{
-		d: frequency,
+		d: d,
 	}
 }
