@@ -1630,3 +1630,67 @@ func TestBufferWithInvalidInputs(t *testing.T) {
 	obs = Just(1, 2, 3, 4, errors.New("")).BufferWithCount(5, 0)
 	AssertThatObservable(t, obs, HasRaisedError(errors.New("")))
 }
+
+func TestBufferWithTimeWithMockedTime(t *testing.T) {
+	just := Just(1, 2, 3)
+
+	timespan := new(mockDuration)
+	timespan.On("duration").Return(10 * time.Second)
+
+	timeshift := new(mockDuration)
+	timeshift.On("duration").Return(10 * time.Second)
+
+	obs := just.BufferWithTime(timespan, timeshift)
+
+	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2, 3}))
+	timespan.AssertNumberOfCalls(t, "duration", 1)
+	timeshift.AssertNotCalled(t, "duration")
+}
+
+func TestBufferWithTimeWithMinorMockedTime(t *testing.T) {
+	ch := make(chan interface{})
+	it, err := iterable.New(ch)
+	if err != nil {
+		t.Fail()
+	}
+	from := From(it)
+
+	timespan := new(mockDuration)
+	timespan.On("duration").Return(1 * time.Millisecond)
+
+	timeshift := new(mockDuration)
+	timeshift.On("duration").Return(1 * time.Millisecond)
+
+	obs := from.BufferWithTime(timespan, timeshift)
+
+	time.Sleep(50 * time.Millisecond)
+	ch <- 1
+	close(ch)
+
+	obs.Subscribe(nil).Block()
+
+	timespan.AssertCalled(t, "duration")
+	timeshift.AssertCalled(t, "duration")
+}
+
+func TestBufferWithTimeWithIllegalInput(t *testing.T) {
+	AssertThatObservable(t, Empty().BufferWithTime(nil, nil), HasRaisedAnError())
+	AssertThatObservable(t, Empty().BufferWithTime(WithDuration(0*time.Second), nil), HasRaisedAnError())
+}
+
+func TestBufferWithTimeWithNilTimeshift(t *testing.T) {
+	just := Just(1, 2, 3)
+	obs := just.BufferWithTime(WithDuration(1*time.Second), nil)
+	AssertThatObservable(t, obs, IsNotEmpty())
+}
+
+func TestBufferWithTimeWithError(t *testing.T) {
+	just := Just(1, 2, 3, errors.New(""))
+	obs := just.BufferWithTime(WithDuration(1*time.Second), nil)
+	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2, 3}), HasRaisedAnError())
+}
+
+func TestBufferWithTimeWithEmpty(t *testing.T) {
+	obs := Empty().BufferWithTime(WithDuration(1*time.Second), WithDuration(1*time.Second))
+	AssertThatObservable(t, obs, IsEmpty())
+}

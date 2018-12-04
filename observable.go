@@ -24,6 +24,7 @@ type Observable interface {
 	AverageInt32() Single
 	AverageInt64() Single
 	BufferWithCount(count, skip int) Observable
+	BufferWithTime(timespan, timeshift Duration) Observable
 	Contains(equal Predicate) Single
 	Count() Single
 	DefaultIfEmpty(defaultValue interface{}) Observable
@@ -1005,6 +1006,86 @@ func (o *observable) BufferWithCount(count, skip int) Observable {
 		}
 
 		close(out)
+	}()
+	return &observable{ch: out}
+}
+
+// BufferWithTime returns an Observable that emits buffers of items it collects from the source
+// Observable. The resulting Observable starts a new buffer periodically, as determined by the
+// timeshift argument. It emits each buffer after a fixed timespan, specified by the timespan argument.
+// When the source Observable completes or encounters an error, the resulting Observable emits
+// the current buffer and propagates the notification from the source Observable.
+func (o *observable) BufferWithTime(timespan, timeshift Duration) Observable {
+	out := make(chan interface{})
+	go func() {
+		if timespan == nil || timespan.duration() == 0 {
+			out <- errors.New(errors.IllegalInputError, "timespan must not be nil")
+			close(out)
+			return
+		}
+
+		if timeshift == nil {
+			timeshift = WithDuration(0)
+		}
+
+		var mux sync.Mutex
+		buffer := make([]interface{}, 0)
+		stop := false
+		listen := true
+
+		// First goroutine in charge to check the timespan
+		go func() {
+			for {
+				time.Sleep(timespan.duration())
+				mux.Lock()
+				if !stop {
+					out <- buffer
+					buffer = make([]interface{}, 0)
+					mux.Unlock()
+
+					if timeshift.duration() != 0 {
+						listen = false
+						time.Sleep(timeshift.duration())
+						listen = true
+					}
+				} else {
+					mux.Unlock()
+					return
+				}
+			}
+		}()
+
+		// Second goroutine in charge to retrieve the items from the source observable
+		go func() {
+			for item := range o.ch {
+				switch item := item.(type) {
+				case error:
+					mux.Lock()
+					if len(buffer) > 0 {
+						out <- buffer
+					}
+					out <- item
+					close(out)
+					stop = true
+					mux.Unlock()
+					return
+				default:
+					mux.Lock()
+					if listen {
+						buffer = append(buffer, item)
+					}
+					mux.Unlock()
+				}
+			}
+			mux.Lock()
+			if len(buffer) > 0 {
+				out <- buffer
+			}
+			close(out)
+			stop = true
+			mux.Unlock()
+		}()
+
 	}()
 	return &observable{ch: out}
 }

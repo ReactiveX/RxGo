@@ -8,6 +8,6 @@ import (
 )
 
 func TestWithFrequency(t *testing.T) {
-	frequency := WithFrequency(100 * time.Millisecond)
+	frequency := WithDuration(100 * time.Millisecond)
 	assert.Equal(t, 100*time.Millisecond, frequency.duration())
 }
