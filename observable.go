@@ -161,24 +161,24 @@ func (o *observable) Subscribe(handler handlers.EventHandler, opts ...options.Op
 			}
 		}()
 	} else {
-		wg := sync.WaitGroup{}
-
-		var e error
+		results := make([]chan error, 0)
 		for i := 0; i < observableOptions.Parallelism(); i++ {
-			wg.Add(1)
-
+			ch := make(chan error)
 			go func() {
-				e = iterate(o, ob)
-				wg.Done()
+				ch <- iterate(o, ob)
 			}()
+			results = append(results, ch)
 		}
 
 		go func() {
-			wg.Wait()
-			// OnDone only gets executed if there's no error.
-			if e == nil {
-				ob.OnDone()
+			for _, ch := range results {
+				err := <-ch
+				if err != nil {
+					return
+				}
 			}
+
+			ob.OnDone()
 		}()
 	}
 
@@ -1030,6 +1030,7 @@ func (o *observable) BufferWithTime(timespan, timeshift Duration) Observable {
 		}
 
 		var mux sync.Mutex
+		var listenMutex sync.Mutex
 		buffer := make([]interface{}, 0)
 		stop := false
 		listen := true
@@ -1045,9 +1046,13 @@ func (o *observable) BufferWithTime(timespan, timeshift Duration) Observable {
 					mux.Unlock()
 
 					if timeshift.duration() != 0 {
+						listenMutex.Lock()
 						listen = false
+						listenMutex.Unlock()
 						time.Sleep(timeshift.duration())
+						listenMutex.Lock()
 						listen = true
+						listenMutex.Unlock()
 					}
 				} else {
 					mux.Unlock()
@@ -1071,8 +1076,12 @@ func (o *observable) BufferWithTime(timespan, timeshift Duration) Observable {
 					mux.Unlock()
 					return
 				default:
+					listenMutex.Lock()
+					l := listen
+					listenMutex.Unlock()
+
 					mux.Lock()
-					if listen {
+					if l {
 						buffer = append(buffer, item)
 					}
 					mux.Unlock()
@@ -1113,9 +1122,9 @@ func (o *observable) BufferWithTimeOrCount(timespan Duration, count int) Observa
 		}
 
 		sendCh := make(chan []interface{})
-		// Channel argument: send the current buffer before to close
-		stopCh := make(chan bool)
+		errCh := make(chan error)
 		buffer := make([]interface{}, 0)
+		var bufferMutex sync.Mutex
 
 		// First sender goroutine
 		go func() {
@@ -1123,17 +1132,23 @@ func (o *observable) BufferWithTimeOrCount(timespan Duration, count int) Observa
 				select {
 				case currentBuffer := <-sendCh:
 					out <- currentBuffer
-				case sendBuffer := <-stopCh:
-					if sendBuffer {
-						if len(buffer) > 0 {
-							out <- buffer
-						}
-						close(out)
+				case error := <-errCh:
+					if len(buffer) > 0 {
+						out <- buffer
 					}
+					if error != nil {
+						out <- error
+					}
+					close(out)
 					return
 				case <-time.After(timespan.duration()): // Send on timer
-					out <- buffer
+					bufferMutex.Lock()
+					b := make([]interface{}, len(buffer))
+					copy(b, buffer)
 					buffer = make([]interface{}, 0)
+					bufferMutex.Unlock()
+
+					out <- b
 				}
 			}
 		}()
@@ -1143,22 +1158,24 @@ func (o *observable) BufferWithTimeOrCount(timespan Duration, count int) Observa
 			for item := range o.ch {
 				switch item := item.(type) {
 				case error:
-					if len(buffer) > 0 {
-						out <- buffer
-					}
-					out <- item
-					close(out)
-					stopCh <- false
+					errCh <- item
 					return
 				default:
+					bufferMutex.Lock()
 					buffer = append(buffer, item)
 					if len(buffer) >= count {
-						sendCh <- buffer
+						b := make([]interface{}, len(buffer))
+						copy(b, buffer)
+						buffer = make([]interface{}, 0)
+						bufferMutex.Unlock()
+
+						sendCh <- b
+					} else {
+						bufferMutex.Unlock()
 					}
-					buffer = make([]interface{}, 0)
 				}
 			}
-			stopCh <- true
+			errCh <- nil
 		}()
 
 	}()

@@ -2,6 +2,7 @@ package rxgo
 
 import (
 	"github.com/reactivex/rxgo/handlers"
+	"sync"
 )
 
 // SingleObserver represents a group of EventHandlers.
@@ -16,10 +17,11 @@ type SingleObserver interface {
 }
 
 type singleObserver struct {
-	disposed    bool
-	nextHandler handlers.NextFunc
-	errHandler  handlers.ErrFunc
-	done        chan interface{}
+	disposedMutex sync.Mutex
+	disposed      bool
+	nextHandler   handlers.NextFunc
+	errHandler    handlers.ErrFunc
+	done          chan interface{}
 }
 
 // NewSinglesingleObserver constructs a new SingleObserver instance with default SingleObserver and accept
@@ -63,16 +65,23 @@ func (o *singleObserver) Handle(item interface{}) {
 }
 
 func (o *singleObserver) Dispose() {
+	o.disposedMutex.Lock()
 	o.disposed = true
+	o.disposedMutex.Unlock()
 }
 
 func (o *singleObserver) IsDisposed() bool {
+	o.disposedMutex.Lock()
+	defer o.disposedMutex.Unlock()
 	return o.disposed
 }
 
 // OnNext applies SingleObserver's NextHandler to an Item
 func (o *singleObserver) OnSuccess(item interface{}) {
-	if !o.disposed {
+	o.disposedMutex.Lock()
+	disposed := o.disposed
+	o.disposedMutex.Unlock()
+	if !disposed {
 		switch item := item.(type) {
 		case error:
 			return
@@ -93,7 +102,10 @@ func (o *singleObserver) OnSuccess(item interface{}) {
 
 // OnError applies SingleObserver's ErrHandler to an error
 func (o *singleObserver) OnError(err error) {
-	if !o.disposed {
+	o.disposedMutex.Lock()
+	disposed := o.disposed
+	o.disposedMutex.Unlock()
+	if !disposed {
 		if o.errHandler != nil {
 			o.errHandler(err)
 			o.Dispose()
@@ -109,7 +121,10 @@ func (o *singleObserver) OnError(err error) {
 
 // OnDone terminates the SingleObserver's internal Observable
 func (o *singleObserver) Block() (interface{}, error) {
-	if !o.disposed {
+	o.disposedMutex.Lock()
+	disposed := o.disposed
+	o.disposedMutex.Unlock()
+	if !disposed {
 		for v := range o.done {
 			switch v := v.(type) {
 			case error:
