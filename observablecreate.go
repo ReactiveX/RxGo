@@ -159,21 +159,13 @@ func Range(start, count int) (Observable, error) {
 
 // Just creates an Observable with the provided item(s).
 func Just(item interface{}, items ...interface{}) Observable {
-	out := make(chan interface{})
 	if len(items) > 0 {
 		items = append([]interface{}{item}, items...)
 	} else {
 		items = []interface{}{item}
 	}
 
-	go func() {
-		for _, item := range items {
-			out <- item
-		}
-		close(out)
-	}()
-
-	return NewObservableFromChannel(out)
+	return NewColdObservableFromSlice(items)
 }
 
 // Start creates an Observable from one or more directive-like Supplier

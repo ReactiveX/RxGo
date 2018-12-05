@@ -1591,3 +1591,9 @@ func TestSumFloat64(t *testing.T) {
 	AssertThatSingle(t, Just("x").SumFloat64(), HasRaisedAnError())
 	AssertThatSingle(t, Empty().SumFloat64(), HasValue(float64(0)))
 }
+
+func TestJustDoubleSubscription(t *testing.T) {
+	just := Just(1, 2, 3)
+	AssertThatObservable(t, just, HasItems(1, 2, 3))
+	AssertThatObservable(t, just, HasItems(1, 2, 3))
+}

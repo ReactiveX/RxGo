@@ -21,3 +21,18 @@ func TestIteratorFromChannel(t *testing.T) {
 	close(ch)
 	assert.False(t, it.Next())
 }
+
+func TestIteratorFromSlice(t *testing.T) {
+	it := NewIteratorFromSlice([]interface{}{1, 2, 3})
+
+	assert.True(t, it.Next())
+	assert.Equal(t, 1, it.Value())
+
+	assert.True(t, it.Next())
+	assert.Equal(t, 2, it.Value())
+
+	assert.True(t, it.Next())
+	assert.Equal(t, 3, it.Value())
+
+	assert.False(t, it.Next())
+}
