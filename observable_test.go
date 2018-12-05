@@ -1024,14 +1024,7 @@ func TestObservableZip(t *testing.T) {
 		return 0
 	}
 	zip := stream1.ZipFromObservable(stream2, zipper)
-	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
-		if num, ok := item.(int); ok {
-			nums = append(nums, num)
-		}
-	})
-	zip.Subscribe(onNext).Block()
-	assert.Exactly(t, []int{11, 22, 33}, nums)
+	AssertThatObservable(t, zip, HasItems(11, 22, 33))
 }
 
 func TestObservableZipWithDifferentLength1(t *testing.T) {
@@ -1048,14 +1041,7 @@ func TestObservableZipWithDifferentLength1(t *testing.T) {
 		return 0
 	}
 	zip := stream1.ZipFromObservable(stream2, zipper)
-	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
-		if num, ok := item.(int); ok {
-			nums = append(nums, num)
-		}
-	})
-	zip.Subscribe(onNext).Block()
-	assert.Exactly(t, []int{11, 22}, nums)
+	AssertThatObservable(t, zip, HasItems(11, 22))
 }
 
 func TestObservableZipWithDifferentLength2(t *testing.T) {
@@ -1072,14 +1058,7 @@ func TestObservableZipWithDifferentLength2(t *testing.T) {
 		return 0
 	}
 	zip := stream1.ZipFromObservable(stream2, zipper)
-	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
-		if num, ok := item.(int); ok {
-			nums = append(nums, num)
-		}
-	})
-	zip.Subscribe(onNext).Block()
-	assert.Exactly(t, []int{11, 22}, nums)
+	AssertThatObservable(t, zip, HasItems(11, 22))
 }
 
 func TestObservableZipWithEmpty(t *testing.T) {

@@ -12,6 +12,13 @@ import (
 	"github.com/reactivex/rxgo/options"
 )
 
+type observableType uint32
+
+const (
+	hotObservable observableType = iota
+	coldObservable
+)
+
 // Observable is a basic observable interface
 type Observable interface {
 	Iterable
@@ -70,6 +77,7 @@ type Observable interface {
 
 // observable is a structure handling a channel of interface{} and implementing Observable
 type observable struct {
+	observableType      observableType
 	iterator            Iterator
 	errorOnSubscription error
 	observableFactory   func() Observable
@@ -87,7 +95,8 @@ func NewObservableFromChannel(ch chan interface{}) Observable {
 // NewColdObservableFromSlice creates an Observable from a given channel
 func NewColdObservableFromSlice(s []interface{}) Observable {
 	return &observable{
-		iterator: NewIteratorFromSlice(s),
+		observableType: coldObservable,
+		iterator:       NewIteratorFromSlice(s),
 	}
 }
 
@@ -126,7 +135,11 @@ func iterate(observable Observable, observer Observer) error {
 }
 
 func (o *observable) Iterator() Iterator {
-	return o.iterator
+	if o.observableType == hotObservable {
+		return o.iterator
+	} else {
+		return o.iterator.clone()
+	}
 }
 
 // Subscribe subscribes an EventHandler and returns a Subscription channel.
@@ -585,11 +598,11 @@ func (o *observable) ZipFromObservable(publisher Observable, zipper Function2) O
 	out := make(chan interface{})
 	go func() {
 		it := o.iterator
+		it2 := publisher.Iterator()
 	OuterLoop:
 		for it.Next() {
 			item1 := it.Value()
 
-			it2 := publisher.Iterator()
 			for it2.Next() {
 				item2 := it2.Value()
 				out <- zipper(item1, item2)
