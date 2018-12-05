@@ -8,7 +8,6 @@ import (
 
 	rxerrors "github.com/reactivex/rxgo/errors"
 	"github.com/reactivex/rxgo/handlers"
-	"github.com/reactivex/rxgo/iterable"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -152,12 +151,7 @@ func TestDefer(t *testing.T) {
 	})
 	// First subscriber
 	stream1 := Defer(func() Observable {
-		items := []interface{}{test}
-		it, err := iterable.New(items)
-		if err != nil {
-			t.Fail()
-		}
-		return From(it)
+		return Just(test)
 	})
 	test = 3
 	stream2 := stream1.Map(func(i interface{}) interface{} {

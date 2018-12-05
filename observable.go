@@ -14,7 +14,7 @@ import (
 
 // Observable is a basic observable interface
 type Observable interface {
-	Iterator
+	Iterable
 	All(predicate Predicate) Single
 	AverageFloat32() Single
 	AverageFloat64() Single
@@ -70,25 +70,17 @@ type Observable interface {
 
 // observable is a structure handling a channel of interface{} and implementing Observable
 type observable struct {
-	ch                  chan interface{}
+	iterator            Iterator
 	errorOnSubscription error
 	observableFactory   func() Observable
 	onErrorReturn       ErrorFunction
 	onErrorResumeNext   ErrorToObservableFunction
 }
 
-// NewObservable creates an Observable
-func NewObservable(buffer uint) Observable {
-	ch := make(chan interface{}, int(buffer))
-	return &observable{
-		ch: ch,
-	}
-}
-
 // NewObservableFromChannel creates an Observable from a given channel
 func NewObservableFromChannel(ch chan interface{}) Observable {
 	return &observable{
-		ch: ch,
+		iterator: NewIteratorFromChannel(ch),
 	}
 }
 
@@ -103,44 +95,31 @@ func CheckEventHandlers(handler ...handlers.EventHandler) Observer {
 }
 
 func iterate(observable Observable, observer Observer) error {
-	for {
-		item, err := observable.Next()
-		if err != nil {
-			switch err := err.(type) {
-			case errors.BaseError:
-				if errors.ErrorCode(err.Code()) == errors.EndOfIteratorError {
-					return nil
-				}
+	it := observable.Iterator()
+	for it.Next() {
+		item := it.Value()
+		switch item := item.(type) {
+		case error:
+			if observable.getOnErrorReturn() != nil {
+				observer.OnNext(observable.getOnErrorReturn()(item))
+				// Stop the subscription
+				return nil
+			} else if observable.getOnErrorResumeNext() != nil {
+				observable = observable.getOnErrorResumeNext()(item)
+				it = observable.Iterator()
+			} else {
+				observer.OnError(item)
+				return item
 			}
-		} else {
-			switch item := item.(type) {
-			case error:
-				if observable.getOnErrorReturn() != nil {
-					observer.OnNext(observable.getOnErrorReturn()(item))
-					// Stop the subscription
-					return nil
-				} else if observable.getOnErrorResumeNext() != nil {
-					observable = observable.getOnErrorResumeNext()(item)
-				} else {
-					observer.OnError(item)
-					return item
-				}
-			default:
-				observer.OnNext(item)
-			}
-
+		default:
+			observer.OnNext(item)
 		}
 	}
-
 	return nil
 }
 
-// Next returns the next item on the Observable.
-func (o *observable) Next() (interface{}, error) {
-	if next, ok := <-o.ch; ok {
-		return next, nil
-	}
-	return nil, errors.New(errors.EndOfIteratorError)
+func (o *observable) Iterator() Iterator {
+	return o.iterator
 }
 
 // Subscribe subscribes an EventHandler and returns a Subscription channel.
@@ -164,25 +143,26 @@ func (o *observable) Subscribe(handler handlers.EventHandler, opts ...options.Op
 			}
 		}()
 	} else {
-		results := make([]chan error, 0)
-		for i := 0; i < observableOptions.Parallelism(); i++ {
-			ch := make(chan error)
-			go func() {
-				ch <- iterate(o, ob)
-			}()
-			results = append(results, ch)
-		}
-
-		go func() {
-			for _, ch := range results {
-				err := <-ch
-				if err != nil {
-					return
-				}
-			}
-
-			ob.OnDone()
-		}()
+		// FIXME Data race
+		//results := make([]chan error, 0)
+		//for i := 0; i < observableOptions.Parallelism(); i++ {
+		//	ch := make(chan error)
+		//	go func() {
+		//		ch <- iterate(o, ob)
+		//	}()
+		//	results = append(results, ch)
+		//}
+		//
+		//go func() {
+		//	for _, ch := range results {
+		//		err := <-ch
+		//		if err != nil {
+		//			return
+		//		}
+		//	}
+		//
+		//	ob.OnDone()
+		//}()
 	}
 
 	return ob
@@ -193,22 +173,20 @@ func (o *observable) Subscribe(handler handlers.EventHandler, opts ...options.Op
 func (o *observable) Map(apply Function) Observable {
 	out := make(chan interface{})
 
-	var it Observable = o
+	var obs Observable = o
 	if o.observableFactory != nil {
-		it = o.observableFactory()
+		obs = o.observableFactory()
 	}
 
 	go func() {
-		for {
-			item, err := it.Next()
-			if err != nil {
-				break
-			}
+		it := obs.Iterator()
+		for it.Next() {
+			item := it.Value()
 			out <- apply(item)
 		}
 		close(out)
 	}()
-	return &observable{ch: out}
+	return NewObservableFromChannel(out)
 }
 
 /*
@@ -222,7 +200,10 @@ func (o *observable) ElementAt(index uint) Single {
 	out := make(chan interface{})
 	go func() {
 		takeCount := 0
-		for item := range o.ch {
+
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			if takeCount == int(index) {
 				out <- item
 				close(out)
@@ -242,7 +223,9 @@ func (o *observable) Take(nth uint) Observable {
 	out := make(chan interface{})
 	go func() {
 		takeCount := 0
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			if takeCount < int(nth) {
 				takeCount += 1
 				out <- item
@@ -252,7 +235,7 @@ func (o *observable) Take(nth uint) Observable {
 		}
 		close(out)
 	}()
-	return &observable{ch: out}
+	return NewObservableFromChannel(out)
 }
 
 // TakeLast takes last n items in the original Observable and returns
@@ -261,7 +244,9 @@ func (o *observable) TakeLast(nth uint) Observable {
 	out := make(chan interface{})
 	go func() {
 		buf := make([]interface{}, nth)
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			if len(buf) >= int(nth) {
 				buf = buf[1:]
 			}
@@ -272,7 +257,7 @@ func (o *observable) TakeLast(nth uint) Observable {
 		}
 		close(out)
 	}()
-	return &observable{ch: out}
+	return NewObservableFromChannel(out)
 }
 
 // Filter filters items in the original Observable and returns
@@ -280,27 +265,31 @@ func (o *observable) TakeLast(nth uint) Observable {
 func (o *observable) Filter(apply Predicate) Observable {
 	out := make(chan interface{})
 	go func() {
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			if apply(item) {
 				out <- item
 			}
 		}
 		close(out)
 	}()
-	return &observable{ch: out}
+	return NewObservableFromChannel(out)
 }
 
 // First returns new Observable which emit only first item.
 func (o *observable) First() Observable {
 	out := make(chan interface{})
 	go func() {
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			out <- item
 			break
 		}
 		close(out)
 	}()
-	return &observable{ch: out}
+	return NewObservableFromChannel(out)
 }
 
 // Last returns a new Observable which emit only last item.
@@ -308,13 +297,15 @@ func (o *observable) Last() Observable {
 	out := make(chan interface{})
 	go func() {
 		var last interface{}
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			last = item
 		}
 		out <- last
 		close(out)
 	}()
-	return &observable{ch: out}
+	return NewObservableFromChannel(out)
 }
 
 // Distinct suppresses duplicate items in the original Observable and returns
@@ -323,7 +314,9 @@ func (o *observable) Distinct(apply Function) Observable {
 	out := make(chan interface{})
 	go func() {
 		keysets := make(map[interface{}]struct{})
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			key := apply(item)
 			_, ok := keysets[key]
 			if !ok {
@@ -333,7 +326,7 @@ func (o *observable) Distinct(apply Function) Observable {
 		}
 		close(out)
 	}()
-	return &observable{ch: out}
+	return NewObservableFromChannel(out)
 }
 
 // DistinctUntilChanged suppresses consecutive duplicate items in the original
@@ -342,7 +335,9 @@ func (o *observable) DistinctUntilChanged(apply Function) Observable {
 	out := make(chan interface{})
 	go func() {
 		var current interface{}
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			key := apply(item)
 			if current != key {
 				out <- item
@@ -351,7 +346,7 @@ func (o *observable) DistinctUntilChanged(apply Function) Observable {
 		}
 		close(out)
 	}()
-	return &observable{ch: out}
+	return NewObservableFromChannel(out)
 }
 
 // Skip suppresses the first n items in the original Observable and
@@ -360,7 +355,9 @@ func (o *observable) Skip(nth uint) Observable {
 	out := make(chan interface{})
 	go func() {
 		skipCount := 0
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			if skipCount < int(nth) {
 				skipCount += 1
 				continue
@@ -369,7 +366,7 @@ func (o *observable) Skip(nth uint) Observable {
 		}
 		close(out)
 	}()
-	return &observable{ch: out}
+	return NewObservableFromChannel(out)
 }
 
 // SkipLast suppresses the last n items in the original Observable and
@@ -378,7 +375,9 @@ func (o *observable) SkipLast(nth uint) Observable {
 	out := make(chan interface{})
 	go func() {
 		buf := make(chan interface{}, nth)
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			select {
 			case buf <- item:
 			default:
@@ -389,7 +388,7 @@ func (o *observable) SkipLast(nth uint) Observable {
 		close(buf)
 		close(out)
 	}()
-	return &observable{ch: out}
+	return NewObservableFromChannel(out)
 }
 
 // Scan applies Function2 predicate to each item in the original
@@ -399,14 +398,16 @@ func (o *observable) Scan(apply Function2) Observable {
 
 	go func() {
 		var current interface{}
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			tmp := apply(current, item)
 			out <- tmp
 			current = tmp
 		}
 		close(out)
 	}()
-	return &observable{ch: out}
+	return NewObservableFromChannel(out)
 }
 
 func (o *observable) Reduce(apply Function2) OptionalSingle {
@@ -414,7 +415,9 @@ func (o *observable) Reduce(apply Function2) OptionalSingle {
 	go func() {
 		var acc interface{}
 		empty := true
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			empty = false
 			acc = apply(acc, item)
 		}
@@ -432,7 +435,8 @@ func (o *observable) Count() Single {
 	out := make(chan interface{})
 	go func() {
 		var count int64
-		for range o.ch {
+		it := o.iterator
+		for it.Next() {
 			count++
 		}
 		out <- count
@@ -447,7 +451,9 @@ func (o *observable) FirstOrDefault(defaultValue interface{}) Single {
 	out := make(chan interface{})
 	go func() {
 		first := defaultValue
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			first = item
 			break
 		}
@@ -463,7 +469,9 @@ func (o *observable) LastOrDefault(defaultValue interface{}) Single {
 	out := make(chan interface{})
 	go func() {
 		last := defaultValue
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			last = item
 		}
 		out <- last
@@ -477,7 +485,9 @@ func (o *observable) LastOrDefault(defaultValue interface{}) Single {
 func (o *observable) TakeWhile(apply Predicate) Observable {
 	out := make(chan interface{})
 	go func() {
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			if apply(item) {
 				out <- item
 				continue
@@ -486,7 +496,7 @@ func (o *observable) TakeWhile(apply Predicate) Observable {
 		}
 		close(out)
 	}()
-	return &observable{ch: out}
+	return NewObservableFromChannel(out)
 }
 
 // SkipWhile discard items emitted by an Observable until a specified condition becomes false.
@@ -494,7 +504,9 @@ func (o *observable) SkipWhile(apply Predicate) Observable {
 	out := make(chan interface{})
 	go func() {
 		skip := true
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			if !skip {
 				out <- item
 			} else {
@@ -506,7 +518,7 @@ func (o *observable) SkipWhile(apply Predicate) Observable {
 		}
 		close(out)
 	}()
-	return &observable{ch: out}
+	return NewObservableFromChannel(out)
 }
 
 // ToList collects all items from an Observable and emit them as a single List.
@@ -514,13 +526,15 @@ func (o *observable) ToList() Observable {
 	out := make(chan interface{})
 	go func() {
 		s := make([]interface{}, 0)
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			s = append(s, item)
 		}
 		out <- s
 		close(out)
 	}()
-	return &observable{ch: out}
+	return NewObservableFromChannel(out)
 }
 
 // ToMap convert the sequence of items emitted by an Observable
@@ -529,13 +543,15 @@ func (o *observable) ToMap(keySelector Function) Observable {
 	out := make(chan interface{})
 	go func() {
 		m := make(map[interface{}]interface{})
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			m[keySelector(item)] = item
 		}
 		out <- m
 		close(out)
 	}()
-	return &observable{ch: out}
+	return NewObservableFromChannel(out)
 }
 
 // ToMapWithValueSelector convert the sequence of items emitted by an Observable
@@ -545,13 +561,15 @@ func (o *observable) ToMapWithValueSelector(keySelector Function, valueSelector 
 	out := make(chan interface{})
 	go func() {
 		m := make(map[interface{}]interface{})
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			m[keySelector(item)] = valueSelector(item)
 		}
 		out <- m
 		close(out)
 	}()
-	return &observable{ch: out}
+	return NewObservableFromChannel(out)
 }
 
 // ZipFromObservable che emissions of multiple Observables together via a specified function
@@ -559,13 +577,14 @@ func (o *observable) ToMapWithValueSelector(keySelector Function, valueSelector 
 func (o *observable) ZipFromObservable(publisher Observable, zipper Function2) Observable {
 	out := make(chan interface{})
 	go func() {
+		it := o.iterator
 	OuterLoop:
-		for item1 := range o.ch {
-			for {
-				item2, err := publisher.Next()
-				if err != nil {
-					break
-				}
+		for it.Next() {
+			item1 := it.Value()
+
+			it2 := publisher.Iterator()
+			for it2.Next() {
+				item2 := it2.Value()
 				out <- zipper(item1, item2)
 				continue OuterLoop
 			}
@@ -573,7 +592,7 @@ func (o *observable) ZipFromObservable(publisher Observable, zipper Function2) O
 		}
 		close(out)
 	}()
-	return &observable{ch: out}
+	return NewObservableFromChannel(out)
 }
 
 // ForEach subscribes to the Observable and receives notifications for each element.
@@ -585,13 +604,15 @@ func (o *observable) ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFun
 // Publish returns a ConnectableObservable which waits until its connect method
 // is called before it begins emitting items to those Observers that have subscribed to it.
 func (o *observable) Publish() ConnectableObservable {
-	return NewConnectableObservable(o)
+	return newConnectableObservableFromObservable(o)
 }
 
 func (o *observable) All(predicate Predicate) Single {
 	out := make(chan interface{})
 	go func() {
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			if !predicate(item) {
 				out <- false
 				close(out)
@@ -633,7 +654,9 @@ func (o *observable) getOnErrorResumeNext() ErrorToObservableFunction {
 func (o *observable) Contains(equal Predicate) Single {
 	out := make(chan interface{})
 	go func() {
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			if equal(item) {
 				out <- true
 				close(out)
@@ -652,7 +675,9 @@ func (o *observable) DefaultIfEmpty(defaultValue interface{}) Observable {
 	out := make(chan interface{})
 	go func() {
 		empty := true
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			empty = false
 			out <- item
 		}
@@ -661,7 +686,7 @@ func (o *observable) DefaultIfEmpty(defaultValue interface{}) Observable {
 		}
 		close(out)
 	}()
-	return &observable{ch: out}
+	return NewObservableFromChannel(out)
 }
 
 // DoOnEach operator allows you to establish a callback that the resulting Observable
@@ -669,13 +694,15 @@ func (o *observable) DefaultIfEmpty(defaultValue interface{}) Observable {
 func (o *observable) DoOnEach(onNotification Consumer) Observable {
 	out := make(chan interface{})
 	go func() {
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			out <- item
 			onNotification(item)
 		}
 		close(out)
 	}()
-	return &observable{ch: out}
+	return NewObservableFromChannel(out)
 }
 
 // Repeat returns an Observable that repeats the sequence of items emitted by the source Observable
@@ -691,7 +718,9 @@ func (o *observable) Repeat(count int64, frequency Duration) Observable {
 
 	go func() {
 		persist := make([]interface{}, 0)
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			out <- item
 			persist = append(persist, item)
 		}
@@ -715,7 +744,7 @@ func (o *observable) Repeat(count int64, frequency Duration) Observable {
 		}
 		close(out)
 	}()
-	return &observable{ch: out}
+	return NewObservableFromChannel(out)
 }
 
 // AverageInt calculates the average of numbers emitted by an Observable and emits this average int.
@@ -724,7 +753,9 @@ func (o *observable) AverageInt() Single {
 	go func() {
 		sum := 0
 		count := 0
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			if v, ok := item.(int); ok {
 				sum = sum + v
 				count = count + 1
@@ -750,7 +781,9 @@ func (o *observable) AverageInt8() Single {
 	go func() {
 		var sum int8 = 0
 		var count int8 = 0
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			if v, ok := item.(int8); ok {
 				sum = sum + v
 				count = count + 1
@@ -776,7 +809,9 @@ func (o *observable) AverageInt16() Single {
 	go func() {
 		var sum int16 = 0
 		var count int16 = 0
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			if v, ok := item.(int16); ok {
 				sum = sum + v
 				count = count + 1
@@ -802,7 +837,9 @@ func (o *observable) AverageInt32() Single {
 	go func() {
 		var sum int32 = 0
 		var count int32 = 0
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			if v, ok := item.(int32); ok {
 				sum = sum + v
 				count = count + 1
@@ -828,7 +865,9 @@ func (o *observable) AverageInt64() Single {
 	go func() {
 		var sum int64 = 0
 		var count int64 = 0
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			if v, ok := item.(int64); ok {
 				sum = sum + v
 				count = count + 1
@@ -854,7 +893,9 @@ func (o *observable) AverageFloat32() Single {
 	go func() {
 		var sum float32 = 0
 		var count float32 = 0
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			if v, ok := item.(float32); ok {
 				sum = sum + v
 				count = count + 1
@@ -880,7 +921,9 @@ func (o *observable) AverageFloat64() Single {
 	go func() {
 		var sum float64 = 0
 		var count float64 = 0
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			if v, ok := item.(float64); ok {
 				sum = sum + v
 				count = count + 1
@@ -906,7 +949,9 @@ func (o *observable) Max(comparator Comparator) OptionalSingle {
 	go func() {
 		empty := true
 		var max interface{} = nil
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			empty = false
 
 			if max == nil {
@@ -933,7 +978,9 @@ func (o *observable) Min(comparator Comparator) OptionalSingle {
 	go func() {
 		empty := true
 		var min interface{} = nil
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			empty = false
 
 			if min == nil {
@@ -978,7 +1025,9 @@ func (o *observable) BufferWithCount(count, skip int) Observable {
 		buffer := make([]interface{}, count, count)
 		iCount := 0
 		iSkip := 0
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			switch item := item.(type) {
 			case error:
 				if iCount != 0 {
@@ -1004,14 +1053,13 @@ func (o *observable) BufferWithCount(count, skip int) Observable {
 				}
 			}
 		}
-
 		if iCount != 0 {
 			out <- buffer[:iCount]
 		}
 
 		close(out)
 	}()
-	return &observable{ch: out}
+	return NewObservableFromChannel(out)
 }
 
 // BufferWithTime returns an Observable that emits buffers of items it collects from the source
@@ -1066,7 +1114,9 @@ func (o *observable) BufferWithTime(timespan, timeshift Duration) Observable {
 
 		// Second goroutine in charge to retrieve the items from the source observable
 		go func() {
-			for item := range o.ch {
+			it := o.iterator
+			for it.Next() {
+				item := it.Value()
 				switch item := item.(type) {
 				case error:
 					mux.Lock()
@@ -1100,7 +1150,7 @@ func (o *observable) BufferWithTime(timespan, timeshift Duration) Observable {
 		}()
 
 	}()
-	return &observable{ch: out}
+	return NewObservableFromChannel(out)
 }
 
 // BufferWithTimeOrCount returns an Observable that emits buffers of items it collects
@@ -1158,7 +1208,9 @@ func (o *observable) BufferWithTimeOrCount(timespan Duration, count int) Observa
 
 		// Second goroutine in charge to retrieve the items from the source observable
 		go func() {
-			for item := range o.ch {
+			it := o.iterator
+			for it.Next() {
+				item := it.Value()
 				switch item := item.(type) {
 				case error:
 					errCh <- item
@@ -1182,7 +1234,7 @@ func (o *observable) BufferWithTimeOrCount(timespan Duration, count int) Observa
 		}()
 
 	}()
-	return &observable{ch: out}
+	return NewObservableFromChannel(out)
 }
 
 // SumInt64 calculates the average of integers emitted by an Observable and emits an int64.
@@ -1190,7 +1242,9 @@ func (o *observable) SumInt64() Single {
 	out := make(chan interface{})
 	go func() {
 		var sum int64
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			switch item := item.(type) {
 			case int:
 				sum = sum + int64(item)
@@ -1220,7 +1274,9 @@ func (o *observable) SumFloat32() Single {
 	out := make(chan interface{})
 	go func() {
 		var sum float32
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			switch item := item.(type) {
 			case int:
 				sum = sum + float32(item)
@@ -1252,7 +1308,9 @@ func (o *observable) SumFloat64() Single {
 	out := make(chan interface{})
 	go func() {
 		var sum float64
-		for item := range o.ch {
+		it := o.iterator
+		for it.Next() {
+			item := it.Value()
 			switch item := item.(type) {
 			case int:
 				sum = sum + float64(item)

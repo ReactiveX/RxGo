@@ -8,19 +8,26 @@ import (
 )
 
 type ConnectableObservable interface {
+	Iterable
 	Connect() Observer
 	Subscribe(handler handlers.EventHandler, opts ...options.Option) Observer
 }
 
 type connectableObservable struct {
+	iterator   Iterator
 	observable Observable
 	observers  []Observer
 }
 
-func NewConnectableObservable(observable Observable) ConnectableObservable {
+func newConnectableObservableFromObservable(observable Observable) ConnectableObservable {
 	return &connectableObservable{
 		observable: observable,
+		iterator:   observable.Iterator(),
 	}
+}
+
+func (c *connectableObservable) Iterator() Iterator {
+	return c.iterator
 }
 
 func (c *connectableObservable) Subscribe(handler handlers.EventHandler, opts ...options.Option) Observer {
@@ -32,11 +39,9 @@ func (c *connectableObservable) Subscribe(handler handlers.EventHandler, opts ..
 func (c *connectableObservable) Connect() Observer {
 	source := make([]interface{}, 0)
 
-	for {
-		item, err := c.observable.Next()
-		if err != nil {
-			break
-		}
+	it := c.iterator
+	for it.Next() {
+		item := it.Value()
 		source = append(source, item)
 	}
 
