@@ -347,3 +347,19 @@ func TestRangeWithMaximumExceeded(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.Nil(t, r)
 }
+
+func TestTimer(t *testing.T) {
+	d := new(mockDuration)
+	d.On("duration").Return(1 * time.Millisecond)
+
+	obs := Timer(d)
+
+	AssertThatObservable(t, obs, HasItems(float64(0)))
+	d.AssertCalled(t, "duration")
+}
+
+func TestTimerWithNilDuration(t *testing.T) {
+	obs := Timer(nil)
+
+	AssertThatObservable(t, obs, HasItems(float64(0)))
+}

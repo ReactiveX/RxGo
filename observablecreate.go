@@ -233,3 +233,19 @@ func Never() Observable {
 	out := make(chan interface{})
 	return newObservableFromChannel(out)
 }
+
+// Timer returns an Observable that emits the zeroed value of a float64 after a
+// specified delay, and then completes.
+func Timer(d Duration) Observable {
+	out := make(chan interface{})
+	go func() {
+		if d == nil {
+			time.Sleep(0)
+		} else {
+			time.Sleep(d.duration())
+		}
+		out <- 0.
+		close(out)
+	}()
+	return newObservableFromChannel(out)
+}
