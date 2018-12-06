@@ -60,7 +60,7 @@ func Create(source func(emitter Observer, disposed bool)) Observable {
 		source(emitter, isClosed(out))
 	}()
 
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }
 
 // Concat emit the emissions from two or more Observables without interleaving them
@@ -83,7 +83,7 @@ func Concat(observable1 Observable, observables ...Observable) Observable {
 
 		close(out)
 	}()
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }
 
 // Defer waits until an observer subscribes to it, and then it generates an Observable.
@@ -98,7 +98,11 @@ func FromSlice(s []interface{}) Observable {
 }
 
 func FromChannel(ch chan interface{}) Observable {
-	return NewObservableFromChannel(ch)
+	return newObservableFromChannel(ch)
+}
+
+func FromIterable(it Iterable) Observable {
+	return newObservableFromIterable(it)
 }
 
 // From creates a new Observable from an Iterator.
@@ -111,7 +115,7 @@ func From(it Iterator) Observable {
 		}
 		close(out)
 	}()
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }
 
 // Error returns an Observable that invokes an Observer's onError method
@@ -128,7 +132,7 @@ func Empty() Observable {
 	go func() {
 		close(out)
 	}()
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }
 
 // Interval creates an Observable emitting incremental integers infinitely between
@@ -149,7 +153,7 @@ func Interval(term chan struct{}, interval time.Duration) Observable {
 		}
 		close(out)
 	}(term)
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }
 
 // Range creates an Observable that emits a particular range of sequential integers.
@@ -170,7 +174,7 @@ func Range(start, count int) (Observable, error) {
 		}
 		close(out)
 	}()
-	return NewObservableFromChannel(out), nil
+	return newObservableFromChannel(out), nil
 }
 
 // Just creates an Observable with the provided item(s).
@@ -210,7 +214,7 @@ func Start(f Supplier, fs ...Supplier) Observable {
 		close(out)
 	}()
 
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }
 
 // Never create an Observable that emits no items and does not terminate
@@ -219,5 +223,5 @@ func Never() Observable {
 	go func() {
 		select {}
 	}()
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }

@@ -85,10 +85,17 @@ type observable struct {
 	onErrorResumeNext   ErrorToObservableFunction
 }
 
-// NewObservableFromChannel creates an Observable from a given channel
-func NewObservableFromChannel(ch chan interface{}) Observable {
+// newObservableFromChannel creates an Observable from a given channel
+func newObservableFromChannel(ch chan interface{}) Observable {
 	return &observable{
 		iterator: NewIteratorFromChannel(ch),
+	}
+}
+
+// newObservableFromIterable creates an Observable from a given iterable
+func newObservableFromIterable(it Iterable) Observable {
+	return &observable{
+		iterator: it.Iterator(),
 	}
 }
 
@@ -198,7 +205,7 @@ func (o *observable) Map(apply Function) Observable {
 		}
 		close(out)
 	}()
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }
 
 /*
@@ -247,7 +254,7 @@ func (o *observable) Take(nth uint) Observable {
 		}
 		close(out)
 	}()
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }
 
 // TakeLast takes last n items in the original Observable and returns
@@ -269,7 +276,7 @@ func (o *observable) TakeLast(nth uint) Observable {
 		}
 		close(out)
 	}()
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }
 
 // Filter filters items in the original Observable and returns
@@ -286,7 +293,7 @@ func (o *observable) Filter(apply Predicate) Observable {
 		}
 		close(out)
 	}()
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }
 
 // First returns new Observable which emit only first item.
@@ -301,7 +308,7 @@ func (o *observable) First() Observable {
 		}
 		close(out)
 	}()
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }
 
 // Last returns a new Observable which emit only last item.
@@ -317,7 +324,7 @@ func (o *observable) Last() Observable {
 		out <- last
 		close(out)
 	}()
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }
 
 // Distinct suppresses duplicate items in the original Observable and returns
@@ -338,7 +345,7 @@ func (o *observable) Distinct(apply Function) Observable {
 		}
 		close(out)
 	}()
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }
 
 // DistinctUntilChanged suppresses consecutive duplicate items in the original
@@ -358,7 +365,7 @@ func (o *observable) DistinctUntilChanged(apply Function) Observable {
 		}
 		close(out)
 	}()
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }
 
 // Skip suppresses the first n items in the original Observable and
@@ -378,7 +385,7 @@ func (o *observable) Skip(nth uint) Observable {
 		}
 		close(out)
 	}()
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }
 
 // SkipLast suppresses the last n items in the original Observable and
@@ -400,7 +407,7 @@ func (o *observable) SkipLast(nth uint) Observable {
 		close(buf)
 		close(out)
 	}()
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }
 
 // Scan applies Function2 predicate to each item in the original
@@ -419,7 +426,7 @@ func (o *observable) Scan(apply Function2) Observable {
 		}
 		close(out)
 	}()
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }
 
 func (o *observable) Reduce(apply Function2) OptionalSingle {
@@ -508,7 +515,7 @@ func (o *observable) TakeWhile(apply Predicate) Observable {
 		}
 		close(out)
 	}()
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }
 
 // SkipWhile discard items emitted by an Observable until a specified condition becomes false.
@@ -530,7 +537,7 @@ func (o *observable) SkipWhile(apply Predicate) Observable {
 		}
 		close(out)
 	}()
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }
 
 // ToList collects all items from an Observable and emit them as a single List.
@@ -546,7 +553,7 @@ func (o *observable) ToList() Observable {
 		out <- s
 		close(out)
 	}()
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }
 
 // ToMap convert the sequence of items emitted by an Observable
@@ -563,7 +570,7 @@ func (o *observable) ToMap(keySelector Function) Observable {
 		out <- m
 		close(out)
 	}()
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }
 
 // ToMapWithValueSelector convert the sequence of items emitted by an Observable
@@ -581,7 +588,7 @@ func (o *observable) ToMapWithValueSelector(keySelector Function, valueSelector 
 		out <- m
 		close(out)
 	}()
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }
 
 // ZipFromObservable che emissions of multiple Observables together via a specified function
@@ -604,7 +611,7 @@ func (o *observable) ZipFromObservable(publisher Observable, zipper Function2) O
 		}
 		close(out)
 	}()
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }
 
 // ForEach subscribes to the Observable and receives notifications for each element.
@@ -698,7 +705,7 @@ func (o *observable) DefaultIfEmpty(defaultValue interface{}) Observable {
 		}
 		close(out)
 	}()
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }
 
 // DoOnEach operator allows you to establish a callback that the resulting Observable
@@ -714,7 +721,7 @@ func (o *observable) DoOnEach(onNotification Consumer) Observable {
 		}
 		close(out)
 	}()
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }
 
 // Repeat returns an Observable that repeats the sequence of items emitted by the source Observable
@@ -756,7 +763,7 @@ func (o *observable) Repeat(count int64, frequency Duration) Observable {
 		}
 		close(out)
 	}()
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }
 
 // AverageInt calculates the average of numbers emitted by an Observable and emits this average int.
@@ -1071,7 +1078,7 @@ func (o *observable) BufferWithCount(count, skip int) Observable {
 
 		close(out)
 	}()
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }
 
 // BufferWithTime returns an Observable that emits buffers of items it collects from the source
@@ -1162,7 +1169,7 @@ func (o *observable) BufferWithTime(timespan, timeshift Duration) Observable {
 		}()
 
 	}()
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }
 
 // BufferWithTimeOrCount returns an Observable that emits buffers of items it collects
@@ -1246,7 +1253,7 @@ func (o *observable) BufferWithTimeOrCount(timespan Duration, count int) Observa
 		}()
 
 	}()
-	return NewObservableFromChannel(out)
+	return newObservableFromChannel(out)
 }
 
 // SumInt64 calculates the average of integers emitted by an Observable and emits an int64.
