@@ -9,6 +9,27 @@ import (
 	"github.com/reactivex/rxgo/handlers"
 )
 
+// newObservableFromChannel creates an Observable from a given channel
+func newObservableFromChannel(ch chan interface{}) Observable {
+	return &observable{
+		iterable: NewIterableFromChannel(ch),
+	}
+}
+
+// newObservableFromIterable creates an Observable from a given iterable
+func newObservableFromIterable(it Iterable) Observable {
+	return &observable{
+		iterable: it,
+	}
+}
+
+// newObservableFromSlice creates an Observable from a given channel
+func newObservableFromSlice(s []interface{}) Observable {
+	return &observable{
+		iterable: NewIterableFromSlice(s),
+	}
+}
+
 func isClosed(ch <-chan interface{}) bool {
 	select {
 	case <-ch:
@@ -17,14 +38,6 @@ func isClosed(ch <-chan interface{}) bool {
 	}
 
 	return false
-}
-
-// newObservableFromSlice creates an Observable from a given channel
-func newObservableFromSlice(s []interface{}) Observable {
-	return &observable{
-		observableType: coldObservable,
-		iterator:       NewIteratorFromSlice(s),
-	}
 }
 
 // Creates observable from based on source function. Keep it mind to call emitter.OnDone()

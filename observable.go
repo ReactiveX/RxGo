@@ -78,25 +78,11 @@ type Observable interface {
 // observable is a structure handling a channel of interface{} and implementing Observable
 type observable struct {
 	observableType      observableType
-	iterator            Iterator
+	iterable            Iterable
 	errorOnSubscription error
 	observableFactory   func() Observable
 	onErrorReturn       ErrorFunction
 	onErrorResumeNext   ErrorToObservableFunction
-}
-
-// newObservableFromChannel creates an Observable from a given channel
-func newObservableFromChannel(ch chan interface{}) Observable {
-	return &observable{
-		iterator: NewIteratorFromChannel(ch),
-	}
-}
-
-// newObservableFromIterable creates an Observable from a given iterable
-func newObservableFromIterable(it Iterable) Observable {
-	return &observable{
-		iterator: it.Iterator(),
-	}
 }
 
 // CheckHandler checks the underlying type of an EventHandler.
@@ -134,11 +120,7 @@ func iterate(observable Observable, observer Observer) error {
 }
 
 func (o *observable) Iterator() Iterator {
-	if o.observableType == hotObservable {
-		return o.iterator
-	} else {
-		return o.iterator.clone()
-	}
+	return o.iterable.Iterator()
 }
 
 // Subscribe subscribes an EventHandler and returns a Subscription channel.
@@ -220,7 +202,7 @@ func (o *observable) ElementAt(index uint) Single {
 	go func() {
 		takeCount := 0
 
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			if takeCount == int(index) {
@@ -242,7 +224,7 @@ func (o *observable) Take(nth uint) Observable {
 	out := make(chan interface{})
 	go func() {
 		takeCount := 0
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			if takeCount < int(nth) {
@@ -263,7 +245,7 @@ func (o *observable) TakeLast(nth uint) Observable {
 	out := make(chan interface{})
 	go func() {
 		buf := make([]interface{}, nth)
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			if len(buf) >= int(nth) {
@@ -284,7 +266,7 @@ func (o *observable) TakeLast(nth uint) Observable {
 func (o *observable) Filter(apply Predicate) Observable {
 	out := make(chan interface{})
 	go func() {
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			if apply(item) {
@@ -300,7 +282,7 @@ func (o *observable) Filter(apply Predicate) Observable {
 func (o *observable) First() Observable {
 	out := make(chan interface{})
 	go func() {
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			out <- item
@@ -316,7 +298,7 @@ func (o *observable) Last() Observable {
 	out := make(chan interface{})
 	go func() {
 		var last interface{}
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			last = item
@@ -333,7 +315,7 @@ func (o *observable) Distinct(apply Function) Observable {
 	out := make(chan interface{})
 	go func() {
 		keysets := make(map[interface{}]struct{})
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			key := apply(item)
@@ -354,7 +336,7 @@ func (o *observable) DistinctUntilChanged(apply Function) Observable {
 	out := make(chan interface{})
 	go func() {
 		var current interface{}
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			key := apply(item)
@@ -374,7 +356,7 @@ func (o *observable) Skip(nth uint) Observable {
 	out := make(chan interface{})
 	go func() {
 		skipCount := 0
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			if skipCount < int(nth) {
@@ -394,7 +376,7 @@ func (o *observable) SkipLast(nth uint) Observable {
 	out := make(chan interface{})
 	go func() {
 		buf := make(chan interface{}, nth)
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			select {
@@ -417,7 +399,7 @@ func (o *observable) Scan(apply Function2) Observable {
 
 	go func() {
 		var current interface{}
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			tmp := apply(current, item)
@@ -434,7 +416,7 @@ func (o *observable) Reduce(apply Function2) OptionalSingle {
 	go func() {
 		var acc interface{}
 		empty := true
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			empty = false
@@ -454,7 +436,7 @@ func (o *observable) Count() Single {
 	out := make(chan interface{})
 	go func() {
 		var count int64
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			count++
 		}
@@ -470,7 +452,7 @@ func (o *observable) FirstOrDefault(defaultValue interface{}) Single {
 	out := make(chan interface{})
 	go func() {
 		first := defaultValue
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			first = item
@@ -488,7 +470,7 @@ func (o *observable) LastOrDefault(defaultValue interface{}) Single {
 	out := make(chan interface{})
 	go func() {
 		last := defaultValue
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			last = item
@@ -504,7 +486,7 @@ func (o *observable) LastOrDefault(defaultValue interface{}) Single {
 func (o *observable) TakeWhile(apply Predicate) Observable {
 	out := make(chan interface{})
 	go func() {
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			if apply(item) {
@@ -523,7 +505,7 @@ func (o *observable) SkipWhile(apply Predicate) Observable {
 	out := make(chan interface{})
 	go func() {
 		skip := true
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			if !skip {
@@ -545,7 +527,7 @@ func (o *observable) ToList() Observable {
 	out := make(chan interface{})
 	go func() {
 		s := make([]interface{}, 0)
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			s = append(s, item)
@@ -562,7 +544,7 @@ func (o *observable) ToMap(keySelector Function) Observable {
 	out := make(chan interface{})
 	go func() {
 		m := make(map[interface{}]interface{})
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			m[keySelector(item)] = item
@@ -580,7 +562,7 @@ func (o *observable) ToMapWithValueSelector(keySelector Function, valueSelector 
 	out := make(chan interface{})
 	go func() {
 		m := make(map[interface{}]interface{})
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			m[keySelector(item)] = valueSelector(item)
@@ -596,7 +578,7 @@ func (o *observable) ToMapWithValueSelector(keySelector Function, valueSelector 
 func (o *observable) ZipFromObservable(publisher Observable, zipper Function2) Observable {
 	out := make(chan interface{})
 	go func() {
-		it := o.iterator
+		it := o.iterable.Iterator()
 		it2 := publisher.Iterator()
 	OuterLoop:
 		for it.Next() {
@@ -629,7 +611,7 @@ func (o *observable) Publish() ConnectableObservable {
 func (o *observable) All(predicate Predicate) Single {
 	out := make(chan interface{})
 	go func() {
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			if !predicate(item) {
@@ -673,7 +655,7 @@ func (o *observable) getOnErrorResumeNext() ErrorToObservableFunction {
 func (o *observable) Contains(equal Predicate) Single {
 	out := make(chan interface{})
 	go func() {
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			if equal(item) {
@@ -694,7 +676,7 @@ func (o *observable) DefaultIfEmpty(defaultValue interface{}) Observable {
 	out := make(chan interface{})
 	go func() {
 		empty := true
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			empty = false
@@ -713,7 +695,7 @@ func (o *observable) DefaultIfEmpty(defaultValue interface{}) Observable {
 func (o *observable) DoOnEach(onNotification Consumer) Observable {
 	out := make(chan interface{})
 	go func() {
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			out <- item
@@ -737,7 +719,7 @@ func (o *observable) Repeat(count int64, frequency Duration) Observable {
 
 	go func() {
 		persist := make([]interface{}, 0)
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			out <- item
@@ -772,7 +754,7 @@ func (o *observable) AverageInt() Single {
 	go func() {
 		sum := 0
 		count := 0
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			if v, ok := item.(int); ok {
@@ -800,7 +782,7 @@ func (o *observable) AverageInt8() Single {
 	go func() {
 		var sum int8 = 0
 		var count int8 = 0
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			if v, ok := item.(int8); ok {
@@ -828,7 +810,7 @@ func (o *observable) AverageInt16() Single {
 	go func() {
 		var sum int16 = 0
 		var count int16 = 0
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			if v, ok := item.(int16); ok {
@@ -856,7 +838,7 @@ func (o *observable) AverageInt32() Single {
 	go func() {
 		var sum int32 = 0
 		var count int32 = 0
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			if v, ok := item.(int32); ok {
@@ -884,7 +866,7 @@ func (o *observable) AverageInt64() Single {
 	go func() {
 		var sum int64 = 0
 		var count int64 = 0
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			if v, ok := item.(int64); ok {
@@ -912,7 +894,7 @@ func (o *observable) AverageFloat32() Single {
 	go func() {
 		var sum float32 = 0
 		var count float32 = 0
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			if v, ok := item.(float32); ok {
@@ -940,7 +922,7 @@ func (o *observable) AverageFloat64() Single {
 	go func() {
 		var sum float64 = 0
 		var count float64 = 0
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			if v, ok := item.(float64); ok {
@@ -968,7 +950,7 @@ func (o *observable) Max(comparator Comparator) OptionalSingle {
 	go func() {
 		empty := true
 		var max interface{} = nil
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			empty = false
@@ -997,7 +979,7 @@ func (o *observable) Min(comparator Comparator) OptionalSingle {
 	go func() {
 		empty := true
 		var min interface{} = nil
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			empty = false
@@ -1044,7 +1026,7 @@ func (o *observable) BufferWithCount(count, skip int) Observable {
 		buffer := make([]interface{}, count, count)
 		iCount := 0
 		iSkip := 0
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			switch item := item.(type) {
@@ -1133,7 +1115,7 @@ func (o *observable) BufferWithTime(timespan, timeshift Duration) Observable {
 
 		// Second goroutine in charge to retrieve the items from the source observable
 		go func() {
-			it := o.iterator
+			it := o.iterable.Iterator()
 			for it.Next() {
 				item := it.Value()
 				switch item := item.(type) {
@@ -1227,7 +1209,7 @@ func (o *observable) BufferWithTimeOrCount(timespan Duration, count int) Observa
 
 		// Second goroutine in charge to retrieve the items from the source observable
 		go func() {
-			it := o.iterator
+			it := o.iterable.Iterator()
 			for it.Next() {
 				item := it.Value()
 				switch item := item.(type) {
@@ -1261,7 +1243,7 @@ func (o *observable) SumInt64() Single {
 	out := make(chan interface{})
 	go func() {
 		var sum int64
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			switch item := item.(type) {
@@ -1293,7 +1275,7 @@ func (o *observable) SumFloat32() Single {
 	out := make(chan interface{})
 	go func() {
 		var sum float32
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			switch item := item.(type) {
@@ -1327,7 +1309,7 @@ func (o *observable) SumFloat64() Single {
 	out := make(chan interface{})
 	go func() {
 		var sum float64
-		it := o.iterator
+		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
 			switch item := item.(type) {

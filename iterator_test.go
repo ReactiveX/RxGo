@@ -8,7 +8,7 @@ import (
 
 func TestIteratorFromChannel(t *testing.T) {
 	ch := make(chan interface{}, 1)
-	it := NewIteratorFromChannel(ch)
+	it := newIteratorFromChannel(ch)
 
 	ch <- 1
 	assert.True(t, it.Next())
@@ -23,7 +23,7 @@ func TestIteratorFromChannel(t *testing.T) {
 }
 
 func TestIteratorFromSlice(t *testing.T) {
-	it := NewIteratorFromSlice([]interface{}{1, 2, 3})
+	it := newIteratorFromSlice([]interface{}{1, 2, 3})
 
 	assert.True(t, it.Next())
 	assert.Equal(t, 1, it.Value())
