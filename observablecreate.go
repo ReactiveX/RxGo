@@ -30,6 +30,13 @@ func newObservableFromSlice(s []interface{}) Observable {
 	}
 }
 
+// newObservableFromRange creates an Observable from a range.
+func newObservableFromRange(start, count int) Observable {
+	return &observable{
+		iterable: newIterableFromRange(start, count),
+	}
+}
+
 func isClosed(ch <-chan interface{}) bool {
 	select {
 	case <-ch:
@@ -178,16 +185,7 @@ func Range(start, count int) (Observable, error) {
 		return nil, errors.New(errors.IllegalInputError, "max value is bigger than MaxInt32")
 	}
 
-	out := make(chan interface{})
-	go func() {
-		i := start
-		for i < count+start {
-			out <- i
-			i++
-		}
-		close(out)
-	}()
-	return newObservableFromChannel(out), nil
+	return newObservableFromRange(start, count), nil
 }
 
 // Just creates an Observable with the provided item(s).
@@ -233,8 +231,5 @@ func Start(f Supplier, fs ...Supplier) Observable {
 // Never create an Observable that emits no items and does not terminate
 func Never() Observable {
 	out := make(chan interface{})
-	go func() {
-		select {}
-	}()
 	return newObservableFromChannel(out)
 }

@@ -47,30 +47,6 @@ func TestEmptyOperator(t *testing.T) {
 	assert.Equal(t, "done", text)
 }
 
-func TestRange(t *testing.T) {
-	got := []interface{}{}
-	r, err := Range(1, 5)
-	if err != nil {
-		t.Fail()
-	}
-	r.Subscribe(handlers.NextFunc(func(i interface{}) {
-		got = append(got, i)
-	})).Block()
-	assert.Equal(t, []interface{}{1, 2, 3, 4, 5}, got)
-}
-
-func TestRangeWithNegativeCount(t *testing.T) {
-	r, err := Range(1, -5)
-	assert.NotNil(t, err)
-	assert.Nil(t, r)
-}
-
-func TestRangeWithMaximumExceeded(t *testing.T) {
-	r, err := Range(1<<31, 1)
-	assert.NotNil(t, err)
-	assert.Nil(t, r)
-}
-
 func TestJustOperator(t *testing.T) {
 	myStream := Just(1, 2.01, "foo", map[string]string{"bar": "baz"}, 'a')
 	//numItems := 5

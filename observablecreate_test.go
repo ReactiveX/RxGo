@@ -326,3 +326,24 @@ func TestFromStatelessIterable(t *testing.T) {
 	AssertThatObservable(t, obs, HasItems(0, 1, 2))
 	AssertThatObservable(t, obs, HasItems(0, 1, 2))
 }
+
+func TestRange(t *testing.T) {
+	obs, err := Range(5, 3)
+	if err != nil {
+		t.Fail()
+	}
+	AssertThatObservable(t, obs, HasItems(5, 6, 7, 8))
+	AssertThatObservable(t, obs, HasItems(5, 6, 7, 8))
+}
+
+func TestRangeWithNegativeCount(t *testing.T) {
+	r, err := Range(1, -5)
+	assert.NotNil(t, err)
+	assert.Nil(t, r)
+}
+
+func TestRangeWithMaximumExceeded(t *testing.T) {
+	r, err := Range(1<<31, 1)
+	assert.NotNil(t, err)
+	assert.Nil(t, r)
+}
