@@ -12,7 +12,7 @@ import (
 // newObservableFromChannel creates an Observable from a given channel
 func newObservableFromChannel(ch chan interface{}) Observable {
 	return &observable{
-		iterable: NewIterableFromChannel(ch),
+		iterable: newIterableFromChannel(ch),
 	}
 }
 
@@ -26,7 +26,7 @@ func newObservableFromIterable(it Iterable) Observable {
 // newObservableFromSlice creates an Observable from a given channel
 func newObservableFromSlice(s []interface{}) Observable {
 	return &observable{
-		iterable: NewIterableFromSlice(s),
+		iterable: newIterableFromSlice(s),
 	}
 }
 

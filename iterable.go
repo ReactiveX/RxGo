@@ -12,7 +12,7 @@ func (it *iterableFromChannel) Iterator() Iterator {
 	return newIteratorFromChannel(it.ch)
 }
 
-func NewIterableFromChannel(ch chan interface{}) Iterable {
+func newIterableFromChannel(ch chan interface{}) Iterable {
 	return &iterableFromChannel{
 		ch: ch,
 	}
@@ -26,7 +26,7 @@ func (it *iterableFromSlice) Iterator() Iterator {
 	return newIteratorFromSlice(it.s)
 }
 
-func NewIterableFromSlice(s []interface{}) Iterable {
+func newIterableFromSlice(s []interface{}) Iterable {
 	return &iterableFromSlice{
 		s: s,
 	}

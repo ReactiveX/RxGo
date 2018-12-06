@@ -272,3 +272,57 @@ func TestJust(t *testing.T) {
 	AssertThatObservable(t, obs, HasItems(1, 2, 3))
 	AssertThatObservable(t, obs, HasItems(1, 2, 3))
 }
+
+type statefulIterable struct {
+	count int
+}
+
+func (it *statefulIterable) Next() bool {
+	it.count = it.count + 1
+	return it.count < 3
+}
+
+func (it *statefulIterable) Value() interface{} {
+	return it.count
+}
+
+func (it *statefulIterable) Iterator() Iterator {
+	return it
+}
+
+func TestFromStatefulIterable(t *testing.T) {
+	obs := FromIterable(&statefulIterable{
+		count: -1,
+	})
+
+	AssertThatObservable(t, obs, HasItems(0, 1, 2))
+	AssertThatObservable(t, obs, IsEmpty())
+}
+
+type statelessIterable struct {
+	count int
+}
+
+func (it *statelessIterable) Next() bool {
+	it.count = it.count + 1
+	return it.count < 3
+}
+
+func (it *statelessIterable) Value() interface{} {
+	return it.count
+}
+
+func (it *statelessIterable) Iterator() Iterator {
+	return &statelessIterable{
+		count: -1,
+	}
+}
+
+func TestFromStatelessIterable(t *testing.T) {
+	obs := FromIterable(&statelessIterable{
+		count: -1,
+	})
+
+	AssertThatObservable(t, obs, HasItems(0, 1, 2))
+	AssertThatObservable(t, obs, HasItems(0, 1, 2))
+}
