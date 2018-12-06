@@ -19,6 +19,14 @@ func isClosed(ch <-chan interface{}) bool {
 	return false
 }
 
+// newObservableFromSlice creates an Observable from a given channel
+func newObservableFromSlice(s []interface{}) Observable {
+	return &observable{
+		observableType: coldObservable,
+		iterator:       NewIteratorFromSlice(s),
+	}
+}
+
 // Creates observable from based on source function. Keep it mind to call emitter.OnDone()
 // to signal sequence's end.
 // Example:
@@ -83,6 +91,14 @@ func Defer(f func() Observable) Observable {
 	return &observable{
 		observableFactory: f,
 	}
+}
+
+func FromSlice(s []interface{}) Observable {
+	return newObservableFromSlice(s)
+}
+
+func FromChannel(ch chan interface{}) Observable {
+	return NewObservableFromChannel(ch)
 }
 
 // From creates a new Observable from an Iterator.
@@ -165,7 +181,7 @@ func Just(item interface{}, items ...interface{}) Observable {
 		items = []interface{}{item}
 	}
 
-	return NewColdObservableFromSlice(items)
+	return newObservableFromSlice(items)
 }
 
 // Start creates an Observable from one or more directive-like Supplier

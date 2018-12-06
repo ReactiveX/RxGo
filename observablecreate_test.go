@@ -247,3 +247,28 @@ func TestConcatWithAnEmptyObservable(t *testing.T) {
 	obs = Concat(Just(1, 2, 3), Empty())
 	AssertThatObservable(t, obs, HasItems(1, 2, 3))
 }
+
+func TestFromSlice(t *testing.T) {
+	obs := FromSlice([]interface{}{1, 2, 3})
+	AssertThatObservable(t, obs, HasItems(1, 2, 3))
+	AssertThatObservable(t, obs, HasItems(1, 2, 3))
+}
+
+func TestFromChannel(t *testing.T) {
+	ch := make(chan interface{}, 3)
+	obs := FromChannel(ch)
+
+	ch <- 1
+	ch <- 2
+	ch <- 3
+	close(ch)
+
+	AssertThatObservable(t, obs, HasItems(1, 2, 3))
+	AssertThatObservable(t, obs, IsEmpty())
+}
+
+func TestJust(t *testing.T) {
+	obs := Just(1, 2, 3)
+	AssertThatObservable(t, obs, HasItems(1, 2, 3))
+	AssertThatObservable(t, obs, HasItems(1, 2, 3))
+}

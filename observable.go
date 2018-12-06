@@ -92,14 +92,6 @@ func NewObservableFromChannel(ch chan interface{}) Observable {
 	}
 }
 
-// NewColdObservableFromSlice creates an Observable from a given channel
-func NewColdObservableFromSlice(s []interface{}) Observable {
-	return &observable{
-		observableType: coldObservable,
-		iterator:       NewIteratorFromSlice(s),
-	}
-}
-
 // CheckHandler checks the underlying type of an EventHandler.
 func CheckEventHandler(handler handlers.EventHandler) Observer {
 	return NewObserver(handler)
