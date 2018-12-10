@@ -1546,3 +1546,14 @@ func TestSumFloat64(t *testing.T) {
 	AssertThatSingle(t, Just("x").SumFloat64(), HasRaisedAnError())
 	AssertThatSingle(t, Empty().SumFloat64(), HasValue(float64(0)))
 }
+
+func TestMap(t *testing.T) {
+	just := Just(1).Map(func(i interface{}) interface{} {
+		return 1 + i.(int)
+	}).Map(func(i interface{}) interface{} {
+		return 1 + i.(int)
+	})
+
+	AssertThatObservable(t, just, HasItems(3))
+	AssertThatObservable(t, just, HasItems(3))
+}

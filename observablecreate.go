@@ -16,6 +16,12 @@ func newObservableFromChannel(ch chan interface{}) Observable {
 	}
 }
 
+func newColdObservable(f func(chan interface{})) Observable {
+	return &observable{
+		iterable: newIterableFromFunc(f),
+	}
+}
+
 // newObservableFromIterable creates an Observable from a given iterable
 func newObservableFromIterable(it Iterable) Observable {
 	return &observable{

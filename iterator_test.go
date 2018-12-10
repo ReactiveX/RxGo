@@ -36,3 +36,14 @@ func TestIteratorFromSlice(t *testing.T) {
 
 	assert.False(t, it.Next())
 }
+
+func TestName(t *testing.T) {
+	just := Just(1).Map(func(i interface{}) interface{} {
+		return 1 + i.(int)
+	}).Map(func(i interface{}) interface{} {
+		return 1 + i.(int)
+	})
+
+	AssertThatObservable(t, just, HasItems(3))
+	AssertThatObservable(t, just, HasItems(3))
+}

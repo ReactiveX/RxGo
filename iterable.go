@@ -17,6 +17,16 @@ type iterableFromRange struct {
 	count int
 }
 
+type iterableFromFunc struct {
+	f func(chan interface{})
+}
+
+func (it *iterableFromFunc) Iterator() Iterator {
+	out := make(chan interface{})
+	go it.f(out)
+	return newIteratorFromChannel(out)
+}
+
 func (it *iterableFromChannel) Iterator() Iterator {
 	return newIteratorFromChannel(it.ch)
 }
@@ -45,5 +55,11 @@ func newIterableFromRange(start, count int) Iterable {
 	return &iterableFromRange{
 		start: start,
 		count: count,
+	}
+}
+
+func newIterableFromFunc(f func(chan interface{})) Iterable {
+	return &iterableFromFunc{
+		f: f,
 	}
 }

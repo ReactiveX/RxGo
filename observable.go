@@ -14,11 +14,6 @@ import (
 
 type observableType uint32
 
-const (
-	hotObservable observableType = iota
-	coldObservable
-)
-
 // Observable is a basic observable interface
 type Observable interface {
 	Iterable
@@ -77,7 +72,6 @@ type Observable interface {
 
 // observable is a structure handling a channel of interface{} and implementing Observable
 type observable struct {
-	observableType      observableType
 	iterable            Iterable
 	errorOnSubscription error
 	observableFactory   func() Observable
@@ -144,26 +138,25 @@ func (o *observable) Subscribe(handler handlers.EventHandler, opts ...options.Op
 			}
 		}()
 	} else {
-		// FIXME Data race
-		//results := make([]chan error, 0)
-		//for i := 0; i < observableOptions.Parallelism(); i++ {
-		//	ch := make(chan error)
-		//	go func() {
-		//		ch <- iterate(o, ob)
-		//	}()
-		//	results = append(results, ch)
-		//}
-		//
-		//go func() {
-		//	for _, ch := range results {
-		//		err := <-ch
-		//		if err != nil {
-		//			return
-		//		}
-		//	}
-		//
-		//	ob.OnDone()
-		//}()
+		results := make([]chan error, 0)
+		for i := 0; i < observableOptions.Parallelism(); i++ {
+			ch := make(chan error)
+			go func() {
+				ch <- iterate(o, ob)
+			}()
+			results = append(results, ch)
+		}
+
+		go func() {
+			for _, ch := range results {
+				err := <-ch
+				if err != nil {
+					return
+				}
+			}
+
+			ob.OnDone()
+		}()
 	}
 
 	return ob
@@ -172,30 +165,17 @@ func (o *observable) Subscribe(handler handlers.EventHandler, opts ...options.Op
 // Map maps a Function predicate to each item in Observable and
 // returns a new Observable with applied items.
 func (o *observable) Map(apply Function) Observable {
-	out := make(chan interface{})
-
-	var obs Observable = o
-	if o.observableFactory != nil {
-		obs = o.observableFactory()
-	}
-
-	go func() {
-		it := obs.Iterator()
+	f := func(out chan interface{}) {
+		it := o.Iterator()
 		for it.Next() {
 			item := it.Value()
 			out <- apply(item)
 		}
 		close(out)
-	}()
-	return newObservableFromChannel(out)
-}
+	}
 
-/*
-func (o *observable) Unsubscribe() subscription.Subscription {
-	// Stub: to be implemented
-	return subscription.New()
+	return newColdObservable(f)
 }
-*/
 
 func (o *observable) ElementAt(index uint) Single {
 	out := make(chan interface{})
