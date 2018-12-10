@@ -31,8 +31,7 @@ func newSingleFrom(item interface{}) Single {
 		out <- item
 		close(out)
 	}
-	s := newColdSingle(f)
-	return s
+	return newColdSingle(f)
 }
 
 func newOptionalSingleFrom(opt optional.Optional) OptionalSingle {
