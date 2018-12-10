@@ -4,13 +4,13 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/optional"
 	"github.com/stretchr/testify/assert"
-	"sync"
 )
 
 func TestCheckEventHandler(t *testing.T) {
