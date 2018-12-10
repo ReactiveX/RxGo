@@ -113,13 +113,6 @@ func Concat(observable1 Observable, observables ...Observable) Observable {
 	return newObservableFromChannel(out)
 }
 
-// Defer waits until an observer subscribes to it, and then it generates an Observable.
-func Defer(f func() Observable) Observable {
-	return &observable{
-		observableFactory: f,
-	}
-}
-
 func FromSlice(s []interface{}) Observable {
 	return newObservableFromSlice(s)
 }
