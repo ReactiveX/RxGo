@@ -18,24 +18,22 @@ type Assertion interface {
 	hasValueFunc() (bool, interface{})
 	hasRaisedErrorFunc() (bool, error)
 	hasRaisedAnErrorFunc() bool
-	hasNotRaisedAnErrorFunc() bool
 	isEmptyFunc() (bool, bool)
 }
 
 type assertion struct {
-	f                        func(*assertion)
-	checkHasItems            bool
-	hasItems                 []interface{}
-	checkHasSize             bool
-	hasSize                  int
-	checkHasValue            bool
-	hasValue                 interface{}
-	checkHasRaisedError      bool
-	hasRaisedError           error
-	checkHasRaisedAnError    bool
-	checkHasNotRaisedAnError bool
-	checkIsEmpty             bool
-	isEmpty                  bool
+	f                     func(*assertion)
+	checkHasItems         bool
+	hasItems              []interface{}
+	checkHasSize          bool
+	hasSize               int
+	checkHasValue         bool
+	hasValue              interface{}
+	checkHasRaisedError   bool
+	hasRaisedError        error
+	checkHasRaisedAnError bool
+	checkIsEmpty          bool
+	isEmpty               bool
 }
 
 func (ass *assertion) hasItemsFunc() (bool, []interface{}) {
@@ -56,10 +54,6 @@ func (ass *assertion) hasRaisedErrorFunc() (bool, error) {
 
 func (ass *assertion) hasRaisedAnErrorFunc() bool {
 	return ass.checkHasRaisedAnError
-}
-
-func (ass *assertion) hasNotRaisedAnErrorFunc() bool {
-	return ass.checkHasNotRaisedAnError
 }
 
 func (ass *assertion) isEmptyFunc() (bool, bool) {
@@ -139,13 +133,6 @@ func HasRaisedAnError() Assertion {
 	})
 }
 
-// HasNotRaisedAnError checks that a single does not raise an error.
-func HasNotRaisedAnError() Assertion {
-	return newAssertion(func(a *assertion) {
-		a.checkHasNotRaisedAnError = true
-	})
-}
-
 // AssertThatObservable asserts the result of an Observable against a list of assertions.
 func AssertThatObservable(t *testing.T, observable Observable, assertions ...Assertion) {
 	ass := parseAssertions(assertions...)
@@ -197,11 +184,6 @@ func AssertThatSingle(t *testing.T, single Single, assertions ...Assertion) {
 	checkHasRaisedError, value := ass.hasRaisedErrorFunc()
 	if checkHasRaisedError {
 		assert.Equal(t, value, err)
-	}
-
-	checkHasNotRaisedError := ass.hasNotRaisedAnErrorFunc()
-	if checkHasNotRaisedError {
-		assert.Nil(t, err)
 	}
 }
 
