@@ -8,6 +8,7 @@ import (
 
 // Single is similar to an Observable but emits only one single element or an error notification.
 type Single interface {
+	Iterable
 	Filter(apply Predicate) OptionalSingle
 	Map(apply Function) Single
 	Subscribe(handler handlers.EventHandler, opts ...options.Option) SingleObserver
@@ -18,25 +19,25 @@ type OptionalSingle interface {
 }
 
 type single struct {
-	ch chan interface{}
+	iterable Iterable
 }
 
 type optionalSingle struct {
 	ch chan optional.Optional
 }
 
-func newSingleFrom(item interface{}) Single {
-	s := single{
-		ch: make(chan interface{}),
-	}
-
-	go func() {
-		s.ch <- item
-		close(s.ch)
-	}()
-
-	return &s
-}
+//func newSingleFrom(item interface{}) Single {
+//	s := single{
+//		ch: make(chan interface{}),
+//	}
+//
+//	go func() {
+//		s.ch <- item
+//		close(s.ch)
+//	}()
+//
+//	return &s
+//}
 
 func newOptionalSingleFrom(opt optional.Optional) OptionalSingle {
 	s := optionalSingle{
@@ -56,15 +57,9 @@ func CheckSingleEventHandler(handler handlers.EventHandler) SingleObserver {
 	return NewSingleObserver(handler)
 }
 
-func NewSingle() Single {
+func newColdSingle(f func(chan interface{})) Single {
 	return &single{
-		ch: make(chan interface{}),
-	}
-}
-
-func NewSingleFromChannel(ch chan interface{}) Single {
-	return &single{
-		ch: ch,
+		iterable: newIterableFromFunc(f),
 	}
 }
 
@@ -74,17 +69,24 @@ func NewOptionalSingleFromChannel(ch chan optional.Optional) OptionalSingle {
 	}
 }
 
+func (s *single) Iterator() Iterator {
+	return s.iterable.Iterator()
+}
+
 func (s *single) Filter(apply Predicate) OptionalSingle {
 	out := make(chan optional.Optional)
 	go func() {
-		item := <-s.ch
-		if apply(item) {
-			out <- optional.Of(item)
-		} else {
-			out <- optional.Empty()
+		it := s.iterable.Iterator()
+		for it.Next() {
+			item := it.Value()
+			if apply(item) {
+				out <- optional.Of(item)
+			} else {
+				out <- optional.Empty()
+			}
+			close(out)
+			return
 		}
-		close(out)
-		return
 	}()
 
 	return &optionalSingle{
@@ -93,20 +95,25 @@ func (s *single) Filter(apply Predicate) OptionalSingle {
 }
 
 func (s *single) Map(apply Function) Single {
-	out := make(chan interface{})
-	go func() {
-		item := <-s.ch
-		out <- apply(item)
-		close(out)
-	}()
-	return &single{ch: out}
+	f := func(out chan interface{}) {
+		it := s.iterable.Iterator()
+		for it.Next() {
+			item := it.Value()
+			out <- apply(item)
+			close(out)
+			return
+		}
+	}
+	return newColdSingle(f)
 }
 
 func (s *single) Subscribe(handler handlers.EventHandler, opts ...options.Option) SingleObserver {
 	ob := CheckSingleEventHandler(handler)
 
 	go func() {
-		for item := range s.ch {
+		it := s.iterable.Iterator()
+		for it.Next() {
+			item := it.Value()
 			switch item := item.(type) {
 			case error:
 				ob.OnError(item)

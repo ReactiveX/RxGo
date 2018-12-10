@@ -10,6 +10,7 @@ import (
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/optional"
 	"github.com/stretchr/testify/assert"
+	"sync"
 )
 
 func TestCheckEventHandler(t *testing.T) {
@@ -1547,7 +1548,7 @@ func TestSumFloat64(t *testing.T) {
 	AssertThatSingle(t, Empty().SumFloat64(), HasValue(float64(0)))
 }
 
-func TestMap(t *testing.T) {
+func TestMapWithTwoSubscription(t *testing.T) {
 	just := Just(1).Map(func(i interface{}) interface{} {
 		return 1 + i.(int)
 	}).Map(func(i interface{}) interface{} {
@@ -1556,4 +1557,23 @@ func TestMap(t *testing.T) {
 
 	AssertThatObservable(t, just, HasItems(3))
 	AssertThatObservable(t, just, HasItems(3))
+}
+
+func TestMapWithConcurrentSubscriptions(t *testing.T) {
+	just := Just(1).Map(func(i interface{}) interface{} {
+		return 1 + i.(int)
+	}).Map(func(i interface{}) interface{} {
+		return 1 + i.(int)
+	})
+
+	wg := sync.WaitGroup{}
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			AssertThatObservable(t, just, HasItems(3))
+		}()
+	}
+
+	wg.Wait()
 }

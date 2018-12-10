@@ -178,8 +178,7 @@ func (o *observable) Map(apply Function) Observable {
 }
 
 func (o *observable) ElementAt(index uint) Single {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		takeCount := 0
 
 		it := o.iterable.Iterator()
@@ -194,15 +193,14 @@ func (o *observable) ElementAt(index uint) Single {
 		}
 		out <- errors.New(errors.ElementAtError)
 		close(out)
-	}()
-	return NewSingleFromChannel(out)
+	}
+	return newColdSingle(f)
 }
 
 // Take takes first n items in the original Obserable and returns
 // a new Observable with the taken items.
 func (o *observable) Take(nth uint) Observable {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		takeCount := 0
 		it := o.iterable.Iterator()
 		for it.Next() {
@@ -215,15 +213,14 @@ func (o *observable) Take(nth uint) Observable {
 			break
 		}
 		close(out)
-	}()
-	return newObservableFromChannel(out)
+	}
+	return newColdObservable(f)
 }
 
 // TakeLast takes last n items in the original Observable and returns
 // a new Observable with the taken items.
 func (o *observable) TakeLast(nth uint) Observable {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		buf := make([]interface{}, nth)
 		it := o.iterable.Iterator()
 		for it.Next() {
@@ -237,15 +234,14 @@ func (o *observable) TakeLast(nth uint) Observable {
 			out <- takenItem
 		}
 		close(out)
-	}()
-	return newObservableFromChannel(out)
+	}
+	return newColdObservable(f)
 }
 
 // Filter filters items in the original Observable and returns
 // a new Observable with the filtered items.
 func (o *observable) Filter(apply Predicate) Observable {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
@@ -254,14 +250,13 @@ func (o *observable) Filter(apply Predicate) Observable {
 			}
 		}
 		close(out)
-	}()
-	return newObservableFromChannel(out)
+	}
+	return newColdObservable(f)
 }
 
 // First returns new Observable which emit only first item.
 func (o *observable) First() Observable {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
@@ -269,14 +264,13 @@ func (o *observable) First() Observable {
 			break
 		}
 		close(out)
-	}()
-	return newObservableFromChannel(out)
+	}
+	return newColdObservable(f)
 }
 
 // Last returns a new Observable which emit only last item.
 func (o *observable) Last() Observable {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		var last interface{}
 		it := o.iterable.Iterator()
 		for it.Next() {
@@ -285,15 +279,14 @@ func (o *observable) Last() Observable {
 		}
 		out <- last
 		close(out)
-	}()
-	return newObservableFromChannel(out)
+	}
+	return newColdObservable(f)
 }
 
 // Distinct suppresses duplicate items in the original Observable and returns
 // a new Observable.
 func (o *observable) Distinct(apply Function) Observable {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		keysets := make(map[interface{}]struct{})
 		it := o.iterable.Iterator()
 		for it.Next() {
@@ -306,15 +299,14 @@ func (o *observable) Distinct(apply Function) Observable {
 			keysets[key] = struct{}{}
 		}
 		close(out)
-	}()
-	return newObservableFromChannel(out)
+	}
+	return newColdObservable(f)
 }
 
 // DistinctUntilChanged suppresses consecutive duplicate items in the original
 // Observable and returns a new Observable.
 func (o *observable) DistinctUntilChanged(apply Function) Observable {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		var current interface{}
 		it := o.iterable.Iterator()
 		for it.Next() {
@@ -326,15 +318,14 @@ func (o *observable) DistinctUntilChanged(apply Function) Observable {
 			}
 		}
 		close(out)
-	}()
-	return newObservableFromChannel(out)
+	}
+	return newColdObservable(f)
 }
 
 // Skip suppresses the first n items in the original Observable and
 // returns a new Observable with the rest items.
 func (o *observable) Skip(nth uint) Observable {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		skipCount := 0
 		it := o.iterable.Iterator()
 		for it.Next() {
@@ -346,15 +337,15 @@ func (o *observable) Skip(nth uint) Observable {
 			out <- item
 		}
 		close(out)
-	}()
-	return newObservableFromChannel(out)
+	}
+
+	return newColdObservable(f)
 }
 
 // SkipLast suppresses the last n items in the original Observable and
 // returns a new Observable with the rest items.
 func (o *observable) SkipLast(nth uint) Observable {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		buf := make(chan interface{}, nth)
 		it := o.iterable.Iterator()
 		for it.Next() {
@@ -368,16 +359,14 @@ func (o *observable) SkipLast(nth uint) Observable {
 		}
 		close(buf)
 		close(out)
-	}()
-	return newObservableFromChannel(out)
+	}
+	return newColdObservable(f)
 }
 
 // Scan applies Function2 predicate to each item in the original
 // Observable sequentially and emits each successive value on a new Observable.
 func (o *observable) Scan(apply Function2) Observable {
-	out := make(chan interface{})
-
-	go func() {
+	f := func(out chan interface{}) {
 		var current interface{}
 		it := o.iterable.Iterator()
 		for it.Next() {
@@ -387,8 +376,8 @@ func (o *observable) Scan(apply Function2) Observable {
 			current = tmp
 		}
 		close(out)
-	}()
-	return newObservableFromChannel(out)
+	}
+	return newColdObservable(f)
 }
 
 func (o *observable) Reduce(apply Function2) OptionalSingle {
@@ -413,8 +402,7 @@ func (o *observable) Reduce(apply Function2) OptionalSingle {
 }
 
 func (o *observable) Count() Single {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		var count int64
 		it := o.iterable.Iterator()
 		for it.Next() {
@@ -422,15 +410,14 @@ func (o *observable) Count() Single {
 		}
 		out <- count
 		close(out)
-	}()
-	return NewSingleFromChannel(out)
+	}
+	return newColdSingle(f)
 }
 
 // FirstOrDefault returns new Observable which emit only first item.
 // If the observable fails to emit any items, it emits a default value.
 func (o *observable) FirstOrDefault(defaultValue interface{}) Single {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		first := defaultValue
 		it := o.iterable.Iterator()
 		for it.Next() {
@@ -440,15 +427,14 @@ func (o *observable) FirstOrDefault(defaultValue interface{}) Single {
 		}
 		out <- first
 		close(out)
-	}()
-	return NewSingleFromChannel(out)
+	}
+	return newColdSingle(f)
 }
 
 // Last returns a new Observable which emit only last item.
 // If the observable fails to emit any items, it emits a default value.
 func (o *observable) LastOrDefault(defaultValue interface{}) Single {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		last := defaultValue
 		it := o.iterable.Iterator()
 		for it.Next() {
@@ -457,15 +443,14 @@ func (o *observable) LastOrDefault(defaultValue interface{}) Single {
 		}
 		out <- last
 		close(out)
-	}()
-	return NewSingleFromChannel(out)
+	}
+	return newColdSingle(f)
 }
 
 // TakeWhile emits items emitted by an Observable as long as the
 // specified condition is true, then skip the remainder.
 func (o *observable) TakeWhile(apply Predicate) Observable {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
@@ -476,14 +461,13 @@ func (o *observable) TakeWhile(apply Predicate) Observable {
 			break
 		}
 		close(out)
-	}()
-	return newObservableFromChannel(out)
+	}
+	return newColdObservable(f)
 }
 
 // SkipWhile discard items emitted by an Observable until a specified condition becomes false.
 func (o *observable) SkipWhile(apply Predicate) Observable {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		skip := true
 		it := o.iterable.Iterator()
 		for it.Next() {
@@ -498,14 +482,13 @@ func (o *observable) SkipWhile(apply Predicate) Observable {
 			}
 		}
 		close(out)
-	}()
-	return newObservableFromChannel(out)
+	}
+	return newColdObservable(f)
 }
 
 // ToList collects all items from an Observable and emit them as a single List.
 func (o *observable) ToList() Observable {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		s := make([]interface{}, 0)
 		it := o.iterable.Iterator()
 		for it.Next() {
@@ -514,15 +497,14 @@ func (o *observable) ToList() Observable {
 		}
 		out <- s
 		close(out)
-	}()
-	return newObservableFromChannel(out)
+	}
+	return newColdObservable(f)
 }
 
 // ToMap convert the sequence of items emitted by an Observable
 // into a map keyed by a specified key function
 func (o *observable) ToMap(keySelector Function) Observable {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		m := make(map[interface{}]interface{})
 		it := o.iterable.Iterator()
 		for it.Next() {
@@ -531,16 +513,15 @@ func (o *observable) ToMap(keySelector Function) Observable {
 		}
 		out <- m
 		close(out)
-	}()
-	return newObservableFromChannel(out)
+	}
+	return newColdObservable(f)
 }
 
 // ToMapWithValueSelector convert the sequence of items emitted by an Observable
 // into a map keyed by a specified key function and valued by another
 // value function
 func (o *observable) ToMapWithValueSelector(keySelector Function, valueSelector Function) Observable {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		m := make(map[interface{}]interface{})
 		it := o.iterable.Iterator()
 		for it.Next() {
@@ -549,15 +530,14 @@ func (o *observable) ToMapWithValueSelector(keySelector Function, valueSelector 
 		}
 		out <- m
 		close(out)
-	}()
-	return newObservableFromChannel(out)
+	}
+	return newColdObservable(f)
 }
 
 // ZipFromObservable che emissions of multiple Observables together via a specified function
 // and emit single items for each combination based on the results of this function
 func (o *observable) ZipFromObservable(publisher Observable, zipper Function2) Observable {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		it := o.iterable.Iterator()
 		it2 := publisher.Iterator()
 	OuterLoop:
@@ -572,8 +552,8 @@ func (o *observable) ZipFromObservable(publisher Observable, zipper Function2) O
 			break OuterLoop
 		}
 		close(out)
-	}()
-	return newObservableFromChannel(out)
+	}
+	return newColdObservable(f)
 }
 
 // ForEach subscribes to the Observable and receives notifications for each element.
@@ -589,8 +569,7 @@ func (o *observable) Publish() ConnectableObservable {
 }
 
 func (o *observable) All(predicate Predicate) Single {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
@@ -602,8 +581,8 @@ func (o *observable) All(predicate Predicate) Single {
 		}
 		out <- true
 		close(out)
-	}()
-	return NewSingleFromChannel(out)
+	}
+	return newColdSingle(f)
 }
 
 // OnErrorReturn instructs an Observable to emit an item (returned by a specified function)
@@ -633,8 +612,7 @@ func (o *observable) getOnErrorResumeNext() ErrorToObservableFunction {
 // Contains returns an Observable that emits a Boolean that indicates whether
 // the source Observable emitted an item (the comparison is made against a predicate).
 func (o *observable) Contains(equal Predicate) Single {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
@@ -646,15 +624,14 @@ func (o *observable) Contains(equal Predicate) Single {
 		}
 		out <- false
 		close(out)
-	}()
-	return NewSingleFromChannel(out)
+	}
+	return newColdSingle(f)
 }
 
 // DefaultIfEmpty returns an Observable that emits the items emitted by the source
 // Observable or a specified default item if the source Observable is empty.
 func (o *observable) DefaultIfEmpty(defaultValue interface{}) Observable {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		empty := true
 		it := o.iterable.Iterator()
 		for it.Next() {
@@ -666,15 +643,14 @@ func (o *observable) DefaultIfEmpty(defaultValue interface{}) Observable {
 			out <- defaultValue
 		}
 		close(out)
-	}()
-	return newObservableFromChannel(out)
+	}
+	return newColdObservable(f)
 }
 
 // DoOnEach operator allows you to establish a callback that the resulting Observable
 // will call each time it emits an item
 func (o *observable) DoOnEach(onNotification Consumer) Observable {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		it := o.iterable.Iterator()
 		for it.Next() {
 			item := it.Value()
@@ -682,22 +658,20 @@ func (o *observable) DoOnEach(onNotification Consumer) Observable {
 			onNotification(item)
 		}
 		close(out)
-	}()
-	return newObservableFromChannel(out)
+	}
+	return newColdObservable(f)
 }
 
 // Repeat returns an Observable that repeats the sequence of items emitted by the source Observable
 // at most count times, at a particular frequency.
 func (o *observable) Repeat(count int64, frequency Duration) Observable {
-	out := make(chan interface{})
-
 	if count != Indefinitely {
 		if count < 0 {
 			count = 0
 		}
 	}
 
-	go func() {
+	f := func(out chan interface{}) {
 		persist := make([]interface{}, 0)
 		it := o.iterable.Iterator()
 		for it.Next() {
@@ -724,14 +698,13 @@ func (o *observable) Repeat(count int64, frequency Duration) Observable {
 			count = count - 1
 		}
 		close(out)
-	}()
-	return newObservableFromChannel(out)
+	}
+	return newColdObservable(f)
 }
 
 // AverageInt calculates the average of numbers emitted by an Observable and emits this average int.
 func (o *observable) AverageInt() Single {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		sum := 0
 		count := 0
 		it := o.iterable.Iterator()
@@ -752,14 +725,13 @@ func (o *observable) AverageInt() Single {
 			out <- sum / count
 		}
 		close(out)
-	}()
-	return NewSingleFromChannel(out)
+	}
+	return newColdSingle(f)
 }
 
 // AverageInt8 calculates the average of numbers emitted by an Observable and emits this average int8.
 func (o *observable) AverageInt8() Single {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		var sum int8 = 0
 		var count int8 = 0
 		it := o.iterable.Iterator()
@@ -780,14 +752,13 @@ func (o *observable) AverageInt8() Single {
 			out <- sum / count
 		}
 		close(out)
-	}()
-	return NewSingleFromChannel(out)
+	}
+	return newColdSingle(f)
 }
 
 // AverageInt16 calculates the average of numbers emitted by an Observable and emits this average int16.
 func (o *observable) AverageInt16() Single {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		var sum int16 = 0
 		var count int16 = 0
 		it := o.iterable.Iterator()
@@ -808,14 +779,13 @@ func (o *observable) AverageInt16() Single {
 			out <- sum / count
 		}
 		close(out)
-	}()
-	return NewSingleFromChannel(out)
+	}
+	return newColdSingle(f)
 }
 
 // AverageInt32 calculates the average of numbers emitted by an Observable and emits this average int32.
 func (o *observable) AverageInt32() Single {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		var sum int32 = 0
 		var count int32 = 0
 		it := o.iterable.Iterator()
@@ -836,14 +806,13 @@ func (o *observable) AverageInt32() Single {
 			out <- sum / count
 		}
 		close(out)
-	}()
-	return NewSingleFromChannel(out)
+	}
+	return newColdSingle(f)
 }
 
 // AverageInt64 calculates the average of numbers emitted by an Observable and emits this average int64.
 func (o *observable) AverageInt64() Single {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		var sum int64 = 0
 		var count int64 = 0
 		it := o.iterable.Iterator()
@@ -864,14 +833,13 @@ func (o *observable) AverageInt64() Single {
 			out <- sum / count
 		}
 		close(out)
-	}()
-	return NewSingleFromChannel(out)
+	}
+	return newColdSingle(f)
 }
 
 // AverageFloat32 calculates the average of numbers emitted by an Observable and emits this average float32.
 func (o *observable) AverageFloat32() Single {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		var sum float32 = 0
 		var count float32 = 0
 		it := o.iterable.Iterator()
@@ -892,14 +860,13 @@ func (o *observable) AverageFloat32() Single {
 			out <- sum / count
 		}
 		close(out)
-	}()
-	return NewSingleFromChannel(out)
+	}
+	return newColdSingle(f)
 }
 
 // AverageFloat64 calculates the average of numbers emitted by an Observable and emits this average float64.
 func (o *observable) AverageFloat64() Single {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		var sum float64 = 0
 		var count float64 = 0
 		it := o.iterable.Iterator()
@@ -920,8 +887,8 @@ func (o *observable) AverageFloat64() Single {
 			out <- sum / count
 		}
 		close(out)
-	}()
-	return NewSingleFromChannel(out)
+	}
+	return newColdSingle(f)
 }
 
 // Max determines and emits the maximum-valued item emitted by an Observable according to a comparator.
@@ -989,8 +956,7 @@ func (o *observable) Min(comparator Comparator) OptionalSingle {
 // the resulting Observable emits the current buffer and propagates
 // the notification from the source Observable.
 func (o *observable) BufferWithCount(count, skip int) Observable {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		if count <= 0 {
 			out <- errors.New(errors.IllegalInputError, "count must be positive")
 			close(out)
@@ -1039,8 +1005,8 @@ func (o *observable) BufferWithCount(count, skip int) Observable {
 		}
 
 		close(out)
-	}()
-	return newObservableFromChannel(out)
+	}
+	return newColdObservable(f)
 }
 
 // BufferWithTime returns an Observable that emits buffers of items it collects from the source
@@ -1049,8 +1015,7 @@ func (o *observable) BufferWithCount(count, skip int) Observable {
 // When the source Observable completes or encounters an error, the resulting Observable emits
 // the current buffer and propagates the notification from the source Observable.
 func (o *observable) BufferWithTime(timespan, timeshift Duration) Observable {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		if timespan == nil || timespan.duration() == 0 {
 			out <- errors.New(errors.IllegalInputError, "timespan must not be nil")
 			close(out)
@@ -1130,8 +1095,8 @@ func (o *observable) BufferWithTime(timespan, timeshift Duration) Observable {
 			mux.Unlock()
 		}()
 
-	}()
-	return newObservableFromChannel(out)
+	}
+	return newColdObservable(f)
 }
 
 // BufferWithTimeOrCount returns an Observable that emits buffers of items it collects
@@ -1141,8 +1106,7 @@ func (o *observable) BufferWithTime(timespan, timeshift Duration) Observable {
 // When the source Observable completes or encounters an error, the resulting Observable
 // emits the current buffer and propagates the notification from the source Observable.
 func (o *observable) BufferWithTimeOrCount(timespan Duration, count int) Observable {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		if timespan == nil || timespan.duration() == 0 {
 			out <- errors.New(errors.IllegalInputError, "timespan must not be nil")
 			close(out)
@@ -1214,14 +1178,13 @@ func (o *observable) BufferWithTimeOrCount(timespan Duration, count int) Observa
 			errCh <- nil
 		}()
 
-	}()
-	return newObservableFromChannel(out)
+	}
+	return newColdObservable(f)
 }
 
 // SumInt64 calculates the average of integers emitted by an Observable and emits an int64.
 func (o *observable) SumInt64() Single {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		var sum int64
 		it := o.iterable.Iterator()
 		for it.Next() {
@@ -1246,14 +1209,13 @@ func (o *observable) SumInt64() Single {
 		}
 		out <- sum
 		close(out)
-	}()
-	return NewSingleFromChannel(out)
+	}
+	return newColdSingle(f)
 }
 
 // SumFloat32 calculates the average of float32 emitted by an Observable and emits a float32.
 func (o *observable) SumFloat32() Single {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		var sum float32
 		it := o.iterable.Iterator()
 		for it.Next() {
@@ -1280,14 +1242,13 @@ func (o *observable) SumFloat32() Single {
 		}
 		out <- sum
 		close(out)
-	}()
-	return NewSingleFromChannel(out)
+	}
+	return newColdSingle(f)
 }
 
 // SumFloat64 calculates the average of float64 emitted by an Observable and emits a float64.
 func (o *observable) SumFloat64() Single {
-	out := make(chan interface{})
-	go func() {
+	f := func(out chan interface{}) {
 		var sum float64
 		it := o.iterable.Iterator()
 		for it.Next() {
@@ -1316,6 +1277,6 @@ func (o *observable) SumFloat64() Single {
 		}
 		out <- sum
 		close(out)
-	}()
-	return NewSingleFromChannel(out)
+	}
+	return newColdSingle(f)
 }
