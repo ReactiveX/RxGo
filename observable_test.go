@@ -1595,11 +1595,8 @@ func TestStartWithItemsWithoutItems(t *testing.T) {
 }
 
 func TestStartWithIterable(t *testing.T) {
-	ch := make(chan interface{})
-	it, err := iterable.New(ch)
-	if err != nil {
-		t.Fail()
-	}
+	ch := make(chan interface{}, 1)
+	it := newIterableFromChannel(ch)
 	obs := Just(1, 2, 3).StartWithIterable(it)
 	ch <- 10
 	close(ch)
@@ -1607,11 +1604,8 @@ func TestStartWithIterable(t *testing.T) {
 }
 
 func TestStartWithIterableWithError(t *testing.T) {
-	ch := make(chan interface{})
-	it, err := iterable.New(ch)
-	if err != nil {
-		t.Fail()
-	}
+	ch := make(chan interface{}, 1)
+	it := newIterableFromChannel(ch)
 	obs := Just(1, 2, 3).StartWithIterable(it)
 	ch <- errors.New("")
 	close(ch)
@@ -1619,11 +1613,8 @@ func TestStartWithIterableWithError(t *testing.T) {
 }
 
 func TestStartWithIterableFromEmpty(t *testing.T) {
-	ch := make(chan interface{})
-	it, err := iterable.New(ch)
-	if err != nil {
-		t.Fail()
-	}
+	ch := make(chan interface{}, 1)
+	it := newIterableFromChannel(ch)
 	obs := Empty().StartWithIterable(it)
 	ch <- 1
 	close(ch)
@@ -1631,11 +1622,8 @@ func TestStartWithIterableFromEmpty(t *testing.T) {
 }
 
 func TestStartWithIterableWithoutItems(t *testing.T) {
-	ch := make(chan interface{})
-	it, err := iterable.New(ch)
-	if err != nil {
-		t.Fail()
-	}
+	ch := make(chan interface{}, 1)
+	it := newIterableFromChannel(ch)
 	obs := Just(1, 2, 3).StartWithIterable(it)
 	close(ch)
 	AssertThatObservable(t, obs, HasItems(1, 2, 3))
