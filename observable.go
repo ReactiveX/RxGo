@@ -8,6 +8,7 @@ import (
 
 	"github.com/reactivex/rxgo/errors"
 	"github.com/reactivex/rxgo/handlers"
+	"github.com/reactivex/rxgo/iterable"
 	"github.com/reactivex/rxgo/optional"
 	"github.com/reactivex/rxgo/options"
 )
@@ -53,6 +54,9 @@ type Observable interface {
 	Skip(nth uint) Observable
 	SkipLast(nth uint) Observable
 	SkipWhile(apply Predicate) Observable
+	StartWithItems(items ...interface{}) Observable
+	StartWithIterable(iterable iterable.Iterable) Observable
+	StartWithObservable(observable Observable) Observable
 	Subscribe(handler handlers.EventHandler, opts ...options.Option) Observer
 	SumFloat32() Single
 	SumFloat64() Single
@@ -1279,4 +1283,66 @@ func (o *observable) SumFloat64() Single {
 		close(out)
 	}()
 	return NewSingleFromChannel(out)
+}
+
+// StartWithItems returns an Observable that emits the specified items before it begins to emit items emitted
+// by the source Observable.
+func (o *observable) StartWithItems(items ...interface{}) Observable {
+	out := make(chan interface{})
+	go func() {
+		for _, item := range items {
+			out <- item
+		}
+
+		for item := range o.ch {
+			out <- item
+		}
+
+		close(out)
+	}()
+	return &observable{ch: out}
+}
+
+// StartWithIterable returns an Observable that emits the items in a specified Iterable before it begins to
+// emit items emitted by the source Observable.
+func (o *observable) StartWithIterable(iterable iterable.Iterable) Observable {
+	out := make(chan interface{})
+	go func() {
+		for {
+			item, err := iterable.Next()
+			if err != nil {
+				break
+			}
+			out <- item
+		}
+
+		for item := range o.ch {
+			out <- item
+		}
+
+		close(out)
+	}()
+	return &observable{ch: out}
+}
+
+// StartWithObservable returns an Observable that emits the items in a specified Observable before it begins to
+// emit items emitted by the source Observable.
+func (o *observable) StartWithObservable(obs Observable) Observable {
+	out := make(chan interface{})
+	go func() {
+		for {
+			item, err := obs.Next()
+			if err != nil {
+				break
+			}
+			out <- item
+		}
+
+		for item := range o.ch {
+			out <- item
+		}
+
+		close(out)
+	}()
+	return &observable{ch: out}
 }
