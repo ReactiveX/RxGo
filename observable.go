@@ -12,8 +12,6 @@ import (
 	"github.com/reactivex/rxgo/options"
 )
 
-type observableType uint32
-
 // Observable is a basic observable interface
 type Observable interface {
 	Iterable

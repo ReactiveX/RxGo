@@ -26,18 +26,14 @@ type optionalSingle struct {
 	ch chan optional.Optional
 }
 
-//func newSingleFrom(item interface{}) Single {
-//	s := single{
-//		ch: make(chan interface{}),
-//	}
-//
-//	go func() {
-//		s.ch <- item
-//		close(s.ch)
-//	}()
-//
-//	return &s
-//}
+func newSingleFrom(item interface{}) Single {
+	f := func(out chan interface{}) {
+		out <- item
+		close(out)
+	}
+	s := newColdSingle(f)
+	return s
+}
 
 func newOptionalSingleFrom(opt optional.Optional) OptionalSingle {
 	s := optionalSingle{
