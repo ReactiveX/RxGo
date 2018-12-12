@@ -72,15 +72,18 @@ func (s *single) Filter(apply Predicate) OptionalSingle {
 	out := make(chan optional.Optional)
 	go func() {
 		it := s.iterable.Iterator()
-		for it.Next() {
-			item := it.Value()
-			if apply(item) {
-				out <- optional.Of(item)
+		for {
+			if item, err := it.Next(); err == nil {
+				if apply(item) {
+					out <- optional.Of(item)
+				} else {
+					out <- optional.Empty()
+				}
+				close(out)
+				return
 			} else {
-				out <- optional.Empty()
+				break
 			}
-			close(out)
-			return
 		}
 	}()
 
@@ -92,11 +95,14 @@ func (s *single) Filter(apply Predicate) OptionalSingle {
 func (s *single) Map(apply Function) Single {
 	f := func(out chan interface{}) {
 		it := s.iterable.Iterator()
-		for it.Next() {
-			item := it.Value()
-			out <- apply(item)
-			close(out)
-			return
+		for {
+			if item, err := it.Next(); err == nil {
+				out <- apply(item)
+				close(out)
+				return
+			} else {
+				break
+			}
 		}
 	}
 	return newColdSingle(f)
@@ -107,16 +113,19 @@ func (s *single) Subscribe(handler handlers.EventHandler, opts ...options.Option
 
 	go func() {
 		it := s.iterable.Iterator()
-		for it.Next() {
-			item := it.Value()
-			switch item := item.(type) {
-			case error:
-				ob.OnError(item)
+		for {
+			if item, err := it.Next(); err == nil {
+				switch item := item.(type) {
+				case error:
+					ob.OnError(item)
 
-				// Record the error and break the loop.
-				return
-			default:
-				ob.OnSuccess(item)
+					// Record the error and break the loop.
+					return
+				default:
+					ob.OnSuccess(item)
+				}
+			} else {
+				break
 			}
 		}
 

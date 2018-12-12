@@ -40,9 +40,12 @@ func (c *connectableObservable) Connect() Observer {
 	source := make([]interface{}, 0)
 
 	it := c.iterator
-	for it.Next() {
-		item := it.Value()
-		source = append(source, item)
+	for {
+		if item, err := it.Next(); err == nil {
+			source = append(source, item)
+		} else {
+			break
+		}
 	}
 
 	var wg sync.WaitGroup
