@@ -511,6 +511,7 @@ func (o *observable) TakeWhile(apply Predicate) Observable {
 					out <- item
 					continue
 				}
+				break
 			} else {
 				break
 			}
