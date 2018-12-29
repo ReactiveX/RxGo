@@ -333,3 +333,23 @@ func TestTimerWithNilDuration(t *testing.T) {
 
 	AssertThatObservable(t, obs, HasItems(float64(0)))
 }
+
+func TestMergeWithEmpty(t *testing.T) {
+	obs := Merge(Just(1, 2, 3), Empty())
+	AssertThatObservable(t, obs, HasItemsIgnoreOrder(1, 2, 3))
+}
+
+func TestMergeWithTwoObservables(t *testing.T) {
+	obs := Merge(Just(1, 2, 3), Just(4, 5, 6))
+	AssertThatObservable(t, obs, HasItemsIgnoreOrder(1, 2, 3, 4, 5, 6))
+}
+
+func TestMergeMultipleObservables(t *testing.T) {
+	obs := Merge(Just(1, 4), Just(3, 6), Just(2, 5))
+	AssertThatObservable(t, obs, HasItemsIgnoreOrder(1, 2, 3, 4, 5, 6))
+}
+
+func TestMergeNoObservables(t *testing.T) {
+	obs := Merge()
+	AssertThatObservable(t, obs, IsEmpty())
+}

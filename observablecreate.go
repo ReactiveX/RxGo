@@ -131,6 +131,25 @@ func FromIterable(it Iterable) Observable {
 	return newObservableFromIterable(it)
 }
 
+// Merge combine multiple Observables into one by merging their emissions
+func Merge(observables ...Observable) Observable {
+	if len(observables) == 0 {
+		return Empty()
+	}
+
+	c := make(chan interface{}, len(observables))
+	go func() {
+		for _, val := range observables {
+			c <- val
+		}
+		close(c)
+	}()
+	it := newIterableFromChannel(c)
+	return From(it.Iterator()).FlatMap(func(i interface{}) Observable {
+		return i.(Observable)
+	}, uint(len(observables)))
+}
+
 // From creates a new Observable from an Iterator.
 func From(it Iterator) Observable {
 	out := make(chan interface{})

@@ -13,7 +13,7 @@ import (
 // Assertion lists the assertions which may be configured on an Observable.
 type Assertion interface {
 	apply(*assertion)
-	hasItemsFunc() (bool, []interface{})
+	hasItemsFunc() (bool, []interface{}, bool)
 	hasSizeFunc() (bool, int)
 	hasValueFunc() (bool, interface{})
 	hasRaisedErrorFunc() (bool, error)
@@ -25,6 +25,7 @@ type Assertion interface {
 type assertion struct {
 	f                        func(*assertion)
 	checkHasItems            bool
+	checkHasItemsIgnoreOrder bool
 	hasItems                 []interface{}
 	checkHasSize             bool
 	hasSize                  int
@@ -38,8 +39,8 @@ type assertion struct {
 	isEmpty                  bool
 }
 
-func (ass *assertion) hasItemsFunc() (bool, []interface{}) {
-	return ass.checkHasItems, ass.hasItems
+func (ass *assertion) hasItemsFunc() (bool, []interface{}, bool) {
+	return ass.checkHasItems, ass.hasItems, ass.checkHasItemsIgnoreOrder
 }
 
 func (ass *assertion) hasSizeFunc() (bool, int) {
@@ -88,6 +89,15 @@ func parseAssertions(assertions ...Assertion) Assertion {
 func HasItems(items ...interface{}) Assertion {
 	return newAssertion(func(a *assertion) {
 		a.checkHasItems = true
+		a.hasItems = items
+	})
+}
+
+// HasItemsIgnoreOrder checks that an observable produces the corresponding items in any order.
+func HasItemsIgnoreOrder(items ...interface{}) Assertion {
+	return newAssertion(func(a *assertion) {
+		a.checkHasItems = true
+		a.checkHasItemsIgnoreOrder = true
 		a.hasItems = items
 	})
 }
@@ -154,9 +164,13 @@ func AssertThatObservable(t *testing.T, observable Observable, assertions ...Ass
 		got = append(got, i)
 	})).Block()
 
-	checkHasItems, items := ass.hasItemsFunc()
+	checkHasItems, items, ignoreOrder := ass.hasItemsFunc()
 	if checkHasItems {
-		assert.Equal(t, items, got)
+		if ignoreOrder {
+			assert.ElementsMatch(t, items, got)
+		} else {
+			assert.Equal(t, items, got)
+		}
 	}
 
 	checkHasSize, size := ass.hasSizeFunc()
