@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/reactivex/rxgo/errors"
-	"github.com/reactivex/rxgo/handlers"
+	"github.com/reactivex/rxgo/v2/errors"
+	"github.com/reactivex/rxgo/v2/handlers"
 )
 
 func isClosed(ch <-chan interface{}) bool {

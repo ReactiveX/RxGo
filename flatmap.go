@@ -3,12 +3,12 @@ package rxgo
 import (
 	"sync"
 
-	"github.com/reactivex/rxgo/handlers"
+	"github.com/reactivex/rxgo/v2/handlers"
 )
 
-// transforms emitted items into observables and flattens them into single observable.
-// maxInParallel argument controls how many transformed observables are processed in parallel
-// For an example please take a look at flatmap_slice_test.go file in the examples directory.
+// Transforms emitted items into Observables and flattens them into a single Observable.
+// The maxInParallel argument controls how many transformed Observables are processed in parallel.
+// For an example, please take a look at flatmap_slice_test.go in the examples directory.
 func (o *observable) FlatMap(apply func(interface{}) Observable, maxInParallel uint) Observable {
 	return o.flatMap(apply, maxInParallel, flatObservedSequence)
 }
