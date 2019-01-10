@@ -736,6 +736,29 @@ func TestObservableDistinctUntilChanged(t *testing.T) {
 	assert.Exactly(t, []int{1, 2, 1, 3}, nums)
 }
 
+func TestObservableSequenceEqualWithCorrectSequence(t *testing.T) {
+	sequence := Just(2, 5, 12, 43, 98, 100, 213)
+	result := Just(2, 5, 12, 43, 98, 100, 213).SequenceEqual(sequence)
+	AssertThatObservable(t, result, HasItems(true))
+}
+
+func TestObservableSequenceEqualWithIncorrectSequence(t *testing.T) {
+	sequence := Just(2, 5, 12, 43, 98, 100, 213)
+	result := Just(2, 5, 12, 43, 15, 100, 213).SequenceEqual(sequence)
+	AssertThatObservable(t, result, HasItems(false))
+}
+
+func TestObservableSequenceEqualWithDifferentLengthSequence(t *testing.T) {
+	sequenceShorter := Just(2, 5, 12, 43, 98, 100)
+	sequenceLonger := Just(2, 5, 12, 43, 98, 100, 213, 512)
+
+	resultForShorter := Just(2, 5, 12, 43, 98, 100, 213).SequenceEqual(sequenceShorter)
+	AssertThatObservable(t, resultForShorter, HasItems(false))
+
+	resultForLonger := Just(2, 5, 12, 43, 98, 100, 213).SequenceEqual(sequenceLonger)
+	AssertThatObservable(t, resultForLonger, HasItems(false))
+}
+
 func TestObservableScanWithIntegers(t *testing.T) {
 	items := []interface{}{0, 1, 3, 5, 1, 8}
 	it, err := iterable.New(items)

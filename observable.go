@@ -51,6 +51,7 @@ type Observable interface {
 	Reduce(apply Function2) OptionalSingle
 	Repeat(count int64, frequency Duration) Observable
 	Scan(apply Function2) Observable
+	SequenceEqual(obs Observable) Observable
 	Skip(nth uint) Observable
 	SkipLast(nth uint) Observable
 	SkipWhile(apply Predicate) Observable
@@ -410,6 +411,74 @@ func (o *observable) Scan(apply Function2) Observable {
 		}
 		close(out)
 	}()
+	return &observable{ch: out}
+}
+
+// Compares first items of two sequences and returns true if they are equal and false if
+// they are not. Besides, it returns two new sequences - input sequences without compared items.
+func popAndCompareFirstItems(
+	inputSequence1 []interface{},
+	inputSequence2 []interface{}) (bool, []interface{}, []interface{}) {
+	if len(inputSequence1) > 0 && len(inputSequence2) > 0 {
+		s1, sequence1 := inputSequence1[0], inputSequence1[1:]
+		s2, sequence2 := inputSequence2[0], inputSequence2[1:]
+		return s1 == s2, sequence1, sequence2
+	}
+	return true, inputSequence1, inputSequence2
+}
+
+// SequenceEqual emits true if an Observable and the input Observable emit the same items.
+// When any Observable emits different item, it emits false.
+func (o *observable) SequenceEqual(obs Observable) Observable {
+	out := make(chan interface{})
+	obsChan := make(chan interface{})
+
+	go func() {
+		for {
+			item, err := obs.Next()
+			if err != nil {
+				break
+			}
+			obsChan <- item
+		}
+		close(obsChan)
+	}()
+
+	go func() {
+		var mainSequence []interface{}
+		var obsSequence []interface{}
+		areCorrect := true
+		isMainChannelClosed := false
+		isObsChannelClosed := false
+
+	mainLoop:
+		for {
+			select {
+			case item, ok := <-o.ch:
+				if ok {
+					mainSequence = append(mainSequence, item)
+					areCorrect, mainSequence, obsSequence = popAndCompareFirstItems(mainSequence, obsSequence)
+				} else {
+					isMainChannelClosed = true
+				}
+			case item, ok := <-obsChan:
+				if ok {
+					obsSequence = append(obsSequence, item)
+					areCorrect, mainSequence, obsSequence = popAndCompareFirstItems(mainSequence, obsSequence)
+				} else {
+					isObsChannelClosed = true
+				}
+			}
+
+			if !areCorrect || (isMainChannelClosed && isObsChannelClosed) {
+				break mainLoop
+			}
+		}
+
+		out <- areCorrect && len(mainSequence) == 0 && len(obsSequence) == 0
+		close(out)
+	}()
+
 	return &observable{ch: out}
 }
 
