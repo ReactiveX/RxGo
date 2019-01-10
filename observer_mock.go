@@ -1,7 +1,7 @@
 package rxgo
 
 import (
-	"github.com/reactivex/rxgo/handlers"
+	"github.com/reactivex/rxgo/v2/handlers"
 	"github.com/stretchr/testify/mock"
 )
 

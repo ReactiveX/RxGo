@@ -3,7 +3,7 @@ package optional
 import (
 	"testing"
 
-	"github.com/reactivex/rxgo/errors"
+	"github.com/reactivex/rxgo/v2/errors"
 	"github.com/stretchr/testify/assert"
 )
 

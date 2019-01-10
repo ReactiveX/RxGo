@@ -6,9 +6,9 @@ import (
 	"errors"
 	"time"
 
-	rxerrors "github.com/reactivex/rxgo/errors"
-	"github.com/reactivex/rxgo/handlers"
-	"github.com/reactivex/rxgo/iterable"
+	rxerrors "github.com/reactivex/rxgo/v2/errors"
+	"github.com/reactivex/rxgo/v2/handlers"
+	"github.com/reactivex/rxgo/v2/iterable"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )

@@ -2,7 +2,7 @@
 // sequences of empty interface such as slice and channel to an Iterator.
 package iterable
 
-import "github.com/reactivex/rxgo/errors"
+import "github.com/reactivex/rxgo/v2/errors"
 
 // Iterable converts channel and slice into an Iterator.
 type Iterable <-chan interface{}

@@ -6,11 +6,11 @@ import (
 
 	"fmt"
 
-	"github.com/reactivex/rxgo/errors"
-	"github.com/reactivex/rxgo/handlers"
-	"github.com/reactivex/rxgo/iterable"
-	"github.com/reactivex/rxgo/optional"
-	"github.com/reactivex/rxgo/options"
+	"github.com/reactivex/rxgo/v2/errors"
+	"github.com/reactivex/rxgo/v2/handlers"
+	"github.com/reactivex/rxgo/v2/iterable"
+	"github.com/reactivex/rxgo/v2/optional"
+	"github.com/reactivex/rxgo/v2/options"
 )
 
 // Observable is a basic observable interface
