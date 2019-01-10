@@ -1,9 +1,9 @@
 package rxgo
 
 import (
-	"github.com/reactivex/rxgo/handlers"
-	"github.com/reactivex/rxgo/optional"
-	"github.com/reactivex/rxgo/options"
+	"github.com/reactivex/rxgo/v2/handlers"
+	"github.com/reactivex/rxgo/v2/optional"
+	"github.com/reactivex/rxgo/v2/options"
 )
 
 // Single is similar to an Observable but emits only one single element or an error notification.

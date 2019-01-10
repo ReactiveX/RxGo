@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/reactivex/rxgo/optional"
+	"github.com/reactivex/rxgo/v2/optional"
 )
 
 func TestAssertThatObservableHasItems(t *testing.T) {

@@ -3,8 +3,8 @@ package rxgo
 import (
 	"sync"
 
-	"github.com/reactivex/rxgo/handlers"
-	"github.com/reactivex/rxgo/options"
+	"github.com/reactivex/rxgo/v2/handlers"
+	"github.com/reactivex/rxgo/v2/options"
 )
 
 type ConnectableObservable interface {

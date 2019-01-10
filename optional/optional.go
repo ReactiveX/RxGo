@@ -1,6 +1,6 @@
 package optional
 
-import "github.com/reactivex/rxgo/errors"
+import "github.com/reactivex/rxgo/v2/errors"
 
 var emptyOptional = new(empty)
 

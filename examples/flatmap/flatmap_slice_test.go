@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/reactivex/rxgo"
+	"github.com/reactivex/rxgo/v2"
 )
 
 func TestFlatMapExample(t *testing.T) {

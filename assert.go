@@ -5,8 +5,8 @@ import (
 
 	"errors"
 
-	"github.com/reactivex/rxgo/handlers"
-	"github.com/reactivex/rxgo/optional"
+	"github.com/reactivex/rxgo/v2/handlers"
+	"github.com/reactivex/rxgo/v2/optional"
 	"github.com/stretchr/testify/assert"
 )
 
