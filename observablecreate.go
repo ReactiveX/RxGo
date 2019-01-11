@@ -95,16 +95,22 @@ func Concat(observable1 Observable, observables ...Observable) Observable {
 	out := make(chan interface{})
 	go func() {
 		it := observable1.Iterator()
-		for it.Next() {
-			item := it.Value()
-			out <- item
+		for {
+			if item, err := it.Next(); err == nil {
+				out <- item
+			} else {
+				break
+			}
 		}
 
 		for _, obs := range observables {
 			it := obs.Iterator()
-			for it.Next() {
-				item := it.Value()
-				out <- item
+			for {
+				if item, err := it.Next(); err == nil {
+					out <- item
+				} else {
+					break
+				}
 			}
 		}
 
@@ -129,9 +135,12 @@ func FromIterable(it Iterable) Observable {
 func From(it Iterator) Observable {
 	out := make(chan interface{})
 	go func() {
-		for it.Next() {
-			item := it.Value()
-			out <- item
+		for {
+			if item, err := it.Next(); err == nil {
+				out <- item
+			} else {
+				break
+			}
 		}
 		close(out)
 	}()

@@ -1,13 +1,13 @@
 package rxgo
 
+import "github.com/reactivex/rxgo/errors"
+
 type Iterator interface {
-	Next() bool
-	Value() interface{}
+	Next() (interface{}, error)
 }
 
 type iteratorFromChannel struct {
-	item interface{}
-	ch   chan interface{}
+	ch chan interface{}
 }
 
 type iteratorFromSlice struct {
@@ -20,39 +20,30 @@ type iteratorFromRange struct {
 	end     int // Included
 }
 
-func (it *iteratorFromChannel) Next() bool {
-	if v, ok := <-it.ch; ok {
-		it.item = v
-		return true
+func (it *iteratorFromChannel) Next() (interface{}, error) {
+	if next, ok := <-it.ch; ok {
+		return next, nil
 	}
 
-	return false
+	return nil, errors.New(errors.EndOfIteratorError)
 }
 
-func (it *iteratorFromChannel) Value() interface{} {
-	return it.item
-}
-
-func (it *iteratorFromSlice) Next() bool {
+func (it *iteratorFromSlice) Next() (interface{}, error) {
 	it.index = it.index + 1
-	if it.index >= len(it.s) {
-		return false
+	if it.index < len(it.s) {
+		return it.s[it.index], nil
 	} else {
-		return true
+		return nil, errors.New(errors.EndOfIteratorError)
 	}
 }
 
-func (it *iteratorFromSlice) Value() interface{} {
-	return it.s[it.index]
-}
-
-func (it *iteratorFromRange) Next() bool {
+func (it *iteratorFromRange) Next() (interface{}, error) {
 	it.current = it.current + 1
-	return it.current <= it.end
-}
-
-func (it *iteratorFromRange) Value() interface{} {
-	return it.current
+	if it.current <= it.end {
+		return it.current, nil
+	} else {
+		return nil, errors.New(errors.EndOfIteratorError)
+	}
 }
 
 func newIteratorFromChannel(ch chan interface{}) Iterator {

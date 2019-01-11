@@ -42,18 +42,21 @@ func flatObservedSequence(out chan interface{}, o Observable, apply func(interfa
 	count = 0
 
 	it := o.Iterator()
-	for it.Next() {
-		item := it.Value()
-		sequence = apply(item)
-		count++
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			sequence.Subscribe(emissionObserver).Block()
-		}()
+	for {
+		if item, err := it.Next(); err == nil {
+			sequence = apply(item)
+			count++
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				sequence.Subscribe(emissionObserver).Block()
+			}()
 
-		if count%maxInParallel == 0 {
-			wg.Wait()
+			if count%maxInParallel == 0 {
+				wg.Wait()
+			}
+		} else {
+			break
 		}
 	}
 

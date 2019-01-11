@@ -1,9 +1,8 @@
 package rxgo
 
 import (
-	"testing"
-
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestIteratorFromChannel(t *testing.T) {
@@ -11,39 +10,35 @@ func TestIteratorFromChannel(t *testing.T) {
 	it := newIteratorFromChannel(ch)
 
 	ch <- 1
-	assert.True(t, it.Next())
-	assert.Equal(t, 1, it.Value())
+	next, err := it.Next()
+	assert.Nil(t, err)
+	assert.Equal(t, 1, next)
 
 	ch <- 2
-	assert.True(t, it.Next())
-	assert.Equal(t, 2, it.Value())
+	next, err = it.Next()
+	assert.Nil(t, err)
+	assert.Equal(t, 2, next)
 
 	close(ch)
-	assert.False(t, it.Next())
+	_, err = it.Next()
+	assert.NotNil(t, err)
 }
 
 func TestIteratorFromSlice(t *testing.T) {
 	it := newIteratorFromSlice([]interface{}{1, 2, 3})
 
-	assert.True(t, it.Next())
-	assert.Equal(t, 1, it.Value())
+	next, err := it.Next()
+	assert.Nil(t, err)
+	assert.Equal(t, 1, next)
 
-	assert.True(t, it.Next())
-	assert.Equal(t, 2, it.Value())
+	next, err = it.Next()
+	assert.Nil(t, err)
+	assert.Equal(t, 2, next)
 
-	assert.True(t, it.Next())
-	assert.Equal(t, 3, it.Value())
+	next, err = it.Next()
+	assert.Nil(t, err)
+	assert.Equal(t, 3, next)
 
-	assert.False(t, it.Next())
-}
-
-func TestName(t *testing.T) {
-	just := Just(1).Map(func(i interface{}) interface{} {
-		return 1 + i.(int)
-	}).Map(func(i interface{}) interface{} {
-		return 1 + i.(int)
-	})
-
-	AssertThatObservable(t, just, HasItems(3))
-	AssertThatObservable(t, just, HasItems(3))
+	_, err = it.Next()
+	assert.NotNil(t, err)
 }
