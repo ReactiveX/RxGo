@@ -83,9 +83,8 @@ type observable struct {
 
 // NewObservable creates an Observable
 func NewObservable(buffer uint) Observable {
-	ch := make(chan interface{}, int(buffer))
 	return &observable{
-		ch: ch,
+		ch: make(chan interface{}, int(buffer)),
 	}
 }
 
@@ -116,27 +115,24 @@ func iterate(observable Observable, observer Observer) error {
 					return nil
 				}
 			}
-		} else {
-			switch item := item.(type) {
-			case error:
-				if observable.getOnErrorReturn() != nil {
-					observer.OnNext(observable.getOnErrorReturn()(item))
-					// Stop the subscription
-					return nil
-				} else if observable.getOnErrorResumeNext() != nil {
-					observable = observable.getOnErrorResumeNext()(item)
-				} else {
-					observer.OnError(item)
-					return item
-				}
-			default:
-				observer.OnNext(item)
+			continue
+		}
+		switch item := item.(type) {
+		case error:
+			if observable.getOnErrorReturn() != nil {
+				observer.OnNext(observable.getOnErrorReturn()(item))
+				// Stop the subscription.
+				return nil
+			} else if observable.getOnErrorResumeNext() != nil {
+				observable = observable.getOnErrorResumeNext()(item)
+			} else {
+				observer.OnError(item)
+				return item
 			}
-
+		default:
+			observer.OnNext(item)
 		}
 	}
-
-	return nil
 }
 
 // Next returns the next item on the Observable.

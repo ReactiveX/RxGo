@@ -36,3 +36,14 @@ func TestCreateNewSingleObserverFromSingleObserver(t *testing.T) {
 	assert.Equal(t, int64(3), v)
 	assert.True(t, single.IsDisposed())
 }
+
+func BenchmarkIsDisposed(b *testing.B) {
+	for n := 0; n < b.N; n++ {
+		o := NewSingleObserver()
+		for i := 0; i < 10; i++ {
+			o.IsDisposed()
+		}
+		o.Dispose()
+		o.IsDisposed()
+	}
+}
