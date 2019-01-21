@@ -1,6 +1,7 @@
 package rxgo
 
 import (
+	"container/ring"
 	"sync"
 	"time"
 
@@ -232,7 +233,7 @@ func (o *observable) ElementAt(index uint) Single {
 				close(out)
 				return
 			}
-			takeCount += 1
+			takeCount++
 		}
 		out <- errors.New(errors.ElementAtError)
 		close(out)
@@ -248,7 +249,7 @@ func (o *observable) Take(nth uint) Observable {
 		takeCount := 0
 		for item := range o.ch {
 			if takeCount < int(nth) {
-				takeCount += 1
+				takeCount++
 				out <- item
 				continue
 			}
@@ -264,15 +265,23 @@ func (o *observable) Take(nth uint) Observable {
 func (o *observable) TakeLast(nth uint) Observable {
 	out := make(chan interface{})
 	go func() {
-		buf := make([]interface{}, nth)
+		n := int(nth)
+		r := ring.New(n)
+		count := 0
 		for item := range o.ch {
-			if len(buf) >= int(nth) {
-				buf = buf[1:]
-			}
-			buf = append(buf, item)
+			count++
+			r.Value = item
+			r = r.Next()
 		}
-		for _, takenItem := range buf {
-			out <- takenItem
+		if count < n {
+			for i := 0; i < n-count; i++ {
+				r = r.Next()
+			}
+			n = count
+		}
+		for i := 0; i < n; i++ {
+			out <- r.Value
+			r = r.Next()
 		}
 		close(out)
 	}()
@@ -366,7 +375,7 @@ func (o *observable) Skip(nth uint) Observable {
 		skipCount := 0
 		for item := range o.ch {
 			if skipCount < int(nth) {
-				skipCount += 1
+				skipCount++
 				continue
 			}
 			out <- item

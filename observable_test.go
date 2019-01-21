@@ -394,6 +394,20 @@ func TestObservableTakeLast(t *testing.T) {
 	assert.Exactly(t, []int{3, 4, 5}, nums)
 }
 
+func BenchmarkObservableTakeLast(b *testing.B) {
+	for n := 0; n < b.N; n++ {
+		b.StopTimer()
+		items := []interface{}{}
+		for i := 0; i < 10000; i++ {
+			items = append(items, i)
+		}
+		it, _ := iterable.New(items)
+		stream := From(it)
+		b.StartTimer()
+		stream.TakeLast(10)
+	}
+}
+
 /*
 func TestObservableTakeLastWithEmpty(t *testing.T) {
 	stream1 := Empty()
