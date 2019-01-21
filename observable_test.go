@@ -36,6 +36,21 @@ func TestCreateObservableWithConstructor(t *testing.T) {
 	}
 }
 
+func TestNewObservableFromChannel(t *testing.T) {
+	assert := assert.New(t)
+
+	ch := make(chan interface{}, 3)
+	ch <- 2
+	stream := NewObservableFromChannel(ch)
+	switch v := stream.(type) {
+	case *observable:
+		assert.Equal(1, len(v.ch))
+		assert.Equal(3, cap(v.ch))
+	default:
+		t.Fail()
+	}
+}
+
 func TestCheckEventHandler(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skip testing of unexported testCheckEventHandler")
@@ -394,19 +409,41 @@ func TestObservableTakeLast(t *testing.T) {
 	assert.Exactly(t, []int{3, 4, 5}, nums)
 }
 
-func BenchmarkObservableTakeLast(b *testing.B) {
-	for n := 0; n < b.N; n++ {
-		b.StopTimer()
-		items := []interface{}{}
-		for i := 0; i < 10000; i++ {
-			items = append(items, i)
-		}
-		it, _ := iterable.New(items)
-		stream := From(it)
-		b.StartTimer()
-		stream.TakeLast(10)
+func TestObservableTakeLastLessThanNth(t *testing.T) {
+	items := []interface{}{1, 2}
+	it, err := iterable.New(items)
+	if err != nil {
+		t.Fail()
 	}
+
+	stream1 := From(it)
+	stream2 := stream1.TakeLast(3)
+
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	stream2.Subscribe(onNext).Block()
+
+	assert.Exactly(t, []int{1, 2}, nums)
 }
+
+// func BenchmarkObservableTakeLast(b *testing.B) {
+// 	for n := 0; n < b.N; n++ {
+// 		b.StopTimer()
+// 		items := []interface{}{}
+// 		for i := 0; i < 10000; i++ {
+// 			items = append(items, i)
+// 		}
+// 		it, _ := iterable.New(items)
+// 		stream := From(it)
+// 		b.StartTimer()
+// 		stream.TakeLast(10)
+// 	}
+// }
 
 /*
 func TestObservableTakeLastWithEmpty(t *testing.T) {
