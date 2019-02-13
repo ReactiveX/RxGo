@@ -107,7 +107,7 @@ func TestStartOperator(t *testing.T) {
 			StatusCode: 200,
 		}
 
-		res, err := fakeGet("somehost.com", 10*time.Millisecond, result)
+		res, err := fakeGet("somehost.com", 0*time.Millisecond, result)
 		if err != nil {
 			return err
 		}
@@ -120,7 +120,7 @@ func TestStartOperator(t *testing.T) {
 			StatusCode: 301,
 		}
 
-		res, err := fakeGet("somehost.com", 15*time.Millisecond, result)
+		res, err := fakeGet("somehost.com", 50*time.Millisecond, result)
 		if err != nil {
 			return err
 		}
@@ -133,7 +133,7 @@ func TestStartOperator(t *testing.T) {
 			StatusCode: 500,
 		}
 
-		res, err := fakeGet("badserver.co", 50*time.Millisecond, result)
+		res, err := fakeGet("badserver.co", 100*time.Millisecond, result)
 		if err != nil {
 			return err
 		}
@@ -142,7 +142,7 @@ func TestStartOperator(t *testing.T) {
 
 	e1 := Supplier(func() interface{} {
 		err := errors.New("Bad URL")
-		res, err := fakeGet("badurl.err", 100*time.Millisecond, err)
+		res, err := fakeGet("badurl.err", 150*time.Millisecond, err)
 		if err != nil {
 			return err
 		}
