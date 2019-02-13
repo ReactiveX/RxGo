@@ -66,5 +66,15 @@ func TestSingleMap(t *testing.T) {
 	})).Block()
 
 	assert.Equal(t, 12, got)
+}
 
+func TestSingleMapWithTwoSubscription(t *testing.T) {
+	just := newSingleFrom(1).Map(func(i interface{}) interface{} {
+		return 1 + i.(int)
+	}).Map(func(i interface{}) interface{} {
+		return 1 + i.(int)
+	})
+
+	AssertThatSingle(t, just, HasValue(3))
+	AssertThatSingle(t, just, HasValue(3))
 }
