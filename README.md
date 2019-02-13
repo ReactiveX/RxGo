@@ -6,12 +6,10 @@
 
 Reactive Extensions for the Go Language
 
-> We started to develop RxGo version 2 (current version 1 on branch master) which is found in the `v2` branch. To interested [read here](https://github.com/ReactiveX/RxGo/issues/99#issuecomment-443281707)
-
 ## Call for Maintainers
-This project hasn't been active for a while due to myself not having enough time and not using Go on a regular basis.
-I'm welcoming anyone who's willing to help maintaining or would like to become a core developer to get in touch with me.
-I'd like to see this project continues and it'd be such a shame to let it just sinks.
+The development of RxGo v2 has started (`v2` branch). Ongoing discussions can be found in [#99](https://github.com/ReactiveX/RxGo/issues/99). 
+
+We are welcoming anyone who's willing to help us maintaining or would like to become a core developer to get in touch with us.
 
 ## Contributions
 All contributions are welcome, both in development and documentation! Be sure you check out [contributions](https://github.com/ReactiveX/RxGo/wiki/Contributions) and [roadmap](https://github.com/ReactiveX/RxGo/wiki/Roadmap).
