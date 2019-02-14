@@ -81,12 +81,12 @@ type observable struct {
 	onErrorResumeNext   ErrorToObservableFunction
 }
 
-// CheckHandler checks the underlying type of an EventHandler.
+// CheckEventHandler checks the underlying type of an EventHandler.
 func CheckEventHandler(handler handlers.EventHandler) Observer {
 	return NewObserver(handler)
 }
 
-// CheckHandler checks the underlying type of an EventHandler.
+// CheckEventHandlers checks the underlying type of an EventHandler.
 func CheckEventHandlers(handler ...handlers.EventHandler) Observer {
 	return NewObserver(handler...)
 }
@@ -807,8 +807,8 @@ func (o *observable) AverageInt() Single {
 		for {
 			if item, err := it.Next(); err == nil {
 				if v, ok := item.(int); ok {
-					sum = sum + v
-					count = count + 1
+					sum += v
+					count++
 				} else {
 					out <- errors.New(errors.IllegalInputError, fmt.Sprintf("type: %t", item))
 					close(out)
@@ -831,14 +831,14 @@ func (o *observable) AverageInt() Single {
 // AverageInt8 calculates the average of numbers emitted by an Observable and emits this average int8.
 func (o *observable) AverageInt8() Single {
 	f := func(out chan interface{}) {
-		var sum int8 = 0
-		var count int8 = 0
+		var sum int8
+		var count int8
 		it := o.iterable.Iterator()
 		for {
 			if item, err := it.Next(); err == nil {
 				if v, ok := item.(int8); ok {
-					sum = sum + v
-					count = count + 1
+					sum += v
+					count++
 				} else {
 					out <- errors.New(errors.IllegalInputError, fmt.Sprintf("type: %t", item))
 					close(out)
@@ -861,14 +861,14 @@ func (o *observable) AverageInt8() Single {
 // AverageInt16 calculates the average of numbers emitted by an Observable and emits this average int16.
 func (o *observable) AverageInt16() Single {
 	f := func(out chan interface{}) {
-		var sum int16 = 0
-		var count int16 = 0
+		var sum int16
+		var count int16
 		it := o.iterable.Iterator()
 		for {
 			if item, err := it.Next(); err == nil {
 				if v, ok := item.(int16); ok {
-					sum = sum + v
-					count = count + 1
+					sum += v
+					count++
 				} else {
 					out <- errors.New(errors.IllegalInputError, fmt.Sprintf("type: %t", item))
 					close(out)
@@ -891,14 +891,14 @@ func (o *observable) AverageInt16() Single {
 // AverageInt32 calculates the average of numbers emitted by an Observable and emits this average int32.
 func (o *observable) AverageInt32() Single {
 	f := func(out chan interface{}) {
-		var sum int32 = 0
-		var count int32 = 0
+		var sum int32
+		var count int32
 		it := o.iterable.Iterator()
 		for {
 			if item, err := it.Next(); err == nil {
 				if v, ok := item.(int32); ok {
-					sum = sum + v
-					count = count + 1
+					sum += v
+					count++
 				} else {
 					out <- errors.New(errors.IllegalInputError, fmt.Sprintf("type: %t", item))
 					close(out)
@@ -921,14 +921,14 @@ func (o *observable) AverageInt32() Single {
 // AverageInt64 calculates the average of numbers emitted by an Observable and emits this average int64.
 func (o *observable) AverageInt64() Single {
 	f := func(out chan interface{}) {
-		var sum int64 = 0
-		var count int64 = 0
+		var sum int64
+		var count int64
 		it := o.iterable.Iterator()
 		for {
 			if item, err := it.Next(); err == nil {
 				if v, ok := item.(int64); ok {
-					sum = sum + v
-					count = count + 1
+					sum += v
+					count++
 				} else {
 					out <- errors.New(errors.IllegalInputError, fmt.Sprintf("type: %t", item))
 					close(out)
@@ -951,14 +951,14 @@ func (o *observable) AverageInt64() Single {
 // AverageFloat32 calculates the average of numbers emitted by an Observable and emits this average float32.
 func (o *observable) AverageFloat32() Single {
 	f := func(out chan interface{}) {
-		var sum float32 = 0
-		var count float32 = 0
+		var sum float32
+		var count float32
 		it := o.iterable.Iterator()
 		for {
 			if item, err := it.Next(); err == nil {
 				if v, ok := item.(float32); ok {
-					sum = sum + v
-					count = count + 1
+					sum += v
+					count++
 				} else {
 					out <- errors.New(errors.IllegalInputError, fmt.Sprintf("type: %t", item))
 					close(out)
@@ -981,14 +981,14 @@ func (o *observable) AverageFloat32() Single {
 // AverageFloat64 calculates the average of numbers emitted by an Observable and emits this average float64.
 func (o *observable) AverageFloat64() Single {
 	f := func(out chan interface{}) {
-		var sum float64 = 0
-		var count float64 = 0
+		var sum float64
+		var count float64
 		it := o.iterable.Iterator()
 		for {
 			if item, err := it.Next(); err == nil {
 				if v, ok := item.(float64); ok {
-					sum = sum + v
-					count = count + 1
+					sum += v
+					count++
 				} else {
 					out <- errors.New(errors.IllegalInputError, fmt.Sprintf("type: %t", item))
 					close(out)
@@ -1013,7 +1013,7 @@ func (o *observable) Max(comparator Comparator) OptionalSingle {
 	out := make(chan optional.Optional)
 	go func() {
 		empty := true
-		var max interface{} = nil
+		var max interface{}
 		it := o.iterable.Iterator()
 		for {
 			if item, err := it.Next(); err == nil {
@@ -1045,7 +1045,7 @@ func (o *observable) Min(comparator Comparator) OptionalSingle {
 	out := make(chan optional.Optional)
 	go func() {
 		empty := true
-		var min interface{} = nil
+		var min interface{}
 		it := o.iterable.Iterator()
 		for {
 			if item, err := it.Next(); err == nil {

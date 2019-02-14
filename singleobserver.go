@@ -25,7 +25,7 @@ type singleObserver struct {
 	done          chan interface{}
 }
 
-// NewSinglesingleObserver constructs a new SingleObserver instance with default SingleObserver and accept
+// NewSingleObserver constructs a new SingleObserver instance with default SingleObserver and accept
 // any number of EventHandler
 func NewSingleObserver(eventHandlers ...handlers.EventHandler) SingleObserver {
 	ob := singleObserver{}
@@ -120,7 +120,7 @@ func (o *singleObserver) OnError(err error) {
 	}
 }
 
-// OnDone terminates the SingleObserver's internal Observable
+// Block terminates the SingleObserver's internal Observable
 func (o *singleObserver) Block() (interface{}, error) {
 	o.disposedMutex.Lock()
 	disposed := o.disposed

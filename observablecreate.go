@@ -54,7 +54,7 @@ func isClosed(ch <-chan interface{}) bool {
 	return false
 }
 
-// Creates observable from based on source function. Keep it mind to call emitter.OnDone()
+// Create observable from based on source function. Keep it mind to call emitter.OnDone()
 // to signal sequence's end.
 // Example:
 // - emitting none elements

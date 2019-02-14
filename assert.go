@@ -92,7 +92,7 @@ func HasItems(items ...interface{}) Assertion {
 	})
 }
 
-// HasItems checks that an observable produces the corresponding number of items.
+// HasSize checks that an observable produces the corresponding number of items.
 func HasSize(size int) Assertion {
 	return newAssertion(func(a *assertion) {
 		a.checkHasSize = true
