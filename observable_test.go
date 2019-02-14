@@ -345,20 +345,6 @@ func TestObservableTakeLastLessThanNth(t *testing.T) {
 	assert.Exactly(t, []int{4, 5}, nums)
 }
 
-// func BenchmarkObservableTakeLast(b *testing.B) {
-// 	for n := 0; n < b.N; n++ {
-// 		b.StopTimer()
-// 		items := []interface{}{}
-// 		for i := 0; i < 10000; i++ {
-// 			items = append(items, i)
-// 		}
-// 		it, _ := iterable.New(items)
-// 		stream := From(it)
-// 		b.StartTimer()
-// 		stream.TakeLast(10)
-// 	}
-// }
-
 /*
 func TestObservableTakeLastWithEmpty(t *testing.T) {
 	stream1 := Empty()
@@ -930,9 +916,8 @@ func TestObservableToMap(t *testing.T) {
 		case bool:
 			if v {
 				return 0
-			} else {
-				return 1
 			}
+			return 1
 		default:
 			return i
 		}
@@ -972,9 +957,8 @@ func TestObservableToMapWithValueSelector(t *testing.T) {
 		case bool:
 			if v {
 				return 0
-			} else {
-				return 1
 			}
+			return 1
 		default:
 			return i
 		}
