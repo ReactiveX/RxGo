@@ -1323,15 +1323,15 @@ func (o *observable) SumInt64() Single {
 			if item, err := it.Next(); err == nil {
 				switch item := item.(type) {
 				case int:
-					sum = sum + int64(item)
+					sum += int64(item)
 				case int8:
-					sum = sum + int64(item)
+					sum += int64(item)
 				case int16:
-					sum = sum + int64(item)
+					sum += int64(item)
 				case int32:
-					sum = sum + int64(item)
+					sum += int64(item)
 				case int64:
-					sum = sum + item
+					sum += item
 				default:
 					out <- errors.New(errors.IllegalInputError,
 						fmt.Sprintf("expected type: int, int8, int16, int32 or int64, got %t", item))
@@ -1357,17 +1357,17 @@ func (o *observable) SumFloat32() Single {
 			if item, err := it.Next(); err == nil {
 				switch item := item.(type) {
 				case int:
-					sum = sum + float32(item)
+					sum += float32(item)
 				case int8:
-					sum = sum + float32(item)
+					sum += float32(item)
 				case int16:
-					sum = sum + float32(item)
+					sum += float32(item)
 				case int32:
-					sum = sum + float32(item)
+					sum += float32(item)
 				case int64:
-					sum = sum + float32(item)
+					sum += float32(item)
 				case float32:
-					sum = sum + item
+					sum += item
 				default:
 					out <- errors.New(errors.IllegalInputError,
 						fmt.Sprintf("expected type: float32, int, int8, int16, int32 or int64, got %t", item))
@@ -1393,19 +1393,19 @@ func (o *observable) SumFloat64() Single {
 			if item, err := it.Next(); err == nil {
 				switch item := item.(type) {
 				case int:
-					sum = sum + float64(item)
+					sum += float64(item)
 				case int8:
-					sum = sum + float64(item)
+					sum += float64(item)
 				case int16:
-					sum = sum + float64(item)
+					sum += float64(item)
 				case int32:
-					sum = sum + float64(item)
+					sum += float64(item)
 				case int64:
-					sum = sum + float64(item)
+					sum += float64(item)
 				case float32:
-					sum = sum + float64(item)
+					sum += float64(item)
 				case float64:
-					sum = sum + item
+					sum += item
 				default:
 					out <- errors.New(errors.IllegalInputError,
 						fmt.Sprintf("expected type: float32, float64, int, int8, int16, int32 or int64, got %t", item))

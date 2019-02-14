@@ -1072,10 +1072,10 @@ func TestObservableZipWithEmpty(t *testing.T) {
 func TestCheckEventHandlers(t *testing.T) {
 	i := 0
 	nf := handlers.NextFunc(func(interface{}) {
-		i = i + 2
+		i += 2
 	})
 	df := handlers.DoneFunc(func() {
-		i = i + 5
+		i += 5
 	})
 	ob1 := CheckEventHandlers(nf, df)
 	ob1.OnNext("")
