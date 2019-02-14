@@ -8,19 +8,26 @@ import (
 )
 
 type ConnectableObservable interface {
+	Iterable
 	Connect() Observer
 	Subscribe(handler handlers.EventHandler, opts ...options.Option) Observer
 }
 
 type connectableObservable struct {
+	iterator   Iterator
 	observable Observable
 	observers  []Observer
 }
 
-func NewConnectableObservable(observable Observable) ConnectableObservable {
+func newConnectableObservableFromObservable(observable Observable) ConnectableObservable {
 	return &connectableObservable{
 		observable: observable,
+		iterator:   observable.Iterator(),
 	}
+}
+
+func (c *connectableObservable) Iterator() Iterator {
+	return c.iterator
 }
 
 func (c *connectableObservable) Subscribe(handler handlers.EventHandler, opts ...options.Option) Observer {
@@ -32,12 +39,13 @@ func (c *connectableObservable) Subscribe(handler handlers.EventHandler, opts ..
 func (c *connectableObservable) Connect() Observer {
 	source := make([]interface{}, 0)
 
+	it := c.iterator
 	for {
-		item, err := c.observable.Next()
-		if err != nil {
+		if item, err := it.Next(); err == nil {
+			source = append(source, item)
+		} else {
 			break
 		}
-		source = append(source, item)
 	}
 
 	var wg sync.WaitGroup

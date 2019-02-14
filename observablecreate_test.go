@@ -8,7 +8,6 @@ import (
 
 	rxerrors "github.com/reactivex/rxgo/errors"
 	"github.com/reactivex/rxgo/handlers"
-	"github.com/reactivex/rxgo/iterable"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -141,39 +140,6 @@ func testFinishEmissionOnError(t *testing.T) {
 	mockedObserver.AssertNotCalled(t, "OnDone")
 }
 
-func TestDefer(t *testing.T) {
-	test := 5
-	var value int
-	onNext := handlers.NextFunc(func(item interface{}) {
-		switch item := item.(type) {
-		case int:
-			value = item
-		}
-	})
-	// First subscriber
-	stream1 := Defer(func() Observable {
-		items := []interface{}{test}
-		it, err := iterable.New(items)
-		if err != nil {
-			t.Fail()
-		}
-		return From(it)
-	})
-	test = 3
-	stream2 := stream1.Map(func(i interface{}) interface{} {
-		return i
-	})
-	stream2.Subscribe(onNext).Block()
-	assert.Exactly(t, 3, value)
-	// Second subscriber
-	test = 8
-	stream2 = stream1.Map(func(i interface{}) interface{} {
-		return i
-	})
-	stream2.Subscribe(onNext).Block()
-	assert.Exactly(t, 8, value)
-}
-
 func TestError(t *testing.T) {
 	var got error
 	err := errors.New("foo")
@@ -252,4 +218,118 @@ func TestConcatWithAnEmptyObservable(t *testing.T) {
 
 	obs = Concat(Just(1, 2, 3), Empty())
 	AssertThatObservable(t, obs, HasItems(1, 2, 3))
+}
+
+func TestFromSlice(t *testing.T) {
+	obs := FromSlice([]interface{}{1, 2, 3})
+	AssertThatObservable(t, obs, HasItems(1, 2, 3))
+	AssertThatObservable(t, obs, HasItems(1, 2, 3))
+}
+
+func TestFromChannel(t *testing.T) {
+	ch := make(chan interface{}, 3)
+	obs := FromChannel(ch)
+
+	ch <- 1
+	ch <- 2
+	ch <- 3
+	close(ch)
+
+	AssertThatObservable(t, obs, HasItems(1, 2, 3))
+	AssertThatObservable(t, obs, IsEmpty())
+}
+
+func TestJust(t *testing.T) {
+	obs := Just(1, 2, 3)
+	AssertThatObservable(t, obs, HasItems(1, 2, 3))
+	AssertThatObservable(t, obs, HasItems(1, 2, 3))
+}
+
+type statefulIterable struct {
+	count int
+}
+
+func (it *statefulIterable) Next() (interface{}, error) {
+	it.count = it.count + 1
+	if it.count < 3 {
+		return it.count, nil
+	} else {
+		return nil, rxerrors.New(rxerrors.EndOfIteratorError)
+	}
+}
+
+func (it *statefulIterable) Value() interface{} {
+	return it.count
+}
+
+func (it *statefulIterable) Iterator() Iterator {
+	return it
+}
+
+func TestFromStatefulIterable(t *testing.T) {
+	obs := FromIterable(&statefulIterable{
+		count: -1,
+	})
+
+	AssertThatObservable(t, obs, HasItems(0, 1, 2))
+	AssertThatObservable(t, obs, IsEmpty())
+}
+
+type statelessIterable struct {
+	count int
+}
+
+func (it *statelessIterable) Next() (interface{}, error) {
+	it.count = it.count + 1
+	if it.count < 3 {
+		return it.count, nil
+	} else {
+		return nil, rxerrors.New(rxerrors.EndOfIteratorError)
+	}
+}
+
+//func TestFromStatelessIterable(t *testing.T) {
+//	obs := FromIterable(&statelessIterable{
+//		count: -1,
+//	})
+//
+//	AssertThatObservable(t, obs, HasItems(0, 1, 2))
+//	AssertThatObservable(t, obs, HasItems(0, 1, 2))
+//}
+
+func TestRange(t *testing.T) {
+	obs, err := Range(5, 3)
+	if err != nil {
+		t.Fail()
+	}
+	AssertThatObservable(t, obs, HasItems(5, 6, 7, 8))
+	AssertThatObservable(t, obs, HasItems(5, 6, 7, 8))
+}
+
+func TestRangeWithNegativeCount(t *testing.T) {
+	r, err := Range(1, -5)
+	assert.NotNil(t, err)
+	assert.Nil(t, r)
+}
+
+func TestRangeWithMaximumExceeded(t *testing.T) {
+	r, err := Range(1<<31, 1)
+	assert.NotNil(t, err)
+	assert.Nil(t, r)
+}
+
+func TestTimer(t *testing.T) {
+	d := new(mockDuration)
+	d.On("duration").Return(1 * time.Millisecond)
+
+	obs := Timer(d)
+
+	AssertThatObservable(t, obs, HasItems(float64(0)))
+	d.AssertCalled(t, "duration")
+}
+
+func TestTimerWithNilDuration(t *testing.T) {
+	obs := Timer(nil)
+
+	AssertThatObservable(t, obs, HasItems(float64(0)))
 }
