@@ -9,6 +9,41 @@ import (
 	"github.com/reactivex/rxgo/handlers"
 )
 
+// newObservableFromChannel creates an Observable from a given channel
+func newObservableFromChannel(ch chan interface{}) Observable {
+	return &observable{
+		iterable: newIterableFromChannel(ch),
+	}
+}
+
+// newColdObservable creates a cold observable
+func newColdObservable(f func(chan interface{})) Observable {
+	return &observable{
+		iterable: newIterableFromFunc(f),
+	}
+}
+
+// newObservableFromIterable creates an Observable from a given iterable
+func newObservableFromIterable(it Iterable) Observable {
+	return &observable{
+		iterable: it,
+	}
+}
+
+// newObservableFromSlice creates an Observable from a given channel
+func newObservableFromSlice(s []interface{}) Observable {
+	return &observable{
+		iterable: newIterableFromSlice(s),
+	}
+}
+
+// newObservableFromRange creates an Observable from a range.
+func newObservableFromRange(start, count int) Observable {
+	return &observable{
+		iterable: newIterableFromRange(start, count),
+	}
+}
+
 func isClosed(ch <-chan interface{}) bool {
 	select {
 	case <-ch:
@@ -30,120 +65,109 @@ func isClosed(ch <-chan interface{}) bool {
 //		emitter.OnDone()
 // })
 func Create(source func(emitter Observer, disposed bool)) Observable {
-	emitted := make(chan interface{})
+	out := make(chan interface{})
 	emitter := NewObserver(
 		handlers.NextFunc(func(el interface{}) {
-			if !isClosed(emitted) {
-				emitted <- el
+			if !isClosed(out) {
+				out <- el
 			}
 		}), handlers.ErrFunc(func(err error) {
 			// decide how to deal with errors
-			if !isClosed(emitted) {
-				close(emitted)
+			if !isClosed(out) {
+				close(out)
 			}
 		}), handlers.DoneFunc(func() {
-			if !isClosed(emitted) {
-				close(emitted)
+			if !isClosed(out) {
+				close(out)
 			}
 		}),
 	)
 
 	go func() {
-		source(emitter, isClosed(emitted))
+		source(emitter, isClosed(out))
 	}()
 
-	return &observable{
-		ch: emitted,
-	}
+	return newObservableFromChannel(out)
 }
 
 // Concat emit the emissions from two or more Observables without interleaving them
 func Concat(observable1 Observable, observables ...Observable) Observable {
-	source := make(chan interface{})
+	out := make(chan interface{})
 	go func() {
-	OuterLoop:
+		it := observable1.Iterator()
 		for {
-			item, err := observable1.Next()
-			if err != nil {
-				switch err := err.(type) {
-				case errors.BaseError:
-					if errors.ErrorCode(err.Code()) == errors.EndOfIteratorError {
-						break OuterLoop
-					}
-				}
+			if item, err := it.Next(); err == nil {
+				out <- item
 			} else {
-				source <- item
+				break
 			}
 		}
 
-		for _, it := range observables {
-		OuterLoop2:
+		for _, obs := range observables {
+			it := obs.Iterator()
 			for {
-				item, err := it.Next()
-				if err != nil {
-					switch err := err.(type) {
-					case errors.BaseError:
-						if errors.ErrorCode(err.Code()) == errors.EndOfIteratorError {
-							break OuterLoop2
-						}
-					}
+				if item, err := it.Next(); err == nil {
+					out <- item
 				} else {
-					source <- item
+					break
 				}
 			}
 		}
 
-		close(source)
+		close(out)
 	}()
-	return &observable{ch: source}
+	return newObservableFromChannel(out)
 }
 
-// Defer waits until an observer subscribes to it, and then it generates an Observable.
-func Defer(f func() Observable) Observable {
-	return &observable{
-		ch:                nil,
-		observableFactory: f,
-	}
+func FromSlice(s []interface{}) Observable {
+	return newObservableFromSlice(s)
+}
+
+func FromChannel(ch chan interface{}) Observable {
+	return newObservableFromChannel(ch)
+}
+
+func FromIterable(it Iterable) Observable {
+	return newObservableFromIterable(it)
 }
 
 // From creates a new Observable from an Iterator.
 func From(it Iterator) Observable {
-	source := make(chan interface{})
+	out := make(chan interface{})
 	go func() {
 		for {
-			val, err := it.Next()
-			if err != nil {
+			if item, err := it.Next(); err == nil {
+				out <- item
+			} else {
 				break
 			}
-			source <- val
 		}
-		close(source)
+		close(out)
 	}()
-	return &observable{ch: source}
+	return newObservableFromChannel(out)
 }
 
 // Error returns an Observable that invokes an Observer's onError method
 // when the Observer subscribes to it.
 func Error(err error) Observable {
 	return &observable{
-		ch:                  nil,
 		errorOnSubscription: err,
 	}
 }
 
 // Empty creates an Observable with no item and terminate immediately.
 func Empty() Observable {
-	source := make(chan interface{})
+	out := make(chan interface{})
 	go func() {
-		close(source)
+		close(out)
 	}()
-	return &observable{ch: source}
+	return newObservableFromChannel(out)
 }
 
 // Interval creates an Observable emitting incremental integers infinitely between
 // each given time interval.
 func Interval(term chan struct{}, interval time.Duration) Observable {
-	source := make(chan interface{})
+	out := make(chan interface{})
 	go func(term chan struct{}) {
 		i := 0
 	OuterLoop:
@@ -152,13 +176,13 @@ func Interval(term chan struct{}, interval time.Duration) Observable {
 			case <-term:
 				break OuterLoop
 			case <-time.After(interval):
-				source <- i
+				out <- i
 			}
 			i++
 		}
-		close(source)
+		close(out)
 	}(term)
-	return &observable{ch: source}
+	return newObservableFromChannel(out)
 }
 
 // Range creates an Observable that emits a particular range of sequential integers.
@@ -170,35 +194,18 @@ func Range(start, count int) (Observable, error) {
 		return nil, errors.New(errors.IllegalInputError, "max value is bigger than MaxInt32")
 	}
 
-	source := make(chan interface{})
-	go func() {
-		i := start
-		for i < count+start {
-			source <- i
-			i++
-		}
-		close(source)
-	}()
-	return &observable{ch: source}, nil
+	return newObservableFromRange(start, count), nil
 }
 
 // Just creates an Observable with the provided item(s).
 func Just(item interface{}, items ...interface{}) Observable {
-	source := make(chan interface{})
 	if len(items) > 0 {
 		items = append([]interface{}{item}, items...)
 	} else {
 		items = []interface{}{item}
 	}
 
-	go func() {
-		for _, item := range items {
-			source <- item
-		}
-		close(source)
-	}()
-
-	return &observable{ch: source}
+	return newObservableFromSlice(items)
 }
 
 // Start creates an Observable from one or more directive-like Supplier
@@ -210,13 +217,13 @@ func Start(f Supplier, fs ...Supplier) Observable {
 		fs = []Supplier{f}
 	}
 
-	source := make(chan interface{})
+	out := make(chan interface{})
 
 	var wg sync.WaitGroup
 	for _, f := range fs {
 		wg.Add(1)
 		go func(f Supplier) {
-			source <- f()
+			out <- f()
 			wg.Done()
 		}(f)
 	}
@@ -224,17 +231,30 @@ func Start(f Supplier, fs ...Supplier) Observable {
 	// Wait in another goroutine to not block
 	go func() {
 		wg.Wait()
-		close(source)
+		close(out)
 	}()
 
-	return &observable{ch: source}
+	return newObservableFromChannel(out)
 }
 
 // Never create an Observable that emits no items and does not terminate
 func Never() Observable {
-	source := make(chan interface{})
+	out := make(chan interface{})
+	return newObservableFromChannel(out)
+}
+
+// Timer returns an Observable that emits the zeroed value of a float64 after a
+// specified delay, and then completes.
+func Timer(d Duration) Observable {
+	out := make(chan interface{})
 	go func() {
-		select {}
+		if d == nil {
+			time.Sleep(0)
+		} else {
+			time.Sleep(d.duration())
+		}
+		out <- 0.
+		close(out)
 	}()
-	return &observable{ch: source}
+	return newObservableFromChannel(out)
 }
