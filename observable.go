@@ -50,7 +50,7 @@ type Observable interface {
 	Reduce(apply Function2) OptionalSingle
 	Repeat(count int64, frequency Duration) Observable
 	Scan(apply Function2) Observable
-	SequenceEqual(obs Observable) Observable
+	SequenceEqual(obs Observable) Single
 	Skip(nth uint) Observable
 	SkipLast(nth uint) Observable
 	SkipWhile(apply Predicate) Observable
@@ -434,24 +434,37 @@ func popAndCompareFirstItems(
 	return true, inputSequence1, inputSequence2
 }
 
-// SequenceEqual emits true if an Observable and the input Observable emit the same items.
-// When any Observable emits different item, it emits false.
-func (o *observable) SequenceEqual(obs Observable) Observable {
-	out := make(chan interface{})
+// SequenceEqual emits true if an Observable and the input Observable emit the same items,
+// in the same order, with the same termination state. Otherwise, it emits false.
+func (o *observable) SequenceEqual(obs Observable) Single {
+	oChan := make(chan interface{})
 	obsChan := make(chan interface{})
 
 	go func() {
+		it := obs.Iterator()
 		for {
-			item, err := obs.Next()
-			if err != nil {
+			if item, err := it.Next(); err == nil {
+				obsChan <- item
+			} else {
 				break
 			}
-			obsChan <- item
 		}
 		close(obsChan)
 	}()
 
 	go func() {
+		it := o.Iterator()
+		for {
+			if item, err := it.Next(); err == nil {
+				oChan <- item
+			} else {
+				break
+			}
+		}
+		close(oChan)
+	}()
+
+	f := func(out chan interface{}) {
 		var mainSequence []interface{}
 		var obsSequence []interface{}
 		areCorrect := true
@@ -461,7 +474,7 @@ func (o *observable) SequenceEqual(obs Observable) Observable {
 	mainLoop:
 		for {
 			select {
-			case item, ok := <-o.ch:
+			case item, ok := <-oChan:
 				if ok {
 					mainSequence = append(mainSequence, item)
 					areCorrect, mainSequence, obsSequence = popAndCompareFirstItems(mainSequence, obsSequence)
@@ -484,9 +497,9 @@ func (o *observable) SequenceEqual(obs Observable) Observable {
 
 		out <- areCorrect && len(mainSequence) == 0 && len(obsSequence) == 0
 		close(out)
-	}()
+	}
 
-	return &observable{ch: out}
+	return newColdSingle(f)
 }
 
 func (o *observable) Reduce(apply Function2) OptionalSingle {

@@ -621,13 +621,13 @@ func TestObservableDistinctUntilChanged(t *testing.T) {
 func TestObservableSequenceEqualWithCorrectSequence(t *testing.T) {
 	sequence := Just(2, 5, 12, 43, 98, 100, 213)
 	result := Just(2, 5, 12, 43, 98, 100, 213).SequenceEqual(sequence)
-	AssertThatObservable(t, result, HasItems(true))
+	AssertThatSingle(t, result, HasItems(true))
 }
 
 func TestObservableSequenceEqualWithIncorrectSequence(t *testing.T) {
 	sequence := Just(2, 5, 12, 43, 98, 100, 213)
 	result := Just(2, 5, 12, 43, 15, 100, 213).SequenceEqual(sequence)
-	AssertThatObservable(t, result, HasItems(false))
+	AssertThatSingle(t, result, HasItems(false))
 }
 
 func TestObservableSequenceEqualWithDifferentLengthSequence(t *testing.T) {
@@ -635,10 +635,10 @@ func TestObservableSequenceEqualWithDifferentLengthSequence(t *testing.T) {
 	sequenceLonger := Just(2, 5, 12, 43, 98, 100, 213, 512)
 
 	resultForShorter := Just(2, 5, 12, 43, 98, 100, 213).SequenceEqual(sequenceShorter)
-	AssertThatObservable(t, resultForShorter, HasItems(false))
+	AssertThatSingle(t, resultForShorter, HasItems(false))
 
 	resultForLonger := Just(2, 5, 12, 43, 98, 100, 213).SequenceEqual(sequenceLonger)
-	AssertThatObservable(t, resultForLonger, HasItems(false))
+	AssertThatSingle(t, resultForLonger, HasItems(false))
 }
 
 func TestObservableScanWithIntegers(t *testing.T) {
