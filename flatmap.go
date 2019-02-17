@@ -6,9 +6,9 @@ import (
 	"github.com/reactivex/rxgo/handlers"
 )
 
-// transforms emitted items into observables and flattens them into single observable.
-// maxInParallel argument controls how many transformed observables are processed in parallel
-// For an example please take a look at flatmap_slice_test.go file in the examples directory.
+// Transforms emitted items into Observables and flattens them into a single Observable.
+// The maxInParallel argument controls how many transformed Observables are processed in parallel.
+// For an example, please take a look at flatmap_slice_test.go in the examples directory.
 func (o *observable) FlatMap(apply func(interface{}) Observable, maxInParallel uint) Observable {
 	return o.flatMap(apply, maxInParallel, flatObservedSequence)
 }
@@ -26,9 +26,7 @@ func (o *observable) flatMap(
 
 	go flatteningFunc(out, o, apply, maxInParallel)
 
-	return &observable{
-		ch: out,
-	}
+	return newObservableFromChannel(out)
 }
 
 func flatObservedSequence(out chan interface{}, o Observable, apply func(interface{}) Observable, maxInParallel uint) {
@@ -43,21 +41,22 @@ func flatObservedSequence(out chan interface{}, o Observable, apply func(interfa
 
 	count = 0
 
+	it := o.Iterator()
 	for {
-		element, err := o.Next()
-		if err != nil {
-			break
-		}
-		sequence = apply(element)
-		count++
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			sequence.Subscribe(emissionObserver).Block()
-		}()
+		if item, err := it.Next(); err == nil {
+			sequence = apply(item)
+			count++
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				sequence.Subscribe(emissionObserver).Block()
+			}()
 
-		if count%maxInParallel == 0 {
-			wg.Wait()
+			if count%maxInParallel == 0 {
+				wg.Wait()
+			}
+		} else {
+			break
 		}
 	}
 
