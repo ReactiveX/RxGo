@@ -16,6 +16,7 @@ func (it Iterable) Next() (interface{}, error) {
 	return nil, errors.New(errors.EndOfIteratorError)
 }
 
+// Cap returns capacity of Iterable
 func (it Iterable) Cap() int {
 	return cap(it)
 }
