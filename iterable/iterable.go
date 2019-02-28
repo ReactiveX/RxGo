@@ -16,6 +16,10 @@ func (it Iterable) Next() (interface{}, error) {
 	return nil, errors.New(errors.EndOfIteratorError)
 }
 
+func (it Iterable) Cap() int {
+	return cap(it)
+}
+
 // New creates a new Iterable from a slice or a channel of empty interface.
 func New(any interface{}) (Iterable, error) {
 	switch any := any.(type) {

@@ -131,7 +131,7 @@ func (o Observable) Unsubscribe() subscription.Subscription {
 // Map maps a MappableFunc predicate to each item in Observable and
 // returns a new Observable with applied items.
 func (o Observable) Map(apply fx.MappableFunc) Observable {
-	out := make(chan interface{})
+	out := make(chan interface{}, cap(o))
 	go func() {
 		for item := range o {
 			out <- apply(item)
@@ -144,7 +144,7 @@ func (o Observable) Map(apply fx.MappableFunc) Observable {
 // Take takes first n items in the original Obserable and returns
 // a new Observable with the taken items.
 func (o Observable) Take(nth uint) Observable {
-	out := make(chan interface{})
+	out := make(chan interface{}, nth)
 	go func() {
 		takeCount := 0
 		for item := range o {
@@ -163,7 +163,7 @@ func (o Observable) Take(nth uint) Observable {
 // TakeLast takes last n items in the original Observable and returns
 // a new Observable with the taken items.
 func (o Observable) TakeLast(nth uint) Observable {
-	out := make(chan interface{})
+	out := make(chan interface{}, nth)
 	go func() {
 		buf := make([]interface{}, nth)
 		for item := range o {
@@ -183,7 +183,7 @@ func (o Observable) TakeLast(nth uint) Observable {
 // Filter filters items in the original Observable and returns
 // a new Observable with the filtered items.
 func (o Observable) Filter(apply fx.FilterableFunc) Observable {
-	out := make(chan interface{})
+	out := make(chan interface{}, cap(o))
 	go func() {
 		for item := range o {
 			if apply(item) {
@@ -197,7 +197,7 @@ func (o Observable) Filter(apply fx.FilterableFunc) Observable {
 
 // First returns new Observable which emit only first item.
 func (o Observable) First() Observable {
-	out := make(chan interface{})
+	out := make(chan interface{}, 1)
 	go func() {
 		for item := range o {
 			out <- item
@@ -210,7 +210,7 @@ func (o Observable) First() Observable {
 
 // Last returns a new Observable which emit only last item.
 func (o Observable) Last() Observable {
-	out := make(chan interface{})
+	out := make(chan interface{}, 1)
 	go func() {
 		var last interface{}
 		for item := range o {
@@ -225,7 +225,7 @@ func (o Observable) Last() Observable {
 // Distinct suppresses duplicate items in the original Observable and returns
 // a new Observable.
 func (o Observable) Distinct(apply fx.KeySelectorFunc) Observable {
-	out := make(chan interface{})
+	out := make(chan interface{}, cap(o))
 	go func() {
 		keysets := make(map[interface{}]struct{})
 		for item := range o {
@@ -244,7 +244,7 @@ func (o Observable) Distinct(apply fx.KeySelectorFunc) Observable {
 // DistinctUntilChanged suppresses consecutive duplicate items in the original
 // Observable and returns a new Observable.
 func (o Observable) DistinctUntilChanged(apply fx.KeySelectorFunc) Observable {
-	out := make(chan interface{})
+	out := make(chan interface{}, cap(o))
 	go func() {
 		var current interface{}
 		for item := range o {
@@ -262,7 +262,7 @@ func (o Observable) DistinctUntilChanged(apply fx.KeySelectorFunc) Observable {
 // Skip suppresses the first n items in the original Observable and
 // returns a new Observable with the rest items.
 func (o Observable) Skip(nth uint) Observable {
-	out := make(chan interface{})
+	out := make(chan interface{}, uint(cap(o))-nth)
 	go func() {
 		skipCount := 0
 		for item := range o {
@@ -280,7 +280,7 @@ func (o Observable) Skip(nth uint) Observable {
 // SkipLast suppresses the last n items in the original Observable and
 // returns a new Observable with the rest items.
 func (o Observable) SkipLast(nth uint) Observable {
-	out := make(chan interface{})
+	out := make(chan interface{}, uint(cap(o))-nth)
 	go func() {
 		buf := make(chan interface{}, nth)
 		for item := range o {
@@ -300,7 +300,7 @@ func (o Observable) SkipLast(nth uint) Observable {
 // Scan applies ScannableFunc predicate to each item in the original
 // Observable sequentially and emits each successive value on a new Observable.
 func (o Observable) Scan(apply fx.ScannableFunc) Observable {
-	out := make(chan interface{})
+	out := make(chan interface{}, cap(o))
 
 	go func() {
 		var current interface{}
@@ -316,7 +316,7 @@ func (o Observable) Scan(apply fx.ScannableFunc) Observable {
 
 // From creates a new Observable from an Iterator.
 func From(it rx.Iterator) Observable {
-	source := make(chan interface{})
+	source := make(chan interface{}, it.Cap())
 	go func() {
 		for {
 			val, err := it.Next()
@@ -341,6 +341,7 @@ func Empty() Observable {
 
 // Interval creates an Observable emitting incremental integers infinitely between
 // each given time interval.
+// It doesn't close observable automatically if you won't close it with term channel.
 func Interval(term chan struct{}, interval time.Duration) Observable {
 	source := make(chan interface{})
 	go func(term chan struct{}) {
@@ -361,11 +362,12 @@ func Interval(term chan struct{}, interval time.Duration) Observable {
 }
 
 // Repeat creates an Observable emitting a given item repeatedly
+// WARNING: If you doesn't pass ntimes observable will be never closed.
+// It means that if you chain it with other operator - it leads to leak fo goroutines, memory, deadlock, etc.
 func Repeat(item interface{}, ntimes ...int) Observable {
-	source := make(chan interface{})
-
 	// this is the infinity case no ntime parameter is given
 	if len(ntimes) == 0 {
+		source := make(chan interface{})
 		go func() {
 			for {
 				source <- item
@@ -381,6 +383,7 @@ func Repeat(item interface{}, ntimes ...int) Observable {
 		if count <= 0 {
 			return Empty()
 		}
+		source := make(chan interface{}, count)
 		go func() {
 			for i := 0; i < count; i++ {
 				source <- item
@@ -395,7 +398,7 @@ func Repeat(item interface{}, ntimes ...int) Observable {
 
 // Range creates an Observable that emits a particular range of sequential integers.
 func Range(start, end int) Observable {
-	source := make(chan interface{})
+	source := make(chan interface{}, end-start)
 	go func() {
 		i := start
 		for i < end {
@@ -409,12 +412,13 @@ func Range(start, end int) Observable {
 
 // Just creates an Observable with the provided item(s).
 func Just(item interface{}, items ...interface{}) Observable {
-	source := make(chan interface{})
 	if len(items) > 0 {
 		items = append([]interface{}{item}, items...)
 	} else {
 		items = []interface{}{item}
 	}
+
+	source := make(chan interface{}, len(items))
 
 	go func() {
 		for _, item := range items {
@@ -435,7 +439,7 @@ func Start(f fx.EmittableFunc, fs ...fx.EmittableFunc) Observable {
 		fs = []fx.EmittableFunc{f}
 	}
 
-	source := make(chan interface{})
+	source := make(chan interface{}, len(fs))
 
 	var wg sync.WaitGroup
 	for _, f := range fs {

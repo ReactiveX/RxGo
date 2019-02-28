@@ -19,7 +19,7 @@ func (o Observable) flatMap(
 	maxInParallel uint,
 	flatteningFunc func(out chan interface{}, o Observable, apply func(interface{}) Observable, maxInParallel uint)) Observable {
 
-	out := make(chan interface{})
+	out := make(chan interface{}, cap(o))
 
 	if maxInParallel < 1 {
 		maxInParallel = 1
