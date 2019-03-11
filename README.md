@@ -58,6 +58,7 @@ import (
 	"github.com/reactivex/rxgo"
 	"github.com/reactivex/rxgo/observer"
 	"github.com/reactivex/rxgo/observable"
+	"github.com/reactivex/rxgo/iterable"
 	//...
 )
 ```
