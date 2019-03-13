@@ -250,8 +250,11 @@ func (o *observable) TakeLast(nth uint) Observable {
 			}
 		}
 		if count < n {
-			for i := 0; i < n-count; i++ {
-				r = r.Next()
+			remaining := n - count
+			if remaining <= count {
+				r = r.Move(n - count)
+			} else {
+				r = r.Move(-count)
 			}
 			n = count
 		}

@@ -345,6 +345,22 @@ func TestObservableTakeLastLessThanNth(t *testing.T) {
 	assert.Exactly(t, []int{4, 5}, nums)
 }
 
+func TestObservableTakeLastLessThanNth2(t *testing.T) {
+	stream1 := Just(4, 5)
+	stream2 := stream1.TakeLast(100000)
+
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	stream2.Subscribe(onNext).Block()
+
+	assert.Exactly(t, []int{4, 5}, nums)
+}
+
 /*
 func TestObservableTakeLastWithEmpty(t *testing.T) {
 	stream1 := Empty()
