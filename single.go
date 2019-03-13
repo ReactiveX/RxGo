@@ -47,7 +47,7 @@ func newOptionalSingleFrom(opt optional.Optional) OptionalSingle {
 	return &s
 }
 
-// CheckHandler checks the underlying type of an EventHandler.
+// CheckSingleEventHandler checks the underlying type of an EventHandler.
 func CheckSingleEventHandler(handler handlers.EventHandler) SingleObserver {
 	return NewSingleObserver(handler)
 }

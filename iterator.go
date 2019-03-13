@@ -29,21 +29,19 @@ func (it *iteratorFromChannel) Next() (interface{}, error) {
 }
 
 func (it *iteratorFromSlice) Next() (interface{}, error) {
-	it.index = it.index + 1
+	it.index++
 	if it.index < len(it.s) {
 		return it.s[it.index], nil
-	} else {
-		return nil, errors.New(errors.EndOfIteratorError)
 	}
+	return nil, errors.New(errors.EndOfIteratorError)
 }
 
 func (it *iteratorFromRange) Next() (interface{}, error) {
-	it.current = it.current + 1
+	it.current++
 	if it.current <= it.end {
 		return it.current, nil
-	} else {
-		return nil, errors.New(errors.EndOfIteratorError)
 	}
+	return nil, errors.New(errors.EndOfIteratorError)
 }
 
 func newIteratorFromChannel(ch chan interface{}) Iterator {

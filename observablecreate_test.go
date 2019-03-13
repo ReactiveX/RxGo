@@ -250,12 +250,11 @@ type statefulIterable struct {
 }
 
 func (it *statefulIterable) Next() (interface{}, error) {
-	it.count = it.count + 1
+	it.count++
 	if it.count < 3 {
 		return it.count, nil
-	} else {
-		return nil, rxerrors.New(rxerrors.EndOfIteratorError)
 	}
+	return nil, rxerrors.New(rxerrors.EndOfIteratorError)
 }
 
 func (it *statefulIterable) Value() interface{} {
@@ -280,12 +279,11 @@ type statelessIterable struct {
 }
 
 func (it *statelessIterable) Next() (interface{}, error) {
-	it.count = it.count + 1
+	it.count++
 	if it.count < 3 {
 		return it.count, nil
-	} else {
-		return nil, rxerrors.New(rxerrors.EndOfIteratorError)
 	}
+	return nil, rxerrors.New(rxerrors.EndOfIteratorError)
 }
 
 //func TestFromStatelessIterable(t *testing.T) {

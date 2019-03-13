@@ -329,6 +329,38 @@ func TestObservableTakeLast(t *testing.T) {
 	assert.Exactly(t, []int{3, 4, 5}, nums)
 }
 
+func TestObservableTakeLastLessThanNth(t *testing.T) {
+	stream1 := Just(4, 5)
+	stream2 := stream1.TakeLast(3)
+
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	stream2.Subscribe(onNext).Block()
+
+	assert.Exactly(t, []int{4, 5}, nums)
+}
+
+func TestObservableTakeLastLessThanNth2(t *testing.T) {
+	stream1 := Just(4, 5)
+	stream2 := stream1.TakeLast(100000)
+
+	nums := []int{}
+	onNext := handlers.NextFunc(func(item interface{}) {
+		if num, ok := item.(int); ok {
+			nums = append(nums, num)
+		}
+	})
+
+	stream2.Subscribe(onNext).Block()
+
+	assert.Exactly(t, []int{4, 5}, nums)
+}
+
 /*
 func TestObservableTakeLastWithEmpty(t *testing.T) {
 	stream1 := Empty()
@@ -928,9 +960,8 @@ func TestObservableToMap(t *testing.T) {
 		case bool:
 			if v {
 				return 0
-			} else {
-				return 1
 			}
+			return 1
 		default:
 			return i
 		}
@@ -970,9 +1001,8 @@ func TestObservableToMapWithValueSelector(t *testing.T) {
 		case bool:
 			if v {
 				return 0
-			} else {
-				return 1
 			}
+			return 1
 		default:
 			return i
 		}
@@ -1086,10 +1116,10 @@ func TestObservableZipWithEmpty(t *testing.T) {
 func TestCheckEventHandlers(t *testing.T) {
 	i := 0
 	nf := handlers.NextFunc(func(interface{}) {
-		i = i + 2
+		i += 2
 	})
 	df := handlers.DoneFunc(func() {
-		i = i + 5
+		i += 5
 	})
 	ob1 := CheckEventHandlers(nf, df)
 	ob1.OnNext("")

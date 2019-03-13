@@ -44,11 +44,11 @@ func TestHandle(t *testing.T) {
 	i := 0
 
 	nextf := handlers.NextFunc(func(item interface{}) {
-		i = i + 5
+		i += 5
 	})
 
 	errorf := handlers.ErrFunc(func(error) {
-		i = i + 2
+		i += 2
 	})
 
 	ob := NewObserver(nextf, errorf)

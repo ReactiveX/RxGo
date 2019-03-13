@@ -1,6 +1,7 @@
 package rxgo
 
 import (
+	"container/ring"
 	"sync"
 	"time"
 
@@ -81,12 +82,12 @@ type observable struct {
 	onErrorResumeNext   ErrorToObservableFunction
 }
 
-// CheckHandler checks the underlying type of an EventHandler.
+// CheckEventHandler checks the underlying type of an EventHandler.
 func CheckEventHandler(handler handlers.EventHandler) Observer {
 	return NewObserver(handler)
 }
 
-// CheckHandler checks the underlying type of an EventHandler.
+// CheckEventHandlers checks the underlying type of an EventHandler.
 func CheckEventHandlers(handler ...handlers.EventHandler) Observer {
 	return NewObserver(handler...)
 }
@@ -197,7 +198,7 @@ func (o *observable) ElementAt(index uint) Single {
 					close(out)
 					return
 				}
-				takeCount += 1
+				takeCount++
 			} else {
 				break
 			}
@@ -217,7 +218,7 @@ func (o *observable) Take(nth uint) Observable {
 		for {
 			if item, err := it.Next(); err == nil {
 				if takeCount < int(nth) {
-					takeCount += 1
+					takeCount++
 					out <- item
 					continue
 				}
@@ -235,20 +236,31 @@ func (o *observable) Take(nth uint) Observable {
 // a new Observable with the taken items.
 func (o *observable) TakeLast(nth uint) Observable {
 	f := func(out chan interface{}) {
-		buf := make([]interface{}, nth)
+		n := int(nth)
+		r := ring.New(n)
+		count := 0
 		it := o.iterable.Iterator()
 		for {
 			if item, err := it.Next(); err == nil {
-				if len(buf) >= int(nth) {
-					buf = buf[1:]
-				}
-				buf = append(buf, item)
+				count++
+				r.Value = item
+				r = r.Next()
 			} else {
 				break
 			}
 		}
-		for _, takenItem := range buf {
-			out <- takenItem
+		if count < n {
+			remaining := n - count
+			if remaining <= count {
+				r = r.Move(n - count)
+			} else {
+				r = r.Move(-count)
+			}
+			n = count
+		}
+		for i := 0; i < n; i++ {
+			out <- r.Value
+			r = r.Next()
 		}
 		close(out)
 	}
@@ -363,7 +375,7 @@ func (o *observable) Skip(nth uint) Observable {
 		for {
 			if item, err := it.Next(); err == nil {
 				if skipCount < int(nth) {
-					skipCount += 1
+					skipCount++
 					continue
 				}
 				out <- item
@@ -880,8 +892,8 @@ func (o *observable) AverageInt() Single {
 		for {
 			if item, err := it.Next(); err == nil {
 				if v, ok := item.(int); ok {
-					sum = sum + v
-					count = count + 1
+					sum += v
+					count++
 				} else {
 					out <- errors.New(errors.IllegalInputError, fmt.Sprintf("type: %t", item))
 					close(out)
@@ -904,14 +916,14 @@ func (o *observable) AverageInt() Single {
 // AverageInt8 calculates the average of numbers emitted by an Observable and emits this average int8.
 func (o *observable) AverageInt8() Single {
 	f := func(out chan interface{}) {
-		var sum int8 = 0
-		var count int8 = 0
+		var sum int8
+		var count int8
 		it := o.iterable.Iterator()
 		for {
 			if item, err := it.Next(); err == nil {
 				if v, ok := item.(int8); ok {
-					sum = sum + v
-					count = count + 1
+					sum += v
+					count++
 				} else {
 					out <- errors.New(errors.IllegalInputError, fmt.Sprintf("type: %t", item))
 					close(out)
@@ -934,14 +946,14 @@ func (o *observable) AverageInt8() Single {
 // AverageInt16 calculates the average of numbers emitted by an Observable and emits this average int16.
 func (o *observable) AverageInt16() Single {
 	f := func(out chan interface{}) {
-		var sum int16 = 0
-		var count int16 = 0
+		var sum int16
+		var count int16
 		it := o.iterable.Iterator()
 		for {
 			if item, err := it.Next(); err == nil {
 				if v, ok := item.(int16); ok {
-					sum = sum + v
-					count = count + 1
+					sum += v
+					count++
 				} else {
 					out <- errors.New(errors.IllegalInputError, fmt.Sprintf("type: %t", item))
 					close(out)
@@ -964,14 +976,14 @@ func (o *observable) AverageInt16() Single {
 // AverageInt32 calculates the average of numbers emitted by an Observable and emits this average int32.
 func (o *observable) AverageInt32() Single {
 	f := func(out chan interface{}) {
-		var sum int32 = 0
-		var count int32 = 0
+		var sum int32
+		var count int32
 		it := o.iterable.Iterator()
 		for {
 			if item, err := it.Next(); err == nil {
 				if v, ok := item.(int32); ok {
-					sum = sum + v
-					count = count + 1
+					sum += v
+					count++
 				} else {
 					out <- errors.New(errors.IllegalInputError, fmt.Sprintf("type: %t", item))
 					close(out)
@@ -994,14 +1006,14 @@ func (o *observable) AverageInt32() Single {
 // AverageInt64 calculates the average of numbers emitted by an Observable and emits this average int64.
 func (o *observable) AverageInt64() Single {
 	f := func(out chan interface{}) {
-		var sum int64 = 0
-		var count int64 = 0
+		var sum int64
+		var count int64
 		it := o.iterable.Iterator()
 		for {
 			if item, err := it.Next(); err == nil {
 				if v, ok := item.(int64); ok {
-					sum = sum + v
-					count = count + 1
+					sum += v
+					count++
 				} else {
 					out <- errors.New(errors.IllegalInputError, fmt.Sprintf("type: %t", item))
 					close(out)
@@ -1024,14 +1036,14 @@ func (o *observable) AverageInt64() Single {
 // AverageFloat32 calculates the average of numbers emitted by an Observable and emits this average float32.
 func (o *observable) AverageFloat32() Single {
 	f := func(out chan interface{}) {
-		var sum float32 = 0
-		var count float32 = 0
+		var sum float32
+		var count float32
 		it := o.iterable.Iterator()
 		for {
 			if item, err := it.Next(); err == nil {
 				if v, ok := item.(float32); ok {
-					sum = sum + v
-					count = count + 1
+					sum += v
+					count++
 				} else {
 					out <- errors.New(errors.IllegalInputError, fmt.Sprintf("type: %t", item))
 					close(out)
@@ -1054,14 +1066,14 @@ func (o *observable) AverageFloat32() Single {
 // AverageFloat64 calculates the average of numbers emitted by an Observable and emits this average float64.
 func (o *observable) AverageFloat64() Single {
 	f := func(out chan interface{}) {
-		var sum float64 = 0
-		var count float64 = 0
+		var sum float64
+		var count float64
 		it := o.iterable.Iterator()
 		for {
 			if item, err := it.Next(); err == nil {
 				if v, ok := item.(float64); ok {
-					sum = sum + v
-					count = count + 1
+					sum += v
+					count++
 				} else {
 					out <- errors.New(errors.IllegalInputError, fmt.Sprintf("type: %t", item))
 					close(out)
@@ -1086,7 +1098,7 @@ func (o *observable) Max(comparator Comparator) OptionalSingle {
 	out := make(chan optional.Optional)
 	go func() {
 		empty := true
-		var max interface{} = nil
+		var max interface{}
 		it := o.iterable.Iterator()
 		for {
 			if item, err := it.Next(); err == nil {
@@ -1118,7 +1130,7 @@ func (o *observable) Min(comparator Comparator) OptionalSingle {
 	out := make(chan optional.Optional)
 	go func() {
 		empty := true
-		var min interface{} = nil
+		var min interface{}
 		it := o.iterable.Iterator()
 		for {
 			if item, err := it.Next(); err == nil {
@@ -1396,15 +1408,15 @@ func (o *observable) SumInt64() Single {
 			if item, err := it.Next(); err == nil {
 				switch item := item.(type) {
 				case int:
-					sum = sum + int64(item)
+					sum += int64(item)
 				case int8:
-					sum = sum + int64(item)
+					sum += int64(item)
 				case int16:
-					sum = sum + int64(item)
+					sum += int64(item)
 				case int32:
-					sum = sum + int64(item)
+					sum += int64(item)
 				case int64:
-					sum = sum + item
+					sum += item
 				default:
 					out <- errors.New(errors.IllegalInputError,
 						fmt.Sprintf("expected type: int, int8, int16, int32 or int64, got %t", item))
@@ -1430,17 +1442,17 @@ func (o *observable) SumFloat32() Single {
 			if item, err := it.Next(); err == nil {
 				switch item := item.(type) {
 				case int:
-					sum = sum + float32(item)
+					sum += float32(item)
 				case int8:
-					sum = sum + float32(item)
+					sum += float32(item)
 				case int16:
-					sum = sum + float32(item)
+					sum += float32(item)
 				case int32:
-					sum = sum + float32(item)
+					sum += float32(item)
 				case int64:
-					sum = sum + float32(item)
+					sum += float32(item)
 				case float32:
-					sum = sum + item
+					sum += item
 				default:
 					out <- errors.New(errors.IllegalInputError,
 						fmt.Sprintf("expected type: float32, int, int8, int16, int32 or int64, got %t", item))
@@ -1466,19 +1478,19 @@ func (o *observable) SumFloat64() Single {
 			if item, err := it.Next(); err == nil {
 				switch item := item.(type) {
 				case int:
-					sum = sum + float64(item)
+					sum += float64(item)
 				case int8:
-					sum = sum + float64(item)
+					sum += float64(item)
 				case int16:
-					sum = sum + float64(item)
+					sum += float64(item)
 				case int32:
-					sum = sum + float64(item)
+					sum += float64(item)
 				case int64:
-					sum = sum + float64(item)
+					sum += float64(item)
 				case float32:
-					sum = sum + float64(item)
+					sum += float64(item)
 				case float64:
-					sum = sum + item
+					sum += item
 				default:
 					out <- errors.New(errors.IllegalInputError,
 						fmt.Sprintf("expected type: float32, float64, int, int8, int16, int32 or int64, got %t", item))
