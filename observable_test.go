@@ -1168,41 +1168,6 @@ func TestObservableForEach(t *testing.T) {
 	assert.Equal("bang", sub.Error())
 }
 
-func TestOnErrorReturn(t *testing.T) {
-	got := make([]int, 0)
-
-	obs := Just(1, 2, 3, errors.New("7"), 4).
-		OnErrorReturn(func(e error) interface{} {
-			i, err := strconv.Atoi(e.Error())
-			if err != nil {
-				t.Fail()
-			}
-			return i
-		})
-
-	obs.Subscribe(handlers.NextFunc(func(i interface{}) {
-		got = append(got, i.(int))
-	})).Block()
-
-	assert.Equal(t, []int{1, 2, 3, 7}, got)
-}
-
-func TestOnErrorResumeNext(t *testing.T) {
-	got := make([]int, 0)
-
-	obs := Just(1, 2, 3, errors.New("7"), 4).
-		OnErrorResumeNext(func(e error) Observable {
-			return Just(5, 6, errors.New("8"), 9)
-		})
-
-	err := obs.Subscribe(handlers.NextFunc(func(i interface{}) {
-		got = append(got, i.(int))
-	})).Block()
-
-	assert.Equal(t, []int{1, 2, 3, 5, 6}, got)
-	assert.NotNil(t, err)
-}
-
 func TestAll(t *testing.T) {
 	predicateAllInt := func(i interface{}) bool {
 		switch i.(type) {
@@ -1743,10 +1708,10 @@ var _ = Describe("Observable", func() {
 			It("should ignore all the items", func() {
 				Expect(get(outNext, timeout)).Should(Equal(noData))
 			})
-			It("should receive done signal", func() {
+			It("should receive a done signal", func() {
 				Expect(get(outDone, timeout)).Should(Equal(doneSignal))
 			})
-			It("should not receive error signal", func() {
+			It("should not receive an error signal", func() {
 				Expect(get(outError, timeout)).Should(Equal(noData))
 			})
 		})
@@ -1767,13 +1732,82 @@ var _ = Describe("Observable", func() {
 			It("should ignore all the items", func() {
 				Expect(get(outNext, timeout)).Should(Equal(noData))
 			})
-			It("should not receive done signal", func() {
+			It("should not receive a done signal", func() {
 				Expect(get(outDone, timeout)).Should(Equal(noData))
 			})
-			It("should receive error signal", func() {
+			It("should receive an error signal", func() {
 				Expect(get(outError, timeout)).Should(Equal(err))
 			})
 		})
 	})
 
+	Context("when creating an observable containing an error", func() {
+		observable := Just(1, 2, errors.New("3"), 4)
+		outNext := make(chan interface{}, 1)
+		outError := make(chan interface{}, 1)
+
+		Context("when calling onErrorReturn operator", func() {
+			obs := observable.OnErrorReturn(func(e error) interface{} {
+				i, _ := strconv.Atoi(e.Error())
+				return i
+			})
+			obs.Subscribe(nextHandler(outNext))
+			obs.Subscribe(errorHandler(outError))
+
+			It("should properly handle the error", func() {
+				Expect(get(outNext, timeout)).Should(Equal(1))
+				Expect(get(outNext, timeout)).Should(Equal(2))
+				Expect(get(outNext, timeout)).Should(Equal(3))
+				Expect(get(outNext, timeout)).Should(Equal(4))
+			})
+			It("should not receive an error signal", func() {
+				Expect(get(outError, timeout)).Should(Equal(noData))
+			})
+		})
+	})
+
+	Context("when creating an observable containing an error", func() {
+		observable := Just(1, 2, errors.New("3"), 4)
+		outNext := make(chan interface{}, 1)
+		outError := make(chan interface{}, 1)
+
+		Context("when calling onErrorReturnItem operator", func() {
+			obs := observable.OnErrorReturnItem(3)
+			obs.Subscribe(nextHandler(outNext))
+			obs.Subscribe(errorHandler(outError))
+
+			It("should properly handle the error", func() {
+				Expect(get(outNext, timeout)).Should(Equal(1))
+				Expect(get(outNext, timeout)).Should(Equal(2))
+				Expect(get(outNext, timeout)).Should(Equal(3))
+				Expect(get(outNext, timeout)).Should(Equal(4))
+			})
+			It("should not receive an error signal", func() {
+				Expect(get(outError, timeout)).Should(Equal(noData))
+			})
+		})
+	})
+
+	Context("when creating an observable containing an error", func() {
+		observable := Just(1, 2, errors.New("3"), 4)
+		outNext := make(chan interface{}, 1)
+		outError := make(chan interface{}, 1)
+		err := errors.New("8")
+
+		Context("when calling onResumeNext operator", func() {
+			observable.OnErrorResumeNext(func(e error) Observable {
+				return Just(5, 6, err, 9)
+			}).Subscribe(NewObserver(nextHandler(outNext), errorHandler(outError)))
+
+			It("should properly handle the error", func() {
+				Expect(get(outNext, timeout)).Should(Equal(1))
+				Expect(get(outNext, timeout)).Should(Equal(2))
+				Expect(get(outNext, timeout)).Should(Equal(5))
+				Expect(get(outNext, timeout)).Should(Equal(6))
+			})
+			It("should receive an error coming from the resumed observable", func() {
+				Expect(get(outError, timeout)).Should(Equal(err))
+			})
+		})
+	})
 })

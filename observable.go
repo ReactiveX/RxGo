@@ -48,6 +48,7 @@ type Observable interface {
 	Min(comparator Comparator) OptionalSingle
 	OnErrorResumeNext(resumeSequence ErrorToObservableFunction) Observable
 	OnErrorReturn(resumeFunc ErrorFunction) Observable
+	OnErrorReturnItem(item interface{}) Observable
 	Publish() ConnectableObservable
 	Reduce(apply Function2) OptionalSingle
 	Repeat(count int64, frequency Duration) Observable
@@ -73,6 +74,7 @@ type Observable interface {
 	getIgnoreElements() bool
 	getOnErrorResumeNext() ErrorToObservableFunction
 	getOnErrorReturn() ErrorFunction
+	getOnErrorReturnItem() interface{}
 }
 
 // observable is a structure handling a channel of interface{} and implementing Observable
@@ -80,8 +82,9 @@ type observable struct {
 	iterable            Iterable
 	errorOnSubscription error
 	observableFactory   func() Observable
-	onErrorReturn       ErrorFunction
 	onErrorResumeNext   ErrorToObservableFunction
+	onErrorReturn       ErrorFunction
+	onErrorReturnItem   interface{}
 	ignoreElements      bool
 }
 
@@ -93,11 +96,11 @@ func iterate(observable Observable, observer Observer) error {
 			case error:
 				if observable.getOnErrorReturn() != nil {
 					observer.OnNext(observable.getOnErrorReturn()(item))
-					// Stop the subscription
-					return nil
 				} else if observable.getOnErrorResumeNext() != nil {
 					observable = observable.getOnErrorResumeNext()(item)
 					it = observable.Iterator()
+				} else if observable.getOnErrorReturnItem() != nil {
+					observer.OnNext(observable.getOnErrorReturnItem())
 				} else {
 					observer.OnError(item)
 					return item
@@ -959,6 +962,7 @@ func (o *observable) Min(comparator Comparator) OptionalSingle {
 func (o *observable) OnErrorResumeNext(resumeSequence ErrorToObservableFunction) Observable {
 	o.onErrorResumeNext = resumeSequence
 	o.onErrorReturn = nil
+	o.onErrorReturnItem = nil
 	return o
 }
 
@@ -966,6 +970,14 @@ func (o *observable) OnErrorResumeNext(resumeSequence ErrorToObservableFunction)
 // rather than invoking onError if it encounters an error.
 func (o *observable) OnErrorReturn(resumeFunc ErrorFunction) Observable {
 	o.onErrorReturn = resumeFunc
+	o.onErrorResumeNext = nil
+	o.onErrorReturnItem = nil
+	return o
+}
+
+func (o *observable) OnErrorReturnItem(item interface{}) Observable {
+	o.onErrorReturnItem = item
+	o.onErrorReturn = nil
 	o.onErrorResumeNext = nil
 	return o
 }
@@ -1579,4 +1591,8 @@ func (o *observable) getOnErrorResumeNext() ErrorToObservableFunction {
 
 func (o *observable) getOnErrorReturn() ErrorFunction {
 	return o.onErrorReturn
+}
+
+func (o *observable) getOnErrorReturnItem() interface{} {
+	return o.onErrorReturnItem
 }

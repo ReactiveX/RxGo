@@ -176,6 +176,10 @@ func (c *connectableObservable) OnErrorReturn(resumeFunc ErrorFunction) Observab
 	return c.OnErrorReturn(resumeFunc)
 }
 
+func (c *connectableObservable) OnErrorReturnItem(item interface{}) Observable {
+	return c.OnErrorReturnItem(item)
+}
+
 func (c *connectableObservable) Publish() ConnectableObservable {
 	return c.Publish()
 }
@@ -301,4 +305,8 @@ func (c *connectableObservable) getOnErrorResumeNext() ErrorToObservableFunction
 
 func (c *connectableObservable) getOnErrorReturn() ErrorFunction {
 	return c.getOnErrorReturn()
+}
+
+func (c *connectableObservable) getOnErrorReturnItem() interface{} {
+	return c.getOnErrorReturnItem()
 }
