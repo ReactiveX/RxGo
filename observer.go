@@ -1,6 +1,7 @@
 package rxgo
 
 import (
+	"github.com/reactivex/rxgo/options"
 	"sync"
 
 	"github.com/reactivex/rxgo/handlers"
@@ -16,15 +17,38 @@ type Observer interface {
 	OnDone()
 
 	Block() error
+	setChannel(chan interface{})
+	getChannel() chan interface{}
+	setBackpressureStrategy(options.BackpressureStrategy)
+	getBackpressureStrategy() options.BackpressureStrategy
 }
 
 type observer struct {
-	disposedMutex sync.Mutex
-	disposed      bool
-	nextHandler   handlers.NextFunc
-	errHandler    handlers.ErrFunc
-	doneHandler   handlers.DoneFunc
-	done          chan error
+	disposedMutex        sync.Mutex
+	disposed             bool
+	nextHandler          handlers.NextFunc
+	errHandler           handlers.ErrFunc
+	doneHandler          handlers.DoneFunc
+	done                 chan error
+	channel              chan interface{}
+	backpressureStrategy options.BackpressureStrategy
+	buffer               int
+}
+
+func (o *observer) setBackpressureStrategy(strategy options.BackpressureStrategy) {
+	o.backpressureStrategy = strategy
+}
+
+func (o *observer) getBackpressureStrategy() options.BackpressureStrategy {
+	return o.backpressureStrategy
+}
+
+func (o *observer) setChannel(ch chan interface{}) {
+	o.channel = ch
+}
+
+func (o *observer) getChannel() chan interface{} {
+	return o.channel
 }
 
 // NewObserver constructs a new Observer instance with default Observer and accept

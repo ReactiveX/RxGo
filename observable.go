@@ -817,14 +817,6 @@ func (o *observable) ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFun
 	return o.Subscribe(CheckEventHandlers(nextFunc, errFunc, doneFunc), opts...)
 }
 
-func (o *observable) getOnErrorResumeNext() ErrorToObservableFunction {
-	return o.onErrorResumeNext
-}
-
-func (o *observable) getOnErrorReturn() ErrorFunction {
-	return o.onErrorReturn
-}
-
 // Last returns a new Observable which emit only last item.
 func (o *observable) Last() Observable {
 	f := func(out chan interface{}) {
@@ -1581,4 +1573,12 @@ func (o *observable) ZipFromObservable(publisher Observable, zipper Function2) O
 		close(out)
 	}
 	return newColdObservable(f)
+}
+
+func (o *observable) getOnErrorResumeNext() ErrorToObservableFunction {
+	return o.onErrorResumeNext
+}
+
+func (o *observable) getOnErrorReturn() ErrorFunction {
+	return o.onErrorReturn
 }
