@@ -2,6 +2,8 @@ package rxgo
 
 import (
 	"errors"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"net/http"
 	"strconv"
 	"sync"
@@ -1703,3 +1705,48 @@ func TestStartWithObservableFromEmpty(t *testing.T) {
 	obs := Just(1, 2, 3).StartWithObservable(Empty())
 	AssertThatObservable(t, obs, HasItems(1, 2, 3))
 }
+
+func TestObservable(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Observable suite")
+}
+
+var _ = Describe("Observable", func() {
+	Context("when creating subscriptions to a cold observable", func() {
+		out1 := make(chan interface{}, 3)
+		out2 := make(chan interface{}, 3)
+		observable := Just(1, 2, 3)
+
+		It("should have all the items regardless of whenever we subscribe", func() {
+			observable.Subscribe(next(out1))
+			Expect(get(out1, timeout)).Should(Equal(1))
+			Expect(get(out1, timeout)).Should(Equal(2))
+			Expect(get(out1, timeout)).Should(Equal(3))
+			observable.Subscribe(next(out2))
+			Expect(get(out2, timeout)).Should(Equal(1))
+			Expect(get(out2, timeout)).Should(Equal(2))
+			Expect(get(out2, timeout)).Should(Equal(3))
+		})
+	})
+
+	Context("when creating subscriptions to a hot observable", func() {
+		in := make(chan interface{}, 3)
+		out1 := make(chan interface{}, 3)
+		out2 := make(chan interface{}, 3)
+		in <- 1
+		observable := FromChannel(in)
+		observable.Subscribe(next(out1))
+		in <- 2
+		observable.Subscribe(next(out2))
+		in <- 3
+
+		It("should have all the items depending of the subscription moment", func() {
+			Expect(get(out1, timeout)).Should(Equal(2))
+			Expect(get(out1, timeout)).Should(Equal(3))
+			Expect(get(out1, timeout)).Should(Equal(noData))
+
+			Expect(get(out2, timeout)).Should(Equal(3))
+			Expect(get(out2, timeout)).Should(Equal(noData))
+		})
+	})
+})

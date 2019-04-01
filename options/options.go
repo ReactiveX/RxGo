@@ -16,7 +16,6 @@ const (
 // Option is the configuration of an observable
 type Option interface {
 	apply(*funcOption)
-	Parallelism() int
 	Buffer() int
 	BackpressureStrategy() BackpressureStrategy
 }
@@ -24,14 +23,9 @@ type Option interface {
 // funcOption wraps a function that modifies options into an
 // implementation of the Option interface.
 type funcOption struct {
-	f           func(*funcOption)
-	parallelism int
-	buffer      int
-	bpStrategy  BackpressureStrategy
-}
-
-func (fdo *funcOption) Parallelism() int {
-	return fdo.parallelism
+	f          func(*funcOption)
+	buffer     int
+	bpStrategy BackpressureStrategy
 }
 
 func (fdo *funcOption) Buffer() int {
@@ -60,13 +54,6 @@ func ParseOptions(opts ...Option) Option {
 		opt.apply(o)
 	}
 	return o
-}
-
-// WithParallelism allows to configure the level of parallelism
-func WithParallelism(parallelism int) Option {
-	return newFuncOption(func(options *funcOption) {
-		options.parallelism = parallelism
-	})
 }
 
 // WithBufferedChannel allows to configure the capacity of a buffered channel

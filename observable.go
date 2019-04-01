@@ -1263,8 +1263,6 @@ func (o *observable) SkipWhile(apply Predicate) Observable {
 func (o *observable) Subscribe(handler handlers.EventHandler, opts ...options.Option) Observer {
 	ob := CheckEventHandler(handler)
 
-	observableOptions := options.ParseOptions(opts...)
-
 	if o.errorOnSubscription != nil {
 		go func() {
 			ob.OnError(o.errorOnSubscription)
@@ -1272,34 +1270,12 @@ func (o *observable) Subscribe(handler handlers.EventHandler, opts ...options.Op
 		return ob
 	}
 
-	if observableOptions.Parallelism() == 0 {
-		go func() {
-			e := iterate(o, ob)
-			if e == nil {
-				ob.OnDone()
-			}
-		}()
-	} else {
-		results := make([]chan error, 0)
-		for i := 0; i < observableOptions.Parallelism(); i++ {
-			ch := make(chan error)
-			go func() {
-				ch <- iterate(o, ob)
-			}()
-			results = append(results, ch)
-		}
-
-		go func() {
-			for _, ch := range results {
-				err := <-ch
-				if err != nil {
-					return
-				}
-			}
-
+	go func() {
+		e := iterate(o, ob)
+		if e == nil {
 			ob.OnDone()
-		}()
-	}
+		}
+	}()
 
 	return ob
 }
