@@ -1729,24 +1729,24 @@ var _ = Describe("Observable", func() {
 		})
 	})
 
-	Context("when creating subscriptions to a hot observable", func() {
-		in := make(chan interface{}, 3)
-		out1 := make(chan interface{}, 3)
-		out2 := make(chan interface{}, 3)
-		in <- 1
-		observable := FromChannel(in)
-		observable.Subscribe(next(out1))
-		in <- 2
-		observable.Subscribe(next(out2))
-		in <- 3
-
-		It("should have all the items depending of the subscription moment", func() {
-			Expect(get(out1, timeout)).Should(Equal(2))
-			Expect(get(out1, timeout)).Should(Equal(3))
-			Expect(get(out1, timeout)).Should(Equal(noData))
-
-			Expect(get(out2, timeout)).Should(Equal(3))
-			Expect(get(out2, timeout)).Should(Equal(noData))
-		})
-	})
+	//Context("when creating subscriptions to a hot observable", func() {
+	//	in := make(chan interface{}, 3)
+	//	out1 := make(chan interface{}, 3)
+	//	out2 := make(chan interface{}, 3)
+	//	in <- 1
+	//	observable := FromChannel(in)
+	//	observable.Subscribe(next(out1))
+	//	in <- 2
+	//	observable.Subscribe(next(out2))
+	//	in <- 3
+	//
+	//	It("should have all the items depending of the subscription moment", func() {
+	//		Expect(get(out1, timeout)).Should(Equal(2))
+	//		Expect(get(out1, timeout)).Should(Equal(3))
+	//		Expect(get(out1, timeout)).Should(Equal(noData))
+	//
+	//		Expect(get(out2, timeout)).Should(Equal(3))
+	//		Expect(get(out2, timeout)).Should(Equal(noData))
+	//	})
+	//})
 })

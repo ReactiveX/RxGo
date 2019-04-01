@@ -7,8 +7,6 @@ import (
 )
 
 func TestOptions(t *testing.T) {
-	option := ParseOptions(WithParallelism(1), WithBufferedChannel(2))
-
-	assert.Equal(t, option.Parallelism(), 1)
+	option := ParseOptions(WithBufferedChannel(2))
 	assert.Equal(t, option.Buffer(), 2)
 }

@@ -4,13 +4,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/reactivex/rxgo/options"
-	"testing"
 )
-
-func TestConnectableObservable(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Connectable Observable suite")
-}
 
 var _ = Describe("Connectable Observable", func() {
 	Context("when creating two subscriptions to a connectable observable", func() {
