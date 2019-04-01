@@ -3,7 +3,9 @@ package rxgo
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/options"
+	"time"
 )
 
 var _ = Describe("Connectable Observable", func() {
@@ -46,6 +48,47 @@ var _ = Describe("Connectable Observable", func() {
 				in <- 2
 				Expect(get(out, timeout)).Should(Equal(1))
 				Expect(get(out, timeout)).Should(Equal(2))
+			})
+		})
+	})
+
+	Context("when creating a subscription to a connectable observable", func() {
+		Context("with back pressure strategy", func() {
+			in := make(chan interface{}, 2)
+			out := make(chan interface{}, 2)
+			connectableObs := FromChannel(in).Publish()
+			connectableObs.Subscribe(next(out), options.WithBufferBackpressureStrategy(2))
+			connectableObs.Connect()
+			in <- 1
+			in <- 2
+			in <- 3
+
+			It("should buffer items", func() {
+				Expect(get(out, timeout)).Should(Equal(1))
+				Expect(get(out, timeout)).Should(Equal(2))
+				Expect(get(out, timeout)).Should(Equal(3))
+				Expect(get(out, timeout)).Should(Equal(noData))
+			})
+		})
+
+		Context("without back pressure strategy", func() {
+			in := make(chan interface{}, 2)
+			out := make(chan interface{}, 2)
+			connectableObs := FromChannel(in).Publish()
+			connectableObs.Subscribe(handlers.NextFunc(func(i interface{}) {
+				out <- i
+				time.Sleep(timeout)
+			}))
+			connectableObs.Connect()
+			in <- 1
+			in <- 2
+			time.Sleep(timeout)
+			in <- 3
+
+			It("should drop items", func() {
+				Expect(get(out, timeout)).Should(Equal(1))
+				Expect(get(out, timeout)).Should(Equal(3))
+				Expect(get(out, timeout)).Should(Equal(noData))
 			})
 		})
 	})
