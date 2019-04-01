@@ -14,8 +14,8 @@ var _ = Describe("Connectable Observable", func() {
 		out1 := make(chan interface{}, 2)
 		out2 := make(chan interface{}, 2)
 		connectableObs := FromChannel(in).Publish()
-		connectableObs.Subscribe(next(out1), options.WithBufferBackpressureStrategy(2))
-		connectableObs.Subscribe(next(out2), options.WithBufferBackpressureStrategy(2))
+		connectableObs.Subscribe(nextHandler(out1), options.WithBufferBackpressureStrategy(2))
+		connectableObs.Subscribe(nextHandler(out2), options.WithBufferBackpressureStrategy(2))
 		in <- 1
 		in <- 2
 
@@ -39,7 +39,7 @@ var _ = Describe("Connectable Observable", func() {
 		in := make(chan interface{}, 2)
 		out := make(chan interface{}, 2)
 		connectableObs := FromChannel(in).Publish()
-		connectableObs.Subscribe(next(out), options.WithBufferBackpressureStrategy(2))
+		connectableObs.Subscribe(nextHandler(out), options.WithBufferBackpressureStrategy(2))
 
 		Context("when connect is called", func() {
 			It("should not be blocking", func() {
@@ -57,7 +57,7 @@ var _ = Describe("Connectable Observable", func() {
 			in := make(chan interface{}, 2)
 			out := make(chan interface{}, 2)
 			connectableObs := FromChannel(in).Publish()
-			connectableObs.Subscribe(next(out), options.WithBufferBackpressureStrategy(2))
+			connectableObs.Subscribe(nextHandler(out), options.WithBufferBackpressureStrategy(3))
 			connectableObs.Connect()
 			in <- 1
 			in <- 2

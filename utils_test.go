@@ -10,6 +10,7 @@ const timeout = 500 * time.Millisecond
 const pollingInterval = 20 * time.Millisecond
 
 var noData = errors.New("timeout")
+var doneSignal = "done"
 
 func get(ch chan interface{}, d time.Duration) interface{} {
 	select {
@@ -20,8 +21,20 @@ func get(ch chan interface{}, d time.Duration) interface{} {
 	}
 }
 
-func next(out chan interface{}) handlers.NextFunc {
+func nextHandler(out chan interface{}) handlers.NextFunc {
 	return handlers.NextFunc(func(i interface{}) {
 		out <- i
+	})
+}
+
+func doneHandler(out chan interface{}) handlers.DoneFunc {
+	return handlers.DoneFunc(func() {
+		out <- doneSignal
+	})
+}
+
+func errorHandler(out chan interface{}) handlers.ErrFunc {
+	return handlers.ErrFunc(func(err error) {
+		out <- err
 	})
 }

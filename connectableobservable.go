@@ -141,7 +141,11 @@ func (c *connectableObservable) FlatMap(apply func(interface{}) Observable, maxI
 
 func (c *connectableObservable) ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFunc,
 	doneFunc handlers.DoneFunc, opts ...options.Option) Observer {
-	panic("implement me")
+	return c.ForEach(nextFunc, errFunc, doneFunc, opts...)
+}
+
+func (c *connectableObservable) IgnoreElements() Observable {
+	return c.IgnoreElements()
 }
 
 func (c *connectableObservable) Last() Observable {
@@ -285,6 +289,10 @@ func (c *connectableObservable) ToMapWithValueSelector(keySelector Function, val
 
 func (c *connectableObservable) ZipFromObservable(publisher Observable, zipper Function2) Observable {
 	return c.ZipFromObservable(publisher, zipper)
+}
+
+func (c *connectableObservable) getIgnoreElements() bool {
+	return c.getIgnoreElements()
 }
 
 func (c *connectableObservable) getOnErrorResumeNext() ErrorToObservableFunction {

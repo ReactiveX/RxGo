@@ -1712,41 +1712,68 @@ func TestObservable(t *testing.T) {
 }
 
 var _ = Describe("Observable", func() {
-	Context("when creating subscriptions to a cold observable", func() {
+	Context("when creating an observable with just operator", func() {
 		out1 := make(chan interface{}, 3)
 		out2 := make(chan interface{}, 3)
 		observable := Just(1, 2, 3)
 
 		It("should have all the items regardless of whenever we subscribe", func() {
-			observable.Subscribe(next(out1))
+			observable.Subscribe(nextHandler(out1))
 			Expect(get(out1, timeout)).Should(Equal(1))
 			Expect(get(out1, timeout)).Should(Equal(2))
 			Expect(get(out1, timeout)).Should(Equal(3))
-			observable.Subscribe(next(out2))
+			observable.Subscribe(nextHandler(out2))
 			Expect(get(out2, timeout)).Should(Equal(1))
 			Expect(get(out2, timeout)).Should(Equal(2))
 			Expect(get(out2, timeout)).Should(Equal(3))
 		})
 	})
 
-	//Context("when creating subscriptions to a hot observable", func() {
-	//	in := make(chan interface{}, 3)
-	//	out1 := make(chan interface{}, 3)
-	//	out2 := make(chan interface{}, 3)
-	//	in <- 1
-	//	observable := FromChannel(in)
-	//	observable.Subscribe(next(out1))
-	//	in <- 2
-	//	observable.Subscribe(next(out2))
-	//	in <- 3
-	//
-	//	It("should have all the items depending of the subscription moment", func() {
-	//		Expect(get(out1, timeout)).Should(Equal(2))
-	//		Expect(get(out1, timeout)).Should(Equal(3))
-	//		Expect(get(out1, timeout)).Should(Equal(noData))
-	//
-	//		Expect(get(out2, timeout)).Should(Equal(3))
-	//		Expect(get(out2, timeout)).Should(Equal(noData))
-	//	})
-	//})
+	Context("when creating an observable", func() {
+		outNext := make(chan interface{}, 1)
+		outDone := make(chan interface{}, 1)
+		outError := make(chan interface{}, 1)
+		observable := Just(1, 2, 3)
+
+		Context("when calling ignoreElements operator", func() {
+			observable = observable.IgnoreElements()
+			observable.Subscribe(nextHandler(outNext))
+			observable.Subscribe(doneHandler(outDone))
+			observable.Subscribe(errorHandler(outError))
+			It("should ignore all the items", func() {
+				Expect(get(outNext, timeout)).Should(Equal(noData))
+			})
+			It("should receive done signal", func() {
+				Expect(get(outDone, timeout)).Should(Equal(doneSignal))
+			})
+			It("should not receive error signal", func() {
+				Expect(get(outError, timeout)).Should(Equal(noData))
+			})
+		})
+	})
+
+	Context("when creating an observable containing an error", func() {
+		outNext := make(chan interface{}, 1)
+		outDone := make(chan interface{}, 1)
+		outError := make(chan interface{}, 1)
+		err := errors.New("foo")
+		observable := Just(1, err, 3)
+
+		Context("when calling ignoreElements operator", func() {
+			observable = observable.IgnoreElements()
+			observable.Subscribe(nextHandler(outNext))
+			observable.Subscribe(doneHandler(outDone))
+			observable.Subscribe(errorHandler(outError))
+			It("should ignore all the items", func() {
+				Expect(get(outNext, timeout)).Should(Equal(noData))
+			})
+			It("should not receive done signal", func() {
+				Expect(get(outDone, timeout)).Should(Equal(noData))
+			})
+			It("should receive error signal", func() {
+				Expect(get(outError, timeout)).Should(Equal(err))
+			})
+		})
+	})
+
 })

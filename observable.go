@@ -40,6 +40,7 @@ type Observable interface {
 	FlatMap(apply func(interface{}) Observable, maxInParallel uint) Observable
 	ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFunc,
 		doneFunc handlers.DoneFunc, opts ...options.Option) Observer
+	IgnoreElements() Observable
 	Last() Observable
 	LastOrDefault(defaultValue interface{}) Single
 	Map(apply Function) Observable
@@ -69,6 +70,7 @@ type Observable interface {
 	ToMap(keySelector Function) Observable
 	ToMapWithValueSelector(keySelector Function, valueSelector Function) Observable
 	ZipFromObservable(publisher Observable, zipper Function2) Observable
+	getIgnoreElements() bool
 	getOnErrorResumeNext() ErrorToObservableFunction
 	getOnErrorReturn() ErrorFunction
 }
@@ -80,6 +82,7 @@ type observable struct {
 	observableFactory   func() Observable
 	onErrorReturn       ErrorFunction
 	onErrorResumeNext   ErrorToObservableFunction
+	ignoreElements      bool
 }
 
 func iterate(observable Observable, observer Observer) error {
@@ -100,7 +103,9 @@ func iterate(observable Observable, observer Observer) error {
 					return item
 				}
 			default:
-				observer.OnNext(item)
+				if !observable.getIgnoreElements() {
+					observer.OnNext(item)
+				}
 			}
 		} else {
 			break
@@ -815,6 +820,19 @@ func (o *observable) First() Observable {
 func (o *observable) ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFunc,
 	doneFunc handlers.DoneFunc, opts ...options.Option) Observer {
 	return o.Subscribe(CheckEventHandlers(nextFunc, errFunc, doneFunc), opts...)
+}
+
+// IgnoreElements ignores all items emitted by the source ObservableSource and only calls onComplete
+// or onError.
+func (o *observable) IgnoreElements() Observable {
+	return &observable{
+		iterable:            o.iterable,
+		errorOnSubscription: o.errorOnSubscription,
+		observableFactory:   o.observableFactory,
+		onErrorResumeNext:   o.onErrorResumeNext,
+		onErrorReturn:       o.onErrorReturn,
+		ignoreElements:      true,
+	}
 }
 
 // Last returns a new Observable which emit only last item.
@@ -1549,6 +1567,10 @@ func (o *observable) ZipFromObservable(publisher Observable, zipper Function2) O
 		close(out)
 	}
 	return newColdObservable(f)
+}
+
+func (o *observable) getIgnoreElements() bool {
+	return o.ignoreElements
 }
 
 func (o *observable) getOnErrorResumeNext() ErrorToObservableFunction {
