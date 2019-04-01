@@ -41,4 +41,7 @@ type (
 
 	// Supplier defines a function that supplies a result from nothing.
 	Supplier func() interface{}
+
+	// ChanProducer defines a function that produces results into a channel.
+	ChanProducer func(chan interface{})
 )
