@@ -23,70 +23,70 @@ func newConnectableObservableFromObservable(observable Observable) ConnectableOb
 	}
 }
 
-func (connectableObservable) Iterator() Iterator {
-	panic("implement me")
+func (c *connectableObservable) Iterator() Iterator {
+	return c.Iterator()
 }
 
-func (connectableObservable) All(predicate Predicate) Single {
-	panic("implement me")
+func (c *connectableObservable) All(predicate Predicate) Single {
+	return c.All(predicate)
 }
 
-func (connectableObservable) AverageFloat32() Single {
-	panic("implement me")
+func (c *connectableObservable) AverageFloat32() Single {
+	return c.AverageFloat32()
 }
 
-func (connectableObservable) AverageFloat64() Single {
-	panic("implement me")
+func (c *connectableObservable) AverageFloat64() Single {
+	return c.AverageFloat64()
 }
 
-func (connectableObservable) AverageInt() Single {
-	panic("implement me")
+func (c *connectableObservable) AverageInt() Single {
+	return c.AverageInt()
 }
 
-func (connectableObservable) AverageInt8() Single {
-	panic("implement me")
+func (c *connectableObservable) AverageInt8() Single {
+	return c.AverageInt8()
 }
 
-func (connectableObservable) AverageInt16() Single {
-	panic("implement me")
+func (c *connectableObservable) AverageInt16() Single {
+	return c.AverageInt16()
 }
 
-func (connectableObservable) AverageInt32() Single {
-	panic("implement me")
+func (c *connectableObservable) AverageInt32() Single {
+	return c.AverageInt32()
 }
 
-func (connectableObservable) AverageInt64() Single {
-	panic("implement me")
+func (c *connectableObservable) AverageInt64() Single {
+	return c.AverageInt64()
 }
 
-func (connectableObservable) BufferWithCount(count, skip int) Observable {
-	panic("implement me")
+func (c *connectableObservable) BufferWithCount(count, skip int) Observable {
+	return c.BufferWithCount(count, skip)
 }
 
-func (connectableObservable) BufferWithTime(timespan, timeshift Duration) Observable {
-	panic("implement me")
+func (c *connectableObservable) BufferWithTime(timespan, timeshift Duration) Observable {
+	return c.BufferWithTime(timespan, timeshift)
 }
 
-func (connectableObservable) BufferWithTimeOrCount(timespan Duration, count int) Observable {
-	panic("implement me")
+func (c *connectableObservable) BufferWithTimeOrCount(timespan Duration, count int) Observable {
+	return c.BufferWithTimeOrCount(timespan, count)
 }
 
-func (o *connectableObservable) Connect() Observer {
+func (c *connectableObservable) Connect() Observer {
 	out := NewObserver()
 	go func() {
-		it := o.observable.Iterator()
+		it := c.observable.Iterator()
 		for {
 			if item, err := it.Next(); err == nil {
-				o.observersMutex.Lock()
-				for _, observer := range o.observers {
-					o.observersMutex.Unlock()
+				c.observersMutex.Lock()
+				for _, observer := range c.observers {
+					c.observersMutex.Unlock()
 					select {
 					case observer.getChannel() <- item:
 					default:
 					}
-					o.observersMutex.Lock()
+					c.observersMutex.Lock()
 				}
-				o.observersMutex.Unlock()
+				c.observersMutex.Unlock()
 			} else {
 				break
 			}
@@ -95,125 +95,125 @@ func (o *connectableObservable) Connect() Observer {
 	return out
 }
 
-func (connectableObservable) Contains(equal Predicate) Single {
-	panic("implement me")
+func (c *connectableObservable) Contains(equal Predicate) Single {
+	return c.Contains(equal)
 }
 
-func (connectableObservable) Count() Single {
-	panic("implement me")
+func (c *connectableObservable) Count() Single {
+	return c.Count()
 }
 
-func (connectableObservable) DefaultIfEmpty(defaultValue interface{}) Observable {
-	panic("implement me")
+func (c *connectableObservable) DefaultIfEmpty(defaultValue interface{}) Observable {
+	return c.DefaultIfEmpty(defaultValue)
 }
 
-func (connectableObservable) Distinct(apply Function) Observable {
-	panic("implement me")
+func (c *connectableObservable) Distinct(apply Function) Observable {
+	return c.Distinct(apply)
 }
 
-func (connectableObservable) DistinctUntilChanged(apply Function) Observable {
-	panic("implement me")
+func (c *connectableObservable) DistinctUntilChanged(apply Function) Observable {
+	return c.DistinctUntilChanged(apply)
 }
 
-func (connectableObservable) DoOnEach(onNotification Consumer) Observable {
-	panic("implement me")
+func (c *connectableObservable) DoOnEach(onNotification Consumer) Observable {
+	return c.DoOnEach(onNotification)
 }
 
-func (connectableObservable) ElementAt(index uint) Single {
-	panic("implement me")
+func (c *connectableObservable) ElementAt(index uint) Single {
+	return c.ElementAt(index)
 }
 
-func (connectableObservable) Filter(apply Predicate) Observable {
-	panic("implement me")
+func (c *connectableObservable) Filter(apply Predicate) Observable {
+	return c.Filter(apply)
 }
 
-func (connectableObservable) First() Observable {
-	panic("implement me")
+func (c *connectableObservable) First() Observable {
+	return c.First()
 }
 
-func (connectableObservable) FirstOrDefault(defaultValue interface{}) Single {
-	panic("implement me")
+func (c *connectableObservable) FirstOrDefault(defaultValue interface{}) Single {
+	return c.FirstOrDefault(defaultValue)
 }
 
-func (connectableObservable) FlatMap(apply func(interface{}) Observable, maxInParallel uint) Observable {
-	panic("implement me")
+func (c *connectableObservable) FlatMap(apply func(interface{}) Observable, maxInParallel uint) Observable {
+	return c.FlatMap(apply, maxInParallel)
 }
 
-func (connectableObservable) ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFunc,
+func (c *connectableObservable) ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFunc,
 	doneFunc handlers.DoneFunc, opts ...options.Option) Observer {
 	panic("implement me")
 }
 
-func (connectableObservable) Last() Observable {
-	panic("implement me")
+func (c *connectableObservable) Last() Observable {
+	return c.Last()
 }
 
-func (connectableObservable) LastOrDefault(defaultValue interface{}) Single {
-	panic("implement me")
+func (c *connectableObservable) LastOrDefault(defaultValue interface{}) Single {
+	return c.LastOrDefault(defaultValue)
 }
 
-func (connectableObservable) Map(apply Function) Observable {
-	panic("implement me")
+func (c *connectableObservable) Map(apply Function) Observable {
+	return c.Map(apply)
 }
 
-func (connectableObservable) Max(comparator Comparator) OptionalSingle {
-	panic("implement me")
+func (c *connectableObservable) Max(comparator Comparator) OptionalSingle {
+	return c.Max(comparator)
 }
 
-func (connectableObservable) Min(comparator Comparator) OptionalSingle {
-	panic("implement me")
+func (c *connectableObservable) Min(comparator Comparator) OptionalSingle {
+	return c.Min(comparator)
 }
 
-func (connectableObservable) OnErrorResumeNext(resumeSequence ErrorToObservableFunction) Observable {
-	panic("implement me")
+func (c *connectableObservable) OnErrorResumeNext(resumeSequence ErrorToObservableFunction) Observable {
+	return c.OnErrorResumeNext(resumeSequence)
 }
 
-func (connectableObservable) OnErrorReturn(resumeFunc ErrorFunction) Observable {
-	panic("implement me")
+func (c *connectableObservable) OnErrorReturn(resumeFunc ErrorFunction) Observable {
+	return c.OnErrorReturn(resumeFunc)
 }
 
-func (connectableObservable) Publish() ConnectableObservable {
-	panic("implement me")
+func (c *connectableObservable) Publish() ConnectableObservable {
+	return c.Publish()
 }
 
-func (connectableObservable) Reduce(apply Function2) OptionalSingle {
-	panic("implement me")
+func (c *connectableObservable) Reduce(apply Function2) OptionalSingle {
+	return c.Reduce(apply)
 }
 
-func (connectableObservable) Repeat(count int64, frequency Duration) Observable {
-	panic("implement me")
+func (c *connectableObservable) Repeat(count int64, frequency Duration) Observable {
+	return c.Repeat(count, frequency)
 }
 
-func (connectableObservable) Scan(apply Function2) Observable {
-	panic("implement me")
+func (c *connectableObservable) Scan(apply Function2) Observable {
+	return c.Scan(apply)
 }
 
-func (connectableObservable) SequenceEqual(obs Observable) Single {
-	panic("implement me")
+func (c *connectableObservable) SequenceEqual(obs Observable) Single {
+	return c.SequenceEqual(obs)
 }
 
-func (connectableObservable) Skip(nth uint) Observable {
-	panic("implement me")
+func (c *connectableObservable) Skip(nth uint) Observable {
+	return c.Skip(nth)
 }
 
-func (connectableObservable) SkipLast(nth uint) Observable {
-	panic("implement me")
+func (c *connectableObservable) SkipLast(nth uint) Observable {
+	return c.SkipLast(nth)
 }
 
-func (connectableObservable) SkipWhile(apply Predicate) Observable {
-	panic("implement me")
+func (c *connectableObservable) SkipWhile(apply Predicate) Observable {
+	return c.SkipWhile(apply)
 }
 
-func (connectableObservable) StartWithItems(items ...interface{}) Observable {
-	panic("implement me")
+func (c *connectableObservable) StartWithItems(items ...interface{}) Observable {
+	return c.StartWithItems(items...)
 }
 
-func (connectableObservable) StartWithIterable(iterable Iterable) Observable {
-	panic("implement me")
+func (c *connectableObservable) StartWithIterable(iterable Iterable) Observable {
+	return c.StartWithIterable(iterable)
 }
 
-func (connectableObservable) StartWithObservable(observable Observable) Observable {
-	panic("implement me")
+func (c *connectableObservable) StartWithObservable(observable Observable) Observable {
+	return c.StartWithObservable(observable)
 }
 
 func (o *connectableObservable) Subscribe(handler handlers.EventHandler, opts ...options.Option) Observer {
@@ -247,50 +247,50 @@ func (o *connectableObservable) Subscribe(handler handlers.EventHandler, opts ..
 	return ob
 }
 
-func (connectableObservable) SumFloat32() Single {
-	panic("implement me")
+func (c *connectableObservable) SumFloat32() Single {
+	return c.SumFloat32()
 }
 
-func (connectableObservable) SumFloat64() Single {
-	panic("implement me")
+func (c *connectableObservable) SumFloat64() Single {
+	return c.SumFloat64()
 }
 
-func (connectableObservable) SumInt64() Single {
-	panic("implement me")
+func (c *connectableObservable) SumInt64() Single {
+	return c.SumInt64()
 }
 
-func (connectableObservable) Take(nth uint) Observable {
-	panic("implement me")
+func (c *connectableObservable) Take(nth uint) Observable {
+	return c.Take(nth)
 }
 
-func (connectableObservable) TakeLast(nth uint) Observable {
-	panic("implement me")
+func (c *connectableObservable) TakeLast(nth uint) Observable {
+	return c.TakeLast(nth)
 }
 
-func (connectableObservable) TakeWhile(apply Predicate) Observable {
-	panic("implement me")
+func (c *connectableObservable) TakeWhile(apply Predicate) Observable {
+	return c.TakeWhile(apply)
 }
 
-func (connectableObservable) ToList() Observable {
-	panic("implement me")
+func (c *connectableObservable) ToList() Observable {
+	return c.ToList()
 }
 
-func (connectableObservable) ToMap(keySelector Function) Observable {
-	panic("implement me")
+func (c *connectableObservable) ToMap(keySelector Function) Observable {
+	return c.ToMap(keySelector)
 }
 
-func (connectableObservable) ToMapWithValueSelector(keySelector Function, valueSelector Function) Observable {
-	panic("implement me")
+func (c *connectableObservable) ToMapWithValueSelector(keySelector Function, valueSelector Function) Observable {
+	return c.ToMapWithValueSelector(keySelector, valueSelector)
 }
 
-func (connectableObservable) ZipFromObservable(publisher Observable, zipper Function2) Observable {
-	panic("implement me")
+func (c *connectableObservable) ZipFromObservable(publisher Observable, zipper Function2) Observable {
+	return c.ZipFromObservable(publisher, zipper)
 }
 
-func (connectableObservable) getOnErrorResumeNext() ErrorToObservableFunction {
-	panic("implement me")
+func (c *connectableObservable) getOnErrorResumeNext() ErrorToObservableFunction {
+	return c.getOnErrorResumeNext()
 }
 
-func (connectableObservable) getOnErrorReturn() ErrorFunction {
-	panic("implement me")
+func (c *connectableObservable) getOnErrorReturn() ErrorFunction {
+	return c.getOnErrorReturn()
 }
