@@ -17,6 +17,8 @@ install:
   - go get github.com/mattn/goveralls
   - go get github.com/stretchr/testify/assert
   - go get github.com/gorilla/websocket
+  - go get github.com/onsi/ginkgo
+  - go get github.com/onsi/gomega
 
 script:
   - go test -v -race -cover -coverprofile=/tmp/coverage.out
