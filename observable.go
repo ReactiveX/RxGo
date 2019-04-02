@@ -73,6 +73,7 @@ type Observable interface {
 	SumInt64() Single
 	Take(nth uint) Observable
 	TakeLast(nth uint) Observable
+	TakeUntil(apply Predicate) Observable
 	TakeWhile(apply Predicate) Observable
 	ToChannel(opts ...options.Option) Channel
 	ToMap(keySelector Function) Single
@@ -1555,8 +1556,28 @@ func (o *observable) TakeLast(nth uint) Observable {
 	return newColdObservable(f)
 }
 
-// TakeWhile emits items emitted by an Observable as long as the
-// specified condition is true, then skip the remainder.
+// TakeUntil returns an Observable that emits items emitted by the source Observable,
+// checks the specified predicate for each item, and then completes when the condition is satisfied.
+func (o *observable) TakeUntil(apply Predicate) Observable {
+	f := func(out chan interface{}) {
+		it := o.iterable.Iterator()
+		for {
+			if item, err := it.Next(); err == nil {
+				out <- item
+				if apply(item) {
+					break
+				}
+			} else {
+				break
+			}
+		}
+		close(out)
+	}
+	return newColdObservable(f)
+}
+
+// TakeWhile returns an Observable that emits items emitted by the source ObservableSource so long as each
+// item satisfied a specified condition, and then completes as soon as this condition is not satisfied.
 func (o *observable) TakeWhile(apply Predicate) Observable {
 	f := func(out chan interface{}) {
 		it := o.iterable.Iterator()

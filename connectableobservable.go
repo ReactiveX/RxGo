@@ -275,6 +275,10 @@ func (c *connectableObservable) TakeLast(nth uint) Observable {
 	return c.TakeLast(nth)
 }
 
+func (c *connectableObservable) TakeUntil(apply Predicate) Observable {
+	return c.TakeUntil(apply)
+}
+
 func (c *connectableObservable) TakeWhile(apply Predicate) Observable {
 	return c.TakeWhile(apply)
 }

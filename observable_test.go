@@ -874,36 +874,6 @@ func TestObservableLastOrDefaultWithValue(t *testing.T) {
 	assert.Exactly(t, 3, v)
 }
 
-func TestObservableTakeWhile(t *testing.T) {
-	stream1 := Just(1, 2, 3, 4, 5)
-	stream2 := stream1.TakeWhile(func(item interface{}) bool {
-		return item != 3
-	})
-	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
-		if num, ok := item.(int); ok {
-			nums = append(nums, num)
-		}
-	})
-	stream2.Subscribe(onNext).Block()
-	assert.Exactly(t, []int{1, 2}, nums)
-}
-
-func TestObservableTakeWhileWithEmpty(t *testing.T) {
-	stream1 := Empty()
-	stream2 := stream1.TakeWhile(func(item interface{}) bool {
-		return item != 3
-	})
-	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
-		if num, ok := item.(int); ok {
-			nums = append(nums, num)
-		}
-	})
-	stream2.Subscribe(onNext).Block()
-	assert.Exactly(t, []int{}, nums)
-}
-
 func TestObservableSkipWhile(t *testing.T) {
 	got := []interface{}{}
 	Just(1, 2, 3, 4, 5).SkipWhile(func(i interface{}) bool {
@@ -1830,4 +1800,64 @@ var _ = Describe("Observable operators", func() {
 		})
 	})
 
+	Context("when creating an observable", func() {
+		observable := Just(1, 2, 3, 4, 5)
+		Context("when calling the TakeWhile operator", func() {
+			observable = observable.TakeWhile(func(item interface{}) bool {
+				return item != 3
+			})
+			It("should produce items while the condition is verified", func() {
+				outNext := make(chan interface{}, 1)
+				observable.Subscribe(nextHandler(outNext))
+				Expect(pollItem(outNext, timeout)).Should(Equal(1))
+				Expect(pollItem(outNext, timeout)).Should(Equal(2))
+				Expect(pollItem(outNext, timeout)).Should(Equal(noData))
+			})
+		})
+	})
+
+	Context("when creating an empty observable", func() {
+		observable := Empty()
+		Context("when calling the TakeWhile operator", func() {
+			observable = observable.TakeWhile(func(item interface{}) bool {
+				return item != 3
+			})
+			It("should not produce any items", func() {
+				outNext := make(chan interface{}, 1)
+				observable.Subscribe(nextHandler(outNext))
+				Expect(pollItem(outNext, timeout)).Should(Equal(noData))
+			})
+		})
+	})
+
+	Context("when creating an observable", func() {
+		observable := Just(1, 2, 3, 4, 5)
+		Context("when calling the TakeUntil operator", func() {
+			observable = observable.TakeUntil(func(item interface{}) bool {
+				return item == 3
+			})
+			It("should produce items while the condition is verified", func() {
+				outNext := make(chan interface{}, 1)
+				observable.Subscribe(nextHandler(outNext))
+				Expect(pollItem(outNext, timeout)).Should(Equal(1))
+				Expect(pollItem(outNext, timeout)).Should(Equal(2))
+				Expect(pollItem(outNext, timeout)).Should(Equal(3))
+				Expect(pollItem(outNext, timeout)).Should(Equal(noData))
+			})
+		})
+	})
+
+	Context("when creating an empty observable", func() {
+		observable := Empty()
+		Context("when calling the TakeUntil operator", func() {
+			observable = observable.TakeUntil(func(item interface{}) bool {
+				return item != 3
+			})
+			It("should not produce any items", func() {
+				outNext := make(chan interface{}, 1)
+				observable.Subscribe(nextHandler(outNext))
+				Expect(pollItem(outNext, timeout)).Should(Equal(noData))
+			})
+		})
+	})
 })
