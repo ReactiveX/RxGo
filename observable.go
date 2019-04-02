@@ -13,6 +13,13 @@ import (
 	"github.com/reactivex/rxgo/options"
 )
 
+type observableType uint32
+
+const (
+	cold observableType = iota
+	hot
+)
+
 // Observable is a basic observable interface
 type Observable interface {
 	Iterable
@@ -80,13 +87,26 @@ type Observable interface {
 
 // observable is a structure handling a channel of interface{} and implementing Observable
 type observable struct {
-	iterable            Iterable
+	observableType observableType
+
 	errorOnSubscription error
-	observableFactory   func() Observable
-	onErrorResumeNext   ErrorToObservableFunction
-	onErrorReturn       ErrorFunction
-	onErrorReturnItem   interface{}
 	ignoreElements      bool
+	observableFactory   func() Observable
+
+	onErrorResumeNext ErrorToObservableFunction
+	onErrorReturn     ErrorFunction
+	onErrorReturnItem interface{}
+
+	// Cold observable
+	iterable Iterable // Pull mode
+
+	// Hot observable
+	channel               chan interface{} // Push mode
+	bpStrategy            options.BackpressureStrategy
+	bpBuffer              int
+	subscriptionsObserver []Observer
+	subscriptionsChannel  []chan interface{}
+	subscriptionsMutex    sync.Mutex
 }
 
 func iterate(observable Observable, observer Observer) error {
@@ -129,6 +149,41 @@ func popAndCompareFirstItems(
 		return s1 == s2, sequence1, sequence2
 	}
 	return true, inputSequence1, inputSequence2
+}
+
+func startsHotObservable(observable *observable) {
+	if observable.bpStrategy == options.None {
+		go func() {
+			for {
+				if next, ok := <-observable.channel; ok {
+					observable.subscriptionsMutex.Lock()
+					for _, observer := range observable.subscriptionsObserver {
+						observer.Handle(next)
+					}
+					observable.subscriptionsMutex.Unlock()
+				} else {
+					return
+				}
+			}
+		}()
+	} else if observable.bpStrategy == options.Buffer {
+		go func() {
+			for {
+				if next, ok := <-observable.channel; ok {
+					observable.subscriptionsMutex.Lock()
+					for _, ch := range observable.subscriptionsChannel {
+						select {
+						case ch <- next:
+						default:
+						}
+					}
+					observable.subscriptionsMutex.Unlock()
+				} else {
+					return
+				}
+			}
+		}()
+	}
 }
 
 // CheckEventHandler checks the underlying type of an EventHandler.
@@ -1301,12 +1356,35 @@ func (o *observable) Subscribe(handler handlers.EventHandler, opts ...options.Op
 		return ob
 	}
 
-	go func() {
-		e := iterate(o, ob)
-		if e == nil {
-			ob.OnDone()
+	if o.observableType == cold {
+		// In case of a cold observable, we pull the items from an iterable
+		go func() {
+			e := iterate(o, ob)
+			if e == nil {
+				ob.OnDone()
+			}
+		}()
+	} else if o.observableType == hot {
+		// In case of a hot observable, we add an observer subscription
+		if o.bpStrategy == options.None {
+			o.subscriptionsMutex.Lock()
+			o.subscriptionsObserver = append(o.subscriptionsObserver, ob)
+			o.subscriptionsMutex.Unlock()
+		} else if o.bpStrategy == options.Buffer {
+			o.subscriptionsMutex.Lock()
+			ch := make(chan interface{}, o.bpBuffer)
+			go func() {
+				for item := range ch {
+					ob.Handle(item)
+				}
+			}()
+			o.subscriptionsChannel = append(o.subscriptionsChannel, ch)
+			o.subscriptionsMutex.Unlock()
+		} else {
+			panic(fmt.Sprintf("unknown strategy: %v", o.bpStrategy))
 		}
-	}()
+
+	}
 
 	return ob
 }

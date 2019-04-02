@@ -1,6 +1,7 @@
 package rxgo
 
 import (
+	"github.com/reactivex/rxgo/options"
 	"math"
 	"sync"
 	"time"
@@ -9,38 +10,60 @@ import (
 	"github.com/reactivex/rxgo/handlers"
 )
 
-// newObservableFromChannel creates an Observable from a given channel
-func newObservableFromChannel(ch chan interface{}) Observable {
+// newColdObservableFromChannel creates an Observable from a given channel
+func newColdObservableFromChannel(ch chan interface{}) Observable {
 	return &observable{
-		iterable: newIterableFromChannel(ch),
+		observableType: cold,
+		iterable:       newIterableFromChannel(ch),
 	}
+}
+
+func newHotObservableFromChannel(ch chan interface{}, opts ...options.Option) Observable {
+	parsedOptions := options.ParseOptions(opts...)
+
+	obs := &observable{
+		observableType:        hot,
+		subscriptionsObserver: make([]Observer, 0),
+		subscriptionsChannel:  make([]chan interface{}, 0),
+		bpStrategy:            parsedOptions.BackpressureStrategy(),
+		bpBuffer:              parsedOptions.Buffer(),
+		channel:               ch,
+	}
+
+	go startsHotObservable(obs)
+
+	return obs
 }
 
 // newColdObservable creates a cold observable
 func newColdObservable(f func(chan interface{})) Observable {
 	return &observable{
-		iterable: newIterableFromFunc(f),
+		observableType: cold,
+		iterable:       newIterableFromFunc(f),
 	}
 }
 
 // newObservableFromIterable creates an Observable from a given iterable
 func newObservableFromIterable(it Iterable) Observable {
 	return &observable{
-		iterable: it,
+		observableType: cold,
+		iterable:       it,
 	}
 }
 
 // newObservableFromSlice creates an Observable from a given channel
 func newObservableFromSlice(s []interface{}) Observable {
 	return &observable{
-		iterable: newIterableFromSlice(s),
+		observableType: cold,
+		iterable:       newIterableFromSlice(s),
 	}
 }
 
 // newObservableFromRange creates an Observable from a range.
 func newObservableFromRange(start, count int) Observable {
 	return &observable{
-		iterable: newIterableFromRange(start, count),
+		observableType: cold,
+		iterable:       newIterableFromRange(start, count),
 	}
 }
 
@@ -87,7 +110,7 @@ func Create(source func(emitter Observer, disposed bool)) Observable {
 		source(emitter, isClosed(out))
 	}()
 
-	return newObservableFromChannel(out)
+	return newColdObservableFromChannel(out)
 }
 
 // Concat emit the emissions from two or more Observables without interleaving them
@@ -116,15 +139,15 @@ func Concat(observable1 Observable, observables ...Observable) Observable {
 
 		close(out)
 	}()
-	return newObservableFromChannel(out)
+	return newColdObservableFromChannel(out)
 }
 
 func FromSlice(s []interface{}) Observable {
 	return newObservableFromSlice(s)
 }
 
-func FromChannel(ch chan interface{}) Observable {
-	return newObservableFromChannel(ch)
+func FromChannel(ch chan interface{}, opts ...options.Option) Observable {
+	return newHotObservableFromChannel(ch, opts...)
 }
 
 func FromIterable(it Iterable) Observable {
@@ -144,7 +167,7 @@ func From(it Iterator) Observable {
 		}
 		close(out)
 	}()
-	return newObservableFromChannel(out)
+	return newColdObservableFromChannel(out)
 }
 
 // Error returns an Observable that invokes an Observer's onError method
@@ -161,7 +184,7 @@ func Empty() Observable {
 	go func() {
 		close(out)
 	}()
-	return newObservableFromChannel(out)
+	return newColdObservableFromChannel(out)
 }
 
 // Interval creates an Observable emitting incremental integers infinitely between
@@ -182,7 +205,7 @@ func Interval(term chan struct{}, interval time.Duration) Observable {
 		}
 		close(out)
 	}(term)
-	return newObservableFromChannel(out)
+	return newColdObservableFromChannel(out)
 }
 
 // Range creates an Observable that emits a particular range of sequential integers.
@@ -234,13 +257,13 @@ func Start(f Supplier, fs ...Supplier) Observable {
 		close(out)
 	}()
 
-	return newObservableFromChannel(out)
+	return newColdObservableFromChannel(out)
 }
 
 // Never create an Observable that emits no items and does not terminate
 func Never() Observable {
 	out := make(chan interface{})
-	return newObservableFromChannel(out)
+	return newColdObservableFromChannel(out)
 }
 
 // Timer returns an Observable that emits the zeroed value of a float64 after a
@@ -256,5 +279,5 @@ func Timer(d Duration) Observable {
 		out <- 0.
 		close(out)
 	}()
-	return newObservableFromChannel(out)
+	return newColdObservableFromChannel(out)
 }

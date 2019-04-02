@@ -4,13 +4,9 @@ type BackpressureStrategy uint32
 type Scheduler uint32
 
 const (
-	Drop BackpressureStrategy = iota
+	None BackpressureStrategy = iota
+	Drop
 	Buffer
-)
-
-const (
-	Blocking Scheduler = iota
-	NonBlocking
 )
 
 // Option is the configuration of an observable
@@ -60,6 +56,12 @@ func ParseOptions(opts ...Option) Option {
 func WithBufferedChannel(capacity int) Option {
 	return newFuncOption(func(options *funcOption) {
 		options.buffer = capacity
+	})
+}
+
+func WithoutBackpressureStrategy() Option {
+	return newFuncOption(func(options *funcOption) {
+		options.bpStrategy = None
 	})
 }
 

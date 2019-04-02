@@ -1,6 +1,7 @@
 package rxgo
 
 import (
+	"github.com/reactivex/rxgo/options"
 	"testing"
 
 	"errors"
@@ -333,8 +334,8 @@ func TestTimerWithNilDuration(t *testing.T) {
 	AssertThatObservable(t, obs, HasItems(float64(0)))
 }
 
-var _ = Describe("Observable operators", func() {
-	Context("when creating a cold observable with just operator", func() {
+var _ = Describe("Observable types", func() {
+	Context("when creating a cold observable with Just operator", func() {
 		observable := Just(1, 2, 3)
 		It("should allow multiple subscription to receive the same items", func() {
 			outNext1 := make(chan interface{}, 1)
@@ -346,10 +347,77 @@ var _ = Describe("Observable operators", func() {
 
 			outNext2 := make(chan interface{}, 1)
 			observable.Subscribe(nextHandler(outNext2))
-			Expect(get(outNext1, timeout)).Should(Equal(1))
+			Expect(get(outNext2, timeout)).Should(Equal(1))
+			Expect(get(outNext2, timeout)).Should(Equal(2))
+			Expect(get(outNext2, timeout)).Should(Equal(3))
+			Expect(get(outNext2, timeout)).Should(Equal(noData))
+		})
+	})
+
+	Context("when creating a hot observable with FromChannel operator without back-pressure strategy", func() {
+		ch := make(chan interface{}, 10)
+		ch <- 1
+		observable := FromChannel(ch, options.WithoutBackpressureStrategy())
+		outNext1 := make(chan interface{}, 1)
+		It("should drop an item if there is no subscriber", func() {
+			Eventually(len(ch), timeout, pollingInterval).Should(Equal(0))
+		})
+		It("an observer should receive items depending on the moment it subscribed", func() {
+			observable.Subscribe(nextHandler(outNext1))
+			ch <- 2
+			ch <- 3
 			Expect(get(outNext1, timeout)).Should(Equal(2))
 			Expect(get(outNext1, timeout)).Should(Equal(3))
 			Expect(get(outNext1, timeout)).Should(Equal(noData))
+		})
+		It("another observer should receive items depending on the moment it subscribed", func() {
+			outNext2 := make(chan interface{}, 1)
+			observable.Subscribe(nextHandler(outNext2))
+			ch <- 4
+			ch <- 5
+			Expect(get(outNext1, timeout)).Should(Equal(4))
+			Expect(get(outNext1, timeout)).Should(Equal(5))
+			Expect(get(outNext2, timeout)).Should(Equal(4))
+			Expect(get(outNext2, timeout)).Should(Equal(5))
+			Expect(get(outNext2, timeout)).Should(Equal(noData))
+		})
+	})
+
+	Context("when creating a hot observable with FromChannel operator and a buffer back-pressure strategy", func() {
+		ch := make(chan interface{}, 10)
+		ch <- 1
+		observable := FromChannel(ch, options.WithBufferBackpressureStrategy(3))
+		outNext1 := make(chan interface{}, 1)
+		It("should drop an item if there is no subscriber", func() {
+			Eventually(len(ch), timeout, pollingInterval).Should(Equal(0))
+		})
+		It("an observer should receive only the buffered items", func() {
+			observable.Subscribe(nextHandler(outNext1))
+			ch <- 2
+			ch <- 3
+			ch <- 4
+			ch <- 5
+			Expect(get(outNext1, timeout)).Should(Equal(2))
+			Expect(get(outNext1, timeout)).Should(Equal(3))
+			Expect(get(outNext1, timeout)).Should(Equal(4))
+			Expect(get(outNext1, timeout)).Should(Equal(noData))
+		})
+		It("another observer should receive only the buffered items", func() {
+			outNext2 := make(chan interface{}, 1)
+			observable.Subscribe(nextHandler(outNext2))
+			ch <- 5
+			ch <- 6
+			ch <- 7
+			ch <- 8
+			Expect(get(outNext1, timeout)).Should(Equal(5))
+			Expect(get(outNext1, timeout)).Should(Equal(6))
+			Expect(get(outNext1, timeout)).Should(Equal(7))
+			Expect(get(outNext1, timeout)).Should(Equal(8))
+			Expect(get(outNext1, timeout)).Should(Equal(noData))
+			Expect(get(outNext2, timeout)).Should(Equal(5))
+			Expect(get(outNext2, timeout)).Should(Equal(6))
+			Expect(get(outNext2, timeout)).Should(Equal(7))
+			Expect(get(outNext2, timeout)).Should(Equal(noData))
 		})
 	})
 })

@@ -26,7 +26,7 @@ func (o *observable) flatMap(
 
 	go flatteningFunc(out, o, apply, maxInParallel)
 
-	return newObservableFromChannel(out)
+	return newColdObservableFromChannel(out)
 }
 
 func flatObservedSequence(out chan interface{}, o Observable, apply func(interface{}) Observable, maxInParallel uint) {
