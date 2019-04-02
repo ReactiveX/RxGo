@@ -2,14 +2,15 @@ package rxgo
 
 import (
 	"errors"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	"github.com/reactivex/rxgo/options"
 	"net/http"
 	"strconv"
 	"sync"
 	"testing"
 	"time"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"github.com/reactivex/rxgo/options"
 
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/optional"

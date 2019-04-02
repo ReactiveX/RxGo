@@ -1,8 +1,9 @@
 package rxgo
 
 import (
-	"github.com/reactivex/rxgo/options"
 	"sync"
+
+	"github.com/reactivex/rxgo/options"
 
 	"github.com/reactivex/rxgo/handlers"
 )

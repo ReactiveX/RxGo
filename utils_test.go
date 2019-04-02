@@ -2,8 +2,9 @@ package rxgo
 
 import (
 	"errors"
-	"github.com/reactivex/rxgo/handlers"
 	"time"
+
+	"github.com/reactivex/rxgo/handlers"
 )
 
 const timeout = 500 * time.Millisecond

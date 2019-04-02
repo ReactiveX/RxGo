@@ -77,7 +77,7 @@ type Observable interface {
 	TakeWhile(apply Predicate) Observable
 	ToChannel(opts ...options.Option) Channel
 	ToMap(keySelector Function) Single
-	ToMapWithValueSelector(keySelector Function, valueSelector Function) Single
+	ToMapWithValueSelector(keySelector, valueSelector Function) Single
 	ToSlice() Single
 	ZipFromObservable(publisher Observable, zipper Function2) Observable
 	getIgnoreElements() bool
@@ -1663,7 +1663,7 @@ func (o *observable) ToMap(keySelector Function) Single {
 // ToMapWithValueSelector convert the sequence of items emitted by an Observable
 // into a map keyed by a specified key function and valued by another
 // value function
-func (o *observable) ToMapWithValueSelector(keySelector Function, valueSelector Function) Single {
+func (o *observable) ToMapWithValueSelector(keySelector, valueSelector Function) Single {
 	f := func(out chan interface{}) {
 		m := make(map[interface{}]interface{})
 		it := o.iterable.Iterator()

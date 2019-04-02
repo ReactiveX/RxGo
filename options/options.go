@@ -4,8 +4,11 @@ type BackpressureStrategy uint32
 type Scheduler uint32
 
 const (
+	// No backpressure management
 	None BackpressureStrategy = iota
+	// Drop least recent items
 	Drop
+	// Buffer items
 	Buffer
 )
 
@@ -59,18 +62,21 @@ func WithBufferedChannel(capacity int) Option {
 	})
 }
 
+// WithoutBackpressureStrategy indicates to apply the None backpressure strategy
 func WithoutBackpressureStrategy() Option {
 	return newFuncOption(func(options *funcOption) {
 		options.bpStrategy = None
 	})
 }
 
+// WithDropBackpressureStrategy indicates to apply the Drop backpressure strategy
 func WithDropBackpressureStrategy() Option {
 	return newFuncOption(func(options *funcOption) {
 		options.bpStrategy = Drop
 	})
 }
 
+// WithBufferBackpressureStrategy indicates to apply the Drop backpressure strategy
 func WithBufferBackpressureStrategy(buffer int) Option {
 	return newFuncOption(func(options *funcOption) {
 		options.bpStrategy = Buffer

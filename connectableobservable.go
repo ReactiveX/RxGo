@@ -1,9 +1,10 @@
 package rxgo
 
 import (
+	"sync"
+
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/options"
-	"sync"
 )
 
 type ConnectableObservable interface {
@@ -295,7 +296,7 @@ func (c *connectableObservable) ToSlice() Single {
 	return c.ToSlice()
 }
 
-func (c *connectableObservable) ToMapWithValueSelector(keySelector Function, valueSelector Function) Single {
+func (c *connectableObservable) ToMapWithValueSelector(keySelector, valueSelector Function) Single {
 	return c.ToMapWithValueSelector(keySelector, valueSelector)
 }
 

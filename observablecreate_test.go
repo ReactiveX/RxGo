@@ -1,17 +1,19 @@
 package rxgo
 
 import (
-	"github.com/reactivex/rxgo/options"
 	"testing"
 
+	"github.com/reactivex/rxgo/options"
+
 	"errors"
+	"time"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	rxerrors "github.com/reactivex/rxgo/errors"
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"time"
 )
 
 func TestEmitsNoElements(t *testing.T) {
@@ -437,6 +439,9 @@ var _ = Describe("Observable types", func() {
 			ch <- 3
 			ch <- 4
 			ch <- 5
+			It("should consume the messages from the channel", func() {
+				Eventually(len(ch), timeout, pollingInterval).Should(Equal(0))
+			})
 			observable.Subscribe(nextHandler(outNext2))
 			ch <- 6
 			ch <- 7

@@ -1,10 +1,11 @@
 package rxgo
 
 import (
-	"github.com/reactivex/rxgo/options"
 	"math"
 	"sync"
 	"time"
+
+	"github.com/reactivex/rxgo/options"
 
 	"github.com/reactivex/rxgo/errors"
 	"github.com/reactivex/rxgo/handlers"
@@ -159,14 +160,17 @@ func Error(err error) Observable {
 	}
 }
 
+// FromChannel creates a cold observable from a channel
 func FromChannel(ch chan interface{}) Observable {
 	return newColdObservableFromChannel(ch)
 }
 
+// FromEventSource creates a hot observable
 func FromEventSource(ch chan interface{}, opts ...options.Option) Observable {
 	return newHotObservableFromChannel(ch, opts...)
 }
 
+// FromIterable creates a cold observable from an iterable
 func FromIterable(it Iterable) Observable {
 	return newObservableFromIterable(it)
 }
@@ -187,6 +191,7 @@ func FromIterator(it Iterator) Observable {
 	return newColdObservableFromChannel(out)
 }
 
+// FromSlice creates a new Observable from a slice.
 func FromSlice(s []interface{}) Observable {
 	return newObservableFromSlice(s)
 }
@@ -223,6 +228,7 @@ func Just(item interface{}, items ...interface{}) Observable {
 	return newObservableFromSlice(items)
 }
 
+// Merge combines multiple Observables into one by merging their emissions
 func Merge(observable Observable, observables ...Observable) Observable {
 	out := make(chan interface{})
 	wg := sync.WaitGroup{}
