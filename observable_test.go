@@ -1283,7 +1283,7 @@ func TestBufferWithTimeWithMockedTime(t *testing.T) {
 
 func TestBufferWithTimeWithMinorMockedTime(t *testing.T) {
 	ch := make(chan interface{})
-	from := From(newIteratorFromChannel(ch))
+	from := FromIterator(newIteratorFromChannel(ch))
 
 	timespan := new(mockDuration)
 	timespan.On("duration").Return(1 * time.Millisecond)
@@ -1343,7 +1343,7 @@ func TestBufferWithTimeOrCountWithCount(t *testing.T) {
 
 func TestBufferWithTimeOrCountWithTime(t *testing.T) {
 	ch := make(chan interface{})
-	from := From(newIteratorFromChannel(ch))
+	from := FromIterator(newIteratorFromChannel(ch))
 
 	got := make([]interface{}, 0)
 
@@ -1379,7 +1379,7 @@ func TestBufferWithTimeOrCountWithTime(t *testing.T) {
 
 func TestBufferWithTimeOrCountWithMockedTime(t *testing.T) {
 	ch := make(chan interface{})
-	from := From(newIteratorFromChannel(ch))
+	from := FromIterator(newIteratorFromChannel(ch))
 
 	timespan := new(mockDuration)
 	timespan.On("duration").Return(1 * time.Millisecond)

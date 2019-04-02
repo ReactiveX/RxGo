@@ -491,7 +491,7 @@ func (o *observable) BufferWithCount(count, skip int) Observable {
 
 		close(out)
 	}
-	return newColdObservable(f)
+	return newColdObservableFromFunction(f)
 }
 
 // BufferWithTime returns an Observable that emits buffers of items it collects from the source
@@ -584,7 +584,7 @@ func (o *observable) BufferWithTime(timespan, timeshift Duration) Observable {
 		}()
 
 	}
-	return newColdObservable(f)
+	return newColdObservableFromFunction(f)
 }
 
 // BufferWithTimeOrCount returns an Observable that emits buffers of items it collects
@@ -670,7 +670,7 @@ func (o *observable) BufferWithTimeOrCount(timespan Duration, count int) Observa
 		}()
 
 	}
-	return newColdObservable(f)
+	return newColdObservableFromFunction(f)
 }
 
 // Contains returns an Observable that emits a Boolean that indicates whether
@@ -731,7 +731,7 @@ func (o *observable) DefaultIfEmpty(defaultValue interface{}) Observable {
 		}
 		close(out)
 	}
-	return newColdObservable(f)
+	return newColdObservableFromFunction(f)
 }
 
 // Distinct suppresses duplicate items in the original Observable and returns
@@ -754,7 +754,7 @@ func (o *observable) Distinct(apply Function) Observable {
 		}
 		close(out)
 	}
-	return newColdObservable(f)
+	return newColdObservableFromFunction(f)
 }
 
 // DistinctUntilChanged suppresses consecutive duplicate items in the original
@@ -776,7 +776,7 @@ func (o *observable) DistinctUntilChanged(apply Function) Observable {
 		}
 		close(out)
 	}
-	return newColdObservable(f)
+	return newColdObservableFromFunction(f)
 }
 
 // DoOnEach operator allows you to establish a callback that the resulting Observable
@@ -794,7 +794,7 @@ func (o *observable) DoOnEach(onNotification Consumer) Observable {
 		}
 		close(out)
 	}
-	return newColdObservable(f)
+	return newColdObservableFromFunction(f)
 }
 
 func (o *observable) ElementAt(index uint) Single {
@@ -836,7 +836,7 @@ func (o *observable) Filter(apply Predicate) Observable {
 		}
 		close(out)
 	}
-	return newColdObservable(f)
+	return newColdObservableFromFunction(f)
 }
 
 // FirstOrDefault returns new Observable which emit only first item.
@@ -873,7 +873,7 @@ func (o *observable) First() Observable {
 		}
 		close(out)
 	}
-	return newColdObservable(f)
+	return newColdObservableFromFunction(f)
 }
 
 // ForEach subscribes to the Observable and receives notifications for each element.
@@ -910,7 +910,7 @@ func (o *observable) Last() Observable {
 		out <- last
 		close(out)
 	}
-	return newColdObservable(f)
+	return newColdObservableFromFunction(f)
 }
 
 // Last returns a new Observable which emit only last item.
@@ -947,7 +947,7 @@ func (o *observable) Map(apply Function) Observable {
 		close(out)
 	}
 
-	return newColdObservable(f)
+	return newColdObservableFromFunction(f)
 }
 
 // Max determines and emits the maximum-valued item emitted by an Observable according to a comparator.
@@ -1108,7 +1108,7 @@ func (o *observable) Repeat(count int64, frequency Duration) Observable {
 		}
 		close(out)
 	}
-	return newColdObservable(f)
+	return newColdObservableFromFunction(f)
 }
 
 // Scan applies Function2 predicate to each item in the original
@@ -1128,7 +1128,7 @@ func (o *observable) Scan(apply Function2) Observable {
 		}
 		close(out)
 	}
-	return newColdObservable(f)
+	return newColdObservableFromFunction(f)
 }
 
 // SequenceEqual emits true if an Observable and the input Observable emit the same items,
@@ -1219,7 +1219,7 @@ func (o *observable) Skip(nth uint) Observable {
 		close(out)
 	}
 
-	return newColdObservable(f)
+	return newColdObservableFromFunction(f)
 }
 
 // SkipLast suppresses the last n items in the original Observable and
@@ -1243,7 +1243,7 @@ func (o *observable) SkipLast(nth uint) Observable {
 		close(buf)
 		close(out)
 	}
-	return newColdObservable(f)
+	return newColdObservableFromFunction(f)
 }
 
 // StartWithItems returns an Observable that emits the specified items before it begins to emit items emitted
@@ -1265,7 +1265,7 @@ func (o *observable) StartWithItems(items ...interface{}) Observable {
 
 		close(out)
 	}
-	return newColdObservable(f)
+	return newColdObservableFromFunction(f)
 }
 
 // StartWithIterable returns an Observable that emits the items in a specified Iterable before it begins to
@@ -1292,7 +1292,7 @@ func (o *observable) StartWithIterable(iterable Iterable) Observable {
 
 		close(out)
 	}
-	return newColdObservable(f)
+	return newColdObservableFromFunction(f)
 }
 
 // StartWithObservable returns an Observable that emits the items in a specified Observable before it begins to
@@ -1319,7 +1319,7 @@ func (o *observable) StartWithObservable(obs Observable) Observable {
 
 		close(out)
 	}
-	return newColdObservable(f)
+	return newColdObservableFromFunction(f)
 }
 
 // SkipWhile discard items emitted by an Observable until a specified condition becomes false.
@@ -1343,7 +1343,7 @@ func (o *observable) SkipWhile(apply Predicate) Observable {
 		}
 		close(out)
 	}
-	return newColdObservable(f)
+	return newColdObservableFromFunction(f)
 }
 
 // Subscribe subscribes an EventHandler and returns a Subscription channel.
@@ -1518,7 +1518,7 @@ func (o *observable) Take(nth uint) Observable {
 		}
 		close(out)
 	}
-	return newColdObservable(f)
+	return newColdObservableFromFunction(f)
 }
 
 // TakeLast takes last n items in the original Observable and returns
@@ -1553,7 +1553,7 @@ func (o *observable) TakeLast(nth uint) Observable {
 		}
 		close(out)
 	}
-	return newColdObservable(f)
+	return newColdObservableFromFunction(f)
 }
 
 // TakeUntil returns an Observable that emits items emitted by the source Observable,
@@ -1573,7 +1573,7 @@ func (o *observable) TakeUntil(apply Predicate) Observable {
 		}
 		close(out)
 	}
-	return newColdObservable(f)
+	return newColdObservableFromFunction(f)
 }
 
 // TakeWhile returns an Observable that emits items emitted by the source ObservableSource so long as each
@@ -1594,7 +1594,7 @@ func (o *observable) TakeWhile(apply Predicate) Observable {
 		}
 		close(out)
 	}
-	return newColdObservable(f)
+	return newColdObservableFromFunction(f)
 }
 
 // ToChannel collects all items from an Observable and emit them in a channel
@@ -1703,7 +1703,7 @@ func (o *observable) ZipFromObservable(publisher Observable, zipper Function2) O
 		}
 		close(out)
 	}
-	return newColdObservable(f)
+	return newColdObservableFromFunction(f)
 }
 
 func (o *observable) getIgnoreElements() bool {
