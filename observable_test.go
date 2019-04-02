@@ -1573,13 +1573,13 @@ var _ = Describe("Observable operators", func() {
 
 		It("should have all the items regardless of whenever we subscribe", func() {
 			observable.Subscribe(nextHandler(out1))
-			Expect(get(out1, timeout)).Should(Equal(1))
-			Expect(get(out1, timeout)).Should(Equal(2))
-			Expect(get(out1, timeout)).Should(Equal(3))
+			Expect(pollItem(out1, timeout)).Should(Equal(1))
+			Expect(pollItem(out1, timeout)).Should(Equal(2))
+			Expect(pollItem(out1, timeout)).Should(Equal(3))
 			observable.Subscribe(nextHandler(out2))
-			Expect(get(out2, timeout)).Should(Equal(1))
-			Expect(get(out2, timeout)).Should(Equal(2))
-			Expect(get(out2, timeout)).Should(Equal(3))
+			Expect(pollItem(out2, timeout)).Should(Equal(1))
+			Expect(pollItem(out2, timeout)).Should(Equal(2))
+			Expect(pollItem(out2, timeout)).Should(Equal(3))
 		})
 	})
 
@@ -1595,13 +1595,13 @@ var _ = Describe("Observable operators", func() {
 			observable.Subscribe(doneHandler(outDone))
 			observable.Subscribe(errorHandler(outError))
 			It("should ignore all the items", func() {
-				Expect(get(outNext, timeout)).Should(Equal(noData))
+				Expect(pollItem(outNext, timeout)).Should(Equal(noData))
 			})
 			It("should receive a done signal", func() {
-				Expect(get(outDone, timeout)).Should(Equal(doneSignal))
+				Expect(pollItem(outDone, timeout)).Should(Equal(doneSignal))
 			})
 			It("should not receive an error signal", func() {
-				Expect(get(outError, timeout)).Should(Equal(noData))
+				Expect(pollItem(outError, timeout)).Should(Equal(noData))
 			})
 		})
 	})
@@ -1619,13 +1619,13 @@ var _ = Describe("Observable operators", func() {
 			observable.Subscribe(doneHandler(outDone))
 			observable.Subscribe(errorHandler(outError))
 			It("should ignore all the items", func() {
-				Expect(get(outNext, timeout)).Should(Equal(noData))
+				Expect(pollItem(outNext, timeout)).Should(Equal(noData))
 			})
 			It("should not receive a done signal", func() {
-				Expect(get(outDone, timeout)).Should(Equal(noData))
+				Expect(pollItem(outDone, timeout)).Should(Equal(noData))
 			})
 			It("should receive an error signal", func() {
-				Expect(get(outError, timeout)).Should(Equal(err))
+				Expect(pollItem(outError, timeout)).Should(Equal(err))
 			})
 		})
 	})
@@ -1644,13 +1644,13 @@ var _ = Describe("Observable operators", func() {
 			obs.Subscribe(errorHandler(outError))
 
 			It("should properly handle the error", func() {
-				Expect(get(outNext, timeout)).Should(Equal(1))
-				Expect(get(outNext, timeout)).Should(Equal(2))
-				Expect(get(outNext, timeout)).Should(Equal(3))
-				Expect(get(outNext, timeout)).Should(Equal(4))
+				Expect(pollItem(outNext, timeout)).Should(Equal(1))
+				Expect(pollItem(outNext, timeout)).Should(Equal(2))
+				Expect(pollItem(outNext, timeout)).Should(Equal(3))
+				Expect(pollItem(outNext, timeout)).Should(Equal(4))
 			})
 			It("should not receive an error signal", func() {
-				Expect(get(outError, timeout)).Should(Equal(noData))
+				Expect(pollItem(outError, timeout)).Should(Equal(noData))
 			})
 		})
 	})
@@ -1666,13 +1666,13 @@ var _ = Describe("Observable operators", func() {
 			obs.Subscribe(errorHandler(outError))
 
 			It("should properly handle the error", func() {
-				Expect(get(outNext, timeout)).Should(Equal(1))
-				Expect(get(outNext, timeout)).Should(Equal(2))
-				Expect(get(outNext, timeout)).Should(Equal(3))
-				Expect(get(outNext, timeout)).Should(Equal(4))
+				Expect(pollItem(outNext, timeout)).Should(Equal(1))
+				Expect(pollItem(outNext, timeout)).Should(Equal(2))
+				Expect(pollItem(outNext, timeout)).Should(Equal(3))
+				Expect(pollItem(outNext, timeout)).Should(Equal(4))
 			})
 			It("should not receive an error signal", func() {
-				Expect(get(outError, timeout)).Should(Equal(noData))
+				Expect(pollItem(outError, timeout)).Should(Equal(noData))
 			})
 		})
 	})
@@ -1689,13 +1689,13 @@ var _ = Describe("Observable operators", func() {
 			}).Subscribe(NewObserver(nextHandler(outNext), errorHandler(outError)))
 
 			It("should properly handle the error", func() {
-				Expect(get(outNext, timeout)).Should(Equal(1))
-				Expect(get(outNext, timeout)).Should(Equal(2))
-				Expect(get(outNext, timeout)).Should(Equal(5))
-				Expect(get(outNext, timeout)).Should(Equal(6))
+				Expect(pollItem(outNext, timeout)).Should(Equal(1))
+				Expect(pollItem(outNext, timeout)).Should(Equal(2))
+				Expect(pollItem(outNext, timeout)).Should(Equal(5))
+				Expect(pollItem(outNext, timeout)).Should(Equal(6))
 			})
 			It("should receive an error coming from the resumed observable", func() {
-				Expect(get(outError, timeout)).Should(Equal(err))
+				Expect(pollItem(outError, timeout)).Should(Equal(err))
 			})
 		})
 	})
@@ -1705,7 +1705,7 @@ var _ = Describe("Observable operators", func() {
 		outNext := make(chan interface{}, 1)
 		observable.Subscribe(nextHandler(outNext))
 		It("should produce a slice", func() {
-			Expect(get(outNext, timeout)).Should(Equal([]interface{}{1, 2, 3}))
+			Expect(pollItem(outNext, timeout)).Should(Equal([]interface{}{1, 2, 3}))
 		})
 	})
 
@@ -1714,7 +1714,7 @@ var _ = Describe("Observable operators", func() {
 		outNext := make(chan interface{}, 1)
 		observable.Subscribe(nextHandler(outNext))
 		It("should produce an empty slice", func() {
-			Expect(get(outNext, timeout)).Should(HaveLen(0))
+			Expect(pollItem(outNext, timeout)).Should(HaveLen(0))
 		})
 	})
 
@@ -1735,7 +1735,7 @@ var _ = Describe("Observable operators", func() {
 		outNext := make(chan interface{}, 1)
 		observable.Subscribe(nextHandler(outNext))
 		It("should produce a map", func() {
-			Expect(get(outNext, timeout)).Should(Equal(map[interface{}]interface{}{
+			Expect(pollItem(outNext, timeout)).Should(Equal(map[interface{}]interface{}{
 				3: 3,
 				4: 4,
 				5: 5,
@@ -1752,7 +1752,7 @@ var _ = Describe("Observable operators", func() {
 		outNext := make(chan interface{}, 1)
 		observable.Subscribe(nextHandler(outNext))
 		It("should produce an empty map", func() {
-			Expect(get(outNext, timeout)).Should(Equal(map[interface{}]interface{}{}))
+			Expect(pollItem(outNext, timeout)).Should(Equal(map[interface{}]interface{}{}))
 		})
 	})
 
@@ -1786,7 +1786,7 @@ var _ = Describe("Observable operators", func() {
 		outNext := make(chan interface{}, 1)
 		observable.Subscribe(nextHandler(outNext))
 		It("should produce a map", func() {
-			Expect(get(outNext, timeout)).Should(Equal(map[interface{}]interface{}{
+			Expect(pollItem(outNext, timeout)).Should(Equal(map[interface{}]interface{}{
 				3: 30,
 				4: 40,
 				5: 50,
@@ -1805,16 +1805,16 @@ var _ = Describe("Observable operators", func() {
 		outNext := make(chan interface{}, 1)
 		observable.Subscribe(nextHandler(outNext))
 		It("should produce an empty map", func() {
-			Expect(get(outNext, timeout)).Should(Equal(map[interface{}]interface{}{}))
+			Expect(pollItem(outNext, timeout)).Should(Equal(map[interface{}]interface{}{}))
 		})
 	})
 
 	Context("when calling the ToChannel operator on an observable", func() {
 		ch := Just(1, 2, 3).ToChannel()
 		It("should produce a channel containing the observable items", func() {
-			Expect(get(ch, timeout)).Should(Equal(1))
-			Expect(get(ch, timeout)).Should(Equal(2))
-			Expect(get(ch, timeout)).Should(Equal(3))
+			Expect(pollItem(ch, timeout)).Should(Equal(1))
+			Expect(pollItem(ch, timeout)).Should(Equal(2))
+			Expect(pollItem(ch, timeout)).Should(Equal(3))
 			Eventually(ch, timeout, pollingInterval).Should(BeClosed())
 		})
 	})
@@ -1823,9 +1823,9 @@ var _ = Describe("Observable operators", func() {
 		ch := Just(1, 2, 3).ToChannel(options.WithBufferedChannel(3))
 		It("should produce a buffered channel containing the observable items", func() {
 			Expect(len(ch)).Should(Equal(3))
-			Expect(get(ch, timeout)).Should(Equal(1))
-			Expect(get(ch, timeout)).Should(Equal(2))
-			Expect(get(ch, timeout)).Should(Equal(3))
+			Expect(pollItem(ch, timeout)).Should(Equal(1))
+			Expect(pollItem(ch, timeout)).Should(Equal(2))
+			Expect(pollItem(ch, timeout)).Should(Equal(3))
 			Eventually(ch, timeout, pollingInterval).Should(BeClosed())
 		})
 	})

@@ -12,12 +12,24 @@ const pollingInterval = 20 * time.Millisecond
 var noData = errors.New("timeout")
 var doneSignal = "done"
 
-func get(ch chan interface{}, d time.Duration) interface{} {
+func pollItem(ch chan interface{}, d time.Duration) interface{} {
 	select {
 	case res := <-ch:
 		return res
 	case <-time.After(d):
 		return noData
+	}
+}
+
+func pollItems(ch chan interface{}, d time.Duration) []interface{} {
+	s := make([]interface{}, 0)
+	for {
+		select {
+		case res := <-ch:
+			s = append(s, res)
+		case <-time.After(d):
+			return s
+		}
 	}
 }
 

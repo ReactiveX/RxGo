@@ -30,7 +30,7 @@ func newHotObservableFromChannel(ch chan interface{}, opts ...options.Option) Ob
 		channel:               ch,
 	}
 
-	go startsHotObservable(obs)
+	startsHotObservable(obs)
 
 	return obs
 }
@@ -146,7 +146,11 @@ func FromSlice(s []interface{}) Observable {
 	return newObservableFromSlice(s)
 }
 
-func FromChannel(ch chan interface{}, opts ...options.Option) Observable {
+func FromChannel(ch chan interface{}) Observable {
+	return newColdObservableFromChannel(ch)
+}
+
+func FromEventSource(ch chan interface{}, opts ...options.Option) Observable {
 	return newHotObservableFromChannel(ch, opts...)
 }
 
