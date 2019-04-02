@@ -4,12 +4,13 @@ import (
 	"testing"
 
 	"errors"
-	"time"
-
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	rxerrors "github.com/reactivex/rxgo/errors"
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"time"
 )
 
 func TestEmitsNoElements(t *testing.T) {
@@ -331,3 +332,24 @@ func TestTimerWithNilDuration(t *testing.T) {
 
 	AssertThatObservable(t, obs, HasItems(float64(0)))
 }
+
+var _ = Describe("Observable operators", func() {
+	Context("when creating a cold observable with just operator", func() {
+		observable := Just(1, 2, 3)
+		It("should allow multiple subscription to receive the same items", func() {
+			outNext1 := make(chan interface{}, 1)
+			observable.Subscribe(nextHandler(outNext1))
+			Expect(get(outNext1, timeout)).Should(Equal(1))
+			Expect(get(outNext1, timeout)).Should(Equal(2))
+			Expect(get(outNext1, timeout)).Should(Equal(3))
+			Expect(get(outNext1, timeout)).Should(Equal(noData))
+
+			outNext2 := make(chan interface{}, 1)
+			observable.Subscribe(nextHandler(outNext2))
+			Expect(get(outNext1, timeout)).Should(Equal(1))
+			Expect(get(outNext1, timeout)).Should(Equal(2))
+			Expect(get(outNext1, timeout)).Should(Equal(3))
+			Expect(get(outNext1, timeout)).Should(Equal(noData))
+		})
+	})
+})

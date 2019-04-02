@@ -1562,10 +1562,10 @@ func TestStartWithObservableFromEmpty(t *testing.T) {
 
 func TestObservable(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Observable suite")
+	RunSpecs(t, "RxGo suite")
 }
 
-var _ = Describe("Observable", func() {
+var _ = Describe("Observable operators", func() {
 	Context("when creating an observable with just operator", func() {
 		out1 := make(chan interface{}, 3)
 		out2 := make(chan interface{}, 3)
@@ -1829,4 +1829,5 @@ var _ = Describe("Observable", func() {
 			Eventually(ch, timeout, pollingInterval).Should(BeClosed())
 		})
 	})
+
 })
