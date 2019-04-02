@@ -223,6 +223,37 @@ func Just(item interface{}, items ...interface{}) Observable {
 	return newObservableFromSlice(items)
 }
 
+func Merge(observable Observable, observables ...Observable) Observable {
+	out := make(chan interface{})
+	wg := sync.WaitGroup{}
+
+	f := func(o Observable) {
+		for {
+			it := o.Iterator()
+			if item, err := it.Next(); err == nil {
+				out <- item
+			} else {
+				break
+				wg.Done()
+			}
+		}
+	}
+
+	wg.Add(1)
+	go f(observable)
+	for _, o := range observables {
+		wg.Add(1)
+		go f(o)
+	}
+
+	go func() {
+		wg.Wait()
+		close(out)
+	}()
+
+	return newColdObservableFromChannel(out)
+}
+
 // Never create an Observable that emits no items and does not terminate
 func Never() Observable {
 	out := make(chan interface{})

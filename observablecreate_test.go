@@ -449,4 +449,25 @@ var _ = Describe("Observable types", func() {
 			})
 		})
 	})
+
+	Context("when creating three observables", func() {
+		ch1 := make(chan interface{}, 10)
+		ch2 := make(chan interface{}, 10)
+		ch3 := make(chan interface{}, 10)
+		observable1 := FromChannel(ch1)
+		observable2 := FromChannel(ch2)
+		observable3 := FromChannel(ch3)
+		Context("when merging them using Merge operator", func() {
+			ch3 <- 1
+			ch2 <- 2
+			ch1 <- 3
+			ch1 <- 4
+			ch3 <- 5
+			It("it should produce all the items merged", func() {
+				mergedObservable := Merge(observable1, observable2, observable3)
+				outNext, _, _ := subscribe(mergedObservable)
+				Expect(len(pollItems(outNext, timeout))).Should(Equal(5))
+			})
+		})
+	})
 })
