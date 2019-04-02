@@ -64,7 +64,7 @@ type Observable interface {
 	Skip(nth uint) Observable
 	SkipLast(nth uint) Observable
 	SkipWhile(apply Predicate) Observable
-	StartWithItems(items ...interface{}) Observable
+	StartWithItems(item interface{}, items ...interface{}) Observable
 	StartWithIterable(iterable Iterable) Observable
 	StartWithObservable(observable Observable) Observable
 	Subscribe(handler handlers.EventHandler, opts ...options.Option) Observer
@@ -1248,8 +1248,9 @@ func (o *observable) SkipLast(nth uint) Observable {
 
 // StartWithItems returns an Observable that emits the specified items before it begins to emit items emitted
 // by the source Observable.
-func (o *observable) StartWithItems(items ...interface{}) Observable {
+func (o *observable) StartWithItems(item interface{}, items ...interface{}) Observable {
 	f := func(out chan interface{}) {
+		out <- item
 		for _, item := range items {
 			out <- item
 		}

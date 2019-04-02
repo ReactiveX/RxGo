@@ -212,8 +212,8 @@ func (c *connectableObservable) SkipWhile(apply Predicate) Observable {
 	return c.SkipWhile(apply)
 }
 
-func (c *connectableObservable) StartWithItems(items ...interface{}) Observable {
-	return c.StartWithItems(items...)
+func (c *connectableObservable) StartWithItems(item interface{}, items ...interface{}) Observable {
+	return c.StartWithItems(item, items...)
 }
 
 func (c *connectableObservable) StartWithIterable(iterable Iterable) Observable {
