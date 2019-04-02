@@ -41,4 +41,7 @@ type (
 
 	// Supplier defines a function that supplies a result from nothing.
 	Supplier func() interface{}
+
+	// Channel defines a type representing chan interface{}
+	Channel chan interface{}
 )

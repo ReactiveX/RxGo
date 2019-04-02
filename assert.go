@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Assertion lists the assertions which may be configured on an Observable.
-type Assertion interface {
+// RxAssertion lists the assertions which may be configured on an Observable.
+type RxAssertion interface {
 	apply(*assertion)
 	hasItemsFunc() (bool, []interface{})
 	hasSizeFunc() (bool, int)
@@ -76,7 +76,7 @@ func newAssertion(f func(*assertion)) *assertion {
 	}
 }
 
-func parseAssertions(assertions ...Assertion) Assertion {
+func parseAssertions(assertions ...RxAssertion) RxAssertion {
 	a := new(assertion)
 	for _, assertion := range assertions {
 		assertion.apply(a)
@@ -85,7 +85,7 @@ func parseAssertions(assertions ...Assertion) Assertion {
 }
 
 // HasItems checks that an observable produces the corresponding items.
-func HasItems(items ...interface{}) Assertion {
+func HasItems(items ...interface{}) RxAssertion {
 	return newAssertion(func(a *assertion) {
 		a.checkHasItems = true
 		a.hasItems = items
@@ -93,7 +93,7 @@ func HasItems(items ...interface{}) Assertion {
 }
 
 // HasSize checks that an observable produces the corresponding number of items.
-func HasSize(size int) Assertion {
+func HasSize(size int) RxAssertion {
 	return newAssertion(func(a *assertion) {
 		a.checkHasSize = true
 		a.hasSize = size
@@ -101,7 +101,7 @@ func HasSize(size int) Assertion {
 }
 
 // IsEmpty checks that an observable produces zero items.
-func IsEmpty() Assertion {
+func IsEmpty() RxAssertion {
 	return newAssertion(func(a *assertion) {
 		a.checkIsEmpty = true
 		a.isEmpty = true
@@ -109,7 +109,7 @@ func IsEmpty() Assertion {
 }
 
 // IsNotEmpty checks that an observable produces items.
-func IsNotEmpty() Assertion {
+func IsNotEmpty() RxAssertion {
 	return newAssertion(func(a *assertion) {
 		a.checkIsEmpty = true
 		a.isEmpty = false
@@ -117,7 +117,7 @@ func IsNotEmpty() Assertion {
 }
 
 // HasValue checks that a single produces the corresponding value.
-func HasValue(value interface{}) Assertion {
+func HasValue(value interface{}) RxAssertion {
 	return newAssertion(func(a *assertion) {
 		a.checkHasValue = true
 		a.hasValue = value
@@ -125,7 +125,7 @@ func HasValue(value interface{}) Assertion {
 }
 
 // HasRaisedError checks that a single raises the corresponding error.
-func HasRaisedError(err error) Assertion {
+func HasRaisedError(err error) RxAssertion {
 	return newAssertion(func(a *assertion) {
 		a.checkHasRaisedError = true
 		a.hasRaisedError = err
@@ -133,21 +133,21 @@ func HasRaisedError(err error) Assertion {
 }
 
 // HasRaisedAnError checks that a single raises an error.
-func HasRaisedAnError() Assertion {
+func HasRaisedAnError() RxAssertion {
 	return newAssertion(func(a *assertion) {
 		a.checkHasRaisedAnError = true
 	})
 }
 
 // HasNotRaisedAnError checks that a single does not raise an error.
-func HasNotRaisedAnError() Assertion {
+func HasNotRaisedAnError() RxAssertion {
 	return newAssertion(func(a *assertion) {
 		a.checkHasNotRaisedAnError = true
 	})
 }
 
 // AssertThatObservable asserts the result of an Observable against a list of assertions.
-func AssertThatObservable(t *testing.T, observable Observable, assertions ...Assertion) {
+func AssertThatObservable(t *testing.T, observable Observable, assertions ...RxAssertion) {
 	ass := parseAssertions(assertions...)
 	got := make([]interface{}, 0)
 	observable.Subscribe(handlers.NextFunc(func(i interface{}) {
@@ -175,7 +175,7 @@ func AssertThatObservable(t *testing.T, observable Observable, assertions ...Ass
 }
 
 // AssertThatSingle asserts the result of a Single against a list of assertions.
-func AssertThatSingle(t *testing.T, single Single, assertions ...Assertion) {
+func AssertThatSingle(t *testing.T, single Single, assertions ...RxAssertion) {
 	ass := parseAssertions(assertions...)
 
 	v, err := single.Subscribe(nil).Block()
@@ -206,7 +206,7 @@ func AssertThatSingle(t *testing.T, single Single, assertions ...Assertion) {
 }
 
 // AssertThatOptionalSingle asserts the result of an OptionalSingle against a list of assertions.
-func AssertThatOptionalSingle(t *testing.T, optionalSingle OptionalSingle, assertions ...Assertion) {
+func AssertThatOptionalSingle(t *testing.T, optionalSingle OptionalSingle, assertions ...RxAssertion) {
 	ass := parseAssertions(assertions...)
 
 	v, err := optionalSingle.Subscribe(nil).Block()

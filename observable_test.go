@@ -8,6 +8,10 @@ import (
 	"testing"
 	"time"
 
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"github.com/reactivex/rxgo/options"
+
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/optional"
 	"github.com/stretchr/testify/assert"
@@ -871,36 +875,6 @@ func TestObservableLastOrDefaultWithValue(t *testing.T) {
 	assert.Exactly(t, 3, v)
 }
 
-func TestObservableTakeWhile(t *testing.T) {
-	stream1 := Just(1, 2, 3, 4, 5)
-	stream2 := stream1.TakeWhile(func(item interface{}) bool {
-		return item != 3
-	})
-	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
-		if num, ok := item.(int); ok {
-			nums = append(nums, num)
-		}
-	})
-	stream2.Subscribe(onNext).Block()
-	assert.Exactly(t, []int{1, 2}, nums)
-}
-
-func TestObservableTakeWhileWithEmpty(t *testing.T) {
-	stream1 := Empty()
-	stream2 := stream1.TakeWhile(func(item interface{}) bool {
-		return item != 3
-	})
-	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
-		if num, ok := item.(int); ok {
-			nums = append(nums, num)
-		}
-	})
-	stream2.Subscribe(onNext).Block()
-	assert.Exactly(t, []int{}, nums)
-}
-
 func TestObservableSkipWhile(t *testing.T) {
 	got := []interface{}{}
 	Just(1, 2, 3, 4, 5).SkipWhile(func(i interface{}) bool {
@@ -931,118 +905,6 @@ func TestObservableSkipWhileWithEmpty(t *testing.T) {
 	})).Block()
 
 	assert.Equal(t, []interface{}{}, got)
-}
-
-func TestObservableToList(t *testing.T) {
-	var got interface{}
-	stream1 := Just(1, "hello", false, .0)
-	stream1.ToList().Subscribe(handlers.NextFunc(func(i interface{}) {
-		got = i
-	})).Block()
-	assert.Exactly(t, []interface{}{1, "hello", false, .0}, got)
-}
-
-func TestObservableToListWithEmpty(t *testing.T) {
-	stream1 := Empty()
-	var got interface{}
-	stream1.ToList().Subscribe(handlers.NextFunc(func(i interface{}) {
-		got = i
-	})).Block()
-	assert.Exactly(t, []interface{}{}, got)
-}
-
-func TestObservableToMap(t *testing.T) {
-	stream1 := Just(3, 4, 5, true, false)
-	stream2 := stream1.ToMap(func(i interface{}) interface{} {
-		switch v := i.(type) {
-		case int:
-			return v
-		case bool:
-			if v {
-				return 0
-			}
-			return 1
-		default:
-			return i
-		}
-	})
-	var got interface{}
-	stream2.Subscribe(handlers.NextFunc(func(i interface{}) {
-		got = i
-	})).Block()
-	expected := map[interface{}]interface{}{
-		3: 3,
-		4: 4,
-		5: 5,
-		0: true,
-		1: false,
-	}
-	assert.Exactly(t, expected, got)
-}
-
-func TestObservableToMapWithEmpty(t *testing.T) {
-	stream1 := Empty()
-	stream2 := stream1.ToMap(func(i interface{}) interface{} {
-		return i
-	})
-	var got interface{}
-	stream2.Subscribe(handlers.NextFunc(func(i interface{}) {
-		got = i
-	})).Block()
-	assert.Exactly(t, map[interface{}]interface{}{}, got)
-}
-
-func TestObservableToMapWithValueSelector(t *testing.T) {
-	stream1 := Just(3, 4, 5, true, false)
-	keySelector := func(i interface{}) interface{} {
-		switch v := i.(type) {
-		case int:
-			return v
-		case bool:
-			if v {
-				return 0
-			}
-			return 1
-		default:
-			return i
-		}
-	}
-	valueSelector := func(i interface{}) interface{} {
-		switch v := i.(type) {
-		case int:
-			return v * 10
-		case bool:
-			return v
-		default:
-			return i
-		}
-	}
-	stream2 := stream1.ToMapWithValueSelector(keySelector, valueSelector)
-	var got interface{}
-	stream2.Subscribe(handlers.NextFunc(func(i interface{}) {
-		got = i
-	})).Block()
-	expected := map[interface{}]interface{}{
-		3: 30,
-		4: 40,
-		5: 50,
-		0: true,
-		1: false,
-	}
-	assert.Exactly(t, expected, got)
-}
-
-func TestObservableToMapWithValueSelectorWithEmpty(t *testing.T) {
-	stream1 := Empty()
-	f := func(i interface{}) interface{} {
-		return i
-	}
-	stream2 := stream1.ToMapWithValueSelector(f, f)
-	var got interface{}
-	stream2.Subscribe(handlers.NextFunc(func(i interface{}) {
-		got = i
-	})).Block()
-	assert.Exactly(t, map[interface{}]interface{}{}, got)
 }
 
 func TestObservableZip(t *testing.T) {
@@ -1164,41 +1026,6 @@ func TestObservableForEach(t *testing.T) {
 		assert.Equal(expectedChars[n], char)
 	}
 	assert.Equal("bang", sub.Error())
-}
-
-func TestOnErrorReturn(t *testing.T) {
-	got := make([]int, 0)
-
-	obs := Just(1, 2, 3, errors.New("7"), 4).
-		OnErrorReturn(func(e error) interface{} {
-			i, err := strconv.Atoi(e.Error())
-			if err != nil {
-				t.Fail()
-			}
-			return i
-		})
-
-	obs.Subscribe(handlers.NextFunc(func(i interface{}) {
-		got = append(got, i.(int))
-	})).Block()
-
-	assert.Equal(t, []int{1, 2, 3, 7}, got)
-}
-
-func TestOnErrorResumeNext(t *testing.T) {
-	got := make([]int, 0)
-
-	obs := Just(1, 2, 3, errors.New("7"), 4).
-		OnErrorResumeNext(func(e error) Observable {
-			return Just(5, 6, errors.New("8"), 9)
-		})
-
-	err := obs.Subscribe(handlers.NextFunc(func(i interface{}) {
-		got = append(got, i.(int))
-	})).Block()
-
-	assert.Equal(t, []int{1, 2, 3, 5, 6}, got)
-	assert.NotNil(t, err)
 }
 
 func TestAll(t *testing.T) {
@@ -1457,7 +1284,7 @@ func TestBufferWithTimeWithMockedTime(t *testing.T) {
 
 func TestBufferWithTimeWithMinorMockedTime(t *testing.T) {
 	ch := make(chan interface{})
-	from := From(newIteratorFromChannel(ch))
+	from := FromIterator(newIteratorFromChannel(ch))
 
 	timespan := new(mockDuration)
 	timespan.On("duration").Return(1 * time.Millisecond)
@@ -1517,7 +1344,7 @@ func TestBufferWithTimeOrCountWithCount(t *testing.T) {
 
 func TestBufferWithTimeOrCountWithTime(t *testing.T) {
 	ch := make(chan interface{})
-	from := From(newIteratorFromChannel(ch))
+	from := FromIterator(newIteratorFromChannel(ch))
 
 	got := make([]interface{}, 0)
 
@@ -1553,7 +1380,7 @@ func TestBufferWithTimeOrCountWithTime(t *testing.T) {
 
 func TestBufferWithTimeOrCountWithMockedTime(t *testing.T) {
 	ch := make(chan interface{})
-	from := From(newIteratorFromChannel(ch))
+	from := FromIterator(newIteratorFromChannel(ch))
 
 	timespan := new(mockDuration)
 	timespan.On("duration").Return(1 * time.Millisecond)
@@ -1637,69 +1464,480 @@ func TestStartWithItems(t *testing.T) {
 	AssertThatObservable(t, obs, HasItems(10, 20, 1, 2, 3))
 }
 
-func TestStartWithItemsWithError(t *testing.T) {
-	obs := Just(1, 2, 3).StartWithItems(10, errors.New(""))
-	AssertThatObservable(t, obs, HasItems(10), HasRaisedError(errors.New("")))
+func TestObservable(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "RxGo suite")
 }
 
-func TestStartWithItemsFromEmpty(t *testing.T) {
-	obs := Empty().StartWithItems(1, 2)
-	AssertThatObservable(t, obs, HasItems(1, 2))
-}
+var _ = Describe("Observable operators", func() {
+	Context("when creating an observable with just operator", func() {
+		out1 := make(chan interface{}, 3)
+		out2 := make(chan interface{}, 3)
+		observable := Just(1, 2, 3)
 
-func TestStartWithItemsWithoutItems(t *testing.T) {
-	obs := Just(1, 2, 3).StartWithItems()
-	AssertThatObservable(t, obs, HasItems(1, 2, 3))
-}
+		It("should have all the items regardless of whenever we subscribe", func() {
+			observable.Subscribe(nextHandler(out1))
+			Expect(pollItem(out1, timeout)).Should(Equal(1))
+			Expect(pollItem(out1, timeout)).Should(Equal(2))
+			Expect(pollItem(out1, timeout)).Should(Equal(3))
+			observable.Subscribe(nextHandler(out2))
+			Expect(pollItem(out2, timeout)).Should(Equal(1))
+			Expect(pollItem(out2, timeout)).Should(Equal(2))
+			Expect(pollItem(out2, timeout)).Should(Equal(3))
+		})
+	})
 
-func TestStartWithIterable(t *testing.T) {
-	ch := make(chan interface{}, 1)
-	it := newIterableFromChannel(ch)
-	obs := Just(1, 2, 3).StartWithIterable(it)
-	ch <- 10
-	close(ch)
-	AssertThatObservable(t, obs, HasItems(10, 1, 2, 3))
-}
+	Context("when creating an observable", func() {
+		outNext := make(chan interface{}, 1)
+		outDone := make(chan interface{}, 1)
+		outError := make(chan interface{}, 1)
+		observable := Just(1, 2, 3)
 
-func TestStartWithIterableWithError(t *testing.T) {
-	ch := make(chan interface{}, 1)
-	it := newIterableFromChannel(ch)
-	obs := Just(1, 2, 3).StartWithIterable(it)
-	ch <- errors.New("")
-	close(ch)
-	AssertThatObservable(t, obs, IsEmpty(), HasRaisedError(errors.New("")))
-}
+		Context("when calling ignoreElements operator", func() {
+			observable = observable.IgnoreElements()
+			observable.Subscribe(nextHandler(outNext))
+			observable.Subscribe(doneHandler(outDone))
+			observable.Subscribe(errorHandler(outError))
+			It("should ignore all the items", func() {
+				Expect(pollItem(outNext, timeout)).Should(Equal(noData))
+			})
+			It("should receive a done signal", func() {
+				Expect(pollItem(outDone, timeout)).Should(Equal(doneSignal))
+			})
+			It("should not receive an error signal", func() {
+				Expect(pollItem(outError, timeout)).Should(Equal(noData))
+			})
+		})
+	})
 
-func TestStartWithIterableFromEmpty(t *testing.T) {
-	ch := make(chan interface{}, 1)
-	it := newIterableFromChannel(ch)
-	obs := Empty().StartWithIterable(it)
-	ch <- 1
-	close(ch)
-	AssertThatObservable(t, obs, HasItems(1))
-}
+	Context("when creating an observable containing an error", func() {
+		outNext := make(chan interface{}, 1)
+		outDone := make(chan interface{}, 1)
+		outError := make(chan interface{}, 1)
+		err := errors.New("foo")
+		observable := Just(1, err, 3)
 
-func TestStartWithIterableWithoutItems(t *testing.T) {
-	ch := make(chan interface{}, 1)
-	it := newIterableFromChannel(ch)
-	obs := Just(1, 2, 3).StartWithIterable(it)
-	close(ch)
-	AssertThatObservable(t, obs, HasItems(1, 2, 3))
-}
+		Context("when calling ignoreElements operator", func() {
+			observable = observable.IgnoreElements()
+			observable.Subscribe(nextHandler(outNext))
+			observable.Subscribe(doneHandler(outDone))
+			observable.Subscribe(errorHandler(outError))
+			It("should ignore all the items", func() {
+				Expect(pollItem(outNext, timeout)).Should(Equal(noData))
+			})
+			It("should not receive a done signal", func() {
+				Expect(pollItem(outDone, timeout)).Should(Equal(noData))
+			})
+			It("should receive an error signal", func() {
+				Expect(pollItem(outError, timeout)).Should(Equal(err))
+			})
+		})
+	})
 
-func TestStartWithObservable(t *testing.T) {
-	obs := Just(10, 20)
-	just := Just(1, 2, 3).StartWithObservable(obs)
-	AssertThatObservable(t, just, HasItems(10, 20, 1, 2, 3))
-}
+	Context("when creating an observable containing an error", func() {
+		observable := Just(1, 2, errors.New("3"), 4)
+		outNext := make(chan interface{}, 1)
+		outError := make(chan interface{}, 1)
 
-func TestStartWithObservableWithError(t *testing.T) {
-	obs := Just(10, errors.New(""))
-	just := Just(1, 2, 3).StartWithObservable(obs)
-	AssertThatObservable(t, just, HasItems(10), HasRaisedError(errors.New("")))
-}
+		Context("when calling onErrorReturn operator", func() {
+			obs := observable.OnErrorReturn(func(e error) interface{} {
+				i, _ := strconv.Atoi(e.Error())
+				return i
+			})
+			obs.Subscribe(nextHandler(outNext))
+			obs.Subscribe(errorHandler(outError))
 
-func TestStartWithObservableFromEmpty(t *testing.T) {
-	obs := Just(1, 2, 3).StartWithObservable(Empty())
-	AssertThatObservable(t, obs, HasItems(1, 2, 3))
-}
+			It("should properly handle the error", func() {
+				Expect(pollItem(outNext, timeout)).Should(Equal(1))
+				Expect(pollItem(outNext, timeout)).Should(Equal(2))
+				Expect(pollItem(outNext, timeout)).Should(Equal(3))
+				Expect(pollItem(outNext, timeout)).Should(Equal(4))
+			})
+			It("should not receive an error signal", func() {
+				Expect(pollItem(outError, timeout)).Should(Equal(noData))
+			})
+		})
+	})
+
+	Context("when creating an observable containing an error", func() {
+		observable := Just(1, 2, errors.New("3"), 4)
+		outNext := make(chan interface{}, 1)
+		outError := make(chan interface{}, 1)
+
+		Context("when calling onErrorReturnItem operator", func() {
+			obs := observable.OnErrorReturnItem(3)
+			obs.Subscribe(nextHandler(outNext))
+			obs.Subscribe(errorHandler(outError))
+
+			It("should properly handle the error", func() {
+				Expect(pollItem(outNext, timeout)).Should(Equal(1))
+				Expect(pollItem(outNext, timeout)).Should(Equal(2))
+				Expect(pollItem(outNext, timeout)).Should(Equal(3))
+				Expect(pollItem(outNext, timeout)).Should(Equal(4))
+			})
+			It("should not receive an error signal", func() {
+				Expect(pollItem(outError, timeout)).Should(Equal(noData))
+			})
+		})
+	})
+
+	Context("when creating an observable containing an error", func() {
+		observable := Just(1, 2, errors.New("3"), 4)
+		outNext := make(chan interface{}, 1)
+		outError := make(chan interface{}, 1)
+		err := errors.New("8")
+
+		Context("when calling onResumeNext operator", func() {
+			observable.OnErrorResumeNext(func(e error) Observable {
+				return Just(5, 6, err, 9)
+			}).Subscribe(NewObserver(nextHandler(outNext), errorHandler(outError)))
+
+			It("should properly handle the error", func() {
+				Expect(pollItem(outNext, timeout)).Should(Equal(1))
+				Expect(pollItem(outNext, timeout)).Should(Equal(2))
+				Expect(pollItem(outNext, timeout)).Should(Equal(5))
+				Expect(pollItem(outNext, timeout)).Should(Equal(6))
+			})
+			It("should receive an error coming from the resumed observable", func() {
+				Expect(pollItem(outError, timeout)).Should(Equal(err))
+			})
+		})
+	})
+
+	Context("when calling the ToSlice operator", func() {
+		observable := Just(1, 2, 3).ToSlice()
+		outNext := make(chan interface{}, 1)
+		observable.Subscribe(nextHandler(outNext))
+		It("should produce a slice", func() {
+			Expect(pollItem(outNext, timeout)).Should(Equal([]interface{}{1, 2, 3}))
+		})
+	})
+
+	Context("when calling the ToSlice operator on an empty observable", func() {
+		observable := Empty().ToSlice()
+		outNext := make(chan interface{}, 1)
+		observable.Subscribe(nextHandler(outNext))
+		It("should produce an empty slice", func() {
+			Expect(pollItem(outNext, timeout)).Should(HaveLen(0))
+		})
+	})
+
+	Context("when calling the ToMap operator", func() {
+		observable := Just(3, 4, 5, true, false).ToMap(func(i interface{}) interface{} {
+			switch v := i.(type) {
+			case int:
+				return v
+			case bool:
+				if v {
+					return 0
+				}
+				return 1
+			default:
+				return i
+			}
+		})
+		outNext := make(chan interface{}, 1)
+		observable.Subscribe(nextHandler(outNext))
+		It("should produce a map", func() {
+			Expect(pollItem(outNext, timeout)).Should(Equal(map[interface{}]interface{}{
+				3: 3,
+				4: 4,
+				5: 5,
+				0: true,
+				1: false,
+			}))
+		})
+	})
+
+	Context("when calling the ToMap operator on an empty observable", func() {
+		observable := Empty().ToMap(func(i interface{}) interface{} {
+			return i
+		})
+		outNext := make(chan interface{}, 1)
+		observable.Subscribe(nextHandler(outNext))
+		It("should produce an empty map", func() {
+			Expect(pollItem(outNext, timeout)).Should(Equal(map[interface{}]interface{}{}))
+		})
+	})
+
+	Context("when calling the ToMapWithValueSelector operator", func() {
+		keySelector := func(i interface{}) interface{} {
+			switch v := i.(type) {
+			case int:
+				return v
+			case bool:
+				if v {
+					return 0
+				}
+				return 1
+			default:
+				return i
+			}
+		}
+		valueSelector := func(i interface{}) interface{} {
+			switch v := i.(type) {
+			case int:
+				return v * 10
+			case bool:
+				return v
+			default:
+				return i
+			}
+		}
+
+		observable := Just(3, 4, 5, true, false).ToMapWithValueSelector(
+			keySelector, valueSelector)
+		outNext := make(chan interface{}, 1)
+		observable.Subscribe(nextHandler(outNext))
+		It("should produce a map", func() {
+			Expect(pollItem(outNext, timeout)).Should(Equal(map[interface{}]interface{}{
+				3: 30,
+				4: 40,
+				5: 50,
+				0: true,
+				1: false,
+			}))
+		})
+	})
+
+	Context("when calling the ToMapWithValueSelector operator on an empty observable", func() {
+		observable := Empty().ToMapWithValueSelector(func(i interface{}) interface{} {
+			return i
+		}, func(i interface{}) interface{} {
+			return i
+		})
+		outNext := make(chan interface{}, 1)
+		observable.Subscribe(nextHandler(outNext))
+		It("should produce an empty map", func() {
+			Expect(pollItem(outNext, timeout)).Should(Equal(map[interface{}]interface{}{}))
+		})
+	})
+
+	Context("when calling the ToChannel operator on an observable", func() {
+		ch := Just(1, 2, 3).ToChannel()
+		It("should produce a channel containing the observable items", func() {
+			Expect(pollItem(ch, timeout)).Should(Equal(1))
+			Expect(pollItem(ch, timeout)).Should(Equal(2))
+			Expect(pollItem(ch, timeout)).Should(Equal(3))
+			Eventually(ch, timeout, pollingInterval).Should(BeClosed())
+		})
+	})
+
+	Context("when calling the ToChannel operator with buffer on an observable", func() {
+		ch := Just(1, 2, 3).ToChannel(options.WithBufferedChannel(3))
+		It("should produce a buffered channel containing the observable items", func() {
+			Expect(len(ch)).Should(Equal(3))
+			Expect(pollItem(ch, timeout)).Should(Equal(1))
+			Expect(pollItem(ch, timeout)).Should(Equal(2))
+			Expect(pollItem(ch, timeout)).Should(Equal(3))
+			Eventually(ch, timeout, pollingInterval).Should(BeClosed())
+		})
+	})
+
+	Context("when creating an observable", func() {
+		observable := Just(1, 2, 3, 4, 5)
+		Context("when calling the TakeWhile operator", func() {
+			observable = observable.TakeWhile(func(item interface{}) bool {
+				return item != 3
+			})
+			It("should produce items while the condition is verified", func() {
+				outNext := make(chan interface{}, 1)
+				observable.Subscribe(nextHandler(outNext))
+				Expect(pollItem(outNext, timeout)).Should(Equal(1))
+				Expect(pollItem(outNext, timeout)).Should(Equal(2))
+				Expect(pollItem(outNext, timeout)).Should(Equal(noData))
+			})
+		})
+	})
+
+	Context("when creating an empty observable", func() {
+		observable := Empty()
+		Context("when calling the TakeWhile operator", func() {
+			observable = observable.TakeWhile(func(item interface{}) bool {
+				return item != 3
+			})
+			It("should not produce any items", func() {
+				outNext := make(chan interface{}, 1)
+				observable.Subscribe(nextHandler(outNext))
+				Expect(pollItem(outNext, timeout)).Should(Equal(noData))
+			})
+		})
+	})
+
+	Context("when creating an observable", func() {
+		observable := Just(1, 2, 3, 4, 5)
+		Context("when calling the TakeUntil operator", func() {
+			observable = observable.TakeUntil(func(item interface{}) bool {
+				return item == 3
+			})
+			It("should produce items while the condition is verified", func() {
+				outNext := make(chan interface{}, 1)
+				observable.Subscribe(nextHandler(outNext))
+				Expect(pollItem(outNext, timeout)).Should(Equal(1))
+				Expect(pollItem(outNext, timeout)).Should(Equal(2))
+				Expect(pollItem(outNext, timeout)).Should(Equal(3))
+				Expect(pollItem(outNext, timeout)).Should(Equal(noData))
+			})
+		})
+	})
+
+	Context("when creating an empty observable", func() {
+		observable := Empty()
+		Context("when calling the TakeUntil operator", func() {
+			observable = observable.TakeUntil(func(item interface{}) bool {
+				return item != 3
+			})
+			It("should not produce any items", func() {
+				outNext := make(chan interface{}, 1)
+				observable.Subscribe(nextHandler(outNext))
+				Expect(pollItem(outNext, timeout)).Should(Equal(noData))
+			})
+		})
+	})
+})
+
+var _ = Describe("StartWith operator", func() {
+	Context("when creating an observable and calling StartWithItems", func() {
+		observable := Just(1, 2, 3).StartWithItems(10, 20)
+		It("the observer should receive the items specified in StartWithItems first", func() {
+			outNext, _, outDone := subscribe(observable)
+			Expect(pollItem(outNext, timeout)).Should(Equal(10))
+			Expect(pollItem(outNext, timeout)).Should(Equal(20))
+			Expect(pollItem(outNext, timeout)).Should(Equal(1))
+			Expect(pollItem(outNext, timeout)).Should(Equal(2))
+			Expect(pollItem(outNext, timeout)).Should(Equal(3))
+			Expect(pollItem(outNext, timeout)).Should(Equal(noData))
+			Expect(pollItem(outDone, timeout)).Should(Equal(doneSignal))
+		})
+	})
+
+	Context("when creating an observable and calling StartWithItems with an item being an error", func() {
+		error := errors.New("")
+		observable := Just(1, 2, 3).StartWithItems(10, error)
+		It("the observer should receive the items specified in StartWithItems first and then receive"+
+			"the error signal", func() {
+			outNext, outErr, _ := subscribe(observable)
+			Expect(pollItem(outNext, timeout)).Should(Equal(10))
+			Expect(pollItem(outErr, timeout)).Should(Equal(error))
+		})
+	})
+
+	Context("when creating an empty observable and calling StartWithItems", func() {
+		observable := Empty().StartWithItems(1, 2)
+		It("the observer should receive only the items from StartWithItems", func() {
+			outNext, _, _ := subscribe(observable)
+			Expect(pollItem(outNext, timeout)).Should(Equal(1))
+			Expect(pollItem(outNext, timeout)).Should(Equal(2))
+			Expect(pollItem(outNext, timeout)).Should(Equal(noData))
+		})
+	})
+
+	Context("when creating an observable and calling StartWithIterable", func() {
+		ch := make(chan interface{}, 2)
+		observable := Just(1, 2, 3).StartWithIterable(newIterableFromChannel(ch))
+		It("the observer should receive the items specified in StartWithIterable first", func() {
+			outNext, _, outDone := subscribe(observable)
+			ch <- 10
+			ch <- 20
+			close(ch)
+			Expect(pollItem(outNext, timeout)).Should(Equal(10))
+			Expect(pollItem(outNext, timeout)).Should(Equal(20))
+			Expect(pollItem(outNext, timeout)).Should(Equal(1))
+			Expect(pollItem(outNext, timeout)).Should(Equal(2))
+			Expect(pollItem(outNext, timeout)).Should(Equal(3))
+			Expect(pollItem(outNext, timeout)).Should(Equal(noData))
+			Expect(pollItem(outDone, timeout)).Should(Equal(doneSignal))
+
+		})
+	})
+
+	Context("when creating an observable and calling StartWithIterable with an item being an error", func() {
+		ch := make(chan interface{}, 2)
+		error := errors.New("")
+		observable := Just(1, 2, 3).StartWithIterable(newIterableFromChannel(ch))
+		It("the observer should receive the items specified in StartWithIterable first and then receive"+
+			"the error signal", func() {
+			ch <- 10
+			ch <- error
+			close(ch)
+			outNext, outErr, _ := subscribe(observable)
+			Expect(pollItem(outNext, timeout)).Should(Equal(10))
+			Expect(pollItem(outErr, timeout)).Should(Equal(error))
+		})
+	})
+
+	Context("when creating an empty observable and calling StartWithIterable", func() {
+		ch := make(chan interface{}, 1)
+		it := newIterableFromChannel(ch)
+		observable := Empty().StartWithIterable(it)
+		It("the observer should receive only the items from StartWithIterable", func() {
+			ch <- 10
+			close(ch)
+			outNext, _, _ := subscribe(observable)
+			Expect(pollItem(outNext, timeout)).Should(Equal(10))
+			Expect(pollItem(outNext, timeout)).Should(Equal(noData))
+		})
+	})
+
+	Context("when creating an observable and calling StartWithIterable without items", func() {
+		ch := make(chan interface{}, 1)
+		it := newIterableFromChannel(ch)
+		close(ch)
+		observable := Just(1, 2, 3).StartWithIterable(it)
+		It("the observer should receive only the items from the observable", func() {
+			outNext, _, _ := subscribe(observable)
+			Expect(pollItem(outNext, timeout)).Should(Equal(1))
+			Expect(pollItem(outNext, timeout)).Should(Equal(2))
+			Expect(pollItem(outNext, timeout)).Should(Equal(3))
+			Expect(pollItem(outNext, timeout)).Should(Equal(noData))
+		})
+	})
+
+	Context("when creating an observable and calling StartWithObservable with items", func() {
+		obs := Just(10, 20)
+		observable := Just(1, 2, 3).StartWithObservable(obs)
+		outNext, _, _ := subscribe(observable)
+		It("the observer should receive the items of StartWithObservable first", func() {
+			Expect(pollItem(outNext, timeout)).Should(Equal(10))
+			Expect(pollItem(outNext, timeout)).Should(Equal(20))
+		})
+		It("the observer should then receive the items of the observable", func() {
+			Expect(pollItem(outNext, timeout)).Should(Equal(1))
+			Expect(pollItem(outNext, timeout)).Should(Equal(2))
+			Expect(pollItem(outNext, timeout)).Should(Equal(3))
+			Expect(pollItem(outNext, timeout)).Should(Equal(noData))
+		})
+	})
+
+	Context("when creating an observable and calling StartWithObservable with an error", func() {
+		error := errors.New("")
+		obs := Just(10, error)
+		observable := Just(1, 2, 3).StartWithObservable(obs)
+		outNext := make(chan interface{}, 1)
+		observable.Subscribe(nextHandler(outNext))
+		It("the observer should receive the items specified in StartWithIterable first and then receive"+
+			"the error signal", func() {
+			outNext, outErr, _ := subscribe(observable)
+			observable.Subscribe(NewObserver(nextHandler(outNext), errorHandler(outErr)))
+			Expect(pollItem(outNext, timeout)).Should(Equal(10))
+			Expect(pollItem(outErr, timeout)).Should(Equal(error))
+		})
+	})
+
+	Context("when creating an empty observable and calling StartWithObservable", func() {
+		observable := Empty().StartWithObservable(Just(10, 20, 30))
+		It("the observer should receive only the items from StartWithObservable", func() {
+			outNext, _, _ := subscribe(observable)
+			Expect(pollItems(outNext, timeout)).Should(Equal([]interface{}{10, 20, 30}))
+		})
+	})
+
+	Context("when creating an observable and calling StartWithObservable without items", func() {
+		obs := Empty()
+		observable := Just(1, 2, 3).StartWithObservable(obs)
+		It("the observer should receive only the items from the observable", func() {
+			outNext, _, _ := subscribe(observable)
+			Expect(pollItems(outNext, timeout)).Should(Equal([]interface{}{1, 2, 3}))
+		})
+	})
+})

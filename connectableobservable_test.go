@@ -1,45 +1,93 @@
 package rxgo
 
 import (
-	"errors"
-	"testing"
-
-	"github.com/reactivex/rxgo/handlers"
-	"github.com/stretchr/testify/assert"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"github.com/reactivex/rxgo/options"
 )
 
-func TestConnect(t *testing.T) {
-	just := Just(1, 2, 3).Publish()
-	got1 := make([]interface{}, 0)
-	got2 := make([]interface{}, 0)
+var _ = Describe("Connectable Observable", func() {
+	Context("when creating two subscriptions to a connectable observable", func() {
+		in := make(chan interface{}, 2)
+		out1 := make(chan interface{}, 2)
+		out2 := make(chan interface{}, 2)
+		connectableObs := FromChannel(in).Publish()
+		connectableObs.Subscribe(nextHandler(out1), options.WithBufferBackpressureStrategy(2))
+		connectableObs.Subscribe(nextHandler(out2), options.WithBufferBackpressureStrategy(2))
+		in <- 1
+		in <- 2
 
-	just.Subscribe(handlers.NextFunc(func(i interface{}) {
-		got1 = append(got1, i)
-	}))
+		It("should not trigger the next handlers", func() {
+			Expect(pollItem(out1, timeout)).Should(Equal(noData))
+			Expect(pollItem(out2, timeout)).Should(Equal(noData))
+		})
 
-	just.Subscribe(handlers.NextFunc(func(i interface{}) {
-		got2 = append(got2, i)
-	}))
+		Context("when connect is called", func() {
+			It("should trigger the next handlers", func() {
+				connectableObs.Connect()
+				Expect(pollItem(out1, timeout)).Should(Equal(1))
+				Expect(pollItem(out1, timeout)).Should(Equal(2))
+				Expect(pollItem(out2, timeout)).Should(Equal(1))
+				Expect(pollItem(out2, timeout)).Should(Equal(2))
+			})
+		})
+	})
 
-	just.Connect().Block()
-	assert.Equal(t, []interface{}{1, 2, 3}, got1)
-	assert.Equal(t, []interface{}{1, 2, 3}, got2)
-}
+	Context("when creating a subscription to a connectable observable", func() {
+		in := make(chan interface{}, 2)
+		out := make(chan interface{}, 2)
+		connectableObs := FromChannel(in).Publish()
+		connectableObs.Subscribe(nextHandler(out), options.WithBufferBackpressureStrategy(2))
 
-func TestConnectOnError(t *testing.T) {
-	just := Just(1, 2, 3, errors.New("foo"), 4).Publish()
-	got1 := make([]interface{}, 0)
-	got2 := make([]interface{}, 0)
+		Context("when connect is called", func() {
+			It("should not be blocking", func() {
+				connectableObs.Connect()
+				in <- 1
+				in <- 2
+				Expect(pollItem(out, timeout)).Should(Equal(1))
+				Expect(pollItem(out, timeout)).Should(Equal(2))
+			})
+		})
+	})
 
-	just.Subscribe(handlers.NextFunc(func(i interface{}) {
-		got1 = append(got1, i)
-	}))
+	Context("when creating a subscription to a connectable observable", func() {
+		Context("with back pressure strategy", func() {
+			in := make(chan interface{}, 2)
+			out := make(chan interface{}, 2)
+			connectableObs := FromChannel(in).Publish()
+			connectableObs.Subscribe(nextHandler(out), options.WithBufferBackpressureStrategy(3))
+			connectableObs.Connect()
+			in <- 1
+			in <- 2
+			in <- 3
 
-	just.Subscribe(handlers.NextFunc(func(i interface{}) {
-		got2 = append(got2, i)
-	}))
+			It("should buffer items", func() {
+				Expect(pollItem(out, timeout)).Should(Equal(1))
+				Expect(pollItem(out, timeout)).Should(Equal(2))
+				Expect(pollItem(out, timeout)).Should(Equal(3))
+				Expect(pollItem(out, timeout)).Should(Equal(noData))
+			})
+		})
 
-	just.Connect().Block()
-	assert.Equal(t, []interface{}{1, 2, 3}, got1)
-	assert.Equal(t, []interface{}{1, 2, 3}, got2)
-}
+		//Context("without back pressure strategy", func() {
+		//	in := make(chan interface{}, 2)
+		//	out := make(chan interface{}, 2)
+		//	connectableObs := FromChannel(in).Publish()
+		//	connectableObs.Subscribe(handlers.NextFunc(func(i interface{}) {
+		//		out <- i
+		//		time.Sleep(timeout)
+		//	}))
+		//	connectableObs.Connect()
+		//	in <- 1
+		//	in <- 2
+		//	time.Sleep(timeout)
+		//	in <- 3
+		//
+		//	It("should drop items", func() {
+		//		Expect(pollItem(out, timeout)).Should(Equal(1))
+		//		Expect(pollItem(out, timeout)).Should(Equal(3))
+		//		Expect(pollItem(out, timeout)).Should(Equal(noData))
+		//	})
+		//})
+	})
+})

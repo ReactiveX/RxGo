@@ -1,26 +1,38 @@
 package options
 
+type BackpressureStrategy uint32
+type Scheduler uint32
+
+const (
+	// None means backpressure management
+	None BackpressureStrategy = iota
+	// Drop least recent items
+	Drop
+	// Buffer items
+	Buffer
+)
+
 // Option is the configuration of an observable
 type Option interface {
 	apply(*funcOption)
-	Parallelism() int
-	BufferedChannelCapacity() int
+	Buffer() int
+	BackpressureStrategy() BackpressureStrategy
 }
 
 // funcOption wraps a function that modifies options into an
 // implementation of the Option interface.
 type funcOption struct {
-	f                       func(*funcOption)
-	parallelism             int
-	bufferedChannelCapacity int
+	f          func(*funcOption)
+	buffer     int
+	bpStrategy BackpressureStrategy
 }
 
-func (fdo *funcOption) Parallelism() int {
-	return fdo.parallelism
+func (fdo *funcOption) Buffer() int {
+	return fdo.buffer
 }
 
-func (fdo *funcOption) BufferedChannelCapacity() int {
-	return fdo.bufferedChannelCapacity
+func (fdo *funcOption) BackpressureStrategy() BackpressureStrategy {
+	return fdo.bpStrategy
 }
 
 func (fdo *funcOption) apply(do *funcOption) {
@@ -43,16 +55,31 @@ func ParseOptions(opts ...Option) Option {
 	return o
 }
 
-// WithParallelism allows to configure the level of parallelism
-func WithParallelism(parallelism int) Option {
-	return newFuncOption(func(options *funcOption) {
-		options.parallelism = parallelism
-	})
-}
-
 // WithBufferedChannel allows to configure the capacity of a buffered channel
 func WithBufferedChannel(capacity int) Option {
 	return newFuncOption(func(options *funcOption) {
-		options.bufferedChannelCapacity = capacity
+		options.buffer = capacity
+	})
+}
+
+// WithoutBackpressureStrategy indicates to apply the None backpressure strategy
+func WithoutBackpressureStrategy() Option {
+	return newFuncOption(func(options *funcOption) {
+		options.bpStrategy = None
+	})
+}
+
+// WithDropBackpressureStrategy indicates to apply the Drop backpressure strategy
+func WithDropBackpressureStrategy() Option {
+	return newFuncOption(func(options *funcOption) {
+		options.bpStrategy = Drop
+	})
+}
+
+// WithBufferBackpressureStrategy indicates to apply the Drop backpressure strategy
+func WithBufferBackpressureStrategy(buffer int) Option {
+	return newFuncOption(func(options *funcOption) {
+		options.bpStrategy = Buffer
+		options.buffer = buffer
 	})
 }
