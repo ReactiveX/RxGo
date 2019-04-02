@@ -1861,3 +1861,149 @@ var _ = Describe("Observable operators", func() {
 		})
 	})
 })
+
+var _ = Describe("StartWith operator", func() {
+	Context("when creating an observable and calling StartWithItems", func() {
+		observable := Just(1, 2, 3).StartWithItems(10, 20)
+		It("the observer should receive the items specified in StartWithItems first", func() {
+			outNext, _, outDone := subscribe(observable)
+			Expect(pollItem(outNext, timeout)).Should(Equal(10))
+			Expect(pollItem(outNext, timeout)).Should(Equal(20))
+			Expect(pollItem(outNext, timeout)).Should(Equal(1))
+			Expect(pollItem(outNext, timeout)).Should(Equal(2))
+			Expect(pollItem(outNext, timeout)).Should(Equal(3))
+			Expect(pollItem(outNext, timeout)).Should(Equal(noData))
+			Expect(pollItem(outDone, timeout)).Should(Equal(doneSignal))
+		})
+	})
+
+	Context("when creating an observable and calling StartWithItems with an item being an error", func() {
+		error := errors.New("")
+		observable := Just(1, 2, 3).StartWithItems(10, error)
+		It("the observer should receive the items specified in StartWithItems first and then receive"+
+			"the error signal", func() {
+			outNext, outErr, _ := subscribe(observable)
+			Expect(pollItem(outNext, timeout)).Should(Equal(10))
+			Expect(pollItem(outErr, timeout)).Should(Equal(error))
+		})
+	})
+
+	Context("when creating an empty observable and calling StartWithItems", func() {
+		observable := Empty().StartWithItems(1, 2)
+		It("the observer should receive only the items from StartWithItems", func() {
+			outNext, _, _ := subscribe(observable)
+			Expect(pollItem(outNext, timeout)).Should(Equal(1))
+			Expect(pollItem(outNext, timeout)).Should(Equal(2))
+			Expect(pollItem(outNext, timeout)).Should(Equal(noData))
+		})
+	})
+
+	Context("when creating an observable and calling StartWithIterable", func() {
+		ch := make(chan interface{}, 2)
+		observable := Just(1, 2, 3).StartWithIterable(newIterableFromChannel(ch))
+		It("the observer should receive the items specified in StartWithIterable first", func() {
+			outNext, _, outDone := subscribe(observable)
+			ch <- 10
+			ch <- 20
+			close(ch)
+			Expect(pollItem(outNext, timeout)).Should(Equal(10))
+			Expect(pollItem(outNext, timeout)).Should(Equal(20))
+			Expect(pollItem(outNext, timeout)).Should(Equal(1))
+			Expect(pollItem(outNext, timeout)).Should(Equal(2))
+			Expect(pollItem(outNext, timeout)).Should(Equal(3))
+			Expect(pollItem(outNext, timeout)).Should(Equal(noData))
+			Expect(pollItem(outDone, timeout)).Should(Equal(doneSignal))
+
+		})
+	})
+
+	Context("when creating an observable and calling StartWithIterable with an item being an error", func() {
+		ch := make(chan interface{}, 2)
+		error := errors.New("")
+		observable := Just(1, 2, 3).StartWithIterable(newIterableFromChannel(ch))
+		It("the observer should receive the items specified in StartWithIterable first and then receive"+
+			"the error signal", func() {
+			ch <- 10
+			ch <- error
+			close(ch)
+			outNext, outErr, _ := subscribe(observable)
+			Expect(pollItem(outNext, timeout)).Should(Equal(10))
+			Expect(pollItem(outErr, timeout)).Should(Equal(error))
+		})
+	})
+
+	Context("when creating an empty observable and calling StartWithIterable", func() {
+		ch := make(chan interface{}, 1)
+		it := newIterableFromChannel(ch)
+		observable := Empty().StartWithIterable(it)
+		It("the observer should receive only the items from StartWithIterable", func() {
+			ch <- 10
+			close(ch)
+			outNext, _, _ := subscribe(observable)
+			Expect(pollItem(outNext, timeout)).Should(Equal(10))
+			Expect(pollItem(outNext, timeout)).Should(Equal(noData))
+		})
+	})
+
+	Context("when creating an observable and calling StartWithIterable without items", func() {
+		ch := make(chan interface{}, 1)
+		it := newIterableFromChannel(ch)
+		close(ch)
+		observable := Just(1, 2, 3).StartWithIterable(it)
+		It("the observer should receive only the items from the observable", func() {
+			outNext, _, _ := subscribe(observable)
+			Expect(pollItem(outNext, timeout)).Should(Equal(1))
+			Expect(pollItem(outNext, timeout)).Should(Equal(2))
+			Expect(pollItem(outNext, timeout)).Should(Equal(3))
+			Expect(pollItem(outNext, timeout)).Should(Equal(noData))
+		})
+	})
+
+	Context("when creating an observable and calling StartWithObservable with items", func() {
+		obs := Just(10, 20)
+		observable := Just(1, 2, 3).StartWithObservable(obs)
+		outNext, _, _ := subscribe(observable)
+		It("the observer should receive the items of StartWithObservable first", func() {
+			Expect(pollItem(outNext, timeout)).Should(Equal(10))
+			Expect(pollItem(outNext, timeout)).Should(Equal(20))
+		})
+		It("the observer should then receive the items of the observable", func() {
+			Expect(pollItem(outNext, timeout)).Should(Equal(1))
+			Expect(pollItem(outNext, timeout)).Should(Equal(2))
+			Expect(pollItem(outNext, timeout)).Should(Equal(3))
+			Expect(pollItem(outNext, timeout)).Should(Equal(noData))
+		})
+	})
+
+	Context("when creating an observable and calling StartWithObservable with an error", func() {
+		error := errors.New("")
+		obs := Just(10, error)
+		observable := Just(1, 2, 3).StartWithObservable(obs)
+		outNext := make(chan interface{}, 1)
+		observable.Subscribe(nextHandler(outNext))
+		It("the observer should receive the items specified in StartWithIterable first and then receive"+
+			"the error signal", func() {
+			outNext, outErr, _ := subscribe(observable)
+			observable.Subscribe(NewObserver(nextHandler(outNext), errorHandler(outErr)))
+			Expect(pollItem(outNext, timeout)).Should(Equal(10))
+			Expect(pollItem(outErr, timeout)).Should(Equal(error))
+		})
+	})
+
+	Context("when creating an empty observable and calling StartWithObservable", func() {
+		observable := Empty().StartWithObservable(Just(10, 20, 30))
+		It("the observer should receive only the items from StartWithObservable", func() {
+			outNext, _, _ := subscribe(observable)
+			Expect(pollItems(outNext, timeout)).Should(Equal([]interface{}{10, 20, 30}))
+		})
+	})
+
+	Context("when creating an observable and calling StartWithObservable without items", func() {
+		obs := Empty()
+		observable := Just(1, 2, 3).StartWithObservable(obs)
+		It("the observer should receive only the items from the observable", func() {
+			outNext, _, _ := subscribe(observable)
+			Expect(pollItems(outNext, timeout)).Should(Equal([]interface{}{1, 2, 3}))
+		})
+	})
+})

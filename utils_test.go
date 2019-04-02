@@ -50,3 +50,11 @@ func errorHandler(out chan interface{}) handlers.ErrFunc {
 		out <- err
 	})
 }
+
+func subscribe(observable Observable) (chan interface{}, chan interface{}, chan interface{}) {
+	outNext := make(chan interface{}, 1)
+	outErr := make(chan interface{}, 1)
+	outDone := make(chan interface{}, 1)
+	observable.Subscribe(NewObserver(nextHandler(outNext), errorHandler(outErr), doneHandler(outDone)))
+	return outNext, outErr, outDone
+}
