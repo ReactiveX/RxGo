@@ -4,6 +4,7 @@ import (
 	"errors"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/reactivex/rxgo/options"
 	"net/http"
 	"strconv"
 	"sync"
@@ -935,118 +936,6 @@ func TestObservableSkipWhileWithEmpty(t *testing.T) {
 	assert.Equal(t, []interface{}{}, got)
 }
 
-func TestObservableToList(t *testing.T) {
-	var got interface{}
-	stream1 := Just(1, "hello", false, .0)
-	stream1.ToList().Subscribe(handlers.NextFunc(func(i interface{}) {
-		got = i
-	})).Block()
-	assert.Exactly(t, []interface{}{1, "hello", false, .0}, got)
-}
-
-func TestObservableToListWithEmpty(t *testing.T) {
-	stream1 := Empty()
-	var got interface{}
-	stream1.ToList().Subscribe(handlers.NextFunc(func(i interface{}) {
-		got = i
-	})).Block()
-	assert.Exactly(t, []interface{}{}, got)
-}
-
-func TestObservableToMap(t *testing.T) {
-	stream1 := Just(3, 4, 5, true, false)
-	stream2 := stream1.ToMap(func(i interface{}) interface{} {
-		switch v := i.(type) {
-		case int:
-			return v
-		case bool:
-			if v {
-				return 0
-			}
-			return 1
-		default:
-			return i
-		}
-	})
-	var got interface{}
-	stream2.Subscribe(handlers.NextFunc(func(i interface{}) {
-		got = i
-	})).Block()
-	expected := map[interface{}]interface{}{
-		3: 3,
-		4: 4,
-		5: 5,
-		0: true,
-		1: false,
-	}
-	assert.Exactly(t, expected, got)
-}
-
-func TestObservableToMapWithEmpty(t *testing.T) {
-	stream1 := Empty()
-	stream2 := stream1.ToMap(func(i interface{}) interface{} {
-		return i
-	})
-	var got interface{}
-	stream2.Subscribe(handlers.NextFunc(func(i interface{}) {
-		got = i
-	})).Block()
-	assert.Exactly(t, map[interface{}]interface{}{}, got)
-}
-
-func TestObservableToMapWithValueSelector(t *testing.T) {
-	stream1 := Just(3, 4, 5, true, false)
-	keySelector := func(i interface{}) interface{} {
-		switch v := i.(type) {
-		case int:
-			return v
-		case bool:
-			if v {
-				return 0
-			}
-			return 1
-		default:
-			return i
-		}
-	}
-	valueSelector := func(i interface{}) interface{} {
-		switch v := i.(type) {
-		case int:
-			return v * 10
-		case bool:
-			return v
-		default:
-			return i
-		}
-	}
-	stream2 := stream1.ToMapWithValueSelector(keySelector, valueSelector)
-	var got interface{}
-	stream2.Subscribe(handlers.NextFunc(func(i interface{}) {
-		got = i
-	})).Block()
-	expected := map[interface{}]interface{}{
-		3: 30,
-		4: 40,
-		5: 50,
-		0: true,
-		1: false,
-	}
-	assert.Exactly(t, expected, got)
-}
-
-func TestObservableToMapWithValueSelectorWithEmpty(t *testing.T) {
-	stream1 := Empty()
-	f := func(i interface{}) interface{} {
-		return i
-	}
-	stream2 := stream1.ToMapWithValueSelector(f, f)
-	var got interface{}
-	stream2.Subscribe(handlers.NextFunc(func(i interface{}) {
-		got = i
-	})).Block()
-	assert.Exactly(t, map[interface{}]interface{}{}, got)
-}
-
 func TestObservableZip(t *testing.T) {
 	stream1 := Just(1, 2, 3)
 	stream2 := Just(10, 20, 30)
@@ -1808,6 +1697,136 @@ var _ = Describe("Observable", func() {
 			It("should receive an error coming from the resumed observable", func() {
 				Expect(get(outError, timeout)).Should(Equal(err))
 			})
+		})
+	})
+
+	Context("when calling the ToSlice operator", func() {
+		observable := Just(1, 2, 3).ToSlice()
+		outNext := make(chan interface{}, 1)
+		observable.Subscribe(nextHandler(outNext))
+		It("should produce a slice", func() {
+			Expect(get(outNext, timeout)).Should(Equal([]interface{}{1, 2, 3}))
+		})
+	})
+
+	Context("when calling the ToSlice operator on an empty observable", func() {
+		observable := Empty().ToSlice()
+		outNext := make(chan interface{}, 1)
+		observable.Subscribe(nextHandler(outNext))
+		It("should produce an empty slice", func() {
+			Expect(get(outNext, timeout)).Should(HaveLen(0))
+		})
+	})
+
+	Context("when calling the ToMap operator", func() {
+		observable := Just(3, 4, 5, true, false).ToMap(func(i interface{}) interface{} {
+			switch v := i.(type) {
+			case int:
+				return v
+			case bool:
+				if v {
+					return 0
+				}
+				return 1
+			default:
+				return i
+			}
+		})
+		outNext := make(chan interface{}, 1)
+		observable.Subscribe(nextHandler(outNext))
+		It("should produce a map", func() {
+			Expect(get(outNext, timeout)).Should(Equal(map[interface{}]interface{}{
+				3: 3,
+				4: 4,
+				5: 5,
+				0: true,
+				1: false,
+			}))
+		})
+	})
+
+	Context("when calling the ToMap operator on an empty observable", func() {
+		observable := Empty().ToMap(func(i interface{}) interface{} {
+			return i
+		})
+		outNext := make(chan interface{}, 1)
+		observable.Subscribe(nextHandler(outNext))
+		It("should produce an empty map", func() {
+			Expect(get(outNext, timeout)).Should(Equal(map[interface{}]interface{}{}))
+		})
+	})
+
+	Context("when calling the ToMapWithValueSelector operator", func() {
+		keySelector := func(i interface{}) interface{} {
+			switch v := i.(type) {
+			case int:
+				return v
+			case bool:
+				if v {
+					return 0
+				}
+				return 1
+			default:
+				return i
+			}
+		}
+		valueSelector := func(i interface{}) interface{} {
+			switch v := i.(type) {
+			case int:
+				return v * 10
+			case bool:
+				return v
+			default:
+				return i
+			}
+		}
+
+		observable := Just(3, 4, 5, true, false).ToMapWithValueSelector(
+			keySelector, valueSelector)
+		outNext := make(chan interface{}, 1)
+		observable.Subscribe(nextHandler(outNext))
+		It("should produce a map", func() {
+			Expect(get(outNext, timeout)).Should(Equal(map[interface{}]interface{}{
+				3: 30,
+				4: 40,
+				5: 50,
+				0: true,
+				1: false,
+			}))
+		})
+	})
+
+	Context("when calling the ToMapWithValueSelector operator on an empty observable", func() {
+		observable := Empty().ToMapWithValueSelector(func(i interface{}) interface{} {
+			return i
+		}, func(i interface{}) interface{} {
+			return i
+		})
+		outNext := make(chan interface{}, 1)
+		observable.Subscribe(nextHandler(outNext))
+		It("should produce an empty map", func() {
+			Expect(get(outNext, timeout)).Should(Equal(map[interface{}]interface{}{}))
+		})
+	})
+
+	Context("when calling the ToChannel operator on an observable", func() {
+		ch := Just(1, 2, 3).ToChannel()
+		It("should produce a channel containing the observable items", func() {
+			Expect(get(ch, timeout)).Should(Equal(1))
+			Expect(get(ch, timeout)).Should(Equal(2))
+			Expect(get(ch, timeout)).Should(Equal(3))
+			Eventually(ch, timeout, pollingInterval).Should(BeClosed())
+		})
+	})
+
+	Context("when calling the ToChannel operator with buffer on an observable", func() {
+		ch := Just(1, 2, 3).ToChannel(options.WithBufferedChannel(3))
+		It("should produce a buffered channel containing the observable items", func() {
+			Expect(len(ch)).Should(Equal(3))
+			Expect(get(ch, timeout)).Should(Equal(1))
+			Expect(get(ch, timeout)).Should(Equal(2))
+			Expect(get(ch, timeout)).Should(Equal(3))
+			Eventually(ch, timeout, pollingInterval).Should(BeClosed())
 		})
 	})
 })

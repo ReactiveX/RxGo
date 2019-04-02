@@ -67,9 +67,10 @@ type Observable interface {
 	Take(nth uint) Observable
 	TakeLast(nth uint) Observable
 	TakeWhile(apply Predicate) Observable
-	ToList() Observable
-	ToMap(keySelector Function) Observable
-	ToMapWithValueSelector(keySelector Function, valueSelector Function) Observable
+	ToChannel(opts ...options.Option) Channel
+	ToMap(keySelector Function) Single
+	ToMapWithValueSelector(keySelector Function, valueSelector Function) Single
+	ToSlice() Single
 	ZipFromObservable(publisher Observable, zipper Function2) Observable
 	getIgnoreElements() bool
 	getOnErrorResumeNext() ErrorToObservableFunction
@@ -1497,8 +1498,33 @@ func (o *observable) TakeWhile(apply Predicate) Observable {
 	return newColdObservable(f)
 }
 
-// ToList collects all items from an Observable and emit them as a single List.
-func (o *observable) ToList() Observable {
+// ToChannel collects all items from an Observable and emit them in a channel
+func (o *observable) ToChannel(opts ...options.Option) Channel {
+	options := options.ParseOptions(opts...)
+	var ch chan interface{}
+	if options.Buffer() != 0 {
+		ch = make(chan interface{}, options.Buffer())
+	} else {
+		ch = make(chan interface{})
+	}
+
+	go func() {
+		it := o.iterable.Iterator()
+		for {
+			if item, err := it.Next(); err == nil {
+				ch <- item
+			} else {
+				break
+			}
+		}
+		close(ch)
+	}()
+
+	return ch
+}
+
+// ToSlice collects all items from an Observable and emit them as a single slice.
+func (o *observable) ToSlice() Single {
 	f := func(out chan interface{}) {
 		s := make([]interface{}, 0)
 		it := o.iterable.Iterator()
@@ -1512,12 +1538,12 @@ func (o *observable) ToList() Observable {
 		out <- s
 		close(out)
 	}
-	return newColdObservable(f)
+	return newColdSingle(f)
 }
 
 // ToMap convert the sequence of items emitted by an Observable
 // into a map keyed by a specified key function
-func (o *observable) ToMap(keySelector Function) Observable {
+func (o *observable) ToMap(keySelector Function) Single {
 	f := func(out chan interface{}) {
 		m := make(map[interface{}]interface{})
 		it := o.iterable.Iterator()
@@ -1531,13 +1557,13 @@ func (o *observable) ToMap(keySelector Function) Observable {
 		out <- m
 		close(out)
 	}
-	return newColdObservable(f)
+	return newColdSingle(f)
 }
 
 // ToMapWithValueSelector convert the sequence of items emitted by an Observable
 // into a map keyed by a specified key function and valued by another
 // value function
-func (o *observable) ToMapWithValueSelector(keySelector Function, valueSelector Function) Observable {
+func (o *observable) ToMapWithValueSelector(keySelector Function, valueSelector Function) Single {
 	f := func(out chan interface{}) {
 		m := make(map[interface{}]interface{})
 		it := o.iterable.Iterator()
@@ -1551,7 +1577,7 @@ func (o *observable) ToMapWithValueSelector(keySelector Function, valueSelector 
 		out <- m
 		close(out)
 	}
-	return newColdObservable(f)
+	return newColdSingle(f)
 }
 
 // ZipFromObservable che emissions of multiple Observables together via a specified function

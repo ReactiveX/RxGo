@@ -279,15 +279,19 @@ func (c *connectableObservable) TakeWhile(apply Predicate) Observable {
 	return c.TakeWhile(apply)
 }
 
-func (c *connectableObservable) ToList() Observable {
-	return c.ToList()
+func (c *connectableObservable) ToChannel(opts ...options.Option) Channel {
+	return c.ToChannel(opts...)
 }
 
-func (c *connectableObservable) ToMap(keySelector Function) Observable {
+func (c *connectableObservable) ToMap(keySelector Function) Single {
 	return c.ToMap(keySelector)
 }
 
-func (c *connectableObservable) ToMapWithValueSelector(keySelector Function, valueSelector Function) Observable {
+func (c *connectableObservable) ToSlice() Single {
+	return c.ToSlice()
+}
+
+func (c *connectableObservable) ToMapWithValueSelector(keySelector Function, valueSelector Function) Single {
 	return c.ToMapWithValueSelector(keySelector, valueSelector)
 }
 
