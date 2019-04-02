@@ -4,7 +4,7 @@ type BackpressureStrategy uint32
 type Scheduler uint32
 
 const (
-	// No backpressure management
+	// None means backpressure management
 	None BackpressureStrategy = iota
 	// Drop least recent items
 	Drop
