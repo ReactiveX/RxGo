@@ -68,26 +68,25 @@ var _ = Describe("Connectable Observable", func() {
 				Expect(pollItem(out, timeout)).Should(Equal(noData))
 			})
 		})
+	})
 
-		//Context("without back pressure strategy", func() {
-		//	in := make(chan interface{}, 2)
-		//	out := make(chan interface{}, 2)
-		//	connectableObs := FromChannel(in).Publish()
-		//	connectableObs.Subscribe(handlers.NextFunc(func(i interface{}) {
-		//		out <- i
-		//		time.Sleep(timeout)
-		//	}))
-		//	connectableObs.Connect()
-		//	in <- 1
-		//	in <- 2
-		//	time.Sleep(timeout)
-		//	in <- 3
-		//
-		//	It("should drop items", func() {
-		//		Expect(pollItem(out, timeout)).Should(Equal(1))
-		//		Expect(pollItem(out, timeout)).Should(Equal(3))
-		//		Expect(pollItem(out, timeout)).Should(Equal(noData))
-		//	})
-		//})
+	Context("when creating a connectable observable", func() {
+		connectableObservable := FromSlice([]interface{}{1, 2, 3, 5}).Publish()
+		Context("when calling Map operator", func() {
+			observable := connectableObservable.Map(func(i interface{}) interface{} {
+				return i.(int) + 1
+			})
+			Context("when creating a subscription", func() {
+				outNext, _, _ := subscribe(observable)
+				Context("when calling Connect operator", func() {
+					connectableObservable.Connect()
+					It("the observer should received the produced items", func() {
+						Expect(pollItems(outNext, timeout)).Should(Equal([]interface{}{
+							2, 3, 4, 6,
+						}))
+					})
+				})
+			})
+		})
 	})
 })

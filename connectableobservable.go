@@ -25,51 +25,51 @@ func newConnectableObservableFromObservable(observable Observable) ConnectableOb
 }
 
 func (c *connectableObservable) Iterator() Iterator {
-	return c.Iterator()
+	return c.observable.Iterator()
 }
 
 func (c *connectableObservable) All(predicate Predicate) Single {
-	return c.All(predicate)
+	return c.observable.All(predicate)
 }
 
 func (c *connectableObservable) AverageFloat32() Single {
-	return c.AverageFloat32()
+	return c.observable.AverageFloat32()
 }
 
 func (c *connectableObservable) AverageFloat64() Single {
-	return c.AverageFloat64()
+	return c.observable.AverageFloat64()
 }
 
 func (c *connectableObservable) AverageInt() Single {
-	return c.AverageInt()
+	return c.observable.AverageInt()
 }
 
 func (c *connectableObservable) AverageInt8() Single {
-	return c.AverageInt8()
+	return c.observable.AverageInt8()
 }
 
 func (c *connectableObservable) AverageInt16() Single {
-	return c.AverageInt16()
+	return c.observable.AverageInt16()
 }
 
 func (c *connectableObservable) AverageInt32() Single {
-	return c.AverageInt32()
+	return c.observable.AverageInt32()
 }
 
 func (c *connectableObservable) AverageInt64() Single {
-	return c.AverageInt64()
+	return c.observable.AverageInt64()
 }
 
 func (c *connectableObservable) BufferWithCount(count, skip int) Observable {
-	return c.BufferWithCount(count, skip)
+	return c.observable.BufferWithCount(count, skip)
 }
 
 func (c *connectableObservable) BufferWithTime(timespan, timeshift Duration) Observable {
-	return c.BufferWithTime(timespan, timeshift)
+	return c.observable.BufferWithTime(timespan, timeshift)
 }
 
 func (c *connectableObservable) BufferWithTimeOrCount(timespan Duration, count int) Observable {
-	return c.BufferWithTimeOrCount(timespan, count)
+	return c.observable.BufferWithTimeOrCount(timespan, count)
 }
 
 func (c *connectableObservable) Connect() Observer {
@@ -97,132 +97,132 @@ func (c *connectableObservable) Connect() Observer {
 }
 
 func (c *connectableObservable) Contains(equal Predicate) Single {
-	return c.Contains(equal)
+	return c.observable.Contains(equal)
 }
 
 func (c *connectableObservable) Count() Single {
-	return c.Count()
+	return c.observable.Count()
 }
 
 func (c *connectableObservable) DefaultIfEmpty(defaultValue interface{}) Observable {
-	return c.DefaultIfEmpty(defaultValue)
+	return c.observable.DefaultIfEmpty(defaultValue)
 }
 
 func (c *connectableObservable) Distinct(apply Function) Observable {
-	return c.Distinct(apply)
+	return c.observable.Distinct(apply)
 }
 
 func (c *connectableObservable) DistinctUntilChanged(apply Function) Observable {
-	return c.DistinctUntilChanged(apply)
+	return c.observable.DistinctUntilChanged(apply)
 }
 
 func (c *connectableObservable) DoOnEach(onNotification Consumer) Observable {
-	return c.DoOnEach(onNotification)
+	return c.observable.DoOnEach(onNotification)
 }
 
 func (c *connectableObservable) ElementAt(index uint) Single {
-	return c.ElementAt(index)
+	return c.observable.ElementAt(index)
 }
 
 func (c *connectableObservable) Filter(apply Predicate) Observable {
-	return c.Filter(apply)
+	return c.observable.Filter(apply)
 }
 
 func (c *connectableObservable) First() Observable {
-	return c.First()
+	return c.observable.First()
 }
 
 func (c *connectableObservable) FirstOrDefault(defaultValue interface{}) Single {
-	return c.FirstOrDefault(defaultValue)
+	return c.observable.FirstOrDefault(defaultValue)
 }
 
 func (c *connectableObservable) FlatMap(apply func(interface{}) Observable, maxInParallel uint) Observable {
-	return c.FlatMap(apply, maxInParallel)
+	return c.observable.FlatMap(apply, maxInParallel)
 }
 
 func (c *connectableObservable) ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFunc,
 	doneFunc handlers.DoneFunc, opts ...options.Option) Observer {
-	return c.ForEach(nextFunc, errFunc, doneFunc, opts...)
+	return c.observable.ForEach(nextFunc, errFunc, doneFunc, opts...)
 }
 
 func (c *connectableObservable) IgnoreElements() Observable {
-	return c.IgnoreElements()
+	return c.observable.IgnoreElements()
 }
 
 func (c *connectableObservable) Last() Observable {
-	return c.Last()
+	return c.observable.Last()
 }
 
 func (c *connectableObservable) LastOrDefault(defaultValue interface{}) Single {
-	return c.LastOrDefault(defaultValue)
+	return c.observable.LastOrDefault(defaultValue)
 }
 
 func (c *connectableObservable) Map(apply Function) Observable {
-	return c.Map(apply)
+	return c.observable.Map(apply)
 }
 
 func (c *connectableObservable) Max(comparator Comparator) OptionalSingle {
-	return c.Max(comparator)
+	return c.observable.Max(comparator)
 }
 
 func (c *connectableObservable) Min(comparator Comparator) OptionalSingle {
-	return c.Min(comparator)
+	return c.observable.Min(comparator)
 }
 
 func (c *connectableObservable) OnErrorResumeNext(resumeSequence ErrorToObservableFunction) Observable {
-	return c.OnErrorResumeNext(resumeSequence)
+	return c.observable.OnErrorResumeNext(resumeSequence)
 }
 
 func (c *connectableObservable) OnErrorReturn(resumeFunc ErrorFunction) Observable {
-	return c.OnErrorReturn(resumeFunc)
+	return c.observable.OnErrorReturn(resumeFunc)
 }
 
 func (c *connectableObservable) OnErrorReturnItem(item interface{}) Observable {
-	return c.OnErrorReturnItem(item)
+	return c.observable.OnErrorReturnItem(item)
 }
 
 func (c *connectableObservable) Publish() ConnectableObservable {
-	return c.Publish()
+	return c.observable.Publish()
 }
 
 func (c *connectableObservable) Reduce(apply Function2) OptionalSingle {
-	return c.Reduce(apply)
+	return c.observable.Reduce(apply)
 }
 
 func (c *connectableObservable) Repeat(count int64, frequency Duration) Observable {
-	return c.Repeat(count, frequency)
+	return c.observable.Repeat(count, frequency)
 }
 
 func (c *connectableObservable) Scan(apply Function2) Observable {
-	return c.Scan(apply)
+	return c.observable.Scan(apply)
 }
 
 func (c *connectableObservable) SequenceEqual(obs Observable) Single {
-	return c.SequenceEqual(obs)
+	return c.observable.SequenceEqual(obs)
 }
 
 func (c *connectableObservable) Skip(nth uint) Observable {
-	return c.Skip(nth)
+	return c.observable.Skip(nth)
 }
 
 func (c *connectableObservable) SkipLast(nth uint) Observable {
-	return c.SkipLast(nth)
+	return c.observable.SkipLast(nth)
 }
 
 func (c *connectableObservable) SkipWhile(apply Predicate) Observable {
-	return c.SkipWhile(apply)
+	return c.observable.SkipWhile(apply)
 }
 
 func (c *connectableObservable) StartWithItems(item interface{}, items ...interface{}) Observable {
-	return c.StartWithItems(item, items...)
+	return c.observable.StartWithItems(item, items...)
 }
 
 func (c *connectableObservable) StartWithIterable(iterable Iterable) Observable {
-	return c.StartWithIterable(iterable)
+	return c.observable.StartWithIterable(iterable)
 }
 
 func (c *connectableObservable) StartWithObservable(observable Observable) Observable {
-	return c.StartWithObservable(observable)
+	return c.observable.StartWithObservable(observable)
 }
 
 func (o *connectableObservable) Subscribe(handler handlers.EventHandler, opts ...options.Option) Observer {
@@ -257,65 +257,65 @@ func (o *connectableObservable) Subscribe(handler handlers.EventHandler, opts ..
 }
 
 func (c *connectableObservable) SumFloat32() Single {
-	return c.SumFloat32()
+	return c.observable.SumFloat32()
 }
 
 func (c *connectableObservable) SumFloat64() Single {
-	return c.SumFloat64()
+	return c.observable.SumFloat64()
 }
 
 func (c *connectableObservable) SumInt64() Single {
-	return c.SumInt64()
+	return c.observable.SumInt64()
 }
 
 func (c *connectableObservable) Take(nth uint) Observable {
-	return c.Take(nth)
+	return c.observable.Take(nth)
 }
 
 func (c *connectableObservable) TakeLast(nth uint) Observable {
-	return c.TakeLast(nth)
+	return c.observable.TakeLast(nth)
 }
 
 func (c *connectableObservable) TakeUntil(apply Predicate) Observable {
-	return c.TakeUntil(apply)
+	return c.observable.TakeUntil(apply)
 }
 
 func (c *connectableObservable) TakeWhile(apply Predicate) Observable {
-	return c.TakeWhile(apply)
+	return c.observable.TakeWhile(apply)
 }
 
 func (c *connectableObservable) ToChannel(opts ...options.Option) Channel {
-	return c.ToChannel(opts...)
+	return c.observable.ToChannel(opts...)
 }
 
 func (c *connectableObservable) ToMap(keySelector Function) Single {
-	return c.ToMap(keySelector)
+	return c.observable.ToMap(keySelector)
 }
 
 func (c *connectableObservable) ToSlice() Single {
-	return c.ToSlice()
+	return c.observable.ToSlice()
 }
 
 func (c *connectableObservable) ToMapWithValueSelector(keySelector, valueSelector Function) Single {
-	return c.ToMapWithValueSelector(keySelector, valueSelector)
+	return c.observable.ToMapWithValueSelector(keySelector, valueSelector)
 }
 
 func (c *connectableObservable) ZipFromObservable(publisher Observable, zipper Function2) Observable {
-	return c.ZipFromObservable(publisher, zipper)
+	return c.observable.ZipFromObservable(publisher, zipper)
 }
 
 func (c *connectableObservable) getIgnoreElements() bool {
-	return c.getIgnoreElements()
+	return c.observable.getIgnoreElements()
 }
 
 func (c *connectableObservable) getOnErrorResumeNext() ErrorToObservableFunction {
-	return c.getOnErrorResumeNext()
+	return c.observable.getOnErrorResumeNext()
 }
 
 func (c *connectableObservable) getOnErrorReturn() ErrorFunction {
-	return c.getOnErrorReturn()
+	return c.observable.getOnErrorReturn()
 }
 
 func (c *connectableObservable) getOnErrorReturnItem() interface{} {
-	return c.getOnErrorReturnItem()
+	return c.observable.getOnErrorReturnItem()
 }
