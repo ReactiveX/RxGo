@@ -1,8 +1,10 @@
 package rxgo
 
+import "C"
 import (
 	"math"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/reactivex/rxgo/options"
@@ -76,6 +78,70 @@ func newObservableFromSlice(s []interface{}) Observable {
 		observableType: cold,
 		iterable:       newIterableFromSlice(s),
 	}
+}
+
+// CombineLatest combine the latest item emitted by each Observable via a specified function
+// and emit items based on the results of this function
+func CombineLatest(f FunctionN, observable Observable, observables ...Observable) Observable {
+	out := make(chan interface{})
+	go func() {
+		var size = uint32(len(observables)) + 1
+		var counter uint32
+		s := make([]interface{}, size, size)
+		its := make([]Iterator, size, size)
+		mutex := sync.Mutex{}
+		wg := sync.WaitGroup{}
+		wg.Add(int(size))
+		errCh := make(chan interface{})
+
+		handler := func(it Iterator, i int) {
+			for {
+				if item, err := it.Next(); err == nil {
+					switch v := item.(type) {
+					case error:
+						out <- v
+						errCh <- nil
+						wg.Done()
+						return
+					default:
+						if s[i] == nil {
+							atomic.AddUint32(&counter, 1)
+						}
+						mutex.Lock()
+						s[i] = v
+						mutex.Unlock()
+						if atomic.LoadUint32(&counter) == size {
+							out <- f(s...)
+						}
+					}
+				} else {
+					wg.Done()
+					return
+				}
+			}
+		}
+
+		it := observable.Iterator()
+		go handler(it, 0)
+		its[0] = it
+		for i, o := range observables {
+			it = o.Iterator()
+			go handler(it, i+1)
+			its[i+1] = it
+		}
+
+		go func() {
+			for range errCh {
+				for _, it := range its {
+					it.cancel()
+				}
+			}
+		}()
+
+		wg.Wait()
+		close(out)
+	}()
+	return newColdObservableFromChannel(out)
 }
 
 // Concat emit the emissions from two or more Observables without interleaving them
