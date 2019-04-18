@@ -2,6 +2,7 @@ package rxgo
 
 import (
 	"context"
+
 	"github.com/reactivex/rxgo/handlers"
 	"golang.org/x/sync/semaphore"
 )
