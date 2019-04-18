@@ -1,9 +1,10 @@
 package rxgo
 
 import (
-	"sync"
+	"context"
 
 	"github.com/reactivex/rxgo/handlers"
+	"golang.org/x/sync/semaphore"
 )
 
 // Transforms emitted items into Observables and flattens them into a single Observable.
@@ -30,37 +31,27 @@ func (o *observable) flatMap(
 }
 
 func flatObservedSequence(out chan interface{}, o Observable, apply func(interface{}) Observable, maxInParallel uint) {
-	var (
-		sequence Observable
-		wg       sync.WaitGroup
-		count    uint
-	)
+	ctx := context.TODO()
+	sem := semaphore.NewWeighted(int64(maxInParallel))
 
 	defer close(out)
 	emissionObserver := newFlattenEmissionObserver(out)
 
-	count = 0
-
 	it := o.Iterator()
 	for {
 		if item, err := it.Next(); err == nil {
-			sequence = apply(item)
-			count++
-			wg.Add(1)
+			sequence := apply(item)
+			sem.Acquire(ctx, 1)
 			go func() {
-				defer wg.Done()
+				defer sem.Release(1)
 				sequence.Subscribe(emissionObserver).Block()
 			}()
-
-			if count%maxInParallel == 0 {
-				wg.Wait()
-			}
 		} else {
 			break
 		}
 	}
 
-	wg.Wait()
+	sem.Acquire(ctx, int64(maxInParallel))
 }
 
 func newFlattenEmissionObserver(out chan interface{}) Observer {

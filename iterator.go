@@ -2,6 +2,7 @@ package rxgo
 
 import (
 	"context"
+
 	"github.com/reactivex/rxgo/errors"
 )
 
