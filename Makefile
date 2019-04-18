@@ -35,9 +35,6 @@ vet:
 clean:
 	@if [ -f ${BINARY_NAME} ] ; then rm ${BINARY_NAME} ; fi
 
-realize:
-	 && realize start
-
 vendor:
 	go mod vendor
 
@@ -53,4 +50,4 @@ deps:
 upgrade:
 	go get -u
 
-.PHONY: default fmt fmt-check lint install test run realize vendor gen tidy vet clean
+.PHONY: default fmt fmt-check lint install test run vendor gen tidy vet clean
