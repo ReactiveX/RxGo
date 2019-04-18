@@ -1,18 +1,19 @@
 package rxgo
 
-import "github.com/reactivex/rxgo/errors"
+import (
+	"context"
+	"github.com/reactivex/rxgo/errors"
+)
 
 type Iterator interface {
+	cancel()
 	Next() (interface{}, error)
 }
 
 type iteratorFromChannel struct {
-	ch chan interface{}
-}
-
-type iteratorFromSlice struct {
-	index int
-	s     []interface{}
+	ch         chan interface{}
+	ctx        context.Context
+	cancelFunc context.CancelFunc
 }
 
 type iteratorFromRange struct {
@@ -20,20 +21,29 @@ type iteratorFromRange struct {
 	end     int // Included
 }
 
-func (it *iteratorFromChannel) Next() (interface{}, error) {
-	if next, ok := <-it.ch; ok {
-		return next, nil
-	}
-
-	return nil, errors.New(errors.EndOfIteratorError)
+type iteratorFromSlice struct {
+	index int
+	s     []interface{}
 }
 
-func (it *iteratorFromSlice) Next() (interface{}, error) {
-	it.index++
-	if it.index < len(it.s) {
-		return it.s[it.index], nil
+func (it *iteratorFromChannel) cancel() {
+	it.cancelFunc()
+}
+
+func (it *iteratorFromChannel) Next() (interface{}, error) {
+	select {
+	case <-it.ctx.Done():
+		return nil, errors.New(errors.CancelledError)
+	case next, ok := <-it.ch:
+		if ok {
+			return next, nil
+		}
+		return nil, errors.New(errors.EndOfIteratorError)
 	}
-	return nil, errors.New(errors.EndOfIteratorError)
+}
+
+func (it *iteratorFromRange) cancel() {
+	// TODO
 }
 
 func (it *iteratorFromRange) Next() (interface{}, error) {
@@ -44,16 +54,24 @@ func (it *iteratorFromRange) Next() (interface{}, error) {
 	return nil, errors.New(errors.EndOfIteratorError)
 }
 
-func newIteratorFromChannel(ch chan interface{}) Iterator {
-	return &iteratorFromChannel{
-		ch: ch,
-	}
+func (it *iteratorFromSlice) cancel() {
+	// TODO
 }
 
-func newIteratorFromSlice(s []interface{}) Iterator {
-	return &iteratorFromSlice{
-		index: -1,
-		s:     s,
+func (it *iteratorFromSlice) Next() (interface{}, error) {
+	it.index++
+	if it.index < len(it.s) {
+		return it.s[it.index], nil
+	}
+	return nil, errors.New(errors.EndOfIteratorError)
+}
+
+func newIteratorFromChannel(ch chan interface{}) Iterator {
+	ctx, cancel := context.WithCancel(context.Background())
+	return &iteratorFromChannel{
+		ch:         ch,
+		ctx:        ctx,
+		cancelFunc: cancel,
 	}
 }
 
@@ -61,5 +79,12 @@ func newIteratorFromRange(start, end int) Iterator {
 	return &iteratorFromRange{
 		current: start,
 		end:     end,
+	}
+}
+
+func newIteratorFromSlice(s []interface{}) Iterator {
+	return &iteratorFromSlice{
+		index: -1,
+		s:     s,
 	}
 }

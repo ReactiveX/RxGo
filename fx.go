@@ -39,6 +39,9 @@ type (
 	// Function2 defines a function that computes a value from two input values.
 	Function2 func(interface{}, interface{}) interface{}
 
+	// FunctionN defines a function that computes a value from N input values.
+	FunctionN func(...interface{}) interface{}
+
 	// Supplier defines a function that supplies a result from nothing.
 	Supplier func() interface{}
 

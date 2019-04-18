@@ -15,6 +15,7 @@ const (
 	ElementAtError
 	NoSuchElementError
 	IllegalInputError
+	CancelledError
 )
 
 // BaseError provides a base template for more package-specific errors
