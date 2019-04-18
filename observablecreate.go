@@ -80,6 +80,8 @@ func newObservableFromSlice(s []interface{}) Observable {
 	}
 }
 
+// CombineLatest combine the latest item emitted by each Observable via a specified function
+// and emit items based on the results of this function
 func CombineLatest(f FunctionN, observable Observable, observables ...Observable) Observable {
 	out := make(chan interface{})
 	go func() {

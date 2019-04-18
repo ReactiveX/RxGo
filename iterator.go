@@ -33,7 +33,7 @@ func (it *iteratorFromChannel) cancel() {
 func (it *iteratorFromChannel) Next() (interface{}, error) {
 	select {
 	case <-it.ctx.Done():
-		return nil, errors.New(errors.CancelledError)
+		return nil, errors.New(errors.CancelledIteratorError)
 	case next, ok := <-it.ch:
 		if ok {
 			return next, nil

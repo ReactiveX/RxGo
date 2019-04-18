@@ -15,7 +15,8 @@ const (
 	ElementAtError
 	NoSuchElementError
 	IllegalInputError
-	CancelledError
+	// CancelledIteratorError is triggered when an Iterator was Cancelled
+	CancelledIteratorError
 )
 
 // BaseError provides a base template for more package-specific errors
