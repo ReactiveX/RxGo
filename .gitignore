@@ -34,3 +34,5 @@ node_modules
 # IntelliJ
 .idea
 *.iml
+
+go.sum
