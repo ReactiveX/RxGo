@@ -79,6 +79,41 @@ func newObservableFromSlice(s []interface{}) Observable {
 	}
 }
 
+// Amb take several Observables, emit all of the items from only the first of these Observables
+// to emit an item or notification
+func Amb(observable Observable, observables ...Observable) Observable {
+	out := make(chan interface{})
+	once := sync.Once{}
+
+	f := func(o Observable) {
+		it := o.Iterator(context.Background())
+		item, err := it.Next(context.Background())
+		once.Do(func() {
+			if err == nil {
+				out <- item
+				for {
+					if item, err := it.Next(context.Background()); err == nil {
+						out <- item
+					} else {
+						close(out)
+						return
+					}
+				}
+			} else {
+				close(out)
+				return
+			}
+		})
+	}
+
+	go f(observable)
+	for _, o := range observables {
+		go f(o)
+	}
+
+	return newColdObservableFromChannel(out)
+}
+
 // CombineLatest combine the latest item emitted by each Observable via a specified function
 // and emit items based on the results of this function
 func CombineLatest(f FunctionN, observable Observable, observables ...Observable) Observable {

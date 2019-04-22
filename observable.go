@@ -198,7 +198,7 @@ func CheckEventHandlers(handler ...handlers.EventHandler) Observer {
 }
 
 func (o *observable) Iterator(ctx context.Context) Iterator {
-	return o.iterable.Iterator(context.Background())
+	return o.iterable.Iterator(ctx)
 }
 
 func (o *observable) All(predicate Predicate) Single {

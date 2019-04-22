@@ -423,7 +423,35 @@ var _ = Describe("Observable types", func() {
 	})
 })
 
-var _ = Describe("Combine Latest", func() {
+var _ = Describe("Amb operator", func() {
+	Context("when creating two hot observables", func() {
+		ch1 := make(chan interface{}, 3)
+		observable1 := FromChannel(ch1)
+		ch2 := make(chan interface{}, 3)
+		observable2 := FromChannel(ch2)
+		Context("when calling amb operator and having each observable sending multiple events", func() {
+			observable := Amb(observable1, observable2)
+			outNext, _, _ := subscribe(observable)
+
+			ch1 <- 1
+			ch1 <- 2
+			ch1 <- 3
+			It("", func() {
+				Eventually(len(ch1), timeout, pollingInterval).Should(Equal(0))
+			})
+			ch2 <- 10
+			ch2 <- 20
+			ch2 <- 30
+			It("x", func() {
+				Expect(pollItems(outNext, timeout)).Should(Equal([]interface{}{1, 2, 3}))
+			})
+			close(ch1)
+			close(ch2)
+		})
+	})
+})
+
+var _ = Describe("CombineLatest operator", func() {
 	Context("when creating three observables", func() {
 		ch1 := make(chan interface{}, 10)
 		ch2 := make(chan interface{}, 10)
