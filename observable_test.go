@@ -1952,7 +1952,7 @@ var _ = Describe("Timeout operator", func() {
 			ch <- 1
 			ch <- 2
 			ch <- 3
-			time.Sleep(timeout)
+			time.Sleep(time.Second)
 			ch <- 4
 			It("should receive the elements before the timeout", func() {
 				Expect(pollItems(outNext, timeout)).Should(Equal([]interface{}{1, 2, 3}))
