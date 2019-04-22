@@ -7,8 +7,8 @@ import (
 )
 
 type Iterator interface {
-	cancel()
 	Next() (interface{}, error)
+	cancel()
 }
 
 type iteratorFromChannel struct {
@@ -27,10 +27,6 @@ type iteratorFromSlice struct {
 	s     []interface{}
 }
 
-func (it *iteratorFromChannel) cancel() {
-	it.cancelFunc()
-}
-
 func (it *iteratorFromChannel) Next() (interface{}, error) {
 	select {
 	case <-it.ctx.Done():
@@ -43,8 +39,8 @@ func (it *iteratorFromChannel) Next() (interface{}, error) {
 	}
 }
 
-func (it *iteratorFromRange) cancel() {
-	// TODO
+func (it *iteratorFromChannel) cancel() {
+	it.cancelFunc()
 }
 
 func (it *iteratorFromRange) Next() (interface{}, error) {
@@ -55,7 +51,7 @@ func (it *iteratorFromRange) Next() (interface{}, error) {
 	return nil, errors.New(errors.EndOfIteratorError)
 }
 
-func (it *iteratorFromSlice) cancel() {
+func (it *iteratorFromRange) cancel() {
 	// TODO
 }
 
@@ -65,6 +61,10 @@ func (it *iteratorFromSlice) Next() (interface{}, error) {
 		return it.s[it.index], nil
 	}
 	return nil, errors.New(errors.EndOfIteratorError)
+}
+
+func (it *iteratorFromSlice) cancel() {
+	// TODO
 }
 
 func newIteratorFromChannel(ch chan interface{}) Iterator {

@@ -1,10 +1,9 @@
 package rxgo
 
 import (
-	"sync"
-
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/options"
+	"sync"
 )
 
 type ConnectableObservable interface {
@@ -282,6 +281,10 @@ func (c *connectableObservable) TakeUntil(apply Predicate) Observable {
 
 func (c *connectableObservable) TakeWhile(apply Predicate) Observable {
 	return c.observable.TakeWhile(apply)
+}
+
+func (c *connectableObservable) Timeout(duration Duration) Observable {
+	return c.observable.Timeout(duration)
 }
 
 func (c *connectableObservable) ToChannel(opts ...options.Option) Channel {
