@@ -13,7 +13,6 @@ import (
 	"github.com/reactivex/rxgo/options"
 
 	"github.com/reactivex/rxgo/handlers"
-	"github.com/reactivex/rxgo/optional"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -784,15 +783,15 @@ func TestObservableReduce(t *testing.T) {
 		return 0
 	}
 
-	var got optional.Optional
+	var got Optional
 	_, err := stream1.Reduce(add).Subscribe(handlers.NextFunc(func(i interface{}) {
-		got = i.(optional.Optional)
+		got = i.(Optional)
 	})).Block()
 	if err != nil {
 		t.Fail()
 	}
 	assert.False(t, got.IsEmpty())
-	assert.Exactly(t, optional.Of(14), got)
+	assert.Exactly(t, Of(14), got)
 }
 
 func TestObservableReduceEmpty(t *testing.T) {
@@ -806,9 +805,9 @@ func TestObservableReduceEmpty(t *testing.T) {
 	}
 	stream := Empty()
 
-	var got optional.Optional
+	var got Optional
 	_, err := stream.Reduce(add).Subscribe(handlers.NextFunc(func(i interface{}) {
-		got = i.(optional.Optional)
+		got = i.(Optional)
 	})).Block()
 	if err != nil {
 		t.Fail()
@@ -821,9 +820,9 @@ func TestObservableReduceNil(t *testing.T) {
 	nilReduce := func(acc interface{}, elem interface{}) interface{} {
 		return nil
 	}
-	var got optional.Optional
+	var got Optional
 	_, err := stream.Reduce(nilReduce).Subscribe(handlers.NextFunc(func(i interface{}) {
-		got = i.(optional.Optional)
+		got = i.(Optional)
 	})).Block()
 	if err != nil {
 		t.Fail()
@@ -1940,4 +1939,28 @@ var _ = Describe("StartWith operator", func() {
 			Expect(pollItems(outNext, timeout)).Should(Equal([]interface{}{1, 2, 3}))
 		})
 	})
+})
+
+var _ = Describe("Timeout operator", func() {
+	// FIXME
+	//Context("when creating an observable with timeout operator", func() {
+	//	ch := make(chan interface{}, 10)
+	//	duration := WithDuration(pollingInterval)
+	//	o := FromChannel(ch).Timeout(duration)
+	//	Context("after a given period without items", func() {
+	//		outNext, outErr, _ := subscribe(o)
+	//
+	//		ch <- 1
+	//		ch <- 2
+	//		ch <- 3
+	//		time.Sleep(time.Second)
+	//		ch <- 4
+	//		It("should receive the elements before the timeout", func() {
+	//			Expect(pollItems(outNext, timeout)).Should(Equal([]interface{}{1, 2, 3}))
+	//		})
+	//		It("should receive a TimeoutError", func() {
+	//			Expect(pollItem(outErr, timeout)).Should(Equal(&TimeoutError{}))
+	//		})
+	//	})
+	//})
 })

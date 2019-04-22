@@ -6,7 +6,6 @@ import (
 	"errors"
 
 	"github.com/reactivex/rxgo/handlers"
-	"github.com/reactivex/rxgo/optional"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -215,7 +214,7 @@ func AssertThatOptionalSingle(t *testing.T, optionalSingle OptionalSingle, asser
 		assert.Fail(t, "error while retrieving OptionalSingle results")
 	}
 
-	if optional, ok := v.(optional.Optional); ok {
+	if optional, ok := v.(Optional); ok {
 		checkIsEmpty, empty := ass.isEmptyFunc()
 		if checkIsEmpty {
 			if empty {

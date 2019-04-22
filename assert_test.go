@@ -3,8 +3,6 @@ package rxgo
 import (
 	"errors"
 	"testing"
-
-	"github.com/reactivex/rxgo/optional"
 )
 
 func TestAssertThatObservableHasItems(t *testing.T) {
@@ -37,21 +35,21 @@ func TestAssertThatSingleNotError(t *testing.T) {
 }
 
 func TestAssertThatOptionalSingleIsEmpty(t *testing.T) {
-	AssertThatOptionalSingle(t, newOptionalSingleFrom(optional.Empty()), IsEmpty())
+	AssertThatOptionalSingle(t, newOptionalSingleFrom(EmptyOptional()), IsEmpty())
 }
 
 func TestAssertThatOptionalSingleIsNotEmpty(t *testing.T) {
-	AssertThatOptionalSingle(t, newOptionalSingleFrom(optional.Of(1)), IsNotEmpty())
+	AssertThatOptionalSingle(t, newOptionalSingleFrom(Of(1)), IsNotEmpty())
 }
 
 func TestAssertThatOptionalSingleHasValue(t *testing.T) {
-	AssertThatOptionalSingle(t, newOptionalSingleFrom(optional.Of(1)), HasValue(1))
+	AssertThatOptionalSingle(t, newOptionalSingleFrom(Of(1)), HasValue(1))
 }
 
 func TestAssertThatOptionalSingleHasRaisedAnError(t *testing.T) {
-	AssertThatOptionalSingle(t, newOptionalSingleFrom(optional.Of(errors.New("foo"))), HasRaisedAnError())
+	AssertThatOptionalSingle(t, newOptionalSingleFrom(Of(errors.New("foo"))), HasRaisedAnError())
 }
 
 func TestAssertThatOptionalSingleHasRaisedError(t *testing.T) {
-	AssertThatOptionalSingle(t, newOptionalSingleFrom(optional.Of(errors.New("foo"))), HasRaisedError(errors.New("foo")))
+	AssertThatOptionalSingle(t, newOptionalSingleFrom(Of(errors.New("foo"))), HasRaisedError(errors.New("foo")))
 }

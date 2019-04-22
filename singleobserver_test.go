@@ -1,9 +1,8 @@
 package rxgo
 
 import (
+	"errors"
 	"testing"
-
-	"github.com/reactivex/rxgo/errors"
 
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/stretchr/testify/assert"
@@ -53,6 +52,6 @@ func TestSingleObserverHandleWithError(t *testing.T) {
 	singleObserver := CheckSingleEventHandler(handlers.ErrFunc(func(err error) {
 		got = 10
 	}))
-	singleObserver.Handle(errors.New(0))
+	singleObserver.Handle(errors.New(""))
 	assert.Equal(t, int64(10), got)
 }

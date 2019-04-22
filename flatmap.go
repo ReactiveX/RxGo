@@ -37,9 +37,9 @@ func flatObservedSequence(out chan interface{}, o Observable, apply func(interfa
 	defer close(out)
 	emissionObserver := newFlattenEmissionObserver(out)
 
-	it := o.Iterator()
+	it := o.Iterator(context.Background())
 	for {
-		if item, err := it.Next(); err == nil {
+		if item, err := it.Next(context.Background()); err == nil {
 			sequence := apply(item)
 			sem.Acquire(ctx, 1)
 			go func() {

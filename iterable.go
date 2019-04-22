@@ -1,7 +1,9 @@
 package rxgo
 
+import "context"
+
 type Iterable interface {
-	Iterator() Iterator
+	Iterator(ctx context.Context) Iterator
 }
 
 type iterableFromChannel struct {
@@ -21,21 +23,21 @@ type iterableFromFunc struct {
 	f func(chan interface{})
 }
 
-func (it *iterableFromFunc) Iterator() Iterator {
+func (it *iterableFromFunc) Iterator(ctx context.Context) Iterator {
 	out := make(chan interface{})
 	go it.f(out)
 	return newIteratorFromChannel(out)
 }
 
-func (it *iterableFromChannel) Iterator() Iterator {
+func (it *iterableFromChannel) Iterator(ctx context.Context) Iterator {
 	return newIteratorFromChannel(it.ch)
 }
 
-func (it *iterableFromSlice) Iterator() Iterator {
+func (it *iterableFromSlice) Iterator(ctx context.Context) Iterator {
 	return newIteratorFromSlice(it.s)
 }
 
-func (it *iterableFromRange) Iterator() Iterator {
+func (it *iterableFromRange) Iterator(ctx context.Context) Iterator {
 	return newIteratorFromRange(it.start-1, it.start+it.count)
 }
 

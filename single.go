@@ -1,8 +1,9 @@
 package rxgo
 
 import (
+	"context"
+
 	"github.com/reactivex/rxgo/handlers"
-	"github.com/reactivex/rxgo/optional"
 	"github.com/reactivex/rxgo/options"
 )
 
@@ -23,7 +24,7 @@ type single struct {
 }
 
 type optionalSingle struct {
-	ch chan optional.Optional
+	ch chan Optional
 }
 
 func newSingleFrom(item interface{}) Single {
@@ -34,9 +35,9 @@ func newSingleFrom(item interface{}) Single {
 	return newColdSingle(f)
 }
 
-func newOptionalSingleFrom(opt optional.Optional) OptionalSingle {
+func newOptionalSingleFrom(opt Optional) OptionalSingle {
 	s := optionalSingle{
-		ch: make(chan optional.Optional),
+		ch: make(chan Optional),
 	}
 
 	go func() {
@@ -58,26 +59,27 @@ func newColdSingle(f func(chan interface{})) Single {
 	}
 }
 
-func NewOptionalSingleFromChannel(ch chan optional.Optional) OptionalSingle {
+// NewOptionalSingleFromChannel creates a new OptionalSingle from a channel input
+func NewOptionalSingleFromChannel(ch chan Optional) OptionalSingle {
 	return &optionalSingle{
 		ch: ch,
 	}
 }
 
-func (s *single) Iterator() Iterator {
-	return s.iterable.Iterator()
+func (s *single) Iterator(ctx context.Context) Iterator {
+	return s.iterable.Iterator(context.Background())
 }
 
 func (s *single) Filter(apply Predicate) OptionalSingle {
-	out := make(chan optional.Optional)
+	out := make(chan Optional)
 	go func() {
-		it := s.iterable.Iterator()
+		it := s.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				if apply(item) {
-					out <- optional.Of(item)
+					out <- Of(item)
 				} else {
-					out <- optional.Empty()
+					out <- EmptyOptional()
 				}
 				close(out)
 				return
@@ -94,9 +96,9 @@ func (s *single) Filter(apply Predicate) OptionalSingle {
 
 func (s *single) Map(apply Function) Single {
 	f := func(out chan interface{}) {
-		it := s.iterable.Iterator()
+		it := s.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				out <- apply(item)
 				close(out)
 				return
@@ -112,9 +114,9 @@ func (s *single) Subscribe(handler handlers.EventHandler, opts ...options.Option
 	ob := CheckSingleEventHandler(handler)
 
 	go func() {
-		it := s.iterable.Iterator()
+		it := s.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				switch item := item.(type) {
 				case error:
 					ob.OnError(item)

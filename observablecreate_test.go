@@ -1,6 +1,7 @@
 package rxgo
 
 import (
+	"context"
 	"testing"
 
 	"errors"
@@ -8,7 +9,6 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	rxerrors "github.com/reactivex/rxgo/errors"
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -94,52 +94,6 @@ func TestDoesntEmitElementsAfterDone(t *testing.T) {
 	mockedObserver.AssertNotCalled(t, "OnError", mock.Anything)
 	mockedObserver.AssertNotCalled(t, "OnNext", mock.Anything)
 	mockedObserver.AssertCalled(t, "OnDone")
-}
-
-// to clear out error emission
-func testEmitsError(t *testing.T) {
-	// given
-	mockedObserver := NewObserverMock()
-
-	// and
-	expectedError := rxerrors.New(rxerrors.UndefinedError, "expected")
-
-	// and
-	sequence := Create(func(emitter Observer, disposed bool) {
-		emitter.OnError(expectedError)
-	})
-
-	// when
-	sequence.Subscribe(mockedObserver.Capture()).Block()
-
-	// then emits error
-	mockedObserver.AssertCalled(t, "OnError", expectedError)
-	mockedObserver.AssertNotCalled(t, "OnNext")
-	mockedObserver.AssertNotCalled(t, "OnDone")
-}
-
-// to clear out error emission
-func testFinishEmissionOnError(t *testing.T) {
-	// given
-	mockedObserver := NewObserverMock()
-
-	// and
-	expectedError := rxerrors.New(rxerrors.UndefinedError, "expected")
-
-	// and
-	sequence := Create(func(emitter Observer, disposed bool) {
-		emitter.OnError(expectedError)
-		emitter.OnNext("some element which cannot be emitted")
-		emitter.OnDone()
-	})
-
-	// when
-	sequence.Subscribe(mockedObserver.Capture()).Block()
-
-	// then emits error
-	mockedObserver.AssertCalled(t, "OnError", expectedError)
-	mockedObserver.AssertNotCalled(t, "OnNext")
-	mockedObserver.AssertNotCalled(t, "OnDone")
 }
 
 func TestError(t *testing.T) {
@@ -251,23 +205,19 @@ type statefulIterable struct {
 	count int
 }
 
-func (it *statefulIterable) cancel() {
-	// Not useful for this test
-}
-
-func (it *statefulIterable) Next() (interface{}, error) {
+func (it *statefulIterable) Next(ctx context.Context) (interface{}, error) {
 	it.count++
 	if it.count < 3 {
 		return it.count, nil
 	}
-	return nil, rxerrors.New(rxerrors.EndOfIteratorError)
+	return nil, &EndOfIteratorError{}
 }
 
 func (it *statefulIterable) Value() interface{} {
 	return it.count
 }
 
-func (it *statefulIterable) Iterator() Iterator {
+func (it *statefulIterable) Iterator(ctx context.Context) Iterator {
 	return it
 }
 
@@ -284,22 +234,13 @@ type statelessIterable struct {
 	count int
 }
 
-func (it *statelessIterable) Next() (interface{}, error) {
+func (it *statelessIterable) Next(ctx context.Context) (interface{}, error) {
 	it.count++
 	if it.count < 3 {
 		return it.count, nil
 	}
-	return nil, rxerrors.New(rxerrors.EndOfIteratorError)
+	return nil, &EndOfIteratorError{}
 }
-
-//func TestFromStatelessIterable(t *testing.T) {
-//	obs := FromIterable(&statelessIterable{
-//		count: -1,
-//	})
-//
-//	AssertThatObservable(t, obs, HasItems(0, 1, 2))
-//	AssertThatObservable(t, obs, HasItems(0, 1, 2))
-//}
 
 func TestRange(t *testing.T) {
 	obs, err := Range(5, 3)
@@ -543,10 +484,6 @@ var _ = Describe("Combine Latest", func() {
 				It("should receive nothing", func() {
 					ch1 <- 11
 					Expect(len(pollItems(outNext, timeout))).Should(Equal(0))
-				})
-				It("should close the internal observable channel", func() {
-					internalChannel := combineLatest.Iterator().(*iteratorFromChannel).ch
-					Eventually(internalChannel, timeout, pollingInterval).Should(BeClosed())
 				})
 			})
 		})

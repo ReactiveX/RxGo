@@ -1,6 +1,7 @@
 package rxgo
 
 import (
+	"context"
 	"sync"
 
 	"github.com/reactivex/rxgo/handlers"
@@ -24,8 +25,8 @@ func newConnectableObservableFromObservable(observable Observable) ConnectableOb
 	}
 }
 
-func (c *connectableObservable) Iterator() Iterator {
-	return c.observable.Iterator()
+func (c *connectableObservable) Iterator(ctx context.Context) Iterator {
+	return c.observable.Iterator(context.Background())
 }
 
 func (c *connectableObservable) All(predicate Predicate) Single {
@@ -75,9 +76,9 @@ func (c *connectableObservable) BufferWithTimeOrCount(timespan Duration, count i
 func (c *connectableObservable) Connect() Observer {
 	out := NewObserver()
 	go func() {
-		it := c.observable.Iterator()
+		it := c.observable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				c.observersMutex.Lock()
 				for _, observer := range c.observers {
 					c.observersMutex.Unlock()
@@ -282,6 +283,10 @@ func (c *connectableObservable) TakeUntil(apply Predicate) Observable {
 
 func (c *connectableObservable) TakeWhile(apply Predicate) Observable {
 	return c.observable.TakeWhile(apply)
+}
+
+func (c *connectableObservable) Timeout(duration Duration) Observable {
+	return c.observable.Timeout(duration)
 }
 
 func (c *connectableObservable) ToChannel(opts ...options.Option) Channel {
