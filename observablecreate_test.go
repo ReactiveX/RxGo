@@ -426,9 +426,9 @@ var _ = Describe("Observable types", func() {
 var _ = Describe("Amb operator", func() {
 	Context("when creating two hot observables", func() {
 		ch1 := make(chan interface{}, 3)
-		observable1 := FromEventSource(ch1)
-		ch2 := make(chan interface{}, 1)
-		observable2 := FromEventSource(ch2)
+		observable1 := FromChannel(ch1)
+		ch2 := make(chan interface{}, 3)
+		observable2 := FromChannel(ch2)
 		Context("when calling amb operator and having each observable sending multiple events", func() {
 			observable := Amb(observable1, observable2)
 			outNext, _, _ := subscribe(observable)
@@ -445,6 +445,8 @@ var _ = Describe("Amb operator", func() {
 			It("x", func() {
 				Expect(pollItems(outNext, timeout)).Should(Equal([]interface{}{1, 2, 3}))
 			})
+			close(ch1)
+			close(ch2)
 		})
 	})
 })

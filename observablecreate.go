@@ -83,27 +83,27 @@ func newObservableFromSlice(s []interface{}) Observable {
 // to emit an item or notification
 func Amb(observable Observable, observables ...Observable) Observable {
 	out := make(chan interface{})
-	pool := sync.Pool{}
-	pool.Put(struct{}{})
+	once := sync.Once{}
 
 	f := func(o Observable) {
-		master := false
-		for {
-			it := o.Iterator(context.Background())
-			if item, err := it.Next(context.Background()); err == nil {
-				if master {
-					out <- item
-				} else {
-					if pool.Get() != nil {
+		it := o.Iterator(context.Background())
+		item, err := it.Next(context.Background())
+		once.Do(func() {
+			if err == nil {
+				out <- item
+				for {
+					if item, err := it.Next(context.Background()); err == nil {
 						out <- item
-						master = true
+					} else {
+						close(out)
+						return
 					}
 				}
 			} else {
 				close(out)
-				break
+				return
 			}
-		}
+		})
 	}
 
 	go f(observable)
