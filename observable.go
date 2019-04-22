@@ -2,14 +2,13 @@ package rxgo
 
 import (
 	"container/ring"
+	"context"
 	"sync"
 	"time"
 
 	"fmt"
 
-	"github.com/reactivex/rxgo/errors"
 	"github.com/reactivex/rxgo/handlers"
-	"github.com/reactivex/rxgo/optional"
 	"github.com/reactivex/rxgo/options"
 )
 
@@ -112,16 +111,16 @@ type observable struct {
 }
 
 func iterate(observable Observable, observer Observer) error {
-	it := observable.Iterator()
+	it := observable.Iterator(context.Background())
 	for {
-		if item, err := it.Next(); err == nil {
+		if item, err := it.Next(context.Background()); err == nil {
 			switch item := item.(type) {
 			case error:
 				if observable.getOnErrorReturn() != nil {
 					observer.OnNext(observable.getOnErrorReturn()(item))
 				} else if observable.getOnErrorResumeNext() != nil {
 					observable = observable.getOnErrorResumeNext()(item)
-					it = observable.Iterator()
+					it = observable.Iterator(context.Background())
 				} else if observable.getOnErrorReturnItem() != nil {
 					observer.OnNext(observable.getOnErrorReturnItem())
 				} else {
@@ -198,15 +197,15 @@ func CheckEventHandlers(handler ...handlers.EventHandler) Observer {
 	return NewObserver(handler...)
 }
 
-func (o *observable) Iterator() Iterator {
-	return o.iterable.Iterator()
+func (o *observable) Iterator(ctx context.Context) Iterator {
+	return o.iterable.Iterator(context.Background())
 }
 
 func (o *observable) All(predicate Predicate) Single {
 	f := func(out chan interface{}) {
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				if !predicate(item) {
 					out <- false
 					close(out)
@@ -227,14 +226,14 @@ func (o *observable) AverageFloat32() Single {
 	f := func(out chan interface{}) {
 		var sum float32
 		var count float32
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				if v, ok := item.(float32); ok {
 					sum += v
 					count++
 				} else {
-					out <- errors.New(errors.IllegalInputError, fmt.Sprintf("type: %t", item))
+					out <- &IllegalInputError{fmt.Sprintf("type: %t", item)}
 					close(out)
 					return
 				}
@@ -257,14 +256,14 @@ func (o *observable) AverageInt() Single {
 	f := func(out chan interface{}) {
 		sum := 0
 		count := 0
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				if v, ok := item.(int); ok {
 					sum += v
 					count++
 				} else {
-					out <- errors.New(errors.IllegalInputError, fmt.Sprintf("type: %t", item))
+					out <- &IllegalInputError{fmt.Sprintf("type: %t", item)}
 					close(out)
 					return
 				}
@@ -287,14 +286,14 @@ func (o *observable) AverageInt8() Single {
 	f := func(out chan interface{}) {
 		var sum int8
 		var count int8
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				if v, ok := item.(int8); ok {
 					sum += v
 					count++
 				} else {
-					out <- errors.New(errors.IllegalInputError, fmt.Sprintf("type: %t", item))
+					out <- &IllegalInputError{fmt.Sprintf("type: %t", item)}
 					close(out)
 					return
 				}
@@ -317,14 +316,14 @@ func (o *observable) AverageFloat64() Single {
 	f := func(out chan interface{}) {
 		var sum float64
 		var count float64
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				if v, ok := item.(float64); ok {
 					sum += v
 					count++
 				} else {
-					out <- errors.New(errors.IllegalInputError, fmt.Sprintf("type: %t", item))
+					out <- &IllegalInputError{fmt.Sprintf("type: %t", item)}
 					close(out)
 					return
 				}
@@ -347,14 +346,14 @@ func (o *observable) AverageInt16() Single {
 	f := func(out chan interface{}) {
 		var sum int16
 		var count int16
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				if v, ok := item.(int16); ok {
 					sum += v
 					count++
 				} else {
-					out <- errors.New(errors.IllegalInputError, fmt.Sprintf("type: %t", item))
+					out <- &IllegalInputError{fmt.Sprintf("type: %t", item)}
 					close(out)
 					return
 				}
@@ -377,14 +376,14 @@ func (o *observable) AverageInt32() Single {
 	f := func(out chan interface{}) {
 		var sum int32
 		var count int32
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				if v, ok := item.(int32); ok {
 					sum += v
 					count++
 				} else {
-					out <- errors.New(errors.IllegalInputError, fmt.Sprintf("type: %t", item))
+					out <- &IllegalInputError{fmt.Sprintf("type: %t", item)}
 					close(out)
 					return
 				}
@@ -407,14 +406,14 @@ func (o *observable) AverageInt64() Single {
 	f := func(out chan interface{}) {
 		var sum int64
 		var count int64
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				if v, ok := item.(int64); ok {
 					sum += v
 					count++
 				} else {
-					out <- errors.New(errors.IllegalInputError, fmt.Sprintf("type: %t", item))
+					out <- &IllegalInputError{fmt.Sprintf("type: %t", item)}
 					close(out)
 					return
 				}
@@ -441,13 +440,13 @@ func (o *observable) AverageInt64() Single {
 func (o *observable) BufferWithCount(count, skip int) Observable {
 	f := func(out chan interface{}) {
 		if count <= 0 {
-			out <- errors.New(errors.IllegalInputError, "count must be positive")
+			out <- &IllegalInputError{"count must be positive"}
 			close(out)
 			return
 		}
 
 		if skip <= 0 {
-			out <- errors.New(errors.IllegalInputError, "skip must be positive")
+			out <- &IllegalInputError{"skip must be positive"}
 			close(out)
 			return
 		}
@@ -455,9 +454,9 @@ func (o *observable) BufferWithCount(count, skip int) Observable {
 		buffer := make([]interface{}, count, count)
 		iCount := 0
 		iSkip := 0
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				switch item := item.(type) {
 				case error:
 					if iCount != 0 {
@@ -503,7 +502,7 @@ func (o *observable) BufferWithCount(count, skip int) Observable {
 func (o *observable) BufferWithTime(timespan, timeshift Duration) Observable {
 	f := func(out chan interface{}) {
 		if timespan == nil || timespan.duration() == 0 {
-			out <- errors.New(errors.IllegalInputError, "timespan must not be nil")
+			out <- &IllegalInputError{"timespan must not be nil"}
 			close(out)
 			return
 		}
@@ -546,9 +545,9 @@ func (o *observable) BufferWithTime(timespan, timeshift Duration) Observable {
 
 		// Second goroutine in charge to retrieve the items from the source observable
 		go func() {
-			it := o.iterable.Iterator()
+			it := o.iterable.Iterator(context.Background())
 			for {
-				if item, err := it.Next(); err == nil {
+				if item, err := it.Next(context.Background()); err == nil {
 					switch item := item.(type) {
 					case error:
 						mux.Lock()
@@ -597,13 +596,13 @@ func (o *observable) BufferWithTime(timespan, timeshift Duration) Observable {
 func (o *observable) BufferWithTimeOrCount(timespan Duration, count int) Observable {
 	f := func(out chan interface{}) {
 		if timespan == nil || timespan.duration() == 0 {
-			out <- errors.New(errors.IllegalInputError, "timespan must not be nil")
+			out <- &IllegalInputError{"timespan must not be nil"}
 			close(out)
 			return
 		}
 
 		if count <= 0 {
-			out <- errors.New(errors.IllegalInputError, "count must be positive")
+			out <- &IllegalInputError{"count must be positive"}
 			close(out)
 			return
 		}
@@ -642,9 +641,9 @@ func (o *observable) BufferWithTimeOrCount(timespan Duration, count int) Observa
 
 		// Second goroutine in charge to retrieve the items from the source observable
 		go func() {
-			it := o.iterable.Iterator()
+			it := o.iterable.Iterator(context.Background())
 			for {
-				if item, err := it.Next(); err == nil {
+				if item, err := it.Next(context.Background()); err == nil {
 					switch item := item.(type) {
 					case error:
 						errCh <- item
@@ -678,9 +677,9 @@ func (o *observable) BufferWithTimeOrCount(timespan Duration, count int) Observa
 // the source Observable emitted an item (the comparison is made against a predicate).
 func (o *observable) Contains(equal Predicate) Single {
 	f := func(out chan interface{}) {
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				if equal(item) {
 					out <- true
 					close(out)
@@ -699,9 +698,9 @@ func (o *observable) Contains(equal Predicate) Single {
 func (o *observable) Count() Single {
 	f := func(out chan interface{}) {
 		var count int64
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if _, err := it.Next(); err == nil {
+			if _, err := it.Next(context.Background()); err == nil {
 				count++
 			} else {
 				break
@@ -718,9 +717,9 @@ func (o *observable) Count() Single {
 func (o *observable) DefaultIfEmpty(defaultValue interface{}) Observable {
 	f := func(out chan interface{}) {
 		empty := true
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				empty = false
 				out <- item
 			} else {
@@ -740,9 +739,9 @@ func (o *observable) DefaultIfEmpty(defaultValue interface{}) Observable {
 func (o *observable) Distinct(apply Function) Observable {
 	f := func(out chan interface{}) {
 		keysets := make(map[interface{}]struct{})
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				key := apply(item)
 				_, ok := keysets[key]
 				if !ok {
@@ -763,9 +762,9 @@ func (o *observable) Distinct(apply Function) Observable {
 func (o *observable) DistinctUntilChanged(apply Function) Observable {
 	f := func(out chan interface{}) {
 		var current interface{}
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				key := apply(item)
 				if current != key {
 					out <- item
@@ -784,9 +783,9 @@ func (o *observable) DistinctUntilChanged(apply Function) Observable {
 // will call each time it emits an item
 func (o *observable) DoOnEach(onNotification Consumer) Observable {
 	f := func(out chan interface{}) {
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				out <- item
 				onNotification(item)
 			} else {
@@ -802,9 +801,9 @@ func (o *observable) ElementAt(index uint) Single {
 	f := func(out chan interface{}) {
 		takeCount := 0
 
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				if takeCount == int(index) {
 					out <- item
 					close(out)
@@ -815,7 +814,7 @@ func (o *observable) ElementAt(index uint) Single {
 				break
 			}
 		}
-		out <- errors.New(errors.ElementAtError)
+		out <- &IndexOutOfBoundError{}
 		close(out)
 	}
 	return newColdSingle(f)
@@ -825,9 +824,9 @@ func (o *observable) ElementAt(index uint) Single {
 // a new Observable with the filtered items.
 func (o *observable) Filter(apply Predicate) Observable {
 	f := func(out chan interface{}) {
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				if apply(item) {
 					out <- item
 				}
@@ -845,9 +844,9 @@ func (o *observable) Filter(apply Predicate) Observable {
 func (o *observable) FirstOrDefault(defaultValue interface{}) Single {
 	f := func(out chan interface{}) {
 		first := defaultValue
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				first = item
 				break
 			} else {
@@ -863,9 +862,9 @@ func (o *observable) FirstOrDefault(defaultValue interface{}) Single {
 // First returns new Observable which emit only first item.
 func (o *observable) First() Observable {
 	f := func(out chan interface{}) {
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				out <- item
 				break
 			} else {
@@ -900,9 +899,9 @@ func (o *observable) IgnoreElements() Observable {
 func (o *observable) Last() Observable {
 	f := func(out chan interface{}) {
 		var last interface{}
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				last = item
 			} else {
 				break
@@ -919,9 +918,9 @@ func (o *observable) Last() Observable {
 func (o *observable) LastOrDefault(defaultValue interface{}) Single {
 	f := func(out chan interface{}) {
 		last := defaultValue
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				last = item
 			} else {
 				break
@@ -937,9 +936,9 @@ func (o *observable) LastOrDefault(defaultValue interface{}) Single {
 // returns a new Observable with applied items.
 func (o *observable) Map(apply Function) Observable {
 	f := func(out chan interface{}) {
-		it := o.Iterator()
+		it := o.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				out <- apply(item)
 			} else {
 				break
@@ -953,13 +952,13 @@ func (o *observable) Map(apply Function) Observable {
 
 // Max determines and emits the maximum-valued item emitted by an Observable according to a comparator.
 func (o *observable) Max(comparator Comparator) OptionalSingle {
-	out := make(chan optional.Optional)
+	out := make(chan Optional)
 	go func() {
 		empty := true
 		var max interface{}
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				empty = false
 
 				if max == nil {
@@ -974,9 +973,9 @@ func (o *observable) Max(comparator Comparator) OptionalSingle {
 			}
 		}
 		if empty {
-			out <- optional.Empty()
+			out <- EmptyOptional()
 		} else {
-			out <- optional.Of(max)
+			out <- Of(max)
 		}
 		close(out)
 	}()
@@ -985,13 +984,13 @@ func (o *observable) Max(comparator Comparator) OptionalSingle {
 
 // Min determines and emits the minimum-valued item emitted by an Observable according to a comparator.
 func (o *observable) Min(comparator Comparator) OptionalSingle {
-	out := make(chan optional.Optional)
+	out := make(chan Optional)
 	go func() {
 		empty := true
 		var min interface{}
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				empty = false
 
 				if min == nil {
@@ -1006,9 +1005,9 @@ func (o *observable) Min(comparator Comparator) OptionalSingle {
 			}
 		}
 		if empty {
-			out <- optional.Empty()
+			out <- EmptyOptional()
 		} else {
-			out <- optional.Of(min)
+			out <- Of(min)
 		}
 		close(out)
 	}()
@@ -1047,13 +1046,13 @@ func (o *observable) Publish() ConnectableObservable {
 }
 
 func (o *observable) Reduce(apply Function2) OptionalSingle {
-	out := make(chan optional.Optional)
+	out := make(chan Optional)
 	go func() {
 		var acc interface{}
 		empty := true
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				empty = false
 				acc = apply(acc, item)
 			} else {
@@ -1061,9 +1060,9 @@ func (o *observable) Reduce(apply Function2) OptionalSingle {
 			}
 		}
 		if empty {
-			out <- optional.Empty()
+			out <- EmptyOptional()
 		} else {
-			out <- optional.Of(acc)
+			out <- Of(acc)
 		}
 		close(out)
 	}()
@@ -1081,9 +1080,9 @@ func (o *observable) Repeat(count int64, frequency Duration) Observable {
 
 	f := func(out chan interface{}) {
 		persist := make([]interface{}, 0)
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				out <- item
 				persist = append(persist, item)
 			} else {
@@ -1117,9 +1116,9 @@ func (o *observable) Repeat(count int64, frequency Duration) Observable {
 func (o *observable) Scan(apply Function2) Observable {
 	f := func(out chan interface{}) {
 		var current interface{}
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				tmp := apply(current, item)
 				out <- tmp
 				current = tmp
@@ -1139,9 +1138,9 @@ func (o *observable) SequenceEqual(obs Observable) Single {
 	obsChan := make(chan interface{})
 
 	go func() {
-		it := obs.Iterator()
+		it := obs.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				obsChan <- item
 			} else {
 				break
@@ -1151,9 +1150,9 @@ func (o *observable) SequenceEqual(obs Observable) Single {
 	}()
 
 	go func() {
-		it := o.Iterator()
+		it := o.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				oChan <- item
 			} else {
 				break
@@ -1205,9 +1204,9 @@ func (o *observable) SequenceEqual(obs Observable) Single {
 func (o *observable) Skip(nth uint) Observable {
 	f := func(out chan interface{}) {
 		skipCount := 0
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				if skipCount < int(nth) {
 					skipCount++
 					continue
@@ -1228,9 +1227,9 @@ func (o *observable) Skip(nth uint) Observable {
 func (o *observable) SkipLast(nth uint) Observable {
 	f := func(out chan interface{}) {
 		buf := make(chan interface{}, nth)
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				select {
 				case buf <- item:
 				default:
@@ -1256,9 +1255,9 @@ func (o *observable) StartWithItems(item interface{}, items ...interface{}) Obse
 			out <- item
 		}
 
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				out <- item
 			} else {
 				break
@@ -1274,18 +1273,18 @@ func (o *observable) StartWithItems(item interface{}, items ...interface{}) Obse
 // emit items emitted by the source Observable.
 func (o *observable) StartWithIterable(iterable Iterable) Observable {
 	f := func(out chan interface{}) {
-		it := iterable.Iterator()
+		it := iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				out <- item
 			} else {
 				break
 			}
 		}
 
-		it = o.iterable.Iterator()
+		it = o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				out <- item
 			} else {
 				break
@@ -1301,18 +1300,18 @@ func (o *observable) StartWithIterable(iterable Iterable) Observable {
 // emit items emitted by the source Observable.
 func (o *observable) StartWithObservable(obs Observable) Observable {
 	f := func(out chan interface{}) {
-		it := obs.Iterator()
+		it := obs.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				out <- item
 			} else {
 				break
 			}
 		}
 
-		it = o.iterable.Iterator()
+		it = o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				out <- item
 			} else {
 				break
@@ -1328,9 +1327,9 @@ func (o *observable) StartWithObservable(obs Observable) Observable {
 func (o *observable) SkipWhile(apply Predicate) Observable {
 	f := func(out chan interface{}) {
 		skip := true
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				if !skip {
 					out <- item
 				} else {
@@ -1396,9 +1395,9 @@ func (o *observable) Subscribe(handler handlers.EventHandler, opts ...options.Op
 func (o *observable) SumInt64() Single {
 	f := func(out chan interface{}) {
 		var sum int64
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				switch item := item.(type) {
 				case int:
 					sum += int64(item)
@@ -1411,8 +1410,9 @@ func (o *observable) SumInt64() Single {
 				case int64:
 					sum += item
 				default:
-					out <- errors.New(errors.IllegalInputError,
-						fmt.Sprintf("expected type: int, int8, int16, int32 or int64, got %t", item))
+					out <- &IllegalInputError{
+						fmt.Sprintf("expected type: int, int8, int16, int32 or int64, got %t", item),
+					}
 					close(out)
 					return
 				}
@@ -1430,9 +1430,9 @@ func (o *observable) SumInt64() Single {
 func (o *observable) SumFloat32() Single {
 	f := func(out chan interface{}) {
 		var sum float32
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				switch item := item.(type) {
 				case int:
 					sum += float32(item)
@@ -1447,8 +1447,9 @@ func (o *observable) SumFloat32() Single {
 				case float32:
 					sum += item
 				default:
-					out <- errors.New(errors.IllegalInputError,
-						fmt.Sprintf("expected type: float32, int, int8, int16, int32 or int64, got %t", item))
+					out <- &IllegalInputError{
+						fmt.Sprintf("expected type: float32, int, int8, int16, int32 or int64, got %t", item),
+					}
 					close(out)
 					return
 				}
@@ -1466,9 +1467,9 @@ func (o *observable) SumFloat32() Single {
 func (o *observable) SumFloat64() Single {
 	f := func(out chan interface{}) {
 		var sum float64
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				switch item := item.(type) {
 				case int:
 					sum += float64(item)
@@ -1485,8 +1486,9 @@ func (o *observable) SumFloat64() Single {
 				case float64:
 					sum += item
 				default:
-					out <- errors.New(errors.IllegalInputError,
-						fmt.Sprintf("expected type: float32, float64, int, int8, int16, int32 or int64, got %t", item))
+					out <- &IllegalInputError{
+						fmt.Sprintf("expected type: float32, float64, int, int8, int16, int32 or int64, got %t", item),
+					}
 					close(out)
 					return
 				}
@@ -1505,9 +1507,9 @@ func (o *observable) SumFloat64() Single {
 func (o *observable) Take(nth uint) Observable {
 	f := func(out chan interface{}) {
 		takeCount := 0
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				if takeCount < int(nth) {
 					takeCount++
 					out <- item
@@ -1530,9 +1532,9 @@ func (o *observable) TakeLast(nth uint) Observable {
 		n := int(nth)
 		r := ring.New(n)
 		count := 0
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				count++
 				r.Value = item
 				r = r.Next()
@@ -1562,9 +1564,9 @@ func (o *observable) TakeLast(nth uint) Observable {
 // checks the specified predicate for each item, and then completes when the condition is satisfied.
 func (o *observable) TakeUntil(apply Predicate) Observable {
 	f := func(out chan interface{}) {
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				out <- item
 				if apply(item) {
 					break
@@ -1582,9 +1584,9 @@ func (o *observable) TakeUntil(apply Predicate) Observable {
 // item satisfied a specified condition, and then completes as soon as this condition is not satisfied.
 func (o *observable) TakeWhile(apply Predicate) Observable {
 	f := func(out chan interface{}) {
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				if apply(item) {
 					out <- item
 					continue
@@ -1601,11 +1603,13 @@ func (o *observable) TakeWhile(apply Predicate) Observable {
 
 func (o *observable) Timeout(duration Duration) Observable {
 	f := func(out chan interface{}) {
-		it := o.Iterator()
+		it := o.Iterator(context.Background())
+		ctx, _ := context.WithTimeout(context.Background(), duration.duration())
 		for {
-			if item, err := it.Next(); err == nil {
-
+			if item, err := it.Next(ctx); err == nil {
+				out <- item
 			} else {
+				out <- err
 				break
 			}
 		}
@@ -1626,9 +1630,9 @@ func (o *observable) ToChannel(opts ...options.Option) Channel {
 	}
 
 	go func() {
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				ch <- item
 			} else {
 				break
@@ -1644,9 +1648,9 @@ func (o *observable) ToChannel(opts ...options.Option) Channel {
 func (o *observable) ToSlice() Single {
 	f := func(out chan interface{}) {
 		s := make([]interface{}, 0)
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				s = append(s, item)
 			} else {
 				break
@@ -1663,9 +1667,9 @@ func (o *observable) ToSlice() Single {
 func (o *observable) ToMap(keySelector Function) Single {
 	f := func(out chan interface{}) {
 		m := make(map[interface{}]interface{})
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				m[keySelector(item)] = item
 			} else {
 				break
@@ -1683,9 +1687,9 @@ func (o *observable) ToMap(keySelector Function) Single {
 func (o *observable) ToMapWithValueSelector(keySelector, valueSelector Function) Single {
 	f := func(out chan interface{}) {
 		m := make(map[interface{}]interface{})
-		it := o.iterable.Iterator()
+		it := o.iterable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				m[keySelector(item)] = valueSelector(item)
 			} else {
 				break
@@ -1701,13 +1705,13 @@ func (o *observable) ToMapWithValueSelector(keySelector, valueSelector Function)
 // and emit single items for each combination based on the results of this function
 func (o *observable) ZipFromObservable(publisher Observable, zipper Function2) Observable {
 	f := func(out chan interface{}) {
-		it := o.iterable.Iterator()
-		it2 := publisher.Iterator()
+		it := o.iterable.Iterator(context.Background())
+		it2 := publisher.Iterator(context.Background())
 	OuterLoop:
 		for {
-			if item1, err := it.Next(); err == nil {
+			if item1, err := it.Next(context.Background()); err == nil {
 				for {
-					if item2, err := it2.Next(); err == nil {
+					if item2, err := it2.Next(context.Background()); err == nil {
 						out <- zipper(item1, item2)
 						continue OuterLoop
 					} else {

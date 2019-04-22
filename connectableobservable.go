@@ -1,9 +1,11 @@
 package rxgo
 
 import (
+	"context"
+	"sync"
+
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/options"
-	"sync"
 )
 
 type ConnectableObservable interface {
@@ -23,8 +25,8 @@ func newConnectableObservableFromObservable(observable Observable) ConnectableOb
 	}
 }
 
-func (c *connectableObservable) Iterator() Iterator {
-	return c.observable.Iterator()
+func (c *connectableObservable) Iterator(ctx context.Context) Iterator {
+	return c.observable.Iterator(context.Background())
 }
 
 func (c *connectableObservable) All(predicate Predicate) Single {
@@ -74,9 +76,9 @@ func (c *connectableObservable) BufferWithTimeOrCount(timespan Duration, count i
 func (c *connectableObservable) Connect() Observer {
 	out := NewObserver()
 	go func() {
-		it := c.observable.Iterator()
+		it := c.observable.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				c.observersMutex.Lock()
 				for _, observer := range c.observers {
 					c.observersMutex.Unlock()

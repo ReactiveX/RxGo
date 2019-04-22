@@ -1,6 +1,4 @@
-package optional
-
-import "github.com/reactivex/rxgo/errors"
+package rxgo
 
 var emptyOptional = new(empty)
 
@@ -31,7 +29,7 @@ func (s *some) IsEmpty() bool {
 
 // Get returns the content and an optional error is the optional is empty
 func (e *empty) Get() (interface{}, error) {
-	return nil, errors.New(errors.NoSuchElementError)
+	return nil, &NoSuchElementError{}
 }
 
 // IsEmpty returns whether the optional is empty
@@ -47,6 +45,6 @@ func Of(data interface{}) Optional {
 }
 
 // Empty returns an empty optional
-func Empty() Optional {
+func EmptyOptional() Optional {
 	return emptyOptional
 }

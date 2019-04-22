@@ -1,7 +1,7 @@
 package rxgo
 
-import "C"
 import (
+	"context"
 	"math"
 	"sync"
 	"sync/atomic"
@@ -9,7 +9,6 @@ import (
 
 	"github.com/reactivex/rxgo/options"
 
-	"github.com/reactivex/rxgo/errors"
 	"github.com/reactivex/rxgo/handlers"
 )
 
@@ -88,7 +87,7 @@ func CombineLatest(f FunctionN, observable Observable, observables ...Observable
 		var size = uint32(len(observables)) + 1
 		var counter uint32
 		s := make([]interface{}, size, size)
-		its := make([]Iterator, size, size)
+		cancels := make([]context.CancelFunc, size, size)
 		mutex := sync.Mutex{}
 		wg := sync.WaitGroup{}
 		wg.Add(int(size))
@@ -96,7 +95,7 @@ func CombineLatest(f FunctionN, observable Observable, observables ...Observable
 
 		handler := func(it Iterator, i int) {
 			for {
-				if item, err := it.Next(); err == nil {
+				if item, err := it.Next(context.Background()); err == nil {
 					switch v := item.(type) {
 					case error:
 						out <- v
@@ -121,19 +120,21 @@ func CombineLatest(f FunctionN, observable Observable, observables ...Observable
 			}
 		}
 
-		it := observable.Iterator()
+		ctx, cancel := context.WithCancel(context.Background())
+		it := observable.Iterator(ctx)
 		go handler(it, 0)
-		its[0] = it
+		cancels[0] = cancel
 		for i, o := range observables {
-			it = o.Iterator()
+			ctx, cancel := context.WithCancel(context.Background())
+			it = o.Iterator(ctx)
 			go handler(it, i+1)
-			its[i+1] = it
+			cancels[i+1] = cancel
 		}
 
 		go func() {
 			for range errCh {
-				for _, it := range its {
-					it.cancel()
+				for _, cancel := range cancels {
+					cancel()
 				}
 			}
 		}()
@@ -148,9 +149,9 @@ func CombineLatest(f FunctionN, observable Observable, observables ...Observable
 func Concat(observable1 Observable, observables ...Observable) Observable {
 	out := make(chan interface{})
 	go func() {
-		it := observable1.Iterator()
+		it := observable1.Iterator(context.Background())
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				out <- item
 			} else {
 				break
@@ -158,9 +159,9 @@ func Concat(observable1 Observable, observables ...Observable) Observable {
 		}
 
 		for _, obs := range observables {
-			it := obs.Iterator()
+			it := obs.Iterator(context.Background())
 			for {
-				if item, err := it.Next(); err == nil {
+				if item, err := it.Next(context.Background()); err == nil {
 					out <- item
 				} else {
 					break
@@ -246,7 +247,7 @@ func FromIterator(it Iterator) Observable {
 	out := make(chan interface{})
 	go func() {
 		for {
-			if item, err := it.Next(); err == nil {
+			if item, err := it.Next(context.Background()); err == nil {
 				out <- item
 			} else {
 				break
@@ -301,8 +302,8 @@ func Merge(observable Observable, observables ...Observable) Observable {
 
 	f := func(o Observable) {
 		for {
-			it := o.Iterator()
-			if item, err := it.Next(); err == nil {
+			it := o.Iterator(context.Background())
+			if item, err := it.Next(context.Background()); err == nil {
 				out <- item
 			} else {
 				break
@@ -335,10 +336,10 @@ func Never() Observable {
 // Range creates an Observable that emits a particular range of sequential integers.
 func Range(start, count int) (Observable, error) {
 	if count < 0 {
-		return nil, errors.New(errors.IllegalInputError, "count must be positive")
+		return nil, &IllegalInputError{"count must be positive"}
 	}
 	if start+count-1 > math.MaxInt32 {
-		return nil, errors.New(errors.IllegalInputError, "max value is bigger than MaxInt32")
+		return nil, &IllegalInputError{"max value is bigger than MaxInt32"}
 	}
 
 	return newObservableFromRange(start, count), nil

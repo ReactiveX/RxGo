@@ -2,13 +2,10 @@ package rxgo
 
 import (
 	"context"
-
-	"github.com/reactivex/rxgo/errors"
 )
 
 type Iterator interface {
-	Next() (interface{}, error)
-	cancel()
+	Next(ctx context.Context) (interface{}, error)
 }
 
 type iteratorFromChannel struct {
@@ -27,44 +24,34 @@ type iteratorFromSlice struct {
 	s     []interface{}
 }
 
-func (it *iteratorFromChannel) Next() (interface{}, error) {
+func (it *iteratorFromChannel) Next(ctx context.Context) (interface{}, error) {
 	select {
+	case <-ctx.Done():
+		return nil, &TimeoutError{}
 	case <-it.ctx.Done():
-		return nil, errors.New(errors.CancelledIteratorError)
+		return nil, &CancelledIteratorError{}
 	case next, ok := <-it.ch:
 		if ok {
 			return next, nil
 		}
-		return nil, errors.New(errors.EndOfIteratorError)
+		return nil, &EndOfIteratorError{}
 	}
 }
 
-func (it *iteratorFromChannel) cancel() {
-	it.cancelFunc()
-}
-
-func (it *iteratorFromRange) Next() (interface{}, error) {
+func (it *iteratorFromRange) Next(ctx context.Context) (interface{}, error) {
 	it.current++
 	if it.current <= it.end {
 		return it.current, nil
 	}
-	return nil, errors.New(errors.EndOfIteratorError)
+	return nil, &EndOfIteratorError{}
 }
 
-func (it *iteratorFromRange) cancel() {
-	// TODO
-}
-
-func (it *iteratorFromSlice) Next() (interface{}, error) {
+func (it *iteratorFromSlice) Next(ctx context.Context) (interface{}, error) {
 	it.index++
 	if it.index < len(it.s) {
 		return it.s[it.index], nil
 	}
-	return nil, errors.New(errors.EndOfIteratorError)
-}
-
-func (it *iteratorFromSlice) cancel() {
-	// TODO
+	return nil, &EndOfIteratorError{}
 }
 
 func newIteratorFromChannel(ch chan interface{}) Iterator {

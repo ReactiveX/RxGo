@@ -1,9 +1,8 @@
-package optional
+package rxgo
 
 import (
 	"testing"
 
-	"github.com/reactivex/rxgo/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,11 +26,11 @@ func TestOfEmpty(t *testing.T) {
 }
 
 func TestEmpty(t *testing.T) {
-	empty := Empty()
+	empty := EmptyOptional()
 	got, err := empty.Get()
 	assert.True(t, empty.IsEmpty())
 	if err != nil {
-		assert.Exactly(t, errors.New(errors.NoSuchElementError), err)
+		assert.Equal(t, &NoSuchElementError{}, err)
 	} else {
 		assert.Fail(t, "error is not nil")
 	}
