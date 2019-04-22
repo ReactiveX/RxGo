@@ -59,6 +59,7 @@ func newColdSingle(f func(chan interface{})) Single {
 	}
 }
 
+// NewOptionalSingleFromChannel creates a new OptionalSingle from a channel input
 func NewOptionalSingleFromChannel(ch chan Optional) OptionalSingle {
 	return &optionalSingle{
 		ch: ch,

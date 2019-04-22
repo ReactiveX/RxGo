@@ -1,21 +1,27 @@
 package rxgo
 
+// CancelledIteratorError is triggered when an iterator is canceled
 type CancelledIteratorError struct {
 }
 
+// EndOfIteratorError is triggered when an iterator is complete
 type EndOfIteratorError struct {
 }
 
+// IllegalInputError is triggered when the observable receives an illegal input
 type IllegalInputError struct {
 	reason string
 }
 
+// IndexOutOfBoundError is triggered when the observable cannot access to the specified index
 type IndexOutOfBoundError struct {
 }
 
+// NoSuchElementError is triggered when an optional does not contain any element
 type NoSuchElementError struct {
 }
 
+// TimeoutError is triggered when a timeout occurs
 type TimeoutError struct {
 }
 
