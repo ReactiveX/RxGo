@@ -74,6 +74,7 @@ type Observable interface {
 	TakeLast(nth uint) Observable
 	TakeUntil(apply Predicate) Observable
 	TakeWhile(apply Predicate) Observable
+	TimeInterval() Observable
 	Timeout(duration Duration) Observable
 	ToChannel(opts ...options.Option) Channel
 	ToMap(keySelector Function) Single
@@ -1598,6 +1599,29 @@ func (o *observable) TakeWhile(apply Predicate) Observable {
 		}
 		close(out)
 	}
+	return newColdObservableFromFunction(f)
+}
+
+func (o *observable) TimeInterval() Observable {
+	f := func(out chan interface{}) {
+		it := o.Iterator(context.Background())
+		var latestTime time.Time
+		for {
+			if _, err := it.Next(context.Background()); err == nil {
+				if latestTime.IsZero() {
+					out <- time.Duration(0)
+				} else {
+					out <- time.Since(latestTime)
+				}
+				latestTime = time.Now()
+			} else {
+				out <- err
+				break
+			}
+		}
+		close(out)
+	}
+
 	return newColdObservableFromFunction(f)
 }
 

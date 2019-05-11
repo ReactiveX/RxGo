@@ -1941,6 +1941,45 @@ var _ = Describe("StartWith operator", func() {
 	})
 })
 
+var _ = Describe("TimeInterval operator", func() {
+	Context("when creating an observable with TimeInterval operator", func() {
+		var ch chan interface{}
+		var ob Observable
+
+		BeforeEach(func() {
+			ch = make(chan interface{}, 2)
+			ob = FromChannel(ch).TimeInterval()
+		})
+		Context("when there isn\\'t a fixed interval between items", func() {
+			It("should receive an arbitrary second interval greater than zero", func() {
+				outNext, _, _ := subscribe(ob)
+				ch <- 10
+				ch <- 20
+				close(ch)
+				items := pollItems(outNext, timeout)
+				Expect(items).Should(HaveLen(2))
+				Expect(items[0]).Should(Equal(time.Duration(0)))
+				Expect(items[1]).Should(BeNumerically(">", time.Duration(0)))
+			})
+		})
+
+		Context("when there is a fixed interval between items", func() {
+			It("should receive an arbitrary second interval greater than the fixed interval", func() {
+				outNext, _, _ := subscribe(ob)
+				ch <- 10
+				time.Sleep(time.Millisecond)
+				ch <- 20
+				close(ch)
+
+				items := pollItems(outNext, timeout)
+				Expect(items).Should(HaveLen(2))
+				Expect(items[0]).Should(Equal(time.Duration(0)))
+				Expect(items[1]).Should(BeNumerically("~", time.Duration(time.Millisecond), 500*time.Microsecond))
+			})
+		})
+	})
+})
+
 var _ = Describe("Timeout operator", func() {
 	// FIXME
 	//Context("when creating an observable with timeout operator", func() {

@@ -285,6 +285,10 @@ func (c *connectableObservable) TakeWhile(apply Predicate) Observable {
 	return c.observable.TakeWhile(apply)
 }
 
+func (c *connectableObservable) TimeInterval() Observable {
+	return c.observable.TimeInterval()
+}
+
 func (c *connectableObservable) Timeout(duration Duration) Observable {
 	return c.observable.Timeout(duration)
 }
