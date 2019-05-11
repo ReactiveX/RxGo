@@ -74,6 +74,7 @@ type Observable interface {
 	TakeLast(nth uint) Observable
 	TakeUntil(apply Predicate) Observable
 	TakeWhile(apply Predicate) Observable
+	Timestamp() Observable
 	Timeout(duration Duration) Observable
 	ToChannel(opts ...options.Option) Channel
 	ToMap(keySelector Function) Single
@@ -84,6 +85,14 @@ type Observable interface {
 	getOnErrorResumeNext() ErrorToObservableFunction
 	getOnErrorReturn() ErrorFunction
 	getOnErrorReturnItem() interface{}
+}
+
+// Timestamped is the type that wraps emitted items when Timestamp operator is used
+type Timestamped struct {
+	// value contains the emitted item
+	value interface{}
+	// timestamp represents the time when the item was emitted
+	timestamp int64
 }
 
 // observable is a structure handling a channel of interface{} and implementing Observable
@@ -1599,6 +1608,17 @@ func (o *observable) TakeWhile(apply Predicate) Observable {
 		close(out)
 	}
 	return newColdObservableFromFunction(f)
+}
+
+// Timestamp returns an Observable that emits items emitted by the source Observable
+// wrapped in a Timestamped struct containing the value and the timestamp when it was emitted
+func (o *observable) Timestamp() Observable {
+	return o.Map(func(item interface{}) interface{} {
+		return &Timestamped{
+			value:     item,
+			timestamp: time.Now().UnixNano() / int64(time.Millisecond),
+		}
+	})
 }
 
 func (o *observable) Timeout(duration Duration) Observable {

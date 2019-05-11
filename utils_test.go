@@ -34,6 +34,18 @@ func pollItems(ch chan interface{}, d time.Duration) []interface{} {
 	}
 }
 
+func pollTimestampedItems(ch chan interface{}, d time.Duration) []*Timestamped {
+	s := make([]*Timestamped, 0)
+	for {
+		select {
+		case res := <-ch:
+			s = append(s, res.(*Timestamped))
+		case <-time.After(d):
+			return s
+		}
+	}
+}
+
 func nextHandler(out chan interface{}) handlers.NextFunc {
 	return handlers.NextFunc(func(i interface{}) {
 		out <- i

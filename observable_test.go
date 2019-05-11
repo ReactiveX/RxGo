@@ -1941,6 +1941,33 @@ var _ = Describe("StartWith operator", func() {
 	})
 })
 
+var _ = Describe("Timestap operator", func() {
+	Context("when creating an observable with timestamp operator", func() {
+		var ch chan interface{}
+		var ob Observable
+		BeforeEach(func() {
+			ch = make(chan interface{}, 2)
+			ob = FromChannel(ch).Timestamp()
+		})
+
+		It("receives timestamped items when subscribing", func() {
+			outNext, _, _ := subscribe(ob)
+			firstItemTimestamp := time.Now().UnixNano() / int64(time.Millisecond)
+			ch <- 10
+			secondItemTimestamp := time.Now().UnixNano() / int64(time.Millisecond)
+			ch <- 20
+			close(ch)
+
+			var items []*Timestamped = pollTimestampedItems(outNext, timeout)
+			Expect(items).Should(HaveLen(2))
+			Expect(items[0].value).Should(Equal(10))
+			Expect(items[0].timestamp).Should(BeNumerically(">=", firstItemTimestamp))
+			Expect(items[1].value).Should(Equal(20))
+			Expect(items[1].timestamp).Should(BeNumerically(">=", secondItemTimestamp))
+		})
+	})
+})
+
 var _ = Describe("Timeout operator", func() {
 	// FIXME
 	//Context("when creating an observable with timeout operator", func() {
