@@ -1,5 +1,5 @@
 export GO111MODULE=on
-export GOPROXY=https://goproxy.io
+export GOPROXY=https://proxy.golang.org
 
 PACKAGES=`go list ./... | grep -v /vendor/`
 VETPACKAGES=`go list ./... | grep -v /vendor/`
