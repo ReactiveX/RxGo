@@ -1156,9 +1156,14 @@ func (o *observable) Sample(obs Observable) Observable {
 					close(out)
 					break mainLoop
 				}
-			case <-timeIntervalChan:
-				if isAnyItemEmitted {
-					out <- lastEmittedItem
+			case _, ok := <-timeIntervalChan:
+				if ok {
+					if isAnyItemEmitted {
+						out <- lastEmittedItem
+					}
+				} else {
+					close(out)
+					break mainLoop
 				}
 			}
 		}

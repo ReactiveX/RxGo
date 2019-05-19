@@ -1812,7 +1812,7 @@ var _ = Describe("Sample operator", func() {
 
 	Context("when creating an observable and calling Sample with a timeInterval that is "+
 		"not fired before the source observable is closed", func() {
-		observable := Just(1, 2, 3).
+		observable := Just(1).
 			Sample(Interval(make(chan struct{}), 50*time.Millisecond))
 
 		It("should not produce any items", func() {
