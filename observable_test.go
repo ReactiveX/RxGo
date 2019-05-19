@@ -1795,6 +1795,58 @@ var _ = Describe("Observable operators", func() {
 	})
 })
 
+var _ = Describe("Sample operator", func() {
+	Context("when creating an observable and calling Sample", func() {
+		It("should produce the most recent items emitted within the specified time intervals", func() {
+			observable := Interval(make(chan struct{}), 50*time.Millisecond).
+				Sample(Interval(make(chan struct{}), 250*time.Millisecond)).
+				Take(2)
+
+			outNext, _, outDone := subscribe(observable)
+			Expect(pollItem(outNext, timeout)).Should(Equal(3))
+			Expect(pollItem(outNext, timeout)).Should(Equal(8))
+			Expect(pollItem(outNext, timeout)).Should(Equal(noData))
+			Expect(pollItem(outDone, timeout)).Should(Equal(doneSignal))
+		})
+	})
+
+	Context("when creating an observable and calling Sample with a timeInterval that is "+
+		"not fired before the source observable is closed", func() {
+		observable := Just(1, 2, 3).
+			Sample(Interval(make(chan struct{}), 50*time.Millisecond))
+
+		It("should not produce any items", func() {
+			outNext, _, outDone := subscribe(observable)
+			Expect(pollItem(outNext, timeout)).Should(Equal(noData))
+			Expect(pollItem(outDone, timeout)).Should(Equal(doneSignal))
+		})
+	})
+
+	Context("when creating an observable and calling Sample with a timeInterval that is "+
+		"fired before any item is emitted", func() {
+		frequence100ms := new(mockDuration)
+		frequence100ms.On("duration").Return(100 * time.Millisecond)
+		observable := Timer(frequence100ms).
+			Sample(Interval(make(chan struct{}), 50*time.Millisecond))
+
+		It("should not produce any items", func() {
+			outNext, _, outDone := subscribe(observable)
+			Expect(pollItem(outNext, timeout)).Should(Equal(noData))
+			Expect(pollItem(outDone, timeout)).Should(Equal(doneSignal))
+		})
+	})
+
+	Context("when creating an empty observable and calling Sample", func() {
+		observable := Empty().Sample(Interval(make(chan struct{}), 50*time.Millisecond))
+
+		It("should not produce any items", func() {
+			outNext, _, outDone := subscribe(observable)
+			Expect(pollItem(outNext, timeout)).Should(Equal(noData))
+			Expect(pollItem(outDone, timeout)).Should(Equal(doneSignal))
+		})
+	})
+})
+
 var _ = Describe("StartWith operator", func() {
 	Context("when creating an observable and calling StartWithItems", func() {
 		observable := Just(1, 2, 3).StartWithItems(10, 20)

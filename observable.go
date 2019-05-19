@@ -58,6 +58,7 @@ type Observable interface {
 	Publish() ConnectableObservable
 	Reduce(apply Function2) OptionalSingle
 	Repeat(count int64, frequency Duration) Observable
+	Sample(obs Observable) Observable
 	Scan(apply Function2) Observable
 	SequenceEqual(obs Observable) Single
 	Skip(nth uint) Observable
@@ -1108,6 +1109,61 @@ func (o *observable) Repeat(count int64, frequency Duration) Observable {
 		}
 		close(out)
 	}
+	return newColdObservableFromFunction(f)
+}
+
+// Sample returns an Observable that emits the most recent items emitted by the source
+// ObservableSource whenever the input Observable emits an item.
+func (o *observable) Sample(obs Observable) Observable {
+	f := func(out chan interface{}) {
+		oChan := make(chan interface{})
+		timeIntervalChan := make(chan interface{})
+		var lastEmittedItem interface{}
+		isAnyItemEmitted := false
+
+		go func() {
+			it := o.iterable.Iterator(context.Background())
+			for {
+				if item, err := it.Next(context.Background()); err == nil {
+					oChan <- item
+				} else {
+					break
+				}
+			}
+			close(oChan)
+		}()
+
+		go func() {
+			it := obs.Iterator(context.Background())
+			for {
+				if item, err := it.Next(context.Background()); err == nil {
+					timeIntervalChan <- item
+				} else {
+					break
+				}
+			}
+			close(timeIntervalChan)
+		}()
+
+	mainLoop:
+		for {
+			select {
+			case item, ok := <-oChan:
+				if ok {
+					lastEmittedItem = item
+					isAnyItemEmitted = true
+				} else {
+					close(out)
+					break mainLoop
+				}
+			case <-timeIntervalChan:
+				if isAnyItemEmitted {
+					out <- lastEmittedItem
+				}
+			}
+		}
+	}
+
 	return newColdObservableFromFunction(f)
 }
 
