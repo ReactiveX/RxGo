@@ -1812,10 +1812,10 @@ var _ = Describe("Sample operator", func() {
 
 	Context("when creating an observable and calling Sample with a timeInterval that is "+
 		"not fired before the source observable is closed", func() {
-		observable := Just(1).
-			Sample(Interval(make(chan struct{}), 50*time.Millisecond))
-
 		It("should not produce any items", func() {
+			observable := Just(1).
+				Sample(Interval(make(chan struct{}), time.Second))
+
 			outNext, _, outDone := subscribe(observable)
 			Expect(pollItem(outNext, timeout)).Should(Equal(noData))
 			Expect(pollItem(outDone, timeout)).Should(Equal(doneSignal))
@@ -1824,12 +1824,13 @@ var _ = Describe("Sample operator", func() {
 
 	Context("when creating an observable and calling Sample with a timeInterval that is "+
 		"fired before any item is emitted", func() {
-		frequence100ms := new(mockDuration)
-		frequence100ms.On("duration").Return(100 * time.Millisecond)
-		observable := Timer(frequence100ms).
-			Sample(Interval(make(chan struct{}), 50*time.Millisecond))
+		frequence50ms := new(mockDuration)
+		frequence50ms.On("duration").Return(50 * time.Millisecond)
 
 		It("should not produce any items", func() {
+			observable := Interval(make(chan struct{}), time.Second).
+				Sample(Timer(frequence50ms))
+
 			outNext, _, outDone := subscribe(observable)
 			Expect(pollItem(outNext, timeout)).Should(Equal(noData))
 			Expect(pollItem(outDone, timeout)).Should(Equal(doneSignal))

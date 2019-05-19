@@ -1116,52 +1116,55 @@ func (o *observable) Repeat(count int64, frequency Duration) Observable {
 // ObservableSource whenever the input Observable emits an item.
 func (o *observable) Sample(obs Observable) Observable {
 	f := func(out chan interface{}) {
-		oChan := make(chan interface{})
-		timeIntervalChan := make(chan interface{})
+		mainChan := make(chan interface{})
+		obsChan := make(chan interface{})
 		var lastEmittedItem interface{}
 		isAnyItemEmitted := false
+		ctx, cancel := context.WithCancel(context.Background())
 
 		go func() {
-			it := o.iterable.Iterator(context.Background())
+			it := o.iterable.Iterator(ctx)
 			for {
-				if item, err := it.Next(context.Background()); err == nil {
-					oChan <- item
+				if item, err := it.Next(ctx); err == nil {
+					mainChan <- item
 				} else {
 					break
 				}
 			}
-			close(oChan)
+			close(mainChan)
 		}()
 
 		go func() {
-			it := obs.Iterator(context.Background())
+			it := obs.Iterator(ctx)
 			for {
-				if item, err := it.Next(context.Background()); err == nil {
-					timeIntervalChan <- item
+				if item, err := it.Next(ctx); err == nil {
+					obsChan <- item
 				} else {
 					break
 				}
 			}
-			close(timeIntervalChan)
+			close(obsChan)
 		}()
 
 	mainLoop:
 		for {
 			select {
-			case item, ok := <-oChan:
+			case item, ok := <-mainChan:
 				if ok {
 					lastEmittedItem = item
 					isAnyItemEmitted = true
 				} else {
+					cancel()
 					close(out)
 					break mainLoop
 				}
-			case _, ok := <-timeIntervalChan:
+			case _, ok := <-obsChan:
 				if ok {
 					if isAnyItemEmitted {
 						out <- lastEmittedItem
 					}
 				} else {
+					cancel()
 					close(out)
 					break mainLoop
 				}
