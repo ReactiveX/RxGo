@@ -336,8 +336,8 @@ func Merge(observable Observable, observables ...Observable) Observable {
 	wg := sync.WaitGroup{}
 
 	f := func(o Observable) {
+		it := o.Iterator(context.Background())
 		for {
-			it := o.Iterator(context.Background())
 			if item, err := it.Next(context.Background()); err == nil {
 				out <- item
 			} else {
