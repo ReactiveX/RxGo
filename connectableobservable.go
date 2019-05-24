@@ -105,6 +105,10 @@ func (c *connectableObservable) Count() Single {
 	return c.observable.Count()
 }
 
+func (c *connectableObservable) Debounce(duration Duration) Observable {
+	return c.observable.Debounce(duration)
+}
+
 func (c *connectableObservable) DefaultIfEmpty(defaultValue interface{}) Observable {
 	return c.observable.DefaultIfEmpty(defaultValue)
 }

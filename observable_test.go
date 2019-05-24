@@ -1795,6 +1795,34 @@ var _ = Describe("Observable operators", func() {
 	})
 })
 
+var _ = Describe("Debounce operator", func() {
+	Context("when creating an observable and calling Debounce", func() {
+		observable := Interval(make(chan struct{}), 25*time.Millisecond).
+			Take(5).
+			Repeat(2, WithDuration(100*time.Millisecond)).
+			Debounce(WithDuration(50 * time.Millisecond))
+
+		It("the observer should filter out items that are followed by another emitted item "+
+			"before the specified duration elapses", func() {
+			outNext, _, outDone := subscribe(observable)
+			Expect(pollItem(outNext, timeout)).Should(Equal(4))
+			Expect(pollItem(outNext, timeout)).Should(Equal(4))
+			Expect(pollItem(outNext, timeout)).Should(Equal(4))
+			Expect(pollItem(outNext, timeout)).Should(Equal(noData))
+			Expect(pollItem(outDone, timeout)).Should(Equal(doneSignal))
+		})
+	})
+
+	Context("when creating an empty observable and calling Debounce", func() {
+		observable := Empty().Debounce(WithDuration(50 * time.Millisecond))
+		It("the observer should not receive any items", func() {
+			outNext, _, outDone := subscribe(observable)
+			Expect(pollItem(outNext, timeout)).Should(Equal(noData))
+			Expect(pollItem(outDone, timeout)).Should(Equal(doneSignal))
+		})
+	})
+})
+
 var _ = Describe("StartWith operator", func() {
 	Context("when creating an observable and calling StartWithItems", func() {
 		observable := Just(1, 2, 3).StartWithItems(10, 20)

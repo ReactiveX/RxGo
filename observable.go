@@ -35,6 +35,7 @@ type Observable interface {
 	BufferWithTimeOrCount(timespan Duration, count int) Observable
 	Contains(equal Predicate) Single
 	Count() Single
+	Debounce(duration Duration) Observable
 	DefaultIfEmpty(defaultValue interface{}) Observable
 	Distinct(apply Function) Observable
 	DistinctUntilChanged(apply Function) Observable
@@ -710,6 +711,58 @@ func (o *observable) Count() Single {
 		close(out)
 	}
 	return newColdSingle(f)
+}
+
+// Debounce returns an Observable that filters out items emitted by the source Observable
+// that are followed by another emitted item before the specified duration elapses
+func (o *observable) Debounce(duration Duration) Observable {
+	f := func(out chan interface{}) {
+		oChan := make(chan interface{})
+		var lastEmittedItem interface{}
+		isChanClosed := false
+		isItemWaitingToBeEmitted := false
+		timer := time.NewTimer(duration.duration())
+
+		go func() {
+			it := o.iterable.Iterator(context.Background())
+			for {
+				if item, err := it.Next(context.Background()); err == nil {
+					oChan <- item
+				} else {
+					break
+				}
+			}
+			close(oChan)
+		}()
+
+	mainLoop:
+		for {
+			select {
+			case item, ok := <-oChan:
+				if ok {
+					timer.Reset(duration.duration())
+					lastEmittedItem = item
+					isItemWaitingToBeEmitted = true
+				} else if isItemWaitingToBeEmitted {
+					isChanClosed = true
+				} else {
+					break mainLoop
+				}
+			case <-timer.C:
+				if isItemWaitingToBeEmitted {
+					out <- lastEmittedItem
+					isItemWaitingToBeEmitted = false
+				}
+				if isChanClosed {
+					break mainLoop
+				}
+			}
+		}
+
+		close(out)
+	}
+
+	return newColdObservableFromFunction(f)
 }
 
 // DefaultIfEmpty returns an Observable that emits the items emitted by the source
