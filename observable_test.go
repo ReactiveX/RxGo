@@ -1810,6 +1810,30 @@ var _ = Describe("Sample operator", func() {
 		})
 	})
 
+	Context("when creating an observable and calling Sample", func() {
+		It("should not produce any of the emitted items more than once", func() {
+			ch := make(chan interface{})
+			observable := FromChannel(ch).
+				Sample(Interval(make(chan struct{}), 50*time.Millisecond))
+
+			outNext, _, outDone := subscribe(observable)
+			ch <- 1
+
+			wg := sync.WaitGroup{}
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				time.Sleep(200 * time.Millisecond)
+				close(ch)
+			}()
+			wg.Wait()
+
+			Expect(pollItem(outNext, timeout)).Should(Equal(1))
+			Expect(pollItem(outNext, timeout)).Should(Equal(noData))
+			Expect(pollItem(outDone, timeout)).Should(Equal(doneSignal))
+		})
+	})
+
 	Context("when creating an observable and calling Sample with a timeInterval that is "+
 		"not fired before the source observable is closed", func() {
 		It("should not produce any items", func() {
