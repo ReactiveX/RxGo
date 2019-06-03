@@ -1119,7 +1119,7 @@ func (o *observable) Sample(obs Observable) Observable {
 		mainChan := make(chan interface{})
 		obsChan := make(chan interface{})
 		var lastEmittedItem interface{}
-		isAnyItemEmitted := false
+		isItemWaitingToBeEmitted := false
 		ctx, cancel := context.WithCancel(context.Background())
 
 		go func() {
@@ -1152,7 +1152,7 @@ func (o *observable) Sample(obs Observable) Observable {
 			case item, ok := <-mainChan:
 				if ok {
 					lastEmittedItem = item
-					isAnyItemEmitted = true
+					isItemWaitingToBeEmitted = true
 				} else {
 					cancel()
 					close(out)
@@ -1160,8 +1160,9 @@ func (o *observable) Sample(obs Observable) Observable {
 				}
 			case _, ok := <-obsChan:
 				if ok {
-					if isAnyItemEmitted {
+					if isItemWaitingToBeEmitted {
 						out <- lastEmittedItem
+						isItemWaitingToBeEmitted = false
 					}
 				} else {
 					cancel()
