@@ -1818,15 +1818,8 @@ var _ = Describe("Sample operator", func() {
 
 			outNext, _, outDone := subscribe(observable)
 			ch <- 1
-
-			wg := sync.WaitGroup{}
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				time.Sleep(200 * time.Millisecond)
-				close(ch)
-			}()
-			wg.Wait()
+			time.Sleep(200 * time.Millisecond)
+			close(ch)
 
 			Expect(pollItem(outNext, timeout)).Should(Equal(1))
 			Expect(pollItem(outNext, timeout)).Should(Equal(noData))
