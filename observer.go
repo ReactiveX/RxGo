@@ -1,8 +1,6 @@
 package rxgo
 
 import (
-	"sync"
-
 	"github.com/reactivex/rxgo/options"
 
 	"github.com/reactivex/rxgo/handlers"
@@ -25,8 +23,7 @@ type Observer interface {
 }
 
 type observer struct {
-	disposedMutex        sync.Mutex
-	disposed             bool
+	disposed             chan struct{}
 	nextHandler          handlers.NextFunc
 	errHandler           handlers.ErrFunc
 	doneHandler          handlers.DoneFunc
@@ -55,7 +52,9 @@ func (o *observer) getChannel() chan interface{} {
 // NewObserver constructs a new Observer instance with default Observer and accept
 // any number of EventHandler
 func NewObserver(eventHandlers ...handlers.EventHandler) Observer {
-	ob := observer{}
+	ob := observer{
+		disposed: make(chan struct{}),
+	}
 
 	if len(eventHandlers) > 0 {
 		for _, handler := range eventHandlers {
@@ -98,24 +97,21 @@ func (o *observer) Handle(item interface{}) {
 }
 
 func (o *observer) Dispose() {
-	o.disposedMutex.Lock()
-	o.disposed = true
-	o.disposedMutex.Unlock()
+	close(o.disposed)
 }
 
 func (o *observer) IsDisposed() bool {
-	o.disposedMutex.Lock()
-	defer o.disposedMutex.Unlock()
-	return o.disposed
+	select {
+	case <-o.disposed:
+		return true
+	default:
+		return false
+	}
 }
 
 // OnNext applies Observer's NextHandler to an Item
 func (o *observer) OnNext(item interface{}) {
-	o.disposedMutex.Lock()
-	disposed := o.disposed
-	o.disposedMutex.Unlock()
-
-	if !disposed {
+	if !o.IsDisposed() {
 		switch item := item.(type) {
 		case error:
 			return
@@ -131,10 +127,7 @@ func (o *observer) OnNext(item interface{}) {
 
 // OnError applies Observer's ErrHandler to an error
 func (o *observer) OnError(err error) {
-	o.disposedMutex.Lock()
-	disposed := o.disposed
-	o.disposedMutex.Unlock()
-	if !disposed {
+	if !o.IsDisposed() {
 		if o.errHandler != nil {
 			o.errHandler(err)
 			o.Dispose()
@@ -150,10 +143,7 @@ func (o *observer) OnError(err error) {
 
 // OnDone terminates the Observer's internal Observable
 func (o *observer) OnDone() {
-	o.disposedMutex.Lock()
-	disposed := o.disposed
-	o.disposedMutex.Unlock()
-	if !disposed {
+	if !o.IsDisposed() {
 		if o.doneHandler != nil {
 			o.doneHandler()
 			o.Dispose()
@@ -169,10 +159,7 @@ func (o *observer) OnDone() {
 
 // OnDone terminates the Observer's internal Observable
 func (o *observer) Block() error {
-	o.disposedMutex.Lock()
-	disposed := o.disposed
-	o.disposedMutex.Unlock()
-	if !disposed {
+	if !o.IsDisposed() {
 		for v := range o.done {
 			return v
 		}
