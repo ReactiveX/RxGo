@@ -56,7 +56,7 @@ func TestSingleObserverHandleWithError(t *testing.T) {
 	assert.Equal(t, int64(10), got)
 }
 
-func BenchmarkIsDisposed(b *testing.B) {
+func BenchmarkSingleObserverIsDisposed(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		o := NewSingleObserver()
 		for i := 0; i < 10; i++ {
