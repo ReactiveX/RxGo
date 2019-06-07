@@ -210,7 +210,7 @@ func (it *statefulIterable) Next(ctx context.Context) (interface{}, error) {
 	if it.count < 3 {
 		return it.count, nil
 	}
-	return nil, &EndOfIteratorError{}
+	return nil, &NoSuchElementError{}
 }
 
 func (it *statefulIterable) Value() interface{} {
@@ -239,7 +239,7 @@ func (it *statelessIterable) Next(ctx context.Context) (interface{}, error) {
 	if it.count < 3 {
 		return it.count, nil
 	}
-	return nil, &EndOfIteratorError{}
+	return nil, &NoSuchElementError{}
 }
 
 func TestRange(t *testing.T) {

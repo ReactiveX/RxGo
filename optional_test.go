@@ -3,6 +3,8 @@ package rxgo
 import (
 	"testing"
 
+	"github.com/pkg/errors"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -30,7 +32,7 @@ func TestEmpty(t *testing.T) {
 	got, err := empty.Get()
 	assert.True(t, empty.IsEmpty())
 	if err != nil {
-		assert.Equal(t, &NoSuchElementError{}, err)
+		assert.IsType(t, &NoSuchElementError{}, errors.Cause(err))
 	} else {
 		assert.Fail(t, "error is not nil")
 	}
