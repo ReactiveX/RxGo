@@ -57,7 +57,7 @@ func TestHandle(t *testing.T) {
 	assert.Equal(t, 7, i)
 }
 
-func BenchmarkObserverIsDisposed(b *testing.B) {
+func BenchmarkObserver_IsDisposed(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		o := NewObserver()
 		for i := 0; i < 10; i++ {
