@@ -7,9 +7,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/reactivex/rxgo/options"
-
+	"github.com/pkg/errors"
 	"github.com/reactivex/rxgo/handlers"
+	"github.com/reactivex/rxgo/options"
 )
 
 func isClosed(ch <-chan interface{}) bool {
@@ -341,8 +341,8 @@ func Merge(observable Observable, observables ...Observable) Observable {
 			if item, err := it.Next(context.Background()); err == nil {
 				out <- item
 			} else {
-				break
 				wg.Done()
+				break
 			}
 		}
 	}
@@ -371,10 +371,10 @@ func Never() Observable {
 // Range creates an Observable that emits a particular range of sequential integers.
 func Range(start, count int) (Observable, error) {
 	if count < 0 {
-		return nil, &IllegalInputError{"count must be positive"}
+		return nil, errors.Wrap(&IllegalInputError{}, "count must be positive")
 	}
 	if start+count-1 > math.MaxInt32 {
-		return nil, &IllegalInputError{"max value is bigger than MaxInt32"}
+		return nil, errors.Wrap(&IllegalInputError{}, "max value is bigger than math.MaxInt32")
 	}
 
 	return newObservableFromRange(start, count), nil
