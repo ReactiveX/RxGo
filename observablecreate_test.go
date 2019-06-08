@@ -328,10 +328,10 @@ func TestCombineLatest(t *testing.T) {
 
 	//TODO AssertObservableEventually(t, obs, wait, IsEmpty())
 	ch1 <- 1
-	ch2 <- 2
-	ch3 <- 3
 	close(ch1)
+	ch2 <- 2
 	close(ch2)
+	ch3 <- 3
 	close(ch3)
 	AssertObservable(t, obs, HasItems(6), HasNotRaisedAnyError())
 	//TODO AssertObservableEventually(t, obs, wait, 6, 13 etc.)
