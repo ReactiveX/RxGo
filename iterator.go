@@ -2,6 +2,8 @@ package rxgo
 
 import (
 	"context"
+
+	"github.com/pkg/errors"
 )
 
 type Iterator interface {
@@ -27,14 +29,14 @@ type iteratorFromSlice struct {
 func (it *iteratorFromChannel) Next(ctx context.Context) (interface{}, error) {
 	select {
 	case <-ctx.Done():
-		return nil, &TimeoutError{}
+		return nil, &CancelledSubscriptionError{}
 	case <-it.ctx.Done():
 		return nil, &CancelledIteratorError{}
 	case next, ok := <-it.ch:
 		if ok {
 			return next, nil
 		}
-		return nil, &EndOfIteratorError{}
+		return nil, &NoSuchElementError{}
 	}
 }
 
@@ -43,7 +45,7 @@ func (it *iteratorFromRange) Next(ctx context.Context) (interface{}, error) {
 	if it.current <= it.end {
 		return it.current, nil
 	}
-	return nil, &EndOfIteratorError{}
+	return nil, errors.Wrap(&NoSuchElementError{}, "range does not contain anymore elements")
 }
 
 func (it *iteratorFromSlice) Next(ctx context.Context) (interface{}, error) {
@@ -51,7 +53,7 @@ func (it *iteratorFromSlice) Next(ctx context.Context) (interface{}, error) {
 	if it.index < len(it.s) {
 		return it.s[it.index], nil
 	}
-	return nil, &EndOfIteratorError{}
+	return nil, errors.Wrap(&NoSuchElementError{}, "slice does not contain anymore elements")
 }
 
 func newIteratorFromChannel(ch chan interface{}) Iterator {

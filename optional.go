@@ -1,5 +1,7 @@
 package rxgo
 
+import "github.com/pkg/errors"
+
 var emptyOptional = new(empty)
 
 // Optional defines a container for empty values
@@ -29,7 +31,7 @@ func (s *some) IsEmpty() bool {
 
 // Get returns the content and an optional error is the optional is empty
 func (e *empty) Get() (interface{}, error) {
-	return nil, &NoSuchElementError{}
+	return nil, errors.Wrap(&NoSuchElementError{}, "empty does not contain any element")
 }
 
 // IsEmpty returns whether the optional is empty

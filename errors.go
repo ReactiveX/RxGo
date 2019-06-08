@@ -4,47 +4,38 @@ package rxgo
 type CancelledIteratorError struct {
 }
 
-// EndOfIteratorError is triggered when an iterator is complete
-type EndOfIteratorError struct {
-}
-
 // IllegalInputError is triggered when the observable receives an illegal input
 type IllegalInputError struct {
-	reason string
 }
 
 // IndexOutOfBoundError is triggered when the observable cannot access to the specified index
 type IndexOutOfBoundError struct {
 }
 
-// NoSuchElementError is triggered when an optional does not contain any element
+// NoSuchElementError is triggered when an element does not exist
 type NoSuchElementError struct {
 }
 
-// TimeoutError is triggered when a timeout occurs
-type TimeoutError struct {
+// CancelledSubscriptionError is triggered when a subscription was cancelled manually by an end user
+type CancelledSubscriptionError struct {
 }
 
 func (e *CancelledIteratorError) Error() string {
-	return "CancelledIteratorError"
-}
-
-func (e *EndOfIteratorError) Error() string {
-	return "EndOfIteratorError"
+	return "cancelled iterator"
 }
 
 func (e *IllegalInputError) Error() string {
-	return e.reason
+	return "illegal input"
 }
 
 func (e *IndexOutOfBoundError) Error() string {
-	return "IndexOutOfBoundError"
+	return "index out of bound"
 }
 
 func (e *NoSuchElementError) Error() string {
-	return "NoSuchElementError"
+	return "no such element"
 }
 
-func (e *TimeoutError) Error() string {
-	return "TimeoutError"
+func (e *CancelledSubscriptionError) Error() string {
+	return "timeout"
 }
