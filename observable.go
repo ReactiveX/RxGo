@@ -1146,7 +1146,9 @@ func (o *observable) Sample(obs Observable) Observable {
 			close(obsChan)
 		}()
 
-	mainLoop:
+		defer cancel()
+		defer close(out)
+
 		for {
 			select {
 			case item, ok := <-mainChan:
@@ -1154,9 +1156,7 @@ func (o *observable) Sample(obs Observable) Observable {
 					lastEmittedItem = item
 					isItemWaitingToBeEmitted = true
 				} else {
-					cancel()
-					close(out)
-					break mainLoop
+					return
 				}
 			case _, ok := <-obsChan:
 				if ok {
@@ -1165,9 +1165,7 @@ func (o *observable) Sample(obs Observable) Observable {
 						isItemWaitingToBeEmitted = false
 					}
 				} else {
-					cancel()
-					close(out)
-					break mainLoop
+					return
 				}
 			}
 		}
