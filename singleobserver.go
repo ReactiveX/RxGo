@@ -1,8 +1,6 @@
 package rxgo
 
 import (
-	"sync"
-
 	"github.com/reactivex/rxgo/handlers"
 )
 
@@ -11,24 +9,24 @@ type SingleObserver interface {
 	handlers.EventHandler
 	Disposable
 
+	Block() (interface{}, error)
 	OnSuccess(item interface{})
 	OnError(err error)
-
-	Block() (interface{}, error)
 }
 
 type singleObserver struct {
-	disposedMutex sync.Mutex
-	disposed      bool
-	nextHandler   handlers.NextFunc
-	errHandler    handlers.ErrFunc
-	done          chan interface{}
+	disposed    chan struct{}
+	nextHandler handlers.NextFunc
+	errHandler  handlers.ErrFunc
+	done        chan interface{}
 }
 
 // NewSingleObserver constructs a new SingleObserver instance with default SingleObserver and accept
 // any number of EventHandler
 func NewSingleObserver(eventHandlers ...handlers.EventHandler) SingleObserver {
-	ob := singleObserver{}
+	ob := singleObserver{
+		disposed: make(chan struct{}),
+	}
 
 	if len(eventHandlers) > 0 {
 		for _, handler := range eventHandlers {
@@ -66,23 +64,36 @@ func (o *singleObserver) Handle(item interface{}) {
 }
 
 func (o *singleObserver) Dispose() {
-	o.disposedMutex.Lock()
-	o.disposed = true
-	o.disposedMutex.Unlock()
+	close(o.disposed)
 }
 
 func (o *singleObserver) IsDisposed() bool {
-	o.disposedMutex.Lock()
-	defer o.disposedMutex.Unlock()
-	return o.disposed
+	select {
+	case <-o.disposed:
+		return true
+	default:
+		return false
+	}
+}
+
+// Block terminates the SingleObserver's internal Observable
+func (o *singleObserver) Block() (interface{}, error) {
+	if !o.IsDisposed() {
+		for v := range o.done {
+			switch v := v.(type) {
+			case error:
+				return nil, v
+			default:
+				return v, nil
+			}
+		}
+	}
+	return nil, nil
 }
 
 // OnNext applies SingleObserver's NextHandler to an Item
 func (o *singleObserver) OnSuccess(item interface{}) {
-	o.disposedMutex.Lock()
-	disposed := o.disposed
-	o.disposedMutex.Unlock()
-	if !disposed {
+	if !o.IsDisposed() {
 		switch item := item.(type) {
 		case error:
 			return
@@ -103,10 +114,7 @@ func (o *singleObserver) OnSuccess(item interface{}) {
 
 // OnError applies SingleObserver's ErrHandler to an error
 func (o *singleObserver) OnError(err error) {
-	o.disposedMutex.Lock()
-	disposed := o.disposed
-	o.disposedMutex.Unlock()
-	if !disposed {
+	if !o.IsDisposed() {
 		if o.errHandler != nil {
 			o.errHandler(err)
 			o.Dispose()
@@ -118,22 +126,4 @@ func (o *singleObserver) OnError(err error) {
 	} else {
 		// TODO
 	}
-}
-
-// Block terminates the SingleObserver's internal Observable
-func (o *singleObserver) Block() (interface{}, error) {
-	o.disposedMutex.Lock()
-	disposed := o.disposed
-	o.disposedMutex.Unlock()
-	if !disposed {
-		for v := range o.done {
-			switch v := v.(type) {
-			case error:
-				return nil, v
-			default:
-				return v, nil
-			}
-		}
-	}
-	return nil, nil
 }

@@ -74,6 +74,6 @@ func TestSingleMapWithTwoSubscription(t *testing.T) {
 		return 1 + i.(int)
 	})
 
-	AssertThatSingle(t, just, HasValue(3))
-	AssertThatSingle(t, just, HasValue(3))
+	AssertSingle(t, just, HasValue(3))
+	AssertSingle(t, just, HasValue(3))
 }

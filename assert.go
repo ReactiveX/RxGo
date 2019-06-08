@@ -1,11 +1,11 @@
 package rxgo
 
 import (
-	"testing"
-
+	"context"
 	"errors"
+	"testing"
+	"time"
 
-	"github.com/reactivex/rxgo/handlers"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -138,21 +138,14 @@ func HasRaisedAnError() RxAssertion {
 	})
 }
 
-// HasNotRaisedAnError checks that a single does not raise an error.
-func HasNotRaisedAnError() RxAssertion {
+// HasNotRaisedAnyError checks that a single does not raise an error.
+func HasNotRaisedAnyError() RxAssertion {
 	return newAssertion(func(a *assertion) {
 		a.checkHasNotRaisedAnError = true
 	})
 }
 
-// AssertThatObservable asserts the result of an Observable against a list of assertions.
-func AssertThatObservable(t *testing.T, observable Observable, assertions ...RxAssertion) {
-	ass := parseAssertions(assertions...)
-	got := make([]interface{}, 0)
-	observable.Subscribe(handlers.NextFunc(func(i interface{}) {
-		got = append(got, i)
-	})).Block()
-
+func assertObservable(t *testing.T, ass RxAssertion, got []interface{}, err error) {
 	checkHasItems, items := ass.hasItemsFunc()
 	if checkHasItems {
 		assert.Equal(t, items, got)
@@ -171,10 +164,78 @@ func AssertThatObservable(t *testing.T, observable Observable, assertions ...RxA
 			assert.NotEqual(t, 0, len(got))
 		}
 	}
+
+	checkHasRaisedAnError := ass.hasRaisedAnErrorFunc()
+	if checkHasRaisedAnError {
+		assert.NotNil(t, err)
+	}
+
+	checkHasRaisedError, value := ass.hasRaisedErrorFunc()
+	if checkHasRaisedError {
+		assert.Equal(t, value, err)
+	}
+
+	checkHasNotRaisedError := ass.hasNotRaisedAnErrorFunc()
+	if checkHasNotRaisedError {
+		assert.Nil(t, err)
+	}
 }
 
-// AssertThatSingle asserts the result of a Single against a list of assertions.
-func AssertThatSingle(t *testing.T, single Single, assertions ...RxAssertion) {
+// AssertObservable asserts the result of an Observable against a list of assertions.
+func AssertObservable(t *testing.T, observable Observable, assertions ...RxAssertion) {
+	ass := parseAssertions(assertions...)
+	got := make([]interface{}, 0)
+	var err error
+	observable.ForEach(func(i interface{}) {
+		got = append(got, i)
+	}, func(e error) {
+		err = e
+	}, nil).Block()
+
+	assertObservable(t, ass, got, err)
+}
+
+// AssertObservableEventually asserts eventually the result of an Observable against a list of assertions.
+func AssertObservableEventually(t *testing.T, observable Observable, timeout time.Duration, assertions ...RxAssertion) {
+	ass := parseAssertions(assertions...)
+
+	chItem := make(chan interface{}, 1)
+	defer close(chItem)
+	chErr := make(chan error)
+	defer close(chErr)
+
+	got := make([]interface{}, 0)
+	var err error
+
+	observable.ForEach(func(i interface{}) {
+		chItem <- i
+	}, func(e error) {
+		chErr <- e
+	}, nil)
+	ctxTimeout, ctxTimeoutF := context.WithTimeout(context.Background(), timeout)
+
+mainLoop:
+	for {
+		select {
+		case item, open := <-chItem:
+			if open {
+				got = append(got, item)
+			} else {
+				ctxTimeoutF()
+				break mainLoop
+			}
+		case e := <-chErr:
+			err = e
+		case <-ctxTimeout.Done():
+			break mainLoop
+		}
+	}
+
+	assertObservable(t, ass, got, err)
+}
+
+// AssertSingle asserts the result of a Single against a list of assertions.
+func AssertSingle(t *testing.T, single Single, assertions ...RxAssertion) {
 	ass := parseAssertions(assertions...)
 
 	v, err := single.Subscribe(nil).Block()
@@ -204,8 +265,8 @@ func AssertThatSingle(t *testing.T, single Single, assertions ...RxAssertion) {
 	}
 }
 
-// AssertThatOptionalSingle asserts the result of an OptionalSingle against a list of assertions.
-func AssertThatOptionalSingle(t *testing.T, optionalSingle OptionalSingle, assertions ...RxAssertion) {
+// AssertOptionalSingle asserts the result of an OptionalSingle against a list of assertions.
+func AssertOptionalSingle(t *testing.T, optionalSingle OptionalSingle, assertions ...RxAssertion) {
 	ass := parseAssertions(assertions...)
 
 	v, err := optionalSingle.Subscribe(nil).Block()

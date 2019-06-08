@@ -3,11 +3,11 @@ package rxgo
 import (
 	"container/ring"
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
-	"fmt"
-
+	"github.com/pkg/errors"
 	"github.com/reactivex/rxgo/handlers"
 	"github.com/reactivex/rxgo/options"
 )
@@ -234,7 +234,8 @@ func (o *observable) AverageFloat32() Single {
 					sum += v
 					count++
 				} else {
-					out <- &IllegalInputError{fmt.Sprintf("type: %t", item)}
+					out <- errors.Wrap(&IllegalInputError{},
+						fmt.Sprintf("expected type: float32, got: %t", item))
 					close(out)
 					return
 				}
@@ -264,7 +265,8 @@ func (o *observable) AverageInt() Single {
 					sum += v
 					count++
 				} else {
-					out <- &IllegalInputError{fmt.Sprintf("type: %t", item)}
+					out <- errors.Wrap(&IllegalInputError{},
+						fmt.Sprintf("expected type: int, got: %t", item))
 					close(out)
 					return
 				}
@@ -294,7 +296,8 @@ func (o *observable) AverageInt8() Single {
 					sum += v
 					count++
 				} else {
-					out <- &IllegalInputError{fmt.Sprintf("type: %t", item)}
+					out <- errors.Wrap(&IllegalInputError{},
+						fmt.Sprintf("expected type: int8, got: %t", item))
 					close(out)
 					return
 				}
@@ -324,7 +327,8 @@ func (o *observable) AverageFloat64() Single {
 					sum += v
 					count++
 				} else {
-					out <- &IllegalInputError{fmt.Sprintf("type: %t", item)}
+					out <- errors.Wrap(&IllegalInputError{},
+						fmt.Sprintf("expected type: float64, got: %t", item))
 					close(out)
 					return
 				}
@@ -354,7 +358,8 @@ func (o *observable) AverageInt16() Single {
 					sum += v
 					count++
 				} else {
-					out <- &IllegalInputError{fmt.Sprintf("type: %t", item)}
+					out <- errors.Wrap(&IllegalInputError{},
+						fmt.Sprintf("expected type: int16, got: %t", item))
 					close(out)
 					return
 				}
@@ -384,7 +389,8 @@ func (o *observable) AverageInt32() Single {
 					sum += v
 					count++
 				} else {
-					out <- &IllegalInputError{fmt.Sprintf("type: %t", item)}
+					out <- errors.Wrap(&IllegalInputError{},
+						fmt.Sprintf("expected type: int32, got: %t", item))
 					close(out)
 					return
 				}
@@ -414,7 +420,8 @@ func (o *observable) AverageInt64() Single {
 					sum += v
 					count++
 				} else {
-					out <- &IllegalInputError{fmt.Sprintf("type: %t", item)}
+					out <- errors.Wrap(&IllegalInputError{},
+						fmt.Sprintf("expected type: int64, got: %t", item))
 					close(out)
 					return
 				}
@@ -441,13 +448,13 @@ func (o *observable) AverageInt64() Single {
 func (o *observable) BufferWithCount(count, skip int) Observable {
 	f := func(out chan interface{}) {
 		if count <= 0 {
-			out <- &IllegalInputError{"count must be positive"}
+			out <- errors.Wrap(&IllegalInputError{}, "count must be positive")
 			close(out)
 			return
 		}
 
 		if skip <= 0 {
-			out <- &IllegalInputError{"skip must be positive"}
+			out <- errors.Wrap(&IllegalInputError{}, "skip must be positive")
 			close(out)
 			return
 		}
@@ -503,7 +510,7 @@ func (o *observable) BufferWithCount(count, skip int) Observable {
 func (o *observable) BufferWithTime(timespan, timeshift Duration) Observable {
 	f := func(out chan interface{}) {
 		if timespan == nil || timespan.duration() == 0 {
-			out <- &IllegalInputError{"timespan must not be nil"}
+			out <- errors.Wrap(&IllegalInputError{}, "timespan must no be nil")
 			close(out)
 			return
 		}
@@ -597,13 +604,13 @@ func (o *observable) BufferWithTime(timespan, timeshift Duration) Observable {
 func (o *observable) BufferWithTimeOrCount(timespan Duration, count int) Observable {
 	f := func(out chan interface{}) {
 		if timespan == nil || timespan.duration() == 0 {
-			out <- &IllegalInputError{"timespan must not be nil"}
+			out <- errors.Wrap(&IllegalInputError{}, "timespan must not be nil")
 			close(out)
 			return
 		}
 
 		if count <= 0 {
-			out <- &IllegalInputError{"count must be positive"}
+			out <- errors.Wrap(&IllegalInputError{}, "count must be positive")
 			close(out)
 			return
 		}
@@ -815,6 +822,7 @@ func (o *observable) ElementAt(index uint) Single {
 				break
 			}
 		}
+		out <- &IndexOutOfBoundError{}
 		out <- &IndexOutOfBoundError{}
 		close(out)
 	}
@@ -1473,9 +1481,8 @@ func (o *observable) SumInt64() Single {
 				case int64:
 					sum += item
 				default:
-					out <- &IllegalInputError{
-						fmt.Sprintf("expected type: int, int8, int16, int32 or int64, got %t", item),
-					}
+					out <- errors.Wrap(&IllegalInputError{},
+						fmt.Sprintf("expected type: (int|int8|int16|int32|int64), got: %t", item))
 					close(out)
 					return
 				}
@@ -1510,9 +1517,8 @@ func (o *observable) SumFloat32() Single {
 				case float32:
 					sum += item
 				default:
-					out <- &IllegalInputError{
-						fmt.Sprintf("expected type: float32, int, int8, int16, int32 or int64, got %t", item),
-					}
+					out <- errors.Wrap(&IllegalInputError{},
+						fmt.Sprintf("expected type: (float32|int|int8|int16|int32|int64), got: %t", item))
 					close(out)
 					return
 				}
@@ -1549,9 +1555,8 @@ func (o *observable) SumFloat64() Single {
 				case float64:
 					sum += item
 				default:
-					out <- &IllegalInputError{
-						fmt.Sprintf("expected type: float32, float64, int, int8, int16, int32 or int64, got %t", item),
-					}
+					out <- errors.Wrap(&IllegalInputError{},
+						fmt.Sprintf("expected type: (float32|float64|int|int8|int16|int32|int64), got: %t", item))
 					close(out)
 					return
 				}
@@ -1667,6 +1672,7 @@ func (o *observable) TakeWhile(apply Predicate) Observable {
 func (o *observable) Timeout(duration Duration) Observable {
 	f := func(out chan interface{}) {
 		it := o.Iterator(context.Background())
+		// TODO Handle cancel
 		ctx, _ := context.WithTimeout(context.Background(), duration.duration())
 		for {
 			if item, err := it.Next(ctx); err == nil {

@@ -6,50 +6,50 @@ import (
 )
 
 func TestAssertThatObservableHasItems(t *testing.T) {
-	AssertThatObservable(t, Just(1, 2, 3), HasItems(1, 2, 3))
+	AssertObservable(t, Just(1, 2, 3), HasItems(1, 2, 3))
 }
 
 func TestAssertThatObservableHasSize(t *testing.T) {
-	AssertThatObservable(t, Just(1, 2, 3), HasSize(3))
+	AssertObservable(t, Just(1, 2, 3), HasSize(3))
 }
 
 func TestAssertThatObservableIsEmpty(t *testing.T) {
-	AssertThatObservable(t, Empty(), IsEmpty())
+	AssertObservable(t, Empty(), IsEmpty())
 }
 
 func TestAssertThatObservableIsNotEmpty(t *testing.T) {
-	AssertThatObservable(t, Just(1), IsNotEmpty())
+	AssertObservable(t, Just(1), IsNotEmpty())
 }
 
 func TestAssertThatSingleHasValue(t *testing.T) {
-	AssertThatSingle(t, newSingleFrom(1), HasValue(1))
+	AssertSingle(t, newSingleFrom(1), HasValue(1))
 }
 
 func TestAssertThatSingleError(t *testing.T) {
-	AssertThatSingle(t, newSingleFrom(errors.New("foo")),
+	AssertSingle(t, newSingleFrom(errors.New("foo")),
 		HasRaisedAnError(), HasRaisedError(errors.New("foo")))
 }
 
 func TestAssertThatSingleNotError(t *testing.T) {
-	AssertThatSingle(t, newSingleFrom(1), HasNotRaisedAnError())
+	AssertSingle(t, newSingleFrom(1), HasNotRaisedAnyError())
 }
 
 func TestAssertThatOptionalSingleIsEmpty(t *testing.T) {
-	AssertThatOptionalSingle(t, newOptionalSingleFrom(EmptyOptional()), IsEmpty())
+	AssertOptionalSingle(t, newOptionalSingleFrom(EmptyOptional()), IsEmpty())
 }
 
 func TestAssertThatOptionalSingleIsNotEmpty(t *testing.T) {
-	AssertThatOptionalSingle(t, newOptionalSingleFrom(Of(1)), IsNotEmpty())
+	AssertOptionalSingle(t, newOptionalSingleFrom(Of(1)), IsNotEmpty())
 }
 
 func TestAssertThatOptionalSingleHasValue(t *testing.T) {
-	AssertThatOptionalSingle(t, newOptionalSingleFrom(Of(1)), HasValue(1))
+	AssertOptionalSingle(t, newOptionalSingleFrom(Of(1)), HasValue(1))
 }
 
 func TestAssertThatOptionalSingleHasRaisedAnError(t *testing.T) {
-	AssertThatOptionalSingle(t, newOptionalSingleFrom(Of(errors.New("foo"))), HasRaisedAnError())
+	AssertOptionalSingle(t, newOptionalSingleFrom(Of(errors.New("foo"))), HasRaisedAnError())
 }
 
 func TestAssertThatOptionalSingleHasRaisedError(t *testing.T) {
-	AssertThatOptionalSingle(t, newOptionalSingleFrom(Of(errors.New("foo"))), HasRaisedError(errors.New("foo")))
+	AssertOptionalSingle(t, newOptionalSingleFrom(Of(errors.New("foo"))), HasRaisedError(errors.New("foo")))
 }
