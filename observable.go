@@ -742,7 +742,8 @@ func (o *observable) Debounce(duration Duration) Observable {
 			close(oChan)
 		}()
 
-	mainLoop:
+		defer close(out)
+
 		for {
 			select {
 			case item, ok := <-oChan:
@@ -753,7 +754,7 @@ func (o *observable) Debounce(duration Duration) Observable {
 				} else if isItemWaitingToBeEmitted {
 					isChanClosed = true
 				} else {
-					break mainLoop
+					return
 				}
 			case <-timer.C:
 				if isItemWaitingToBeEmitted {
@@ -761,12 +762,10 @@ func (o *observable) Debounce(duration Duration) Observable {
 					isItemWaitingToBeEmitted = false
 				}
 				if isChanClosed {
-					break mainLoop
+					return
 				}
 			}
 		}
-
-		close(out)
 	}
 
 	return newColdObservableFromFunction(f)
