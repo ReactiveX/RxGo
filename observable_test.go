@@ -291,12 +291,12 @@ func TestObservableMap(t *testing.T) {
 		return i.(int) * 10
 	})
 
-	AssertThatObservable(t, stream, HasItems(10, 20, 30))
+	AssertObservable(t, stream, HasItems(10, 20, 30))
 }
 
 func TestObservableTake(t *testing.T) {
 	stream := Just(1, 2, 3, 4, 5).Take(3)
-	AssertThatObservable(t, stream, HasItems(1, 2, 3))
+	AssertObservable(t, stream, HasItems(1, 2, 3))
 }
 
 func TestObservableTakeWithEmpty(t *testing.T) {
@@ -655,13 +655,13 @@ func TestObservableDistinctUntilChanged(t *testing.T) {
 func TestObservableSequenceEqualWithCorrectSequence(t *testing.T) {
 	sequence := Just(2, 5, 12, 43, 98, 100, 213)
 	result := Just(2, 5, 12, 43, 98, 100, 213).SequenceEqual(sequence)
-	AssertThatSingle(t, result, HasValue(true))
+	AssertSingle(t, result, HasValue(true))
 }
 
 func TestObservableSequenceEqualWithIncorrectSequence(t *testing.T) {
 	sequence := Just(2, 5, 12, 43, 98, 100, 213)
 	result := Just(2, 5, 12, 43, 15, 100, 213).SequenceEqual(sequence)
-	AssertThatSingle(t, result, HasValue(false))
+	AssertSingle(t, result, HasValue(false))
 }
 
 func TestObservableSequenceEqualWithDifferentLengthSequence(t *testing.T) {
@@ -669,15 +669,15 @@ func TestObservableSequenceEqualWithDifferentLengthSequence(t *testing.T) {
 	sequenceLonger := Just(2, 5, 12, 43, 98, 100, 213, 512)
 
 	resultForShorter := Just(2, 5, 12, 43, 98, 100, 213).SequenceEqual(sequenceShorter)
-	AssertThatSingle(t, resultForShorter, HasValue(false))
+	AssertSingle(t, resultForShorter, HasValue(false))
 
 	resultForLonger := Just(2, 5, 12, 43, 98, 100, 213).SequenceEqual(sequenceLonger)
-	AssertThatSingle(t, resultForLonger, HasValue(false))
+	AssertSingle(t, resultForLonger, HasValue(false))
 }
 
 func TestObservableSequenceEqualWithEmpty(t *testing.T) {
 	result := Empty().SequenceEqual(Empty())
-	AssertThatSingle(t, result, HasValue(true))
+	AssertSingle(t, result, HasValue(true))
 }
 
 func TestObservableScanWithIntegers(t *testing.T) {
@@ -919,7 +919,7 @@ func TestObservableZip(t *testing.T) {
 		return 0
 	}
 	zip := stream1.ZipFromObservable(stream2, zipper)
-	AssertThatObservable(t, zip, HasItems(11, 22, 33))
+	AssertObservable(t, zip, HasItems(11, 22, 33))
 }
 
 func TestObservableZipWithDifferentLength1(t *testing.T) {
@@ -936,7 +936,7 @@ func TestObservableZipWithDifferentLength1(t *testing.T) {
 		return 0
 	}
 	zip := stream1.ZipFromObservable(stream2, zipper)
-	AssertThatObservable(t, zip, HasItems(11, 22))
+	AssertObservable(t, zip, HasItems(11, 22))
 }
 
 func TestObservableZipWithDifferentLength2(t *testing.T) {
@@ -953,7 +953,7 @@ func TestObservableZipWithDifferentLength2(t *testing.T) {
 		return 0
 	}
 	zip := stream1.ZipFromObservable(stream2, zipper)
-	AssertThatObservable(t, zip, HasItems(11, 22))
+	AssertObservable(t, zip, HasItems(11, 22))
 }
 
 func TestObservableZipWithEmpty(t *testing.T) {
@@ -1036,11 +1036,11 @@ func TestAll(t *testing.T) {
 		}
 	}
 
-	AssertThatSingle(t, Just(1, 2, 3).All(predicateAllInt),
-		HasValue(true), HasNotRaisedAnError())
+	AssertSingle(t, Just(1, 2, 3).All(predicateAllInt),
+		HasValue(true), HasNotRaisedAnyError())
 
-	AssertThatSingle(t, Just(1, "x", 3).All(predicateAllInt),
-		HasValue(false), HasNotRaisedAnError())
+	AssertSingle(t, Just(1, "x", 3).All(predicateAllInt),
+		HasValue(false), HasNotRaisedAnyError())
 }
 
 func TestContain(t *testing.T) {
@@ -1090,7 +1090,7 @@ func TestDoOnEach(t *testing.T) {
 		sum += i.(int)
 	})
 
-	AssertThatObservable(t, stream, HasItems(1, 2, 3))
+	AssertObservable(t, stream, HasItems(1, 2, 3))
 	assert.Equal(t, 6, sum)
 }
 
@@ -1100,23 +1100,23 @@ func TestDoOnEachWithEmpty(t *testing.T) {
 		sum += i.(int)
 	})
 
-	AssertThatObservable(t, stream, HasSize(0))
+	AssertObservable(t, stream, HasSize(0))
 	assert.Equal(t, 0, sum)
 }
 
 func TestRepeat(t *testing.T) {
 	repeat := Just(1, 2, 3).Repeat(1, nil)
-	AssertThatObservable(t, repeat, HasItems(1, 2, 3, 1, 2, 3))
+	AssertObservable(t, repeat, HasItems(1, 2, 3, 1, 2, 3))
 }
 
 func TestRepeatZeroTimes(t *testing.T) {
 	repeat := Just(1, 2, 3).Repeat(0, nil)
-	AssertThatObservable(t, repeat, HasItems(1, 2, 3))
+	AssertObservable(t, repeat, HasItems(1, 2, 3))
 }
 
 func TestRepeatWithNegativeCount(t *testing.T) {
 	repeat := Just(1, 2, 3).Repeat(-2, nil)
-	AssertThatObservable(t, repeat, HasItems(1, 2, 3))
+	AssertObservable(t, repeat, HasItems(1, 2, 3))
 }
 
 func TestRepeatWithFrequency(t *testing.T) {
@@ -1124,58 +1124,58 @@ func TestRepeatWithFrequency(t *testing.T) {
 	frequency.On("duration").Return(time.Millisecond)
 
 	repeat := Just(1, 2, 3).Repeat(1, frequency)
-	AssertThatObservable(t, repeat, HasItems(1, 2, 3, 1, 2, 3))
+	AssertObservable(t, repeat, HasItems(1, 2, 3, 1, 2, 3))
 	frequency.AssertNumberOfCalls(t, "duration", 1)
 	frequency.AssertExpectations(t)
 }
 
 func TestAverageInt(t *testing.T) {
-	AssertThatSingle(t, Just(1, 2, 3).AverageInt(), HasValue(2))
-	AssertThatSingle(t, Just(1, 20).AverageInt(), HasValue(10))
-	AssertThatSingle(t, Empty().AverageInt(), HasValue(0))
-	AssertThatSingle(t, Just(1.1, 2.2, 3.3).AverageInt(), HasRaisedAnError())
+	AssertSingle(t, Just(1, 2, 3).AverageInt(), HasValue(2))
+	AssertSingle(t, Just(1, 20).AverageInt(), HasValue(10))
+	AssertSingle(t, Empty().AverageInt(), HasValue(0))
+	AssertSingle(t, Just(1.1, 2.2, 3.3).AverageInt(), HasRaisedAnError())
 }
 
 func TestAverageInt8(t *testing.T) {
-	AssertThatSingle(t, Just(int8(1), int8(2), int8(3)).AverageInt8(), HasValue(int8(2)))
-	AssertThatSingle(t, Just(int8(1), int8(20)).AverageInt8(), HasValue(int8(10)))
-	AssertThatSingle(t, Empty().AverageInt8(), HasValue(0))
-	AssertThatSingle(t, Just(1.1, 2.2, 3.3).AverageInt8(), HasRaisedAnError())
+	AssertSingle(t, Just(int8(1), int8(2), int8(3)).AverageInt8(), HasValue(int8(2)))
+	AssertSingle(t, Just(int8(1), int8(20)).AverageInt8(), HasValue(int8(10)))
+	AssertSingle(t, Empty().AverageInt8(), HasValue(0))
+	AssertSingle(t, Just(1.1, 2.2, 3.3).AverageInt8(), HasRaisedAnError())
 }
 
 func TestAverageInt16(t *testing.T) {
-	AssertThatSingle(t, Just(int16(1), int16(2), int16(3)).AverageInt16(), HasValue(int16(2)))
-	AssertThatSingle(t, Just(int16(1), int16(20)).AverageInt16(), HasValue(int16(10)))
-	AssertThatSingle(t, Empty().AverageInt16(), HasValue(0))
-	AssertThatSingle(t, Just(1.1, 2.2, 3.3).AverageInt16(), HasRaisedAnError())
+	AssertSingle(t, Just(int16(1), int16(2), int16(3)).AverageInt16(), HasValue(int16(2)))
+	AssertSingle(t, Just(int16(1), int16(20)).AverageInt16(), HasValue(int16(10)))
+	AssertSingle(t, Empty().AverageInt16(), HasValue(0))
+	AssertSingle(t, Just(1.1, 2.2, 3.3).AverageInt16(), HasRaisedAnError())
 }
 
 func TestAverageInt32(t *testing.T) {
-	AssertThatSingle(t, Just(int32(1), int32(2), int32(3)).AverageInt32(), HasValue(int32(2)))
-	AssertThatSingle(t, Just(int32(1), int32(20)).AverageInt32(), HasValue(int32(10)))
-	AssertThatSingle(t, Empty().AverageInt32(), HasValue(0))
-	AssertThatSingle(t, Just(1.1, 2.2, 3.3).AverageInt32(), HasRaisedAnError())
+	AssertSingle(t, Just(int32(1), int32(2), int32(3)).AverageInt32(), HasValue(int32(2)))
+	AssertSingle(t, Just(int32(1), int32(20)).AverageInt32(), HasValue(int32(10)))
+	AssertSingle(t, Empty().AverageInt32(), HasValue(0))
+	AssertSingle(t, Just(1.1, 2.2, 3.3).AverageInt32(), HasRaisedAnError())
 }
 
 func TestAverageInt64(t *testing.T) {
-	AssertThatSingle(t, Just(int64(1), int64(2), int64(3)).AverageInt64(), HasValue(int64(2)))
-	AssertThatSingle(t, Just(int64(1), int64(20)).AverageInt64(), HasValue(int64(10)))
-	AssertThatSingle(t, Empty().AverageInt64(), HasValue(0))
-	AssertThatSingle(t, Just(1.1, 2.2, 3.3).AverageInt64(), HasRaisedAnError())
+	AssertSingle(t, Just(int64(1), int64(2), int64(3)).AverageInt64(), HasValue(int64(2)))
+	AssertSingle(t, Just(int64(1), int64(20)).AverageInt64(), HasValue(int64(10)))
+	AssertSingle(t, Empty().AverageInt64(), HasValue(0))
+	AssertSingle(t, Just(1.1, 2.2, 3.3).AverageInt64(), HasRaisedAnError())
 }
 
 func TestAverageFloat32(t *testing.T) {
-	AssertThatSingle(t, Just(float32(1), float32(2), float32(3)).AverageFloat32(), HasValue(float32(2)))
-	AssertThatSingle(t, Just(float32(1), float32(20)).AverageFloat32(), HasValue(float32(10.5)))
-	AssertThatSingle(t, Empty().AverageFloat32(), HasValue(0))
-	AssertThatSingle(t, Just("x").AverageFloat32(), HasRaisedAnError())
+	AssertSingle(t, Just(float32(1), float32(2), float32(3)).AverageFloat32(), HasValue(float32(2)))
+	AssertSingle(t, Just(float32(1), float32(20)).AverageFloat32(), HasValue(float32(10.5)))
+	AssertSingle(t, Empty().AverageFloat32(), HasValue(0))
+	AssertSingle(t, Just("x").AverageFloat32(), HasRaisedAnError())
 }
 
 func TestAverageFloat64(t *testing.T) {
-	AssertThatSingle(t, Just(float64(1), float64(2), float64(3)).AverageFloat64(), HasValue(float64(2)))
-	AssertThatSingle(t, Just(float64(1), float64(20)).AverageFloat64(), HasValue(float64(10.5)))
-	AssertThatSingle(t, Empty().AverageFloat64(), HasValue(0))
-	AssertThatSingle(t, Just("x").AverageFloat64(), HasRaisedAnError())
+	AssertSingle(t, Just(float64(1), float64(2), float64(3)).AverageFloat64(), HasValue(float64(2)))
+	AssertSingle(t, Just(float64(1), float64(20)).AverageFloat64(), HasValue(float64(10.5)))
+	AssertSingle(t, Empty().AverageFloat64(), HasValue(0))
+	AssertSingle(t, Just("x").AverageFloat64(), HasRaisedAnError())
 }
 
 func TestMax(t *testing.T) {
@@ -1192,7 +1192,7 @@ func TestMax(t *testing.T) {
 	}
 
 	optionalSingle := Just(1, 5, 1).Max(comparator)
-	AssertThatOptionalSingle(t, optionalSingle, HasValue(5))
+	AssertOptionalSingle(t, optionalSingle, HasValue(5))
 }
 
 func TestMaxWithEmpty(t *testing.T) {
@@ -1201,7 +1201,7 @@ func TestMaxWithEmpty(t *testing.T) {
 	}
 
 	optionalSingle := Empty().Max(comparator)
-	AssertThatOptionalSingle(t, optionalSingle, IsEmpty())
+	AssertOptionalSingle(t, optionalSingle, IsEmpty())
 }
 
 func TestMin(t *testing.T) {
@@ -1218,7 +1218,7 @@ func TestMin(t *testing.T) {
 	}
 
 	optionalSingle := Just(5, 1, 5).Min(comparator)
-	AssertThatOptionalSingle(t, optionalSingle, HasValue(1))
+	AssertOptionalSingle(t, optionalSingle, HasValue(1))
 }
 
 func TestMinWithEmpty(t *testing.T) {
@@ -1227,42 +1227,42 @@ func TestMinWithEmpty(t *testing.T) {
 	}
 
 	optionalSingle := Empty().Min(comparator)
-	AssertThatOptionalSingle(t, optionalSingle, IsEmpty())
+	AssertOptionalSingle(t, optionalSingle, IsEmpty())
 }
 
 func TestBufferWithCountWithCountAndSkipEqual(t *testing.T) {
 	obs := Just(1, 2, 3, 4, 5, 6).BufferWithCount(3, 3)
-	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2, 3}, []interface{}{4, 5, 6}))
+	AssertObservable(t, obs, HasItems([]interface{}{1, 2, 3}, []interface{}{4, 5, 6}))
 }
 
 func TestBufferWithCountWithCountAndSkipNotEqual(t *testing.T) {
 	obs := Just(1, 2, 3, 4, 5, 6).BufferWithCount(2, 3)
-	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2}, []interface{}{4, 5}))
+	AssertObservable(t, obs, HasItems([]interface{}{1, 2}, []interface{}{4, 5}))
 }
 
 func TestBufferWithCountWithEmpty(t *testing.T) {
 	obs := Empty().BufferWithCount(2, 3)
-	AssertThatObservable(t, obs, IsEmpty())
+	AssertObservable(t, obs, IsEmpty())
 }
 
 func TestBufferWithCountWithIncompleteLastItem(t *testing.T) {
 	obs := Just(1, 2, 3, 4).BufferWithCount(2, 3)
-	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2}, []interface{}{4}))
+	AssertObservable(t, obs, HasItems([]interface{}{1, 2}, []interface{}{4}))
 }
 
 func TestBufferWithCountWithError(t *testing.T) {
 	obs := Just(1, 2, 3, 4, errors.New("")).BufferWithCount(3, 3)
-	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2, 3}, []interface{}{4}))
-	AssertThatObservable(t, obs, HasRaisedError(errors.New("")))
+	AssertObservable(t, obs, HasItems([]interface{}{1, 2, 3}, []interface{}{4}))
+	AssertObservable(t, obs, HasRaisedError(errors.New("")))
 }
 
 func TestBufferWithInvalidInputs(t *testing.T) {
 	// TODO HasRaisedAnErrorWithCause
 	obs := Just(1, 2, 3, 4).BufferWithCount(0, 5)
-	AssertThatObservable(t, obs, HasRaisedAnError())
+	AssertObservable(t, obs, HasRaisedAnError())
 
 	obs = Just(1, 2, 3, 4).BufferWithCount(5, 0)
-	AssertThatObservable(t, obs, HasRaisedAnError())
+	AssertObservable(t, obs, HasRaisedAnError())
 }
 
 func TestBufferWithTimeWithMockedTime(t *testing.T) {
@@ -1276,7 +1276,7 @@ func TestBufferWithTimeWithMockedTime(t *testing.T) {
 
 	obs := just.BufferWithTime(timespan, timeshift)
 
-	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2, 3}))
+	AssertObservable(t, obs, HasItems([]interface{}{1, 2, 3}))
 	timespan.AssertCalled(t, "duration")
 	timeshift.AssertNotCalled(t, "duration")
 }
@@ -1303,42 +1303,42 @@ func TestBufferWithTimeWithMinorMockedTime(t *testing.T) {
 }
 
 func TestBufferWithTimeWithIllegalInput(t *testing.T) {
-	AssertThatObservable(t, Empty().BufferWithTime(nil, nil), HasRaisedAnError())
-	AssertThatObservable(t, Empty().BufferWithTime(WithDuration(0*time.Second), nil), HasRaisedAnError())
+	AssertObservable(t, Empty().BufferWithTime(nil, nil), HasRaisedAnError())
+	AssertObservable(t, Empty().BufferWithTime(WithDuration(0*time.Second), nil), HasRaisedAnError())
 }
 
 func TestBufferWithTimeWithNilTimeshift(t *testing.T) {
 	just := Just(1, 2, 3)
 	obs := just.BufferWithTime(WithDuration(1*time.Second), nil)
-	AssertThatObservable(t, obs, IsNotEmpty())
+	AssertObservable(t, obs, IsNotEmpty())
 }
 
 func TestBufferWithTimeWithError(t *testing.T) {
 	just := Just(1, 2, 3, errors.New(""))
 	obs := just.BufferWithTime(WithDuration(1*time.Second), nil)
-	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2, 3}), HasRaisedAnError())
+	AssertObservable(t, obs, HasItems([]interface{}{1, 2, 3}), HasRaisedAnError())
 }
 
 func TestBufferWithTimeWithEmpty(t *testing.T) {
 	obs := Empty().BufferWithTime(WithDuration(1*time.Second), WithDuration(1*time.Second))
-	AssertThatObservable(t, obs, IsEmpty())
+	AssertObservable(t, obs, IsEmpty())
 }
 
 func TestBufferWithTimeOrCountWithInvalidInputs(t *testing.T) {
 	obs := Empty().BufferWithTimeOrCount(nil, 5)
-	AssertThatObservable(t, obs, HasRaisedAnError())
+	AssertObservable(t, obs, HasRaisedAnError())
 
 	obs = Empty().BufferWithTimeOrCount(WithDuration(0), 5)
-	AssertThatObservable(t, obs, HasRaisedAnError())
+	AssertObservable(t, obs, HasRaisedAnError())
 
 	obs = Empty().BufferWithTimeOrCount(WithDuration(time.Millisecond*5), 0)
-	AssertThatObservable(t, obs, HasRaisedAnError())
+	AssertObservable(t, obs, HasRaisedAnError())
 }
 
 func TestBufferWithTimeOrCountWithCount(t *testing.T) {
 	just := Just(1, 2, 3)
 	obs := just.BufferWithTimeOrCount(WithDuration(1*time.Second), 2)
-	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2}, []interface{}{3}))
+	AssertObservable(t, obs, HasItems([]interface{}{1, 2}, []interface{}{3}))
 }
 
 func TestBufferWithTimeOrCountWithTime(t *testing.T) {
@@ -1398,34 +1398,34 @@ func TestBufferWithTimeOrCountWithMockedTime(t *testing.T) {
 func TestBufferWithTimeOrCountWithError(t *testing.T) {
 	just := Just(1, 2, 3, errors.New(""), 4)
 	obs := just.BufferWithTimeOrCount(WithDuration(10*time.Second), 2)
-	AssertThatObservable(t, obs, HasItems([]interface{}{1, 2}, []interface{}{3}),
+	AssertObservable(t, obs, HasItems([]interface{}{1, 2}, []interface{}{3}),
 		HasRaisedAnError())
 }
 
 func TestSumInt64(t *testing.T) {
-	AssertThatSingle(t, Just(1, 2, 3).SumInt64(), HasValue(int64(6)))
-	AssertThatSingle(t, Just(int8(1), int(2), int16(3), int32(4), int64(5)).SumInt64(),
+	AssertSingle(t, Just(1, 2, 3).SumInt64(), HasValue(int64(6)))
+	AssertSingle(t, Just(int8(1), int(2), int16(3), int32(4), int64(5)).SumInt64(),
 		HasValue(int64(15)))
-	AssertThatSingle(t, Just(1.1, 2.2, 3.3).SumInt64(), HasRaisedAnError())
-	AssertThatSingle(t, Empty().SumInt64(), HasValue(int64(0)))
+	AssertSingle(t, Just(1.1, 2.2, 3.3).SumInt64(), HasRaisedAnError())
+	AssertSingle(t, Empty().SumInt64(), HasValue(int64(0)))
 }
 
 func TestSumFloat32(t *testing.T) {
-	AssertThatSingle(t, Just(float32(1.0), float32(2.0), float32(3.0)).SumFloat32(),
+	AssertSingle(t, Just(float32(1.0), float32(2.0), float32(3.0)).SumFloat32(),
 		HasValue(float32(6.)))
-	AssertThatSingle(t, Just(float32(1.1), 2, int8(3), int16(1), int32(1), int64(1)).SumFloat32(),
+	AssertSingle(t, Just(float32(1.1), 2, int8(3), int16(1), int32(1), int64(1)).SumFloat32(),
 		HasValue(float32(9.1)))
-	AssertThatSingle(t, Just(1.1, 2.2, 3.3).SumFloat32(), HasRaisedAnError())
-	AssertThatSingle(t, Empty().SumFloat32(), HasValue(float32(0)))
+	AssertSingle(t, Just(1.1, 2.2, 3.3).SumFloat32(), HasRaisedAnError())
+	AssertSingle(t, Empty().SumFloat32(), HasValue(float32(0)))
 }
 
 func TestSumFloat64(t *testing.T) {
-	AssertThatSingle(t, Just(1.1, 2.2, 3.3).SumFloat64(),
+	AssertSingle(t, Just(1.1, 2.2, 3.3).SumFloat64(),
 		HasValue(6.6))
-	AssertThatSingle(t, Just(float32(1.0), 2, int8(3), 4., int16(1), int32(1), int64(1)).SumFloat64(),
+	AssertSingle(t, Just(float32(1.0), 2, int8(3), 4., int16(1), int32(1), int64(1)).SumFloat64(),
 		HasValue(float64(13.)))
-	AssertThatSingle(t, Just("x").SumFloat64(), HasRaisedAnError())
-	AssertThatSingle(t, Empty().SumFloat64(), HasValue(float64(0)))
+	AssertSingle(t, Just("x").SumFloat64(), HasRaisedAnError())
+	AssertSingle(t, Empty().SumFloat64(), HasValue(float64(0)))
 }
 
 func TestMapWithTwoSubscription(t *testing.T) {
@@ -1435,8 +1435,8 @@ func TestMapWithTwoSubscription(t *testing.T) {
 		return 1 + i.(int)
 	})
 
-	AssertThatObservable(t, just, HasItems(3))
-	AssertThatObservable(t, just, HasItems(3))
+	AssertObservable(t, just, HasItems(3))
+	AssertObservable(t, just, HasItems(3))
 }
 
 func TestMapWithConcurrentSubscriptions(t *testing.T) {
@@ -1451,7 +1451,7 @@ func TestMapWithConcurrentSubscriptions(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			AssertThatObservable(t, just, HasItems(3))
+			AssertObservable(t, just, HasItems(3))
 		}()
 	}
 
@@ -1460,18 +1460,18 @@ func TestMapWithConcurrentSubscriptions(t *testing.T) {
 
 func TestStartWithItems(t *testing.T) {
 	obs := Just(1, 2, 3).StartWithItems(10, 20)
-	AssertThatObservable(t, obs, HasItems(10, 20, 1, 2, 3))
+	AssertObservable(t, obs, HasItems(10, 20, 1, 2, 3))
 }
 
 func TestIgnoreElements(t *testing.T) {
 	obs := Just(1, 2, 3).IgnoreElements()
-	AssertThatObservable(t, obs, IsEmpty())
+	AssertObservable(t, obs, IsEmpty())
 }
 
 func TestIgnoreElements_WithError(t *testing.T) {
 	err := errors.New("")
 	obs := Just(1, err, 3).IgnoreElements()
-	AssertThatObservable(t, obs, HasRaisedError(err))
+	AssertObservable(t, obs, HasRaisedError(err))
 }
 
 func TestOnErrorReturn(t *testing.T) {
@@ -1479,12 +1479,12 @@ func TestOnErrorReturn(t *testing.T) {
 		i, _ := strconv.Atoi(e.Error())
 		return i
 	})
-	AssertThatObservable(t, obs, HasItems(1, 2, 3, 4))
+	AssertObservable(t, obs, HasItems(1, 2, 3, 4))
 }
 
 func TestOnErrorReturnItem(t *testing.T) {
 	obs := Just(1, 2, errors.New("3"), 4).OnErrorReturnItem(3)
-	AssertThatObservable(t, obs, HasItems(1, 2, 3, 4))
+	AssertObservable(t, obs, HasItems(1, 2, 3, 4))
 }
 
 func TestOnErrorResumeNext(t *testing.T) {
@@ -1492,17 +1492,17 @@ func TestOnErrorResumeNext(t *testing.T) {
 	obs := Just(1, 2, errors.New("3"), 4).OnErrorResumeNext(func(e error) Observable {
 		return Just(5, 6, err, 9)
 	})
-	AssertThatObservable(t, obs, HasItems(1, 2, 5, 6), HasRaisedError(err))
+	AssertObservable(t, obs, HasItems(1, 2, 5, 6), HasRaisedError(err))
 }
 
 func TestToSlice(t *testing.T) {
 	single := Just(1, 2, 3).ToSlice()
-	AssertThatSingle(t, single, HasValue([]interface{}{1, 2, 3}))
+	AssertSingle(t, single, HasValue([]interface{}{1, 2, 3}))
 }
 
 func TestToSlice_Empty(t *testing.T) {
 	single := Empty().ToSlice()
-	AssertThatSingle(t, single, HasValue([]interface{}{}))
+	AssertSingle(t, single, HasValue([]interface{}{}))
 }
 
 func TestToMap(t *testing.T) {
@@ -1519,7 +1519,7 @@ func TestToMap(t *testing.T) {
 			return i
 		}
 	})
-	AssertThatSingle(t, single, HasValue(map[interface{}]interface{}{
+	AssertSingle(t, single, HasValue(map[interface{}]interface{}{
 		3: 3,
 		4: 4,
 		5: 5,
@@ -1532,7 +1532,7 @@ func TestToMap_Empty(t *testing.T) {
 	single := Empty().ToMap(func(i interface{}) interface{} {
 		return i
 	})
-	AssertThatSingle(t, single, HasValue(map[interface{}]interface{}{}))
+	AssertSingle(t, single, HasValue(map[interface{}]interface{}{}))
 }
 
 func TestToMapWithValueSelector(t *testing.T) {
@@ -1560,7 +1560,7 @@ func TestToMapWithValueSelector(t *testing.T) {
 		}
 	}
 	single := Just(3, 4, 5, true, false).ToMapWithValueSelector(keySelector, valueSelector)
-	AssertThatSingle(t, single, HasValue(map[interface{}]interface{}{
+	AssertSingle(t, single, HasValue(map[interface{}]interface{}{
 		3: 30,
 		4: 40,
 		5: 50,
@@ -1575,7 +1575,7 @@ func TestToMapWithValueSelector_Empty(t *testing.T) {
 	}, func(i interface{}) interface{} {
 		return i
 	})
-	AssertThatSingle(t, single, HasValue(map[interface{}]interface{}{}))
+	AssertSingle(t, single, HasValue(map[interface{}]interface{}{}))
 }
 
 func channel(ch chan interface{}, t time.Duration) (item interface{}, closed bool, cancelled bool) {
@@ -1622,44 +1622,44 @@ func TestTakeWhile(t *testing.T) {
 	obs := Just(1, 2, 3, 4, 5).TakeWhile(func(item interface{}) bool {
 		return item != 3
 	})
-	AssertThatObservable(t, obs, HasItems(1, 2))
+	AssertObservable(t, obs, HasItems(1, 2))
 }
 
 func TestTakeWhile_Empty(t *testing.T) {
 	obs := Empty().TakeWhile(func(item interface{}) bool {
 		return item != 3
 	})
-	AssertThatObservable(t, obs, IsEmpty())
+	AssertObservable(t, obs, IsEmpty())
 }
 
 func TestTakeUntil(t *testing.T) {
 	obs := Just(1, 2, 3, 4, 5).TakeUntil(func(item interface{}) bool {
 		return item == 3
 	})
-	AssertThatObservable(t, obs, HasItems(1, 2, 3))
+	AssertObservable(t, obs, HasItems(1, 2, 3))
 }
 
 func TestTakeUntil_Empty(t *testing.T) {
 	obs := Empty().TakeUntil(func(item interface{}) bool {
 		return item == 3
 	})
-	AssertThatObservable(t, obs, IsEmpty())
+	AssertObservable(t, obs, IsEmpty())
 }
 
 func TestStartWith(t *testing.T) {
 	obs := Just(1, 2, 3).StartWithItems(10, 20)
-	AssertThatObservable(t, obs, HasItems(10, 20, 1, 2, 3))
+	AssertObservable(t, obs, HasItems(10, 20, 1, 2, 3))
 }
 
 func TestStartWith_WithError(t *testing.T) {
 	err := errors.New("")
 	obs := Just(1, 2, 3).StartWithItems(10, err)
-	AssertThatObservable(t, obs, HasItems(10), HasRaisedError(err))
+	AssertObservable(t, obs, HasItems(10), HasRaisedError(err))
 }
 
 func TestStartWith_Empty(t *testing.T) {
 	obs := Empty().StartWithItems(10, 20)
-	AssertThatObservable(t, obs, HasItems(10, 20))
+	AssertObservable(t, obs, HasItems(10, 20))
 }
 
 func TestStartWithIterable(t *testing.T) {
@@ -1668,7 +1668,7 @@ func TestStartWithIterable(t *testing.T) {
 	ch <- 10
 	ch <- 20
 	close(ch)
-	AssertThatObservable(t, obs, HasItems(10, 20, 1, 2, 3))
+	AssertObservable(t, obs, HasItems(10, 20, 1, 2, 3))
 }
 
 func TestStartWithIterable_WithError(t *testing.T) {
@@ -1678,7 +1678,7 @@ func TestStartWithIterable_WithError(t *testing.T) {
 	ch <- 10
 	ch <- err
 	close(ch)
-	AssertThatObservable(t, obs, HasItems(10), HasRaisedError(err))
+	AssertObservable(t, obs, HasItems(10), HasRaisedError(err))
 }
 
 func TestStartWithIterable_Empty(t *testing.T) {
@@ -1687,35 +1687,35 @@ func TestStartWithIterable_Empty(t *testing.T) {
 	ch <- 10
 	ch <- 20
 	close(ch)
-	AssertThatObservable(t, obs, HasItems(10, 20))
+	AssertObservable(t, obs, HasItems(10, 20))
 }
 
 func TestStartWithIterable_WithoutItems(t *testing.T) {
 	ch := make(chan interface{})
 	obs := Just(1, 2, 3).StartWithIterable(newIterableFromChannel(ch))
 	close(ch)
-	AssertThatObservable(t, obs, HasItems(1, 2, 3))
+	AssertObservable(t, obs, HasItems(1, 2, 3))
 }
 
 func TestStartWithObservable(t *testing.T) {
 	obs := Just(1, 2, 3).StartWithObservable(Just(10, 20))
-	AssertThatObservable(t, obs, HasItems(10, 20, 1, 2, 3))
+	AssertObservable(t, obs, HasItems(10, 20, 1, 2, 3))
 }
 
 func TestStartWithObservable_WithError(t *testing.T) {
 	err := errors.New("")
 	obs := Just(1, 2, 3).StartWithObservable(Just(10, err))
-	AssertThatObservable(t, obs, HasItems(10), HasRaisedError(err))
+	AssertObservable(t, obs, HasItems(10), HasRaisedError(err))
 }
 
 func TestStartWithObservable_Empty1(t *testing.T) {
 	obs := Empty().StartWithObservable(Just(10, 20))
-	AssertThatObservable(t, obs, HasItems(10, 20))
+	AssertObservable(t, obs, HasItems(10, 20))
 }
 
 func TestStartWithObservable_Empty2(t *testing.T) {
 	obs := Just(1, 2, 3).StartWithObservable(Empty())
-	AssertThatObservable(t, obs, HasItems(1, 2, 3))
+	AssertObservable(t, obs, HasItems(1, 2, 3))
 }
 
 //var _ = Describe("Timeout operator", func() {

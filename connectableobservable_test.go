@@ -38,5 +38,5 @@ func TestConnectableObservable_Map(t *testing.T) {
 	obs := FromSlice([]interface{}{1, 2, 3, 5}).Publish().Map(func(i interface{}) interface{} {
 		return i.(int) + 1
 	})
-	AssertThatObservable(t, obs, HasItems(2, 3, 4, 6))
+	AssertObservable(t, obs, HasItems(2, 3, 4, 6))
 }

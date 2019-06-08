@@ -148,36 +148,36 @@ func TestNever(t *testing.T) {
 
 func TestConcatWithOneObservable(t *testing.T) {
 	obs := Concat(Just(1, 2, 3))
-	AssertThatObservable(t, obs, HasItems(1, 2, 3))
+	AssertObservable(t, obs, HasItems(1, 2, 3))
 }
 
 func TestConcatWithTwoObservables(t *testing.T) {
 	obs := Concat(Just(1, 2, 3), Just(4, 5, 6))
-	AssertThatObservable(t, obs, HasItems(1, 2, 3, 4, 5, 6))
+	AssertObservable(t, obs, HasItems(1, 2, 3, 4, 5, 6))
 }
 
 func TestConcatWithMoreThanTwoObservables(t *testing.T) {
 	obs := Concat(Just(1, 2, 3), Just(4, 5, 6), Just(7, 8, 9))
-	AssertThatObservable(t, obs, HasItems(1, 2, 3, 4, 5, 6, 7, 8, 9))
+	AssertObservable(t, obs, HasItems(1, 2, 3, 4, 5, 6, 7, 8, 9))
 }
 
 func TestConcatWithEmptyObservables(t *testing.T) {
 	obs := Concat(Empty(), Empty(), Empty())
-	AssertThatObservable(t, obs, IsEmpty())
+	AssertObservable(t, obs, IsEmpty())
 }
 
 func TestConcatWithAnEmptyObservable(t *testing.T) {
 	obs := Concat(Empty(), Just(1, 2, 3))
-	AssertThatObservable(t, obs, HasItems(1, 2, 3))
+	AssertObservable(t, obs, HasItems(1, 2, 3))
 
 	obs = Concat(Just(1, 2, 3), Empty())
-	AssertThatObservable(t, obs, HasItems(1, 2, 3))
+	AssertObservable(t, obs, HasItems(1, 2, 3))
 }
 
 func TestFromSlice(t *testing.T) {
 	obs := FromSlice([]interface{}{1, 2, 3})
-	AssertThatObservable(t, obs, HasItems(1, 2, 3))
-	AssertThatObservable(t, obs, HasItems(1, 2, 3))
+	AssertObservable(t, obs, HasItems(1, 2, 3))
+	AssertObservable(t, obs, HasItems(1, 2, 3))
 }
 
 func TestFromChannel(t *testing.T) {
@@ -189,14 +189,14 @@ func TestFromChannel(t *testing.T) {
 	ch <- 3
 	close(ch)
 
-	AssertThatObservable(t, obs, HasItems(1, 2, 3))
-	AssertThatObservable(t, obs, IsEmpty())
+	AssertObservable(t, obs, HasItems(1, 2, 3))
+	AssertObservable(t, obs, IsEmpty())
 }
 
 func TestJust(t *testing.T) {
 	obs := Just(1, 2, 3)
-	AssertThatObservable(t, obs, HasItems(1, 2, 3))
-	AssertThatObservable(t, obs, HasItems(1, 2, 3))
+	AssertObservable(t, obs, HasItems(1, 2, 3))
+	AssertObservable(t, obs, HasItems(1, 2, 3))
 }
 
 type statefulIterable struct {
@@ -224,8 +224,8 @@ func TestFromStatefulIterable(t *testing.T) {
 		count: -1,
 	})
 
-	AssertThatObservable(t, obs, HasItems(0, 1, 2))
-	AssertThatObservable(t, obs, IsEmpty())
+	AssertObservable(t, obs, HasItems(0, 1, 2))
+	AssertObservable(t, obs, IsEmpty())
 }
 
 type statelessIterable struct {
@@ -245,8 +245,8 @@ func TestRange(t *testing.T) {
 	if err != nil {
 		t.Fail()
 	}
-	AssertThatObservable(t, obs, HasItems(5, 6, 7, 8))
-	AssertThatObservable(t, obs, HasItems(5, 6, 7, 8))
+	AssertObservable(t, obs, HasItems(5, 6, 7, 8))
+	AssertObservable(t, obs, HasItems(5, 6, 7, 8))
 }
 
 func TestRangeWithNegativeCount(t *testing.T) {
@@ -267,14 +267,14 @@ func TestTimer(t *testing.T) {
 
 	obs := Timer(d)
 
-	AssertThatObservable(t, obs, HasItems(float64(0)))
+	AssertObservable(t, obs, HasItems(float64(0)))
 	d.AssertCalled(t, "duration")
 }
 
 func TestTimerWithNilDuration(t *testing.T) {
 	obs := Timer(nil)
 
-	AssertThatObservable(t, obs, HasItems(float64(0)))
+	AssertObservable(t, obs, HasItems(float64(0)))
 }
 
 func TestMerge(t *testing.T) {
@@ -294,7 +294,7 @@ func TestMerge(t *testing.T) {
 	close(ch2)
 	close(ch3)
 	// TODO HasItemsInDifferentOrder
-	AssertThatObservable(t, obs, HasSize(5))
+	AssertObservable(t, obs, HasSize(5))
 }
 
 func TestAmb(t *testing.T) {
@@ -310,7 +310,7 @@ func TestAmb(t *testing.T) {
 	ch2 <- 20
 	ch2 <- 30
 	close(ch2)
-	AssertThatObservable(t, obs, HasItems(1, 2, 3))
+	AssertObservable(t, obs, HasItems(1, 2, 3))
 }
 
 func TestCombineLatest(t *testing.T) {
@@ -334,7 +334,7 @@ func TestCombineLatest(t *testing.T) {
 	close(ch1)
 	close(ch2)
 	close(ch3)
-	AssertThatObservable(t, obs, HasItems(6, 13), HasNotRaisedAnError())
+	AssertObservable(t, obs, HasItems(6, 13), HasNotRaisedAnyError())
 }
 
 // FIXME

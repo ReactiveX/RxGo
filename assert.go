@@ -138,8 +138,8 @@ func HasRaisedAnError() RxAssertion {
 	})
 }
 
-// HasNotRaisedAnError checks that a single does not raise an error.
-func HasNotRaisedAnError() RxAssertion {
+// HasNotRaisedAnyError checks that a single does not raise an error.
+func HasNotRaisedAnyError() RxAssertion {
 	return newAssertion(func(a *assertion) {
 		a.checkHasNotRaisedAnError = true
 	})
@@ -181,8 +181,8 @@ func assertObservable(t *testing.T, ass RxAssertion, got []interface{}, err erro
 	}
 }
 
-// AssertThatObservable asserts the result of an Observable against a list of assertions.
-func AssertThatObservable(t *testing.T, observable Observable, assertions ...RxAssertion) {
+// AssertObservable asserts the result of an Observable against a list of assertions.
+func AssertObservable(t *testing.T, observable Observable, assertions ...RxAssertion) {
 	ass := parseAssertions(assertions...)
 	got := make([]interface{}, 0)
 	var err error
@@ -234,8 +234,8 @@ mainLoop:
 	assertObservable(t, ass, got, err)
 }
 
-// AssertThatSingle asserts the result of a Single against a list of assertions.
-func AssertThatSingle(t *testing.T, single Single, assertions ...RxAssertion) {
+// AssertSingle asserts the result of a Single against a list of assertions.
+func AssertSingle(t *testing.T, single Single, assertions ...RxAssertion) {
 	ass := parseAssertions(assertions...)
 
 	v, err := single.Subscribe(nil).Block()
@@ -265,8 +265,8 @@ func AssertThatSingle(t *testing.T, single Single, assertions ...RxAssertion) {
 	}
 }
 
-// AssertThatOptionalSingle asserts the result of an OptionalSingle against a list of assertions.
-func AssertThatOptionalSingle(t *testing.T, optionalSingle OptionalSingle, assertions ...RxAssertion) {
+// AssertOptionalSingle asserts the result of an OptionalSingle against a list of assertions.
+func AssertOptionalSingle(t *testing.T, optionalSingle OptionalSingle, assertions ...RxAssertion) {
 	ass := parseAssertions(assertions...)
 
 	v, err := optionalSingle.Subscribe(nil).Block()
