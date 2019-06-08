@@ -7,6 +7,7 @@ import (
 	"github.com/reactivex/rxgo/handlers"
 )
 
+const wait = 30 * time.Millisecond
 const timeout = 500 * time.Millisecond
 const pollingInterval = 20 * time.Millisecond
 
