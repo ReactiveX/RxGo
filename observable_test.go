@@ -3,6 +3,7 @@ package rxgo
 import (
 	"context"
 	"errors"
+	"github.com/stretchr/testify/mock"
 	"net/http"
 	"strconv"
 	"sync"
@@ -1642,14 +1643,24 @@ func TestSample(t *testing.T) {
 }
 
 func TestSample_NotRepeatedItems(t *testing.T) {
-	ch := make(chan interface{})
-	obs := FromChannel(ch).Sample(Interval(make(chan struct{}), 50*time.Millisecond))
-	go func() {
-		ch <- 1
-		time.Sleep(200 * time.Millisecond)
-		close(ch)
-	}()
-	AssertObservable(t, obs, HasItems(1))
+	//iterators, err := mockIterators("1:1,1:2,2:0,1:3,1:4,1:5,2:0,1:close,2:close")
+	iterators, err := mockIterators(`
+1
+2
+	0
+x
+	x
+`)
+	if err != nil {
+		assert.FailNow(t, err.Error())
+	}
+	mockIterator1 := iterators[0]
+	mockIterator2 := iterators[1]
+	mockObservable1 := new(MockObservable)
+	mockObservable1.On("Iterator", mock.Anything).Return(mockIterator2)
+	obs := FromIterator(mockIterator1).Sample(mockObservable1)
+
+	AssertObservable(t, obs, HasItems(2))
 }
 
 func TestSample_SourceObsClosedBeforeIntervalFired(t *testing.T) {
