@@ -298,19 +298,23 @@ func TestMerge(t *testing.T) {
 }
 
 func TestAmb(t *testing.T) {
-	ch1 := make(chan interface{}, 3)
-	ch2 := make(chan interface{}, 3)
-	obs := Amb(FromChannel(ch1), FromChannel(ch2))
-	ch1 <- 1
-	ch1 <- 2
-	ch1 <- 3
-	close(ch1)
-	time.Sleep(wait)
-	ch2 <- 10
-	ch2 <- 20
-	ch2 <- 30
-	close(ch2)
-	AssertObservable(t, obs, HasItems(1, 2, 3))
+	iterators, err := mockIterators(`
+1
+2
+x
+	3
+	4
+	x
+		5
+		x
+`)
+	if err != nil {
+		assert.FailNow(t, err.Error())
+	}
+	mockIterator1 := iterators[0]
+	mockIterator2 := iterators[1]
+	obs := Amb(mockObservable(mockIterator1), mockObservable(mockIterator2))
+	AssertObservable(t, obs, HasItems(1, 2))
 }
 
 // FIXME Not stable

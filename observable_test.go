@@ -3,7 +3,6 @@ package rxgo
 import (
 	"context"
 	"errors"
-	"github.com/stretchr/testify/mock"
 	"net/http"
 	"strconv"
 	"sync"
@@ -1283,7 +1282,7 @@ func TestBufferWithTimeWithMockedTime(t *testing.T) {
 	timeshift.AssertNotCalled(t, "duration")
 }
 
-func TestBufferWithTimeWithMinorMockedTime(t *testing.T) {
+func TestBufferWithTime_MinorMockedTime(t *testing.T) {
 	ch := make(chan interface{})
 	from := FromIterator(newIteratorFromChannel(ch))
 
@@ -1295,7 +1294,6 @@ func TestBufferWithTimeWithMinorMockedTime(t *testing.T) {
 
 	obs := from.BufferWithTime(timespan, timeshift)
 
-	time.Sleep(10 * time.Millisecond)
 	ch <- 1
 	close(ch)
 
@@ -1656,6 +1654,9 @@ func TestSample_NotRepeatedItems(t *testing.T) {
 7
 8
 	0
+	0
+9
+	0
 x
 	x
 `)
@@ -1664,11 +1665,9 @@ x
 	}
 	mockIterator1 := iterators[0]
 	mockIterator2 := iterators[1]
-	mockObservable1 := new(MockObservable)
-	mockObservable1.On("Iterator", mock.Anything).Return(mockIterator2)
-	obs := newSyncObservable(mockIterator1).Sample(mockObservable1)
+	obs := mockObservable(mockIterator1).Sample(mockObservable(mockIterator2))
 
-	AssertObservable(t, obs, HasItems(2, 5, 6, 8))
+	AssertObservable(t, obs, HasItems(2, 5, 6, 8, 9))
 }
 
 func TestSample_SourceObsClosedBeforeIntervalFired(t *testing.T) {
@@ -1773,26 +1772,32 @@ func TestStartWithObservable_Empty2(t *testing.T) {
 	AssertObservable(t, obs, HasItems(1, 2, 3))
 }
 
-//var _ = Describe("Timeout operator", func() {
-// FIXME
-//Context("when creating an observable with timeout operator", func() {
-//	ch := make(chan interface{}, 10)
-//	duration := WithDuration(pollingInterval)
-//	o := FromChannel(ch).Timeout(duration)
-//	Context("after a given period without items", func() {
-//		outNext, outErr, _ := subscribe(o)
-//
-//		ch <- 1
-//		ch <- 2
-//		ch <- 3
-//		time.Sleep(time.Second)
-//		ch <- 4
-//		It("should receive the elements before the timeout", func() {
-//			Expect(pollItems(outNext, timeout)).Should(Equal([]interface{}{1, 2, 3}))
-//		})
-//		It("should receive a TimeoutError", func() {
-//			Expect(pollItem(outErr, timeout)).Should(Equal(&TimeoutError{}))
-//		})
-//	})
-//})
-//})
+func TestTimeout(t *testing.T) {
+	iterators, err := mockIterators(`
+1
+2
+3
+	0
+4
+5
+x
+	x
+`)
+	if err != nil {
+		assert.FailNow(t, err.Error())
+	}
+	mockIterator1 := iterators[0]
+	mockIterator2 := iterators[1]
+	obs := mockObservable(mockIterator1).Timeout(mockObservable(mockIterator2))
+
+	//
+	//
+	//ch := make(chan interface{}, 10)
+	//obs := FromChannel(ch).Timeout(Timer(WithDuration(2000 * time.Millisecond)))
+	//ch <- 1
+	//ch <- 2
+	//ch <- 3
+	//time.Sleep(time.Second)
+	//ch <- 4
+	AssertObservable(t, obs, HasItems(1, 2, 3))
+}
