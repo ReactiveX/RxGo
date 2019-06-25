@@ -1648,6 +1648,15 @@ func TestSample_NotRepeatedItems(t *testing.T) {
 1
 2
 	0
+3
+4
+5
+	0
+6
+	0
+7
+8
+	0
 x
 	x
 `)
@@ -1658,9 +1667,9 @@ x
 	mockIterator2 := iterators[1]
 	mockObservable1 := new(MockObservable)
 	mockObservable1.On("Iterator", mock.Anything).Return(mockIterator2)
-	obs := FromIterator(mockIterator1).Sample(mockObservable1)
+	obs := newSyncObservable(mockIterator1).Sample(mockObservable1)
 
-	AssertObservable(t, obs, HasItems(2))
+	AssertObservable(t, obs, HasItems(2, 5, 6, 8))
 }
 
 func TestSample_SourceObsClosedBeforeIntervalFired(t *testing.T) {

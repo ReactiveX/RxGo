@@ -11,6 +11,23 @@ import (
 	"testing"
 )
 
+func newSyncObservable(iterator Iterator) Observable {
+	return &observable{
+		observableType: cold,
+		iterable: &syncIterable{
+			iterator: iterator,
+		},
+	}
+}
+
+type syncIterable struct {
+	iterator Iterator
+}
+
+func (s *syncIterable) Iterator(ctx context.Context) Iterator {
+	return s.iterator
+}
+
 type MockObservable struct {
 	mock.Mock
 }
@@ -93,7 +110,7 @@ func mockIterators(in string) ([]*MockIterator, error) {
 		item, err := args(t)
 		if lastObs == t.observable {
 			if calls[index] == nil {
-				calls[index] = obs.On("Next", mock.Anything).Once().Arguments.Return(item, err)
+				calls[index] = obs.On("Next", mock.Anything).Once().Return(item, err)
 			} else {
 				calls[index].On("Next", mock.Anything).Once().Return(item, err)
 			}
