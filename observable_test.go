@@ -1633,6 +1633,41 @@ func TestTakeWhile_Empty(t *testing.T) {
 	AssertObservable(t, obs, IsEmpty())
 }
 
+func TestSample(t *testing.T) {
+	obs := Interval(make(chan struct{}), 50*time.Millisecond).
+		Sample(Interval(make(chan struct{}), 250*time.Millisecond)).
+		Take(2)
+
+	AssertObservable(t, obs, HasItems(3, 8))
+}
+
+func TestSample_NotRepeatedItems(t *testing.T) {
+	ch := make(chan interface{})
+	obs := FromChannel(ch).Sample(Interval(make(chan struct{}), 50*time.Millisecond))
+	go func() {
+		ch <- 1
+		time.Sleep(200 * time.Millisecond)
+		close(ch)
+	}()
+	AssertObservable(t, obs, HasItems(1))
+}
+
+func TestSample_SourceObsClosedBeforeIntervalFired(t *testing.T) {
+	obs := Just(1).Sample(Interval(make(chan struct{}), time.Second))
+	AssertObservable(t, obs, IsEmpty())
+}
+
+func TestSample_TimerFiredBeforeSourceObsEmitted(t *testing.T) {
+	frequence50ms := new(mockDuration)
+	frequence50ms.On("duration").Return(50 * time.Millisecond)
+	obs := Interval(make(chan struct{}), time.Second).Sample(Timer(frequence50ms))
+	AssertObservable(t, obs, IsEmpty())
+}
+func TestSample_Empty(t *testing.T) {
+	obs := Empty().Sample(Interval(make(chan struct{}), 50*time.Millisecond))
+	AssertObservable(t, obs, IsEmpty())
+}
+
 func TestTakeUntil(t *testing.T) {
 	obs := Just(1, 2, 3, 4, 5).TakeUntil(func(item interface{}) bool {
 		return item == 3

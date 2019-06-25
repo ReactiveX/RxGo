@@ -194,6 +194,10 @@ func (c *connectableObservable) Repeat(count int64, frequency Duration) Observab
 	return c.observable.Repeat(count, frequency)
 }
 
+func (c *connectableObservable) Sample(obs Observable) Observable {
+	return c.observable.Sample(obs)
+}
+
 func (c *connectableObservable) Scan(apply Function2) Observable {
 	return c.observable.Scan(apply)
 }

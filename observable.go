@@ -58,6 +58,7 @@ type Observable interface {
 	Publish() ConnectableObservable
 	Reduce(apply Function2) OptionalSingle
 	Repeat(count int64, frequency Duration) Observable
+	Sample(obs Observable) Observable
 	Scan(apply Function2) Observable
 	SequenceEqual(obs Observable) Single
 	Skip(nth uint) Observable
@@ -1116,6 +1117,68 @@ func (o *observable) Repeat(count int64, frequency Duration) Observable {
 		}
 		close(out)
 	}
+	return newColdObservableFromFunction(f)
+}
+
+// Sample returns an Observable that emits the most recent items emitted by the source
+// ObservableSource whenever the input Observable emits an item.
+func (o *observable) Sample(obs Observable) Observable {
+	f := func(out chan interface{}) {
+		mainChan := make(chan interface{})
+		obsChan := make(chan interface{})
+		var lastEmittedItem interface{}
+		isItemWaitingToBeEmitted := false
+		ctx, cancel := context.WithCancel(context.Background())
+
+		go func() {
+			it := o.iterable.Iterator(ctx)
+			for {
+				if item, err := it.Next(ctx); err == nil {
+					mainChan <- item
+				} else {
+					break
+				}
+			}
+			close(mainChan)
+		}()
+
+		go func() {
+			it := obs.Iterator(ctx)
+			for {
+				if item, err := it.Next(ctx); err == nil {
+					obsChan <- item
+				} else {
+					break
+				}
+			}
+			close(obsChan)
+		}()
+
+		defer cancel()
+		defer close(out)
+
+		for {
+			select {
+			case item, ok := <-mainChan:
+				if ok {
+					lastEmittedItem = item
+					isItemWaitingToBeEmitted = true
+				} else {
+					return
+				}
+			case _, ok := <-obsChan:
+				if ok {
+					if isItemWaitingToBeEmitted {
+						out <- lastEmittedItem
+						isItemWaitingToBeEmitted = false
+					}
+				} else {
+					return
+				}
+			}
+		}
+	}
+
 	return newColdObservableFromFunction(f)
 }
 
