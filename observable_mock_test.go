@@ -3,10 +3,14 @@ package rxgo
 import (
 	"bufio"
 	"context"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"strconv"
 	"strings"
+	"testing"
 )
+
+const signalCh = byte(0)
 
 type mockIterable struct {
 	iterator Iterator
@@ -26,7 +30,7 @@ func (s *mockIterable) Iterator(ctx context.Context) Iterator {
 	return s.iterator
 }
 
-func mockObservable(iterator Iterator) Observable {
+func newMockObservable(iterator Iterator) Observable {
 	return &observable{
 		observableType: cold,
 		iterable: &mockIterable{
@@ -47,7 +51,7 @@ func countTab(line string) int {
 	return i
 }
 
-func mockIterators(in string) ([]*mockIterator, error) {
+func mockObservables(t *testing.T, in string) []Observable {
 	scanner := bufio.NewScanner(strings.NewReader(in))
 	m := make(map[int]int)
 	tasks := make([]task, 0)
@@ -67,7 +71,7 @@ func mockIterators(in string) ([]*mockIterator, error) {
 		} else {
 			n, err := strconv.Atoi(v)
 			if err != nil {
-				return nil, err
+				assert.FailNow(t, err.Error())
 			}
 			tasks = append(tasks, task{
 				observable: observable,
@@ -80,14 +84,14 @@ func mockIterators(in string) ([]*mockIterator, error) {
 		}
 	}
 
-	observables := make([]*mockIterator, 0, len(m))
+	iterators := make([]*mockIterator, 0, len(m))
 	calls := make([]*mock.Call, len(m))
 	for i := 0; i < len(m); i++ {
-		observables = append(observables, new(mockIterator))
+		iterators = append(iterators, new(mockIterator))
 	}
 
 	item, err := args(tasks[0])
-	call := observables[0].On("Next", mock.Anything).Once().Return(item, err)
+	call := iterators[0].On("Next", mock.Anything).Once().Return(item, err)
 	calls[0] = call
 
 	var lastCh chan struct{}
@@ -95,7 +99,7 @@ func mockIterators(in string) ([]*mockIterator, error) {
 	for i := 1; i < len(tasks); i++ {
 		t := tasks[i]
 		index := m[t.observable]
-		obs := observables[index]
+		obs := iterators[index]
 		item, err := args(t)
 		if lastObservableType == t.observable {
 			if calls[index] == nil {
@@ -111,12 +115,12 @@ func mockIterators(in string) ([]*mockIterator, error) {
 				if calls[index] == nil {
 					calls[index] = obs.On("Next", mock.Anything).Once().Return(item, err).
 						Run(func(args mock.Arguments) {
-							run(ch, nil)
+							run(args, ch, nil)
 						})
 				} else {
 					calls[index].On("Next", mock.Anything).Once().Return(item, err).
 						Run(func(args mock.Arguments) {
-							run(ch, nil)
+							run(args, ch, nil)
 						})
 				}
 			} else {
@@ -125,19 +129,24 @@ func mockIterators(in string) ([]*mockIterator, error) {
 				if calls[index] == nil {
 					calls[index] = obs.On("Next", mock.Anything).Once().Return(item, err).
 						Run(func(args mock.Arguments) {
-							run(ch, previous)
+							run(args, ch, previous)
 						})
 				} else {
 					calls[index].On("Next", mock.Anything).Once().Return(item, err).
 						Run(func(args mock.Arguments) {
-							run(ch, previous)
+							run(args, ch, previous)
 						})
 				}
 				lastCh = ch
 			}
 		}
 	}
-	return observables, nil
+
+	observables := make([]Observable, 0, len(iterators))
+	for _, iterator := range iterators {
+		observables = append(observables, newMockObservable(iterator))
+	}
+	return observables
 }
 
 func args(t task) (interface{}, error) {
@@ -147,16 +156,35 @@ func args(t task) (interface{}, error) {
 	return t.item, nil
 }
 
-func run(wait chan struct{}, send chan struct{}) {
+func run(args mock.Arguments, wait chan struct{}, send chan struct{}) {
 	if send != nil {
 		send <- struct{}{}
 	}
-	if wait != nil {
-		<-wait
+	if wait == nil {
+		return
 	}
+	if len(args) == 1 {
+		if ctx, ok := args[0].(context.Context); ok {
+			if sig, ok := ctx.Value(signalCh).(chan struct{}); ok {
+				select {
+				case <-wait:
+				case <-ctx.Done():
+					sig <- struct{}{}
+				}
+				return
+			}
+		}
+	}
+	<-wait
 }
 
 func (m *mockIterator) Next(ctx context.Context) (interface{}, error) {
-	args := m.Called(ctx)
-	return args.Get(0), args.Error(1)
+	sig := make(chan struct{}, 1)
+	outputs := m.Called(context.WithValue(ctx, signalCh, sig))
+	select {
+	case <-sig:
+		return nil, &CancelledIteratorError{}
+	default:
+		return outputs.Get(0), outputs.Error(1)
+	}
 }

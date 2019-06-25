@@ -1671,16 +1671,13 @@ func (o *observable) TakeWhile(apply Predicate) Observable {
 
 func (o *observable) Timeout(observable Observable) Observable {
 	f := func(out chan interface{}) {
-		fmt.Printf("%v\n", "f")
 		ctx, cancel := context.WithCancel(context.Background())
 		go func() {
 			it := o.Iterator(ctx)
 			for {
 				if item, err := it.Next(ctx); err == nil {
-					fmt.Printf("%v\n", item)
 					out <- item
 				} else {
-					fmt.Printf("cancel\n")
 					out <- err
 					break
 				}
@@ -1688,8 +1685,7 @@ func (o *observable) Timeout(observable Observable) Observable {
 		}()
 		go func() {
 			it := observable.Iterator(context.Background())
-			next, e := it.Next(context.Background())
-			fmt.Printf("%v %v\n", next, e)
+			it.Next(context.Background())
 			cancel()
 		}()
 	}

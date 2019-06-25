@@ -1641,7 +1641,7 @@ func TestSample(t *testing.T) {
 }
 
 func TestSample_NotRepeatedItems(t *testing.T) {
-	iterators, err := mockIterators(`
+	observables := mockObservables(t, `
 1
 2
 	0
@@ -1660,12 +1660,7 @@ func TestSample_NotRepeatedItems(t *testing.T) {
 x
 	x
 `)
-	if err != nil {
-		assert.FailNow(t, err.Error())
-	}
-	mockIterator1 := iterators[0]
-	mockIterator2 := iterators[1]
-	obs := mockObservable(mockIterator1).Sample(mockObservable(mockIterator2))
+	obs := observables[0].Sample(observables[1])
 
 	AssertObservable(t, obs, HasItems(2, 5, 6, 8, 9))
 }
@@ -1773,7 +1768,7 @@ func TestStartWithObservable_Empty2(t *testing.T) {
 }
 
 func TestTimeout(t *testing.T) {
-	iterators, err := mockIterators(`
+	observables := mockObservables(t, `
 1
 2
 3
@@ -1783,21 +1778,19 @@ func TestTimeout(t *testing.T) {
 x
 	x
 `)
-	if err != nil {
-		assert.FailNow(t, err.Error())
-	}
-	mockIterator1 := iterators[0]
-	mockIterator2 := iterators[1]
-	obs := mockObservable(mockIterator1).Timeout(mockObservable(mockIterator2))
+	obs := observables[0].Timeout(observables[1])
+	AssertObservable(t, obs, HasItems(1, 2, 3))
+}
 
-	//
-	//
-	//ch := make(chan interface{}, 10)
-	//obs := FromChannel(ch).Timeout(Timer(WithDuration(2000 * time.Millisecond)))
-	//ch <- 1
-	//ch <- 2
-	//ch <- 3
-	//time.Sleep(time.Second)
-	//ch <- 4
+func TestTimeout_ClosedChannel(t *testing.T) {
+	observables := mockObservables(t, `
+1
+2
+3
+x
+	0
+	x
+`)
+	obs := observables[0].Timeout(observables[1])
 	AssertObservable(t, obs, HasItems(1, 2, 3))
 }

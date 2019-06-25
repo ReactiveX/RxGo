@@ -267,14 +267,14 @@ func TestTimer(t *testing.T) {
 
 	obs := Timer(d)
 
-	AssertObservable(t, obs, HasItems(float64(0)))
+	AssertObservable(t, obs, HasItems(struct{}{}))
 	d.AssertCalled(t, "duration")
 }
 
 func TestTimerWithNilDuration(t *testing.T) {
 	obs := Timer(nil)
 
-	AssertObservable(t, obs, HasItems(float64(0)))
+	AssertObservable(t, obs, HasItems(struct{}{}))
 }
 
 func TestMerge(t *testing.T) {
@@ -298,7 +298,7 @@ func TestMerge(t *testing.T) {
 }
 
 func TestAmb(t *testing.T) {
-	iterators, err := mockIterators(`
+	observables := mockObservables(t, `
 1
 2
 x
@@ -308,12 +308,7 @@ x
 		5
 		x
 `)
-	if err != nil {
-		assert.FailNow(t, err.Error())
-	}
-	mockIterator1 := iterators[0]
-	mockIterator2 := iterators[1]
-	obs := Amb(mockObservable(mockIterator1), mockObservable(mockIterator2))
+	obs := Amb(observables[0], observables[1])
 	AssertObservable(t, obs, HasItems(1, 2))
 }
 
