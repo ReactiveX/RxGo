@@ -3,12 +3,13 @@ package rxgo
 import (
 	"bufio"
 	"context"
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 const signalCh = byte(0)
