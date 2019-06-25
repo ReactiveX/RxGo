@@ -1643,7 +1643,6 @@ func TestSample(t *testing.T) {
 }
 
 func TestSample_NotRepeatedItems(t *testing.T) {
-	//iterators, err := mockIterators("1:1,1:2,2:0,1:3,1:4,1:5,2:0,1:close,2:close")
 	iterators, err := mockIterators(`
 1
 2
