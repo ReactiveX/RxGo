@@ -75,7 +75,7 @@ type Observable interface {
 	TakeLast(nth uint) Observable
 	TakeUntil(apply Predicate) Observable
 	TakeWhile(apply Predicate) Observable
-	Timeout(duration Duration) Observable
+	Timeout(observable Observable) Observable
 	ToChannel(opts ...options.Option) Channel
 	ToMap(keySelector Function) Single
 	ToMapWithValueSelector(keySelector, valueSelector Function) Single
@@ -1669,22 +1669,26 @@ func (o *observable) TakeWhile(apply Predicate) Observable {
 	return newColdObservableFromFunction(f)
 }
 
-func (o *observable) Timeout(duration Duration) Observable {
+func (o *observable) Timeout(observable Observable) Observable {
 	f := func(out chan interface{}) {
-		it := o.Iterator(context.Background())
-		// TODO Handle cancel
-		ctx, _ := context.WithTimeout(context.Background(), duration.duration())
-		for {
-			if item, err := it.Next(ctx); err == nil {
-				out <- item
-			} else {
-				out <- err
-				break
+		ctx, cancel := context.WithCancel(context.Background())
+		go func() {
+			it := o.Iterator(ctx)
+			for {
+				if item, err := it.Next(ctx); err == nil {
+					out <- item
+				} else {
+					out <- err
+					break
+				}
 			}
-		}
-		close(out)
+		}()
+		go func() {
+			it := observable.Iterator(context.Background())
+			it.Next(context.Background())
+			cancel()
+		}()
 	}
-
 	return newColdObservableFromFunction(f)
 }
 

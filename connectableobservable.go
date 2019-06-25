@@ -289,8 +289,8 @@ func (c *connectableObservable) TakeWhile(apply Predicate) Observable {
 	return c.observable.TakeWhile(apply)
 }
 
-func (c *connectableObservable) Timeout(duration Duration) Observable {
-	return c.observable.Timeout(duration)
+func (c *connectableObservable) Timeout(observable Observable) Observable {
+	return c.observable.Timeout(observable)
 }
 
 func (c *connectableObservable) ToChannel(opts ...options.Option) Channel {

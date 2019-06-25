@@ -228,18 +228,6 @@ func TestFromStatefulIterable(t *testing.T) {
 	AssertObservable(t, obs, IsEmpty())
 }
 
-type statelessIterable struct {
-	count int
-}
-
-func (it *statelessIterable) Next(ctx context.Context) (interface{}, error) {
-	it.count++
-	if it.count < 3 {
-		return it.count, nil
-	}
-	return nil, &NoSuchElementError{}
-}
-
 func TestRange(t *testing.T) {
 	obs, err := Range(5, 3)
 	if err != nil {
@@ -267,14 +255,14 @@ func TestTimer(t *testing.T) {
 
 	obs := Timer(d)
 
-	AssertObservable(t, obs, HasItems(float64(0)))
+	AssertObservable(t, obs, HasItems(struct{}{}))
 	d.AssertCalled(t, "duration")
 }
 
 func TestTimerWithNilDuration(t *testing.T) {
 	obs := Timer(nil)
 
-	AssertObservable(t, obs, HasItems(float64(0)))
+	AssertObservable(t, obs, HasItems(struct{}{}))
 }
 
 func TestMerge(t *testing.T) {
@@ -298,45 +286,58 @@ func TestMerge(t *testing.T) {
 }
 
 func TestAmb(t *testing.T) {
-	ch1 := make(chan interface{}, 3)
-	ch2 := make(chan interface{}, 3)
-	obs := Amb(FromChannel(ch1), FromChannel(ch2))
-	ch1 <- 1
-	ch1 <- 2
-	ch1 <- 3
-	close(ch1)
-	time.Sleep(wait)
-	ch2 <- 10
-	ch2 <- 20
-	ch2 <- 30
-	close(ch2)
-	AssertObservable(t, obs, HasItems(1, 2, 3))
+	observables := mockObservables(t, `
+1
+2
+x
+	3
+	4
+	x
+		5
+		x
+`)
+	obs := Amb(observables[0], observables[1])
+	AssertObservable(t, obs, HasItems(1, 2))
 }
 
-// FIXME Not stable
-//func TestCombineLatest(t *testing.T) {
-//	ch1 := make(chan interface{}, 10)
-//	ch2 := make(chan interface{}, 10)
-//	ch3 := make(chan interface{}, 10)
-//
-//	obs := CombineLatest(func(ii ...interface{}) interface{} {
-//		sum := 0
-//		for _, v := range ii {
-//			sum += v.(int)
-//		}
-//		return sum
-//	}, FromChannel(ch1), FromChannel(ch2), FromChannel(ch3))
-//
-//	//TODO AssertObservableEventually(t, obs, wait, IsEmpty())
-//	ch1 <- 1
-//	close(ch1)
-//	ch2 <- 2
-//	close(ch2)
-//	ch3 <- 3
-//	close(ch3)
-//	AssertObservable(t, obs, HasItems(6), HasNotRaisedAnyError())
-//	//TODO AssertObservableEventually(t, obs, wait, 6, 13 etc.)
-//}
+func TestCombineLatest(t *testing.T) {
+	observables := mockObservables(t, `
+1
+	10
+2
+	11
+102
+x
+	x
+`)
+	obs := CombineLatest(func(ii ...interface{}) interface{} {
+		sum := 0
+		for _, v := range ii {
+			sum += v.(int)
+		}
+		return sum
+	}, observables[0], observables[1:]...)
+	AssertObservable(t, obs, HasItems(11, 12, 13, 113), HasNotRaisedAnyError())
+}
+
+func TestCombineLatest_Error(t *testing.T) {
+	observables := mockObservables(t, `
+1
+	10
+2
+	e
+102
+x
+`)
+	obs := CombineLatest(func(ii ...interface{}) interface{} {
+		sum := 0
+		for _, v := range ii {
+			sum += v.(int)
+		}
+		return sum
+	}, observables[0], observables[1:]...)
+	AssertObservable(t, obs, HasItems(11, 12), HasRaisedAnError())
+}
 
 // FIXME
 //Context("when creating a hot observable with FromEventSource operator without back-pressure strategy", func() {

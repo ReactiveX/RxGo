@@ -409,8 +409,7 @@ func Start(f Supplier, fs ...Supplier) Observable {
 	return newColdObservableFromChannel(out)
 }
 
-// Timer returns an Observable that emits the zeroed value of a float64 after a
-// specified delay, and then completes.
+// Timer returns an Observable that emits an empty structure after a specified delay, and then completes.
 func Timer(d Duration) Observable {
 	out := make(chan interface{})
 	go func() {
@@ -419,7 +418,7 @@ func Timer(d Duration) Observable {
 		} else {
 			time.Sleep(d.duration())
 		}
-		out <- 0.
+		out <- struct{}{}
 		close(out)
 	}()
 	return newColdObservableFromChannel(out)

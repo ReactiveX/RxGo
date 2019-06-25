@@ -1282,7 +1282,7 @@ func TestBufferWithTimeWithMockedTime(t *testing.T) {
 	timeshift.AssertNotCalled(t, "duration")
 }
 
-func TestBufferWithTimeWithMinorMockedTime(t *testing.T) {
+func TestBufferWithTime_MinorMockedTime(t *testing.T) {
 	ch := make(chan interface{})
 	from := FromIterator(newIteratorFromChannel(ch))
 
@@ -1294,7 +1294,6 @@ func TestBufferWithTimeWithMinorMockedTime(t *testing.T) {
 
 	obs := from.BufferWithTime(timespan, timeshift)
 
-	time.Sleep(10 * time.Millisecond)
 	ch <- 1
 	close(ch)
 
@@ -1642,14 +1641,28 @@ func TestSample(t *testing.T) {
 }
 
 func TestSample_NotRepeatedItems(t *testing.T) {
-	ch := make(chan interface{})
-	obs := FromChannel(ch).Sample(Interval(make(chan struct{}), 50*time.Millisecond))
-	go func() {
-		ch <- 1
-		time.Sleep(200 * time.Millisecond)
-		close(ch)
-	}()
-	AssertObservable(t, obs, HasItems(1))
+	observables := mockObservables(t, `
+1
+2
+	0
+3
+4
+5
+	0
+6
+	0
+7
+8
+	0
+	0
+9
+	0
+x
+	x
+`)
+	obs := observables[0].Sample(observables[1])
+
+	AssertObservable(t, obs, HasItems(2, 5, 6, 8, 9))
 }
 
 func TestSample_SourceObsClosedBeforeIntervalFired(t *testing.T) {
@@ -1754,26 +1767,30 @@ func TestStartWithObservable_Empty2(t *testing.T) {
 	AssertObservable(t, obs, HasItems(1, 2, 3))
 }
 
-//var _ = Describe("Timeout operator", func() {
-// FIXME
-//Context("when creating an observable with timeout operator", func() {
-//	ch := make(chan interface{}, 10)
-//	duration := WithDuration(pollingInterval)
-//	o := FromChannel(ch).Timeout(duration)
-//	Context("after a given period without items", func() {
-//		outNext, outErr, _ := subscribe(o)
-//
-//		ch <- 1
-//		ch <- 2
-//		ch <- 3
-//		time.Sleep(time.Second)
-//		ch <- 4
-//		It("should receive the elements before the timeout", func() {
-//			Expect(pollItems(outNext, timeout)).Should(Equal([]interface{}{1, 2, 3}))
-//		})
-//		It("should receive a TimeoutError", func() {
-//			Expect(pollItem(outErr, timeout)).Should(Equal(&TimeoutError{}))
-//		})
-//	})
-//})
-//})
+func TestTimeout(t *testing.T) {
+	observables := mockObservables(t, `
+1
+2
+3
+	0
+4
+5
+x
+	x
+`)
+	obs := observables[0].Timeout(observables[1])
+	AssertObservable(t, obs, HasItems(1, 2, 3))
+}
+
+func TestTimeout_ClosedChannel(t *testing.T) {
+	observables := mockObservables(t, `
+1
+2
+3
+x
+	0
+	x
+`)
+	obs := observables[0].Timeout(observables[1])
+	AssertObservable(t, obs, HasItems(1, 2, 3))
+}
