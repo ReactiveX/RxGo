@@ -3,6 +3,7 @@ package rxgo
 import (
 	"bufio"
 	"context"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"strconv"
@@ -11,6 +12,8 @@ import (
 )
 
 const signalCh = byte(0)
+
+var mockError = errors.New("")
 
 type mockIterable struct {
 	iterator Iterator
@@ -23,6 +26,7 @@ type mockIterator struct {
 type task struct {
 	observable int
 	item       int
+	error      error
 	close      bool
 }
 
@@ -51,6 +55,7 @@ func countTab(line string) int {
 	return i
 }
 
+// TODO Causality with more than two observables
 func mockObservables(t *testing.T, in string) []Observable {
 	scanner := bufio.NewScanner(strings.NewReader(in))
 	m := make(map[int]int)
@@ -63,12 +68,18 @@ func mockObservables(t *testing.T, in string) []Observable {
 		}
 		observable := countTab(s)
 		v := strings.TrimSpace(s)
-		if v == "x" {
+		switch v {
+		case "x":
 			tasks = append(tasks, task{
 				observable: observable,
 				close:      true,
 			})
-		} else {
+		case "e":
+			tasks = append(tasks, task{
+				observable: observable,
+				error:      mockError,
+			})
+		default:
 			n, err := strconv.Atoi(v)
 			if err != nil {
 				assert.FailNow(t, err.Error())
@@ -124,7 +135,11 @@ func mockObservables(t *testing.T, in string) []Observable {
 						})
 				}
 			} else {
-				ch := make(chan struct{})
+				var ch chan struct{}
+				// If this is the latest task we do not set any wait channel
+				if i != len(tasks)-1 {
+					ch = make(chan struct{})
+				}
 				previous := lastCh
 				if calls[index] == nil {
 					calls[index] = obs.On("Next", mock.Anything).Once().Return(item, err).
@@ -153,6 +168,9 @@ func args(t task) (interface{}, error) {
 	if t.close {
 		return nil, &NoSuchElementError{}
 	}
+	if t.error != nil {
+		return t.error, nil
+	}
 	return t.item, nil
 }
 
@@ -180,6 +198,7 @@ func run(args mock.Arguments, wait chan struct{}, send chan struct{}) {
 
 func (m *mockIterator) Next(ctx context.Context) (interface{}, error) {
 	sig := make(chan struct{}, 1)
+	defer close(sig)
 	outputs := m.Called(context.WithValue(ctx, signalCh, sig))
 	select {
 	case <-sig:
