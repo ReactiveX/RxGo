@@ -3,18 +3,37 @@ package rxgo
 import (
 	"bufio"
 	"context"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/mock"
 	"strconv"
 	"strings"
-	"testing"
-
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
+	"time"
 )
 
 const signalCh = byte(0)
 
 var mockError = errors.New("")
+
+type mockContext struct {
+	mock.Mock
+}
+
+func (m mockContext) Deadline() (deadline time.Time, ok bool) {
+	panic("implement me")
+}
+
+func (m mockContext) Done() <-chan struct{} {
+	outputs := m.Called()
+	return outputs.Get(0).(chan struct{})
+}
+
+func (m mockContext) Err() error {
+	panic("implement me")
+}
+
+func (m mockContext) Value(key interface{}) interface{} {
+	panic("implement me")
+}
 
 type mockIterable struct {
 	iterator Iterator
@@ -25,10 +44,17 @@ type mockIterator struct {
 }
 
 type task struct {
-	observable int
-	item       int
-	error      error
-	close      bool
+	index   int
+	item    int
+	error   error
+	close   bool
+	context bool
+}
+
+type mockType struct {
+	observable bool
+	context    bool
+	index      int
 }
 
 func (s *mockIterable) Iterator(ctx context.Context) Iterator {
@@ -57,112 +83,204 @@ func countTab(line string) int {
 }
 
 // TODO Causality with more than two observables
-func mockObservables(t *testing.T, in string) []Observable {
+func causality(in string) ([]Observable, []context.Context) {
 	scanner := bufio.NewScanner(strings.NewReader(in))
-	m := make(map[int]int)
+	types := make([]mockType, 0)
 	tasks := make([]task, 0)
-	count := 0
+	// Search header
+	countObservables := 0
+	countContexts := 0
 	for scanner.Scan() {
 		s := scanner.Text()
 		if s == "" {
 			continue
 		}
-		observable := countTab(s)
-		v := strings.TrimSpace(s)
-		switch v {
-		case "x":
-			tasks = append(tasks, task{
-				observable: observable,
-				close:      true,
-			})
-		case "e":
-			tasks = append(tasks, task{
-				observable: observable,
-				error:      mockError,
-			})
-		default:
-			n, err := strconv.Atoi(v)
-			if err != nil {
-				assert.FailNow(t, err.Error())
+		splits := strings.Split(s, "\t")
+		for _, split := range splits {
+			switch split {
+			case "o":
+				types = append(types, mockType{
+					observable: true,
+					index:      countObservables,
+				})
+				countObservables++
+			case "c":
+				types = append(types, mockType{
+					context: true,
+					index:   countContexts,
+				})
+				countContexts++
+			default:
+				panic("unknown type: " + split)
 			}
-			tasks = append(tasks, task{
-				observable: observable,
-				item:       n,
-			})
 		}
-		if _, contains := m[observable]; !contains {
-			m[observable] = count
-			count++
+		break
+	}
+	for scanner.Scan() {
+		s := scanner.Text()
+		if s == "" {
+			continue
+		}
+		index := countTab(s)
+		v := strings.TrimSpace(s)
+		if types[index].observable {
+			switch v {
+			case "x":
+				tasks = append(tasks, task{
+					index: types[index].index,
+					close: true,
+				})
+			case "e":
+				tasks = append(tasks, task{
+					index: types[index].index,
+					error: mockError,
+				})
+			default:
+				n, err := strconv.Atoi(v)
+				if err != nil {
+					panic(err)
+				}
+				tasks = append(tasks, task{
+					index: types[index].index,
+					item:  n,
+				})
+			}
+		} else if types[index].context {
+			tasks = append(tasks, task{
+				index:   types[index].index,
+				context: true,
+			})
+		} else {
+			panic("unknwon type")
 		}
 	}
 
-	iterators := make([]*mockIterator, 0, len(m))
-	calls := make([]*mock.Call, len(m))
-	for i := 0; i < len(m); i++ {
+	iterators := make([]*mockIterator, 0, countObservables)
+	for i := 0; i < countObservables; i++ {
 		iterators = append(iterators, new(mockIterator))
 	}
+	iteratorCalls := make([]*mock.Call, countObservables)
 
-	item, err := args(tasks[0])
-	call := iterators[0].On("Next", mock.Anything).Once().Return(item, err)
-	calls[0] = call
+	contexts := make([]*mockContext, 0, countContexts)
+	for i := 0; i < countContexts; i++ {
+		contexts = append(contexts, new(mockContext))
+	}
+	iteratorContexts := make([]*mock.Call, countContexts)
+
+	lastObservableType := -1
+	if tasks[0].context {
+		notif := make(chan struct{}, 1)
+		call := contexts[0].On("Done").Once().Return(notif)
+		iteratorContexts[0] = call
+	} else {
+		item, err := args(tasks[0])
+		call := iterators[0].On("Next", mock.Anything).Once().Return(item, err)
+		iteratorCalls[0] = call
+		lastObservableType = tasks[0].index
+	}
 
 	var lastCh chan struct{}
-	lastObservableType := tasks[0].observable
 	for i := 1; i < len(tasks); i++ {
 		t := tasks[i]
-		index := m[t.observable]
-		obs := iterators[index]
-		item, err := args(t)
-		if lastObservableType == t.observable {
-			if calls[index] == nil {
-				calls[index] = obs.On("Next", mock.Anything).Once().Return(item, err)
-			} else {
-				calls[index].On("Next", mock.Anything).Once().Return(item, err)
-			}
-		} else {
-			lastObservableType = t.observable
+		index := t.index
+
+		if t.context == true {
+			ctx := contexts[index]
+			notif := make(chan struct{}, 1)
+			lastObservableType = -1
 			if lastCh == nil {
-				ch := make(chan struct{})
+				ch := make(chan struct{}, 1)
 				lastCh = ch
-				if calls[index] == nil {
-					calls[index] = obs.On("Next", mock.Anything).Once().Return(item, err).
+				if iteratorContexts[index] == nil {
+					iteratorContexts[index] = ctx.On("Done").Once().Return(notif).
 						Run(func(args mock.Arguments) {
-							run(args, ch, nil)
+							prenotif(notif, ch, nil)
 						})
 				} else {
-					calls[index].On("Next", mock.Anything).Once().Return(item, err).
+					iteratorContexts[index].On("Done").Once().Return(notif).
 						Run(func(args mock.Arguments) {
-							run(args, ch, nil)
+							prenotif(notif, ch, nil)
 						})
 				}
 			} else {
 				var ch chan struct{}
 				// If this is the latest task we do not set any wait channel
 				if i != len(tasks)-1 {
-					ch = make(chan struct{})
+					ch = make(chan struct{}, 1)
 				}
 				previous := lastCh
-				if calls[index] == nil {
-					calls[index] = obs.On("Next", mock.Anything).Once().Return(item, err).
+				if iteratorContexts[index] == nil {
+					iteratorContexts[index] = ctx.On("Done").Once().Return(notif).
 						Run(func(args mock.Arguments) {
-							run(args, ch, previous)
+							prenotif(notif, ch, previous)
 						})
 				} else {
-					calls[index].On("Next", mock.Anything).Once().Return(item, err).
+					iteratorContexts[index].On("Done").Once().Return(notif).
 						Run(func(args mock.Arguments) {
-							run(args, ch, previous)
+							prenotif(notif, ch, previous)
 						})
 				}
 				lastCh = ch
 			}
+		} else {
+			obs := iterators[index]
+			item, err := args(t)
+			if lastObservableType == t.index {
+				if iteratorCalls[index] == nil {
+					iteratorCalls[index] = obs.On("Next", mock.Anything).Once().Return(item, err)
+				} else {
+					iteratorCalls[index].On("Next", mock.Anything).Once().Return(item, err)
+				}
+			} else {
+				lastObservableType = t.index
+				if lastCh == nil {
+					ch := make(chan struct{})
+					lastCh = ch
+					if iteratorCalls[index] == nil {
+						iteratorCalls[index] = obs.On("Next", mock.Anything).Once().Return(item, err).
+							Run(func(args mock.Arguments) {
+								run(args, ch, nil)
+							})
+					} else {
+						iteratorCalls[index].On("Next", mock.Anything).Once().Return(item, err).
+							Run(func(args mock.Arguments) {
+								run(args, ch, nil)
+							})
+					}
+				} else {
+					var ch chan struct{}
+					// If this is the latest task we do not set any wait channel
+					if i != len(tasks)-1 {
+						ch = make(chan struct{})
+					}
+					previous := lastCh
+					if iteratorCalls[index] == nil {
+						iteratorCalls[index] = obs.On("Next", mock.Anything).Once().Return(item, err).
+							Run(func(args mock.Arguments) {
+								run(args, ch, previous)
+							})
+					} else {
+						iteratorCalls[index].On("Next", mock.Anything).Once().Return(item, err).
+							Run(func(args mock.Arguments) {
+								run(args, ch, previous)
+							})
+					}
+					lastCh = ch
+				}
+			}
 		}
+
 	}
 
 	observables := make([]Observable, 0, len(iterators))
 	for _, iterator := range iterators {
 		observables = append(observables, newMockObservable(iterator))
 	}
-	return observables
+	ctxs := make([]context.Context, 0, len(iterators))
+	for _, c := range contexts {
+		ctxs = append(ctxs, c)
+	}
+	return observables, ctxs
 }
 
 func args(t task) (interface{}, error) {
@@ -173,6 +291,16 @@ func args(t task) (interface{}, error) {
 		return t.error, nil
 	}
 	return t.item, nil
+}
+
+func prenotif(notif chan struct{}, wait chan struct{}, send chan struct{}) {
+	if send != nil {
+		send <- struct{}{}
+	}
+	if wait != nil {
+		<-wait
+	}
+	notif <- struct{}{}
 }
 
 func run(args mock.Arguments, wait chan struct{}, send chan struct{}) {

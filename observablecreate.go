@@ -300,22 +300,21 @@ func FromSlice(s []interface{}) Observable {
 
 // Interval creates an Observable emitting incremental integers infinitely between
 // each given time interval.
-func Interval(term chan struct{}, interval time.Duration) Observable {
+func Interval(interval time.Duration, ctx context.Context) Observable {
 	out := make(chan interface{})
-	go func(term chan struct{}) {
+	go func() {
 		i := 0
-	OuterLoop:
 		for {
 			select {
-			case <-term:
-				break OuterLoop
 			case <-time.After(interval):
 				out <- i
+				i++
+			case <-ctx.Done():
+				close(out)
+				return
 			}
-			i++
 		}
-		close(out)
-	}(term)
+	}()
 	return newColdObservableFromChannel(out)
 }
 

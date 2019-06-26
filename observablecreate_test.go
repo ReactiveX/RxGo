@@ -107,7 +107,9 @@ func TestError(t *testing.T) {
 
 func TestIntervalOperator(t *testing.T) {
 	fin := make(chan struct{})
-	myStream := Interval(fin, 10*time.Millisecond)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	myStream := Interval(10*time.Millisecond, ctx)
 	nums := []int{}
 
 	onNext := handlers.NextFunc(func(item interface{}) {
@@ -286,7 +288,7 @@ func TestMerge(t *testing.T) {
 }
 
 func TestAmb(t *testing.T) {
-	observables := mockObservables(t, `
+	observables, _ := causality(`
 1
 2
 x
@@ -301,7 +303,7 @@ x
 }
 
 func TestCombineLatest(t *testing.T) {
-	observables := mockObservables(t, `
+	observables, _ := causality(`
 1
 	10
 2
@@ -316,12 +318,12 @@ x
 			sum += v.(int)
 		}
 		return sum
-	}, observables[0], observables[1:]...)
+	}, observables[0], observables[1])
 	AssertObservable(t, obs, HasItems(11, 12, 13, 113), HasNotRaisedAnyError())
 }
 
 func TestCombineLatest_Error(t *testing.T) {
-	observables := mockObservables(t, `
+	observables, _ := causality(`
 1
 	10
 2
@@ -335,7 +337,7 @@ x
 			sum += v.(int)
 		}
 		return sum
-	}, observables[0], observables[1:]...)
+	}, observables[0], observables[1])
 	AssertObservable(t, obs, HasItems(11, 12), HasRaisedAnError())
 }
 

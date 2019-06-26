@@ -1633,15 +1633,20 @@ func TestTakeWhile_Empty(t *testing.T) {
 }
 
 func TestSample(t *testing.T) {
-	obs := Interval(make(chan struct{}), 50*time.Millisecond).
-		Sample(Interval(make(chan struct{}), 250*time.Millisecond)).
+	ctx1, cancel1 := context.WithCancel(context.Background())
+	defer cancel1()
+	ctx2, cancel2 := context.WithCancel(context.Background())
+	defer cancel2()
+	obs := Interval(50*time.Millisecond, ctx1).
+		Sample(Interval(250*time.Millisecond, ctx2)).
 		Take(2)
 
 	AssertObservable(t, obs, HasItems(3, 8))
 }
 
 func TestSample_NotRepeatedItems(t *testing.T) {
-	observables := mockObservables(t, `
+	observables, _ := causality(`
+o	o
 1
 2
 	0
@@ -1666,18 +1671,24 @@ x
 }
 
 func TestSample_SourceObsClosedBeforeIntervalFired(t *testing.T) {
-	obs := Just(1).Sample(Interval(make(chan struct{}), time.Second))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	obs := Just(1).Sample(Interval(time.Second, ctx))
 	AssertObservable(t, obs, IsEmpty())
 }
 
 func TestSample_TimerFiredBeforeSourceObsEmitted(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	frequence50ms := new(mockDuration)
 	frequence50ms.On("duration").Return(50 * time.Millisecond)
-	obs := Interval(make(chan struct{}), time.Second).Sample(Timer(frequence50ms))
+	obs := Interval(time.Second, ctx).Sample(Timer(frequence50ms))
 	AssertObservable(t, obs, IsEmpty())
 }
 func TestSample_Empty(t *testing.T) {
-	obs := Empty().Sample(Interval(make(chan struct{}), 50*time.Millisecond))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	obs := Empty().Sample(Interval(50*time.Millisecond, ctx))
 	AssertObservable(t, obs, IsEmpty())
 }
 
@@ -1767,30 +1778,72 @@ func TestStartWithObservable_Empty2(t *testing.T) {
 	AssertObservable(t, obs, HasItems(1, 2, 3))
 }
 
+//func TestTimeout(t *testing.T) {
+//	observables := causality(t, `
+//1
+//2
+//3
+//	0
+//4
+//5
+//x
+//	x
+//`)
+//	obs := observables[0].Timeout(observables[1])
+//	AssertObservable(t, obs, HasItems(1, 2, 3))
+//}
+//
+//func TestTimeout_ClosedChannel(t *testing.T) {
+//	observables := causality(t, `
+//1
+//2
+//3
+//x
+//	0
+//	x
+//`)
+//	obs := observables[0].Timeout(observables[1])
+//	AssertObservable(t, obs, HasItems(1, 2, 3))
+//}
+
 func TestTimeout(t *testing.T) {
-	observables := mockObservables(t, `
+	observables, contexts := causality(`
+o	c
 1
 2
 3
-	0
+	x
 4
 5
+6
 x
-	x
 `)
-	obs := observables[0].Timeout(observables[1])
+	obs := observables[0].Timeout(contexts[0])
+	AssertObservable(t, obs, HasItems(1, 2, 3))
+}
+
+func TestTimeout2(t *testing.T) {
+	observables, contexts := causality(`
+o	c
+	x
+1
+2
+3
+x
+`)
+	obs := observables[0].Timeout(contexts[0])
 	AssertObservable(t, obs, HasItems(1, 2, 3))
 }
 
 func TestTimeout_ClosedChannel(t *testing.T) {
-	observables := mockObservables(t, `
+	observables, contexts := causality(`
+o	c
 1
 2
 3
 x
-	0
 	x
 `)
-	obs := observables[0].Timeout(observables[1])
+	obs := observables[0].Timeout(contexts[0])
 	AssertObservable(t, obs, HasItems(1, 2, 3))
 }
