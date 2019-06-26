@@ -1822,19 +1822,6 @@ x
 	AssertObservable(t, obs, HasItems(1, 2, 3))
 }
 
-func TestTimeout2(t *testing.T) {
-	observables, contexts := causality(`
-o	c
-	x
-1
-2
-3
-x
-`)
-	obs := observables[0].Timeout(contexts[0])
-	AssertObservable(t, obs, HasItems(1, 2, 3))
-}
-
 func TestTimeout_ClosedChannel(t *testing.T) {
 	observables, contexts := causality(`
 o	c
