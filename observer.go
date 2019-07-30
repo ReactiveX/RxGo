@@ -12,26 +12,15 @@ type Observer interface {
 	Block() error
 	setChannel(chan interface{})
 	getChannel() chan interface{}
-	setBackpressureStrategy(BackpressureStrategy)
-	getBackpressureStrategy() BackpressureStrategy
 }
 
 type observer struct {
-	disposed             chan struct{}
-	nextHandler          NextFunc
-	errHandler           ErrFunc
-	doneHandler          DoneFunc
-	done                 chan error
-	channel              chan interface{}
-	backpressureStrategy BackpressureStrategy
-}
-
-func (o *observer) setBackpressureStrategy(strategy BackpressureStrategy) {
-	o.backpressureStrategy = strategy
-}
-
-func (o *observer) getBackpressureStrategy() BackpressureStrategy {
-	return o.backpressureStrategy
+	disposed    chan struct{}
+	nextHandler NextFunc
+	errHandler  ErrFunc
+	doneHandler DoneFunc
+	done        chan error
+	channel     chan interface{}
 }
 
 func (o *observer) setChannel(ch chan interface{}) {

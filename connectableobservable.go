@@ -231,7 +231,6 @@ func (o *connectableObservable) Subscribe(handler EventHandler, opts ...Option) 
 	observableOptions := ParseOptions(opts...)
 
 	ob := NewObserver(handler)
-	ob.setBackpressureStrategy(observableOptions.BackpressureStrategy())
 	var ch chan interface{}
 	if observableOptions.BackpressureStrategy() == Buffer {
 		ch = make(chan interface{}, observableOptions.Buffer())
