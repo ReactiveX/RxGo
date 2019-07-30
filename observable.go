@@ -91,7 +91,8 @@ type observable struct {
 	coldIterable Iterable
 
 	// hotItemChannel is used while data are pushed from the observable
-	hotItemChannel        <-chan interface{}
+	hotItemChannel <-chan interface{}
+
 	bpStrategy            BackpressureStrategy
 	bpBuffer              int
 	subscriptionsObserver []Observer
@@ -158,6 +159,42 @@ func iterate(observable Observable, observer Observer) error {
 		}
 	}
 	return nil
+}
+
+func coldSubscribe() func(o *observable, ob Observer) {
+	return func(o *observable, ob Observer) {
+		go func() {
+			e := iterate(o, ob)
+			if e == nil {
+				err := ob.OnDone()
+				if err != nil {
+					panic(errors.Wrap(err, "error while sending done signal from observable"))
+				}
+			}
+		}()
+	}
+}
+
+func hotSubscribeStrategyNoneBackPressure() func(o *observable, ob Observer) {
+	return func(o *observable, ob Observer) {
+		o.subscriptionsMutex.Lock()
+		o.subscriptionsObserver = append(o.subscriptionsObserver, ob)
+		o.subscriptionsMutex.Unlock()
+	}
+}
+
+func hotSubscribeStrategyBufferBackPressure() func(o *observable, ob Observer) {
+	return func(o *observable, ob Observer) {
+		o.subscriptionsMutex.Lock()
+		ch := make(chan interface{}, o.bpBuffer)
+		go func() {
+			for item := range ch {
+				ob.Handle(item)
+			}
+		}()
+		o.subscriptionsChannel = append(o.subscriptionsChannel, ch)
+		o.subscriptionsMutex.Unlock()
+	}
 }
 
 // Compares first items of two sequences and returns true if they are equal and false if
@@ -905,7 +942,7 @@ func (o *observable) ForEach(nextFunc NextFunc, errFunc ErrFunc,
 // or onError.
 func (o *observable) IgnoreElements() Observable {
 	return &observable{
-		subscribeStrategy:   coldSubscribe,
+		subscribeStrategy:   coldSubscribe(),
 		coldIterable:        o.coldIterable,
 		errorOnSubscription: o.errorOnSubscription,
 		nextStrategy:        onNextIgnore(),
@@ -1419,38 +1456,6 @@ func (o *observable) SkipWhile(apply Predicate) Observable {
 		close(out)
 	}
 	return newColdObservableFromFunction(f)
-}
-
-func coldSubscribe(o *observable, ob Observer) {
-	go func() {
-		e := iterate(o, ob)
-		if e == nil {
-			err := ob.OnDone()
-			if err != nil {
-				panic(errors.Wrap(err, "error while sending done signal from observable"))
-			}
-		}
-	}()
-}
-
-func hotSubscribe(o *observable, ob Observer) {
-	if o.bpStrategy == None {
-		o.subscriptionsMutex.Lock()
-		o.subscriptionsObserver = append(o.subscriptionsObserver, ob)
-		o.subscriptionsMutex.Unlock()
-	} else if o.bpStrategy == Buffer {
-		o.subscriptionsMutex.Lock()
-		ch := make(chan interface{}, o.bpBuffer)
-		go func() {
-			for item := range ch {
-				ob.Handle(item)
-			}
-		}()
-		o.subscriptionsChannel = append(o.subscriptionsChannel, ch)
-		o.subscriptionsMutex.Unlock()
-	} else {
-		panic(fmt.Sprintf("unknown strategy: %v", o.bpStrategy))
-	}
 }
 
 // Subscribe subscribes an EventHandler and returns a Subscription channel.

@@ -2,6 +2,7 @@ package rxgo
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"sync"
 	"sync/atomic"
@@ -22,7 +23,7 @@ func isClosed(ch <-chan interface{}) bool {
 
 func newDefaultObservable() *observable {
 	return &observable{
-		subscribeStrategy: coldSubscribe,
+		subscribeStrategy: coldSubscribe(),
 		nextStrategy:      onNext(),
 	}
 }
@@ -45,10 +46,21 @@ func newHotObservableFromChannel(ch chan interface{}, opts ...Option) Observable
 	parsedOptions := ParseOptions(opts...)
 
 	obs := newDefaultObservable()
-	obs.subscribeStrategy = hotSubscribe
+
+	stategy := parsedOptions.BackpressureStrategy()
+	switch stategy {
+	default:
+		panic(fmt.Sprintf("unknown stategy: %v", stategy))
+	case None:
+		obs.subscribeStrategy = hotSubscribeStrategyNoneBackPressure()
+	case Drop:
+		panic("drop strategy not implemented yet")
+	case Buffer:
+		obs.subscribeStrategy = hotSubscribeStrategyBufferBackPressure()
+	}
+
 	obs.subscriptionsObserver = make([]Observer, 0)
 	obs.subscriptionsChannel = make([]chan<- interface{}, 0)
-	obs.bpStrategy = parsedOptions.BackpressureStrategy()
 	obs.bpBuffer = parsedOptions.Buffer()
 	obs.hotItemChannel = ch
 
