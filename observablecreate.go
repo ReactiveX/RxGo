@@ -2,6 +2,7 @@ package rxgo
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"sync"
 	"sync/atomic"
@@ -20,61 +21,99 @@ func isClosed(ch <-chan interface{}) bool {
 	return false
 }
 
+func newDefaultObservable() *observable {
+	return &observable{
+		subscribeStrategy: coldSubscribe(),
+		nextStrategy:      onNext(),
+	}
+}
+
 // newColdObservableFromChannel creates an Observable from a given channel
 func newColdObservableFromChannel(ch chan interface{}) Observable {
-	return &observable{
-		observableType: cold,
-		iterable:       newIterableFromChannel(ch),
-	}
+	obs := newDefaultObservable()
+	obs.coldIterable = newIterableFromChannel(ch)
+	return obs
 }
 
 // newColdObservableFromFunction creates a cold observable
 func newColdObservableFromFunction(f func(chan interface{})) Observable {
-	return &observable{
-		observableType: cold,
-		iterable:       newIterableFromFunc(f),
-	}
+	obs := newDefaultObservable()
+	obs.coldIterable = newIterableFromFunc(f)
+	return obs
 }
 
 func newHotObservableFromChannel(ch chan interface{}, opts ...Option) Observable {
 	parsedOptions := ParseOptions(opts...)
 
-	obs := &observable{
-		observableType:        hot,
-		subscriptionsObserver: make([]Observer, 0),
-		subscriptionsChannel:  make([]chan interface{}, 0),
-		bpStrategy:            parsedOptions.BackpressureStrategy(),
-		bpBuffer:              parsedOptions.Buffer(),
-		channel:               ch,
-	}
+	obs := newDefaultObservable()
 
-	startsHotObservable(obs)
+	obs.hotObservers = make([]Observer, 0)
+	obs.hotSubscribers = make([]chan<- interface{}, 0)
+	obs.hotItemChannel = ch
+
+	stategy := parsedOptions.BackpressureStrategy()
+	switch stategy {
+	default:
+		panic(fmt.Sprintf("unknown stategy: %v", stategy))
+	case None:
+		obs.subscribeStrategy = hotSubscribeStrategyNoneBackPressure()
+		go func() {
+			for {
+				if next, ok := <-obs.hotItemChannel; ok {
+					obs.hotObserversMutex.Lock()
+					for _, observer := range obs.hotObservers {
+						observer.Handle(next)
+					}
+					obs.hotObserversMutex.Unlock()
+				} else {
+					return
+				}
+			}
+		}()
+	case Drop:
+		panic("drop strategy not implemented yet")
+	case Buffer:
+		obs.subscribeStrategy = hotSubscribeStrategyBufferBackPressure(parsedOptions.Buffer())
+		go func() {
+			for {
+				if next, ok := <-obs.hotItemChannel; ok {
+					obs.hotObserversMutex.Lock()
+					for _, ch := range obs.hotSubscribers {
+						select {
+						case ch <- next:
+						default:
+						}
+					}
+					obs.hotObserversMutex.Unlock()
+				} else {
+					return
+				}
+			}
+		}()
+	}
 
 	return obs
 }
 
 // newObservableFromIterable creates an Observable from a given iterable
 func newObservableFromIterable(it Iterable) Observable {
-	return &observable{
-		observableType: cold,
-		iterable:       it,
-	}
+	obs := newDefaultObservable()
+	obs.coldIterable = it
+	return obs
 }
 
 // newObservableFromRange creates an Observable from a range.
 func newObservableFromRange(start, count int) Observable {
-	return &observable{
-		observableType: cold,
-		iterable:       newIterableFromRange(start, count),
-	}
+	obs := newDefaultObservable()
+	obs.coldIterable = newIterableFromRange(start, count)
+	return obs
 }
 
 // newObservableFromSlice creates an Observable from a given channel
 func newObservableFromSlice(s []interface{}) Observable {
-	return &observable{
-		observableType: cold,
-		iterable:       newIterableFromSlice(s),
-	}
+	obs := newDefaultObservable()
+	obs.coldIterable = newIterableFromSlice(s)
+	return obs
 }
 
 // Amb take several Observables, emit all of the items from only the first of these Observables

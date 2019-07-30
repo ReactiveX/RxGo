@@ -318,18 +318,10 @@ func (c *connectableObservable) ZipFromObservable(publisher Observable, zipper F
 	return c.observable.ZipFromObservable(publisher, zipper)
 }
 
-func (c *connectableObservable) getIgnoreElements() bool {
-	return c.observable.getIgnoreElements()
+func (c *connectableObservable) getCustomErrorStrategy() func(Observable, Observer, error) error {
+	return c.observable.getCustomErrorStrategy()
 }
 
-func (c *connectableObservable) getOnErrorResumeNext() ErrorToObservableFunction {
-	return c.observable.getOnErrorResumeNext()
-}
-
-func (c *connectableObservable) getOnErrorReturn() ErrorFunction {
-	return c.observable.getOnErrorReturn()
-}
-
-func (c *connectableObservable) getOnErrorReturnItem() interface{} {
-	return c.observable.getOnErrorReturnItem()
+func (c *connectableObservable) getNextStrategy() func(Observer, interface{}) error {
+	return c.observable.getNextStrategy()
 }
