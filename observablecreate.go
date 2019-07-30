@@ -48,7 +48,7 @@ func newHotObservableFromChannel(ch chan interface{}, opts ...Option) Observable
 	obs := newDefaultObservable()
 
 	obs.hotObservers = make([]Observer, 0)
-	obs.subscriptionsChannel = make([]chan<- interface{}, 0)
+	obs.hotSubscribers = make([]chan<- interface{}, 0)
 	obs.hotItemChannel = ch
 
 	stategy := parsedOptions.BackpressureStrategy()
@@ -78,7 +78,7 @@ func newHotObservableFromChannel(ch chan interface{}, opts ...Option) Observable
 			for {
 				if next, ok := <-obs.hotItemChannel; ok {
 					obs.hotObserversMutex.Lock()
-					for _, ch := range obs.subscriptionsChannel {
+					for _, ch := range obs.hotSubscribers {
 						select {
 						case ch <- next:
 						default:

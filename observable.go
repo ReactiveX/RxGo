@@ -90,12 +90,12 @@ type observable struct {
 	coldIterable Iterable
 	// hotItemChannel is used while data are pushed from the observable
 	hotItemChannel <-chan interface{}
-
-	// hotObservers list the observer registered to the hot observable
+	// hotObservers list the observer registered to the hot observable with none bp mode.
 	hotObservers []Observer
 	// hotObservers protects hotObservers from concurrent accesses
-	hotObserversMutex    sync.Mutex
-	subscriptionsChannel []chan<- interface{}
+	hotObserversMutex sync.Mutex
+	// hotSubscribers list the subscribers registered to the hot observable with none buffer bp mode.
+	hotSubscribers []chan<- interface{}
 }
 
 func onErrorReturn(f ErrorFunction) func(Observable, Observer, error) error {
@@ -190,7 +190,7 @@ func hotSubscribeStrategyBufferBackPressure(bpBuffer int) func(o *observable, ob
 				ob.Handle(item)
 			}
 		}()
-		o.subscriptionsChannel = append(o.subscriptionsChannel, ch)
+		o.hotSubscribers = append(o.hotSubscribers, ch)
 		o.hotObserversMutex.Unlock()
 	}
 }
