@@ -86,18 +86,16 @@ type observable struct {
 	nextStrategy func(Observer, interface{}) error
 	// errorOnSubscription defines an error to be sent to the observer once it subscribes to the observable
 	errorOnSubscription error
-
 	// coldIterable is used while pulling data
 	coldIterable Iterable
-
 	// hotItemChannel is used while data are pushed from the observable
 	hotItemChannel <-chan interface{}
 
-	bpStrategy            BackpressureStrategy
-	bpBuffer              int
-	subscriptionsObserver []Observer
-	subscriptionsChannel  []chan<- interface{}
-	subscriptionsMutex    sync.Mutex
+	// hotObservers list the observer registered to the hot observable
+	hotObservers []Observer
+	// hotObservers protects hotObservers from concurrent accesses
+	hotObserversMutex    sync.Mutex
+	subscriptionsChannel []chan<- interface{}
 }
 
 func onErrorReturn(f ErrorFunction) func(Observable, Observer, error) error {
@@ -177,23 +175,23 @@ func coldSubscribe() func(o *observable, ob Observer) {
 
 func hotSubscribeStrategyNoneBackPressure() func(o *observable, ob Observer) {
 	return func(o *observable, ob Observer) {
-		o.subscriptionsMutex.Lock()
-		o.subscriptionsObserver = append(o.subscriptionsObserver, ob)
-		o.subscriptionsMutex.Unlock()
+		o.hotObserversMutex.Lock()
+		o.hotObservers = append(o.hotObservers, ob)
+		o.hotObserversMutex.Unlock()
 	}
 }
 
-func hotSubscribeStrategyBufferBackPressure() func(o *observable, ob Observer) {
+func hotSubscribeStrategyBufferBackPressure(bpBuffer int) func(o *observable, ob Observer) {
 	return func(o *observable, ob Observer) {
-		o.subscriptionsMutex.Lock()
-		ch := make(chan interface{}, o.bpBuffer)
+		o.hotObserversMutex.Lock()
+		ch := make(chan interface{}, bpBuffer)
 		go func() {
 			for item := range ch {
 				ob.Handle(item)
 			}
 		}()
 		o.subscriptionsChannel = append(o.subscriptionsChannel, ch)
-		o.subscriptionsMutex.Unlock()
+		o.hotObserversMutex.Unlock()
 	}
 }
 
@@ -208,41 +206,6 @@ func popAndCompareFirstItems(
 		return s1 == s2, sequence1, sequence2
 	}
 	return true, inputSequence1, inputSequence2
-}
-
-func startsHotObservable(observable *observable) {
-	if observable.bpStrategy == None {
-		go func() {
-			for {
-				if next, ok := <-observable.hotItemChannel; ok {
-					observable.subscriptionsMutex.Lock()
-					for _, observer := range observable.subscriptionsObserver {
-						observer.Handle(next)
-					}
-					observable.subscriptionsMutex.Unlock()
-				} else {
-					return
-				}
-			}
-		}()
-	} else if observable.bpStrategy == Buffer {
-		go func() {
-			for {
-				if next, ok := <-observable.hotItemChannel; ok {
-					observable.subscriptionsMutex.Lock()
-					for _, ch := range observable.subscriptionsChannel {
-						select {
-						case ch <- next:
-						default:
-						}
-					}
-					observable.subscriptionsMutex.Unlock()
-				} else {
-					return
-				}
-			}
-		}()
-	}
 }
 
 func (o *observable) Iterator(ctx context.Context) Iterator {

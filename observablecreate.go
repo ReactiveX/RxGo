@@ -47,24 +47,50 @@ func newHotObservableFromChannel(ch chan interface{}, opts ...Option) Observable
 
 	obs := newDefaultObservable()
 
+	obs.hotObservers = make([]Observer, 0)
+	obs.subscriptionsChannel = make([]chan<- interface{}, 0)
+	obs.hotItemChannel = ch
+
 	stategy := parsedOptions.BackpressureStrategy()
 	switch stategy {
 	default:
 		panic(fmt.Sprintf("unknown stategy: %v", stategy))
 	case None:
 		obs.subscribeStrategy = hotSubscribeStrategyNoneBackPressure()
+		go func() {
+			for {
+				if next, ok := <-obs.hotItemChannel; ok {
+					obs.hotObserversMutex.Lock()
+					for _, observer := range obs.hotObservers {
+						observer.Handle(next)
+					}
+					obs.hotObserversMutex.Unlock()
+				} else {
+					return
+				}
+			}
+		}()
 	case Drop:
 		panic("drop strategy not implemented yet")
 	case Buffer:
-		obs.subscribeStrategy = hotSubscribeStrategyBufferBackPressure()
+		obs.subscribeStrategy = hotSubscribeStrategyBufferBackPressure(parsedOptions.Buffer())
+		go func() {
+			for {
+				if next, ok := <-obs.hotItemChannel; ok {
+					obs.hotObserversMutex.Lock()
+					for _, ch := range obs.subscriptionsChannel {
+						select {
+						case ch <- next:
+						default:
+						}
+					}
+					obs.hotObserversMutex.Unlock()
+				} else {
+					return
+				}
+			}
+		}()
 	}
-
-	obs.subscriptionsObserver = make([]Observer, 0)
-	obs.subscriptionsChannel = make([]chan<- interface{}, 0)
-	obs.bpBuffer = parsedOptions.Buffer()
-	obs.hotItemChannel = ch
-
-	startsHotObservable(obs)
 
 	return obs
 }
