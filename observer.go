@@ -9,7 +9,7 @@ type Observer interface {
 	OnError(err error)
 	OnDone()
 
-	Block() error
+	Block()
 	setItemChannel(chan interface{})
 	getItemChannel() chan interface{}
 }
@@ -25,7 +25,6 @@ type observer struct {
 	doneHandler DoneFunc
 	// disposedChannel is the notification channel used when an observer is disposed
 	disposedChannel chan struct{}
-	done            chan error
 }
 
 func (o *observer) setItemChannel(ch chan interface{}) {
@@ -67,7 +66,6 @@ func NewObserver(eventHandlers ...EventHandler) Observer {
 	if ob.doneHandler == nil {
 		ob.doneHandler = func() {}
 	}
-	ob.done = make(chan error, 1)
 
 	return &ob
 }
@@ -118,10 +116,6 @@ func (o *observer) OnError(err error) {
 		if o.errHandler != nil {
 			o.errHandler(err)
 			o.Dispose()
-			if o.done != nil {
-				o.done <- err
-				close(o.done)
-			}
 		}
 	} else {
 		// TODO
@@ -134,10 +128,6 @@ func (o *observer) OnDone() {
 		if o.doneHandler != nil {
 			o.doneHandler()
 			o.Dispose()
-			if o.done != nil {
-				o.done <- nil
-				close(o.done)
-			}
 		}
 	} else {
 		// TODO
@@ -145,11 +135,9 @@ func (o *observer) OnDone() {
 }
 
 // OnDone terminates the Observer's internal Observable
-func (o *observer) Block() error {
-	if !o.IsDisposed() {
-		for v := range o.done {
-			return v
-		}
+func (o *observer) Block() {
+	select {
+	case <-o.disposedChannel:
+		return
 	}
-	return nil
 }

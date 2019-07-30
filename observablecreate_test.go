@@ -21,8 +21,7 @@ func TestEmitsNoElements(t *testing.T) {
 	})
 
 	// when
-	err := sequence.Subscribe(mockedObserver.Capture()).Block()
-	assert.NoError(t, err)
+	sequence.Subscribe(mockedObserver.Capture()).Block()
 
 	// then emits no elements
 	mockedObserver.AssertNotCalled(t, "OnNext", mock.Anything)
@@ -46,8 +45,7 @@ func TestEmitsElements(t *testing.T) {
 	})
 
 	// when
-	err := sequence.Subscribe(mockedObserver.Capture()).Block()
-	assert.NoError(t, err)
+	sequence.Subscribe(mockedObserver.Capture()).Block()
 
 	// then emits elements
 	for _, emitted := range elementsToEmit {
@@ -68,8 +66,7 @@ func TestOnlyFirstDoneCounts(t *testing.T) {
 	})
 
 	// when
-	err := sequence.Subscribe(mockedObserver.Capture()).Block()
-	assert.NoError(t, err)
+	sequence.Subscribe(mockedObserver.Capture()).Block()
 
 	// then emits first done
 	mockedObserver.AssertNotCalled(t, "OnError", mock.Anything)
@@ -88,8 +85,7 @@ func TestDoesntEmitElementsAfterDone(t *testing.T) {
 	})
 
 	// when
-	err := sequence.Subscribe(mockedObserver.Capture()).Block()
-	assert.NoError(t, err)
+	sequence.Subscribe(mockedObserver.Capture()).Block()
 
 	// then stops emission after done
 	mockedObserver.AssertNotCalled(t, "OnError", mock.Anything)
@@ -101,10 +97,9 @@ func TestError(t *testing.T) {
 	var got error
 	err := errors.New("foo")
 	stream := Error(err)
-	e := stream.Subscribe(ErrFunc(func(e error) {
+	stream.Subscribe(ErrFunc(func(e error) {
 		got = e
 	})).Block()
-	assert.Error(t, e)
 	assert.Equal(t, err, got)
 }
 
@@ -139,8 +134,7 @@ func TestEmptyCompletesSequence(t *testing.T) {
 	sequence := Empty()
 
 	// when subscribes to the sequence
-	err := sequence.Subscribe(emissionObserver.Capture()).Block()
-	assert.NoError(t, err)
+	sequence.Subscribe(emissionObserver.Capture()).Block()
 
 	// then completes without any emission
 	emissionObserver.AssertNotCalled(t, "OnNext", mock.Anything)
