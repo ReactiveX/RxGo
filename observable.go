@@ -73,23 +73,19 @@ type Observable interface {
 	ToSlice() Single
 	ZipFromObservable(publisher Observable, zipper Function2) Observable
 	getIgnoreElements() bool
-	getOnErrorResumeNext() ErrorToObservableFunction
-	getOnErrorReturn() ErrorFunction
-	getOnErrorReturnItem() interface{}
+	getErrorStrategy() func(Observable, Observer, error) error
 }
 
 // observable is a structure handling a channel of interface{} and implementing Observable
 type observable struct {
 	// subscribeStrategy represents the observable strategy once an observer subscribes to the observable
 	subscribeStrategy func(o *observable, ob Observer)
+	// errorStrategy represents a custom strategy if the observable encounters an error
+	errorStrategy func(Observable, Observer, error) error
 
 	errorOnSubscription error
 	ignoreElements      bool
 	observableFactory   func() Observable
-
-	onErrorResumeNext ErrorToObservableFunction
-	onErrorReturn     ErrorFunction
-	onErrorReturnItem interface{}
 
 	// coldIterable is used while pulling data
 	coldIterable Iterable
@@ -103,31 +99,41 @@ type observable struct {
 	subscriptionsMutex    sync.Mutex
 }
 
+func onErrorReturn(f ErrorFunction) func(Observable, Observer, error) error {
+	return func(_ Observable, observer Observer, err error) error {
+		return observer.OnNext(f(err))
+	}
+}
+
+func onErrorResumeNext(f ErrorToObservableFunction) func(Observable, Observer, error) error {
+	return func(observable Observable, observer Observer, err error) error {
+		return iterate(f(err), observer)
+	}
+}
+
+func onErrorReturnItem(item interface{}) func(Observable, Observer, error) error {
+	return func(observable Observable, observer Observer, _ error) error {
+		return observer.OnNext(item)
+	}
+}
+
 func iterate(observable Observable, observer Observer) error {
 	it := observable.Iterator(context.Background())
 	for {
 		if item, err := it.Next(context.Background()); err == nil {
 			switch item := item.(type) {
 			case error:
-				if observable.getOnErrorReturn() != nil {
-					err := observer.OnNext(observable.getOnErrorReturn()(item))
-					if err != nil {
-						panic(errors.Wrap(err, "error while sending next item from iteration"))
-					}
-				} else if observable.getOnErrorResumeNext() != nil {
-					observable = observable.getOnErrorResumeNext()(item)
-					it = observable.Iterator(context.Background())
-				} else if observable.getOnErrorReturnItem() != nil {
-					err := observer.OnNext(observable.getOnErrorReturnItem())
-					if err != nil {
-						panic(errors.Wrap(err, "error while sending next item from iteration"))
-					}
-				} else {
+				errorStrategy := observable.getErrorStrategy()
+				if errorStrategy == nil {
 					err := observer.OnError(item)
 					if err != nil {
-						panic(errors.Wrap(err, "error while sending error item from iteration"))
+						return err
 					}
 					return item
+				}
+				err := errorStrategy(observable, observer, item)
+				if err != nil {
+					return err
 				}
 			default:
 				if !observable.getIgnoreElements() {
@@ -893,8 +899,6 @@ func (o *observable) IgnoreElements() Observable {
 		coldIterable:        o.coldIterable,
 		errorOnSubscription: o.errorOnSubscription,
 		observableFactory:   o.observableFactory,
-		onErrorResumeNext:   o.onErrorResumeNext,
-		onErrorReturn:       o.onErrorReturn,
 		ignoreElements:      true,
 	}
 }
@@ -1018,28 +1022,23 @@ func (o *observable) Min(comparator Comparator) OptionalSingle {
 	return &optionalSingle{itemChannel: out}
 }
 
-// OnErrorResumeNext Instructs an Observable to pass control to another Observable rather than invoking
+// OnErrorResumeNext instructs an Observable to pass control to another Observable rather than invoking
 // onError if it encounters an error.
 func (o *observable) OnErrorResumeNext(resumeSequence ErrorToObservableFunction) Observable {
-	o.onErrorResumeNext = resumeSequence
-	o.onErrorReturn = nil
-	o.onErrorReturnItem = nil
+	o.errorStrategy = onErrorResumeNext(resumeSequence)
 	return o
 }
 
 // OnErrorReturn instructs an Observable to emit an item (returned by a specified function)
 // rather than invoking onError if it encounters an error.
 func (o *observable) OnErrorReturn(resumeFunc ErrorFunction) Observable {
-	o.onErrorReturn = resumeFunc
-	o.onErrorResumeNext = nil
-	o.onErrorReturnItem = nil
+	o.errorStrategy = onErrorReturn(resumeFunc)
 	return o
 }
 
+// OnErrorReturnItem instructs on observale to emit an item if it encounters an error.
 func (o *observable) OnErrorReturnItem(item interface{}) Observable {
-	o.onErrorReturnItem = item
-	o.onErrorReturn = nil
-	o.onErrorResumeNext = nil
+	o.errorStrategy = onErrorReturnItem(item)
 	return o
 }
 
@@ -1802,14 +1801,6 @@ func (o *observable) getIgnoreElements() bool {
 	return o.ignoreElements
 }
 
-func (o *observable) getOnErrorResumeNext() ErrorToObservableFunction {
-	return o.onErrorResumeNext
-}
-
-func (o *observable) getOnErrorReturn() ErrorFunction {
-	return o.onErrorReturn
-}
-
-func (o *observable) getOnErrorReturnItem() interface{} {
-	return o.onErrorReturnItem
+func (o *observable) getErrorStrategy() func(Observable, Observer, error) error {
+	return o.errorStrategy
 }

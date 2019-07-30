@@ -322,14 +322,6 @@ func (c *connectableObservable) getIgnoreElements() bool {
 	return c.observable.getIgnoreElements()
 }
 
-func (c *connectableObservable) getOnErrorResumeNext() ErrorToObservableFunction {
-	return c.observable.getOnErrorResumeNext()
-}
-
-func (c *connectableObservable) getOnErrorReturn() ErrorFunction {
-	return c.observable.getOnErrorReturn()
-}
-
-func (c *connectableObservable) getOnErrorReturnItem() interface{} {
-	return c.observable.getOnErrorReturnItem()
+func (c *connectableObservable) getErrorStrategy() func(Observable, Observer, error) error {
+	return c.observable.getErrorStrategy()
 }
