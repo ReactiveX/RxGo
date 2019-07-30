@@ -1382,7 +1382,7 @@ func TestSumFloat64(t *testing.T) {
 func TestMapWithWorkerPool(t *testing.T) {
 	just := Just(1, 2, 3, 4, 5).Map(func(i interface{}) interface{} {
 		return 1 + i.(int)
-	}, WithWorkerPool(3))
+	}, WithNewWorkerPool(3))
 
 	AssertObservable(t, just, HasItemsNoOrder(2, 3, 4, 5, 6))
 }
@@ -1827,15 +1827,6 @@ func TestMarshal(t *testing.T) {
 	}, jsonTest{
 		ID: 2,
 	}).Marshal(json.Marshal)
-	AssertObservable(t, obs, HasItems([]byte(`{"id":1}`), []byte(`{"id":2}`)))
-}
-
-func TestMarshalWithWorkerPool(t *testing.T) {
-	obs := Just(jsonTest{
-		ID: 1,
-	}, jsonTest{
-		ID: 2,
-	}).Marshal(json.Marshal, WithWorkerPool(2))
 	AssertObservable(t, obs, HasItems([]byte(`{"id":1}`), []byte(`{"id":2}`)))
 }
 

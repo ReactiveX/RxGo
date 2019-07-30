@@ -1,5 +1,7 @@
 package rxgo
 
+import "runtime"
+
 // BackpressureStrategy is the backpressure strategy type
 type BackpressureStrategy uint32
 
@@ -90,7 +92,13 @@ func WithBufferBackpressureStrategy(buffer int) Option {
 	})
 }
 
-func WithWorkerPool(capacity int) Option {
+func WithNewCPUPool() Option {
+	return newFuncOption(func(options *funcOption) {
+		options.workerPool = runtime.NumCPU()
+	})
+}
+
+func WithNewWorkerPool(capacity int) Option {
 	return newFuncOption(func(options *funcOption) {
 		options.workerPool = capacity
 	})
