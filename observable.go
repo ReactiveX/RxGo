@@ -41,6 +41,7 @@ type Observable interface {
 	Last() Observable
 	LastOrDefault(defaultValue interface{}) Single
 	Map(apply Function) Observable
+	Marshal(Marshaler) Observable
 	Max(comparator Comparator) OptionalSingle
 	Min(comparator Comparator) OptionalSingle
 	Notify(chan<- interface{})
@@ -72,6 +73,7 @@ type Observable interface {
 	ToMap(keySelector Function) Single
 	ToMapWithValueSelector(keySelector, valueSelector Function) Single
 	ToSlice() Single
+	Unmarshal(Unmarshaler, func() interface{}) Observable
 	ZipFromObservable(publisher Observable, zipper Function2) Observable
 	getCustomErrorStrategy() func(Observable, Observer, error) error
 	getNextStrategy() func(Observer, interface{}) error
@@ -968,6 +970,16 @@ func (o *observable) Map(apply Function) Observable {
 	return newColdObservableFromFunction(f)
 }
 
+func (o *observable) Marshal(marshaler Marshaler) Observable {
+	return o.Map(func(i interface{}) interface{} {
+		b, err := marshaler(i)
+		if err != nil {
+			return err
+		}
+		return b
+	})
+}
+
 // Max determines and emits the maximum-valued item emitted by an Observable according to a comparator.
 func (o *observable) Max(comparator Comparator) OptionalSingle {
 	out := make(chan Optional)
@@ -1758,6 +1770,17 @@ func (o *observable) ToMapWithValueSelector(keySelector, valueSelector Function)
 		close(out)
 	}
 	return newColdSingle(f)
+}
+
+func (o *observable) Unmarshal(unmarshaler Unmarshaler, factory func() interface{}) Observable {
+	return o.Map(func(i interface{}) interface{} {
+		v := factory()
+		err := unmarshaler(i.([]byte), v)
+		if err != nil {
+			return err
+		}
+		return v
+	})
 }
 
 // ZipFromObservable che emissions of multiple Observables together via a specified function

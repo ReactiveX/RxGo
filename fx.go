@@ -48,4 +48,8 @@ type (
 
 	// Channel defines a type representing chan interface{}
 	Channel chan interface{}
+
+	Marshaler func(interface{}) ([]byte, error)
+
+	Unmarshaler func([]byte, interface{}) error
 )

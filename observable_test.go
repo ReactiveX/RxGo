@@ -2,6 +2,7 @@ package rxgo
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
@@ -11,6 +12,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 )
+
+type jsonTest struct {
+	ID int `json:"id"`
+}
 
 func TestCheckEventHandler(t *testing.T) {
 	if testing.Short() {
@@ -1806,4 +1811,31 @@ func TestNotify(t *testing.T) {
 	assert.Equal(t, 2, <-ch)
 	assert.Equal(t, 3, <-ch)
 	assert.Equal(t, nil, <-ch)
+}
+
+func TestMarshal(t *testing.T) {
+	obs := Just(jsonTest{
+		ID: 1,
+	}, jsonTest{
+		ID: 2,
+	}).Marshal(json.Marshal)
+	AssertObservable(t, obs, HasItems([]byte(`{"id":1}`), []byte(`{"id":2}`)))
+}
+
+func TestUnmarshal(t *testing.T) {
+	obs := Just([]byte(`{"id":1}`), []byte(`{"id":2}`)).Unmarshal(json.Unmarshal, func() interface{} {
+		return &jsonTest{}
+	})
+	AssertObservable(t, obs, HasItems(&jsonTest{
+		ID: 1,
+	}, &jsonTest{
+		ID: 2,
+	}))
+}
+
+func TestUnmarshal_WithError(t *testing.T) {
+	obs := Just([]byte(`{"id":1`), []byte(`{"id":2}`)).Unmarshal(json.Unmarshal, func() interface{} {
+		return &jsonTest{}
+	})
+	AssertObservable(t, obs, HasRaisedAnError())
 }

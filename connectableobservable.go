@@ -162,6 +162,10 @@ func (c *connectableObservable) Map(apply Function) Observable {
 	return c.observable.Map(apply)
 }
 
+func (c *connectableObservable) Marshal(m Marshaler) Observable {
+	return c.Marshal(m)
+}
+
 func (c *connectableObservable) Max(comparator Comparator) OptionalSingle {
 	return c.observable.Max(comparator)
 }
@@ -316,6 +320,10 @@ func (c *connectableObservable) ToSlice() Single {
 
 func (c *connectableObservable) ToMapWithValueSelector(keySelector, valueSelector Function) Single {
 	return c.observable.ToMapWithValueSelector(keySelector, valueSelector)
+}
+
+func (c *connectableObservable) Unmarshal(unmarshaler Unmarshaler, factory func() interface{}) Observable {
+	return c.observable.Unmarshal(unmarshaler, factory)
 }
 
 func (c *connectableObservable) ZipFromObservable(publisher Observable, zipper Function2) Observable {
