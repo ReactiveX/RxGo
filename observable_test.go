@@ -1812,9 +1812,9 @@ func BenchmarkSubscribe(b *testing.B) {
 	}
 }
 
-func TestNotify(t *testing.T) {
+func TestSend(t *testing.T) {
 	ch := make(chan interface{}, 3)
-	Just(1, 2, 3).Notify(ch)
+	Just(1, 2, 3).Send(ch)
 	assert.Equal(t, 1, <-ch)
 	assert.Equal(t, 2, <-ch)
 	assert.Equal(t, 3, <-ch)

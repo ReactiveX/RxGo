@@ -44,7 +44,6 @@ type Observable interface {
 	Marshal(Marshaler, ...Option) Observable
 	Max(comparator Comparator) OptionalSingle
 	Min(comparator Comparator) OptionalSingle
-	Notify(chan<- interface{})
 	OnErrorResumeNext(resumeSequence ErrorToObservableFunction) Observable
 	OnErrorReturn(resumeFunc ErrorFunction) Observable
 	OnErrorReturnItem(item interface{}) Observable
@@ -54,6 +53,7 @@ type Observable interface {
 	Sample(obs Observable) Observable
 	Scan(apply Function2) Observable
 	SequenceEqual(obs Observable) Single
+	Send(chan<- interface{})
 	Skip(nth uint) Observable
 	SkipLast(nth uint) Observable
 	SkipWhile(apply Predicate) Observable
@@ -1094,7 +1094,7 @@ func (o *observable) Min(comparator Comparator) OptionalSingle {
 	return &optionalSingle{itemChannel: out}
 }
 
-func (o *observable) Notify(ch chan<- interface{}) {
+func (o *observable) Send(ch chan<- interface{}) {
 	go func() {
 		it := o.coldIterable.Iterator(context.Background())
 		for {
