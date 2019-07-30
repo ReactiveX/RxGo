@@ -9,7 +9,7 @@ import (
 func TestSingleFilterNotMatching(t *testing.T) {
 	got := 0
 
-	_, err := Just(1, 2, 3).ElementAt(1).Filter(func(i interface{}) bool {
+	Just(1, 2, 3).ElementAt(1).Filter(func(i interface{}) bool {
 		switch i := i.(type) {
 		case int:
 			if i == 2 {
@@ -26,14 +26,13 @@ func TestSingleFilterNotMatching(t *testing.T) {
 			}
 		}
 	})).Block()
-	assert.NoError(t, err)
 	assert.Equal(t, 2, got)
 }
 
 func TestSingleFilterMatching(t *testing.T) {
 	got := 0
 
-	_, err := Just(1, 2, 3).ElementAt(1).Filter(func(i interface{}) bool {
+	Just(1, 2, 3).ElementAt(1).Filter(func(i interface{}) bool {
 		switch i := i.(type) {
 		case int:
 			if i == 2 {
@@ -50,19 +49,17 @@ func TestSingleFilterMatching(t *testing.T) {
 			}
 		}
 	})).Block()
-	assert.NoError(t, err)
 	assert.Equal(t, 0, got)
 }
 
 func TestSingleMap(t *testing.T) {
 	got := 0
 
-	_, err := Just(1, 2, 3).ElementAt(1).Map(func(i interface{}) interface{} {
+	Just(1, 2, 3).ElementAt(1).Map(func(i interface{}) interface{} {
 		return i
 	}).Subscribe(NextFunc(func(i interface{}) {
 		got = i.(int) + 10
 	})).Block()
-	assert.NoError(t, err)
 	assert.Equal(t, 12, got)
 }
 

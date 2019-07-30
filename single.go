@@ -9,11 +9,11 @@ type Single interface {
 	Iterable
 	Filter(apply Predicate) OptionalSingle
 	Map(apply Function) Single
-	Subscribe(handler EventHandler, opts ...Option) SingleObserver
+	Subscribe(handler EventHandler, opts ...Option) Observer
 }
 
 type OptionalSingle interface {
-	Subscribe(handler EventHandler, opts ...Option) SingleObserver
+	Subscribe(handler EventHandler, opts ...Option) Observer
 }
 
 type single struct {
@@ -46,8 +46,8 @@ func newOptionalSingleFrom(opt Optional) OptionalSingle {
 }
 
 // CheckSingleEventHandler checks the underlying type of an EventHandler.
-func CheckSingleEventHandler(handler EventHandler) SingleObserver {
-	return NewSingleObserver(handler)
+func CheckSingleEventHandler(handler EventHandler) Observer {
+	return NewObserver(handler)
 }
 
 func newColdSingle(f func(chan interface{})) Single {
@@ -107,44 +107,40 @@ func (s *single) Map(apply Function) Single {
 	return newColdSingle(f)
 }
 
-func (s *single) Subscribe(handler EventHandler, opts ...Option) SingleObserver {
+func (s *single) Subscribe(handler EventHandler, opts ...Option) Observer {
 	ob := CheckSingleEventHandler(handler)
 
 	go func() {
 		it := s.iterable.Iterator(context.Background())
-		for {
-			if item, err := it.Next(context.Background()); err == nil {
-				switch item := item.(type) {
-				case error:
-					ob.OnError(item)
-
-					// Record the error and break the loop.
-					return
-				default:
-					ob.OnSuccess(item)
-				}
-			} else {
-				break
+		if item, err := it.Next(context.Background()); err == nil {
+			switch item := item.(type) {
+			case error:
+				ob.OnError(item)
+			default:
+				ob.OnNext(item)
+				ob.Dispose()
 			}
+		} else {
+			ob.OnDone()
 		}
 	}()
 
 	return ob
 }
 
-func (s *optionalSingle) Subscribe(handler EventHandler, opts ...Option) SingleObserver {
+func (s *optionalSingle) Subscribe(handler EventHandler, opts ...Option) Observer {
 	ob := CheckSingleEventHandler(handler)
 
+	// TODO Improve
 	go func() {
 		for item := range s.ch {
 			switch item := item.(type) {
 			case error:
 				ob.OnError(item)
-
-				// Record the error and break the loop.
 				return
 			default:
-				ob.OnSuccess(item)
+				ob.OnNext(item)
+				ob.Dispose()
 			}
 		}
 	}()

@@ -239,7 +239,13 @@ mainLoop:
 func AssertSingle(t *testing.T, single Single, assertions ...RxAssertion) {
 	ass := parseAssertions(assertions...)
 
-	v, err := single.Subscribe(nil).Block()
+	var v interface{}
+	var err error
+	single.Subscribe(NewObserver(NextFunc(func(i interface{}) {
+		v = i
+	}), ErrFunc(func(e error) {
+		err = e
+	}))).Block()
 
 	checkHasValue, value := ass.hasValueFunc()
 	if checkHasValue {
@@ -270,7 +276,13 @@ func AssertSingle(t *testing.T, single Single, assertions ...RxAssertion) {
 func AssertOptionalSingle(t *testing.T, optionalSingle OptionalSingle, assertions ...RxAssertion) {
 	ass := parseAssertions(assertions...)
 
-	v, err := optionalSingle.Subscribe(nil).Block()
+	var v interface{}
+	var err error
+	optionalSingle.Subscribe(NewObserver(NextFunc(func(i interface{}) {
+		v = i
+	}), ErrFunc(func(e error) {
+		err = e
+	}))).Block()
 
 	if err != nil {
 		assert.Fail(t, "error while retrieving OptionalSingle results")

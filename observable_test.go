@@ -722,13 +722,12 @@ func TestElementAt(t *testing.T) {
 	got := 0
 	just := Just(0, 1, 2, 3, 4)
 	single := just.ElementAt(2)
-	_, err := single.Subscribe(NextFunc(func(i interface{}) {
+	single.Subscribe(NextFunc(func(i interface{}) {
 		switch i := i.(type) {
 		case int:
 			got = i
 		}
 	})).Block()
-	assert.NoError(t, err)
 	assert.Equal(t, 2, got)
 }
 
@@ -736,10 +735,9 @@ func TestElementAtWithError(t *testing.T) {
 	got := 0
 	just := Just(0, 1, 2, 3, 4)
 	single := just.ElementAt(10)
-	_, err := single.Subscribe(ErrFunc(func(error) {
+	single.Subscribe(ErrFunc(func(error) {
 		got = 10
 	})).Block()
-	assert.Error(t, err)
 	assert.Equal(t, 10, got)
 }
 
@@ -755,12 +753,9 @@ func TestObservableReduce(t *testing.T) {
 	}
 
 	var got Optional
-	_, err := stream1.Reduce(add).Subscribe(NextFunc(func(i interface{}) {
+	stream1.Reduce(add).Subscribe(NextFunc(func(i interface{}) {
 		got = i.(Optional)
 	})).Block()
-	if err != nil {
-		t.Fail()
-	}
 	assert.False(t, got.IsEmpty())
 	assert.Exactly(t, Of(14), got)
 }
@@ -777,12 +772,9 @@ func TestObservableReduceEmpty(t *testing.T) {
 	stream := Empty()
 
 	var got Optional
-	_, err := stream.Reduce(add).Subscribe(NextFunc(func(i interface{}) {
+	stream.Reduce(add).Subscribe(NextFunc(func(i interface{}) {
 		got = i.(Optional)
 	})).Block()
-	if err != nil {
-		t.Fail()
-	}
 	assert.True(t, got.IsEmpty())
 }
 
@@ -792,12 +784,9 @@ func TestObservableReduceNil(t *testing.T) {
 		return nil
 	}
 	var got Optional
-	_, err := stream.Reduce(nilReduce).Subscribe(NextFunc(func(i interface{}) {
+	stream.Reduce(nilReduce).Subscribe(NextFunc(func(i interface{}) {
 		got = i.(Optional)
 	})).Block()
-	if err != nil {
-		t.Fail()
-	}
 	assert.False(t, got.IsEmpty())
 	g, err := got.Get()
 	assert.Nil(t, err)
@@ -806,43 +795,28 @@ func TestObservableReduceNil(t *testing.T) {
 
 func TestObservableCount(t *testing.T) {
 	stream := Just(1, 2, 3, "foo", "bar", errors.New("error"))
-	count, err := stream.Count().Subscribe(nil).Block()
-	if err != nil {
-		t.Fail()
-	}
-	assert.Exactly(t, int64(6), count)
+	obs := stream.Count()
+	AssertSingle(t, obs, HasValue(int64(6)))
 }
 
 func TestObservableFirstOrDefault(t *testing.T) {
-	v, err := Empty().FirstOrDefault(7).Subscribe(nil).Block()
-	if err != nil {
-		t.Fail()
-	}
-	assert.Exactly(t, 7, v)
+	obs := Empty().FirstOrDefault(7)
+	AssertSingle(t, obs, HasValue(7))
 }
 
 func TestObservableFirstOrDefaultWithValue(t *testing.T) {
-	v, err := Just(0, 1, 2).FirstOrDefault(7).Subscribe(nil).Block()
-	if err != nil {
-		t.Fail()
-	}
-	assert.Exactly(t, 0, v)
+	obs := Just(0, 1, 2).FirstOrDefault(7)
+	AssertSingle(t, obs, HasValue(0))
 }
 
 func TestObservableLastOrDefault(t *testing.T) {
-	v, err := Empty().LastOrDefault(7).Subscribe(nil).Block()
-	if err != nil {
-		t.Fail()
-	}
-	assert.Exactly(t, 7, v)
+	obs := Empty().LastOrDefault(7)
+	AssertSingle(t, obs, HasValue(7))
 }
 
 func TestObservableLastOrDefaultWithValue(t *testing.T) {
-	v, err := Just(0, 1, 3).LastOrDefault(7).Subscribe(nil).Block()
-	if err != nil {
-		t.Fail()
-	}
-	assert.Exactly(t, 3, v)
+	obs := Just(0, 1, 3).LastOrDefault(7)
+	AssertSingle(t, obs, HasValue(3))
 }
 
 func TestObservableSkipWhile(t *testing.T) {
@@ -1024,18 +998,16 @@ func TestContain(t *testing.T) {
 
 	var got1, got2 bool
 
-	_, err := Just(1, 2, 3).Contains(predicate).
+	Just(1, 2, 3).Contains(predicate).
 		Subscribe(NextFunc(func(i interface{}) {
 			got1 = i.(bool)
 		})).Block()
-	assert.NoError(t, err)
 	assert.True(t, got1)
 
-	_, err = Just(1, 5, 3).Contains(predicate).
+	Just(1, 5, 3).Contains(predicate).
 		Subscribe(NextFunc(func(i interface{}) {
 			got2 = i.(bool)
 		})).Block()
-	assert.NoError(t, err)
 	assert.False(t, got2)
 }
 
