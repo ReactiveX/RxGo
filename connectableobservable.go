@@ -170,6 +170,10 @@ func (c *connectableObservable) Min(comparator Comparator) OptionalSingle {
 	return c.observable.Min(comparator)
 }
 
+func (c *connectableObservable) Notify(ch chan<- interface{}) {
+	c.observable.Notify(ch)
+}
+
 func (c *connectableObservable) OnErrorResumeNext(resumeSequence ErrorToObservableFunction) Observable {
 	return c.observable.OnErrorResumeNext(resumeSequence)
 }

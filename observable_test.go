@@ -1798,3 +1798,12 @@ func BenchmarkSubscribe(b *testing.B) {
 		panic(err)
 	}
 }
+
+func TestNotify(t *testing.T) {
+	ch := make(chan interface{}, 3)
+	Just(1, 2, 3).Notify(ch)
+	assert.Equal(t, 1, <-ch)
+	assert.Equal(t, 2, <-ch)
+	assert.Equal(t, 3, <-ch)
+	assert.Equal(t, nil, <-ch)
+}

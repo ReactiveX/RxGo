@@ -43,6 +43,7 @@ type Observable interface {
 	Map(apply Function) Observable
 	Max(comparator Comparator) OptionalSingle
 	Min(comparator Comparator) OptionalSingle
+	Notify(chan<- interface{})
 	OnErrorResumeNext(resumeSequence ErrorToObservableFunction) Observable
 	OnErrorReturn(resumeFunc ErrorFunction) Observable
 	OnErrorReturnItem(item interface{}) Observable
@@ -1029,6 +1030,20 @@ func (o *observable) Min(comparator Comparator) OptionalSingle {
 		close(out)
 	}()
 	return &optionalSingle{itemChannel: out}
+}
+
+func (o *observable) Notify(ch chan<- interface{}) {
+	go func() {
+		it := o.coldIterable.Iterator(context.Background())
+		for {
+			if item, err := it.Next(context.Background()); err == nil {
+				ch <- item
+			} else {
+				close(ch)
+				return
+			}
+		}
+	}()
 }
 
 // OnErrorResumeNext instructs an Observable to pass control to another Observable rather than invoking
