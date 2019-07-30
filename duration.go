@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-var Indefinitely int64 = -1
+var Infinite int64 = -1
 
 type Duration interface {
 	duration() time.Duration

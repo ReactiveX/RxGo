@@ -91,6 +91,10 @@ func (o *observer) Dispose() {
 	close(o.disposedChannel)
 }
 
+func (o *observer) Notify(ch chan<- struct{}) {
+	ch <- struct{}{}
+}
+
 func (o *observer) IsDisposed() bool {
 	select {
 	case <-o.disposedChannel:

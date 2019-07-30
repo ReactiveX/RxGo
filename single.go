@@ -21,7 +21,7 @@ type single struct {
 }
 
 type optionalSingle struct {
-	ch chan Optional
+	itemChannel chan Optional
 }
 
 func newSingleFrom(item interface{}) Single {
@@ -34,12 +34,12 @@ func newSingleFrom(item interface{}) Single {
 
 func newOptionalSingleFrom(opt Optional) OptionalSingle {
 	s := optionalSingle{
-		ch: make(chan Optional),
+		itemChannel: make(chan Optional),
 	}
 
 	go func() {
-		s.ch <- opt
-		close(s.ch)
+		s.itemChannel <- opt
+		close(s.itemChannel)
 	}()
 
 	return &s
@@ -59,7 +59,7 @@ func newColdSingle(f func(chan interface{})) Single {
 // NewOptionalSingleFromChannel creates a new OptionalSingle from a channel input
 func NewOptionalSingleFromChannel(ch chan Optional) OptionalSingle {
 	return &optionalSingle{
-		ch: ch,
+		itemChannel: ch,
 	}
 }
 
@@ -87,7 +87,7 @@ func (s *single) Filter(apply Predicate) OptionalSingle {
 	}()
 
 	return &optionalSingle{
-		ch: out,
+		itemChannel: out,
 	}
 }
 
@@ -133,7 +133,7 @@ func (s *optionalSingle) Subscribe(handler EventHandler, opts ...Option) Observe
 
 	// TODO Improve
 	go func() {
-		for item := range s.ch {
+		for item := range s.itemChannel {
 			switch item := item.(type) {
 			case error:
 				ob.OnError(item)

@@ -976,7 +976,7 @@ func (o *observable) Max(comparator Comparator) OptionalSingle {
 		}
 		close(out)
 	}()
-	return &optionalSingle{ch: out}
+	return &optionalSingle{itemChannel: out}
 }
 
 // Min determines and emits the minimum-valued item emitted by an Observable according to a comparator.
@@ -1008,7 +1008,7 @@ func (o *observable) Min(comparator Comparator) OptionalSingle {
 		}
 		close(out)
 	}()
-	return &optionalSingle{ch: out}
+	return &optionalSingle{itemChannel: out}
 }
 
 // OnErrorResumeNext Instructs an Observable to pass control to another Observable rather than invoking
@@ -1069,7 +1069,7 @@ func (o *observable) Reduce(apply Function2) OptionalSingle {
 // Repeat returns an Observable that repeats the sequence of items emitted by the source Observable
 // at most count times, at a particular frequency.
 func (o *observable) Repeat(count int64, frequency Duration) Observable {
-	if count != Indefinitely {
+	if count != Infinite {
 		if count < 0 {
 			count = 0
 		}
@@ -1087,7 +1087,7 @@ func (o *observable) Repeat(count int64, frequency Duration) Observable {
 			}
 		}
 		for {
-			if count != Indefinitely {
+			if count != Infinite {
 				if count == 0 {
 					break
 				}
