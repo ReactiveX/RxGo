@@ -15,6 +15,7 @@ const testWaitTime = 30 * time.Millisecond
 type RxAssertion interface {
 	apply(*assertion)
 	hasItemsFunc() (bool, []interface{})
+	hasItemsNoOrderFunc() (bool, []interface{})
 	hasSizeFunc() (bool, int)
 	hasValueFunc() (bool, interface{})
 	hasRaisedErrorFunc() (bool, error)
@@ -27,6 +28,8 @@ type assertion struct {
 	f                        func(*assertion)
 	checkHasItems            bool
 	hasItems                 []interface{}
+	checkHasItemsNoOrder     bool
+	hasItemsNoOrder          []interface{}
 	checkHasSize             bool
 	hasSize                  int
 	checkHasValue            bool
@@ -41,6 +44,10 @@ type assertion struct {
 
 func (ass *assertion) hasItemsFunc() (bool, []interface{}) {
 	return ass.checkHasItems, ass.hasItems
+}
+
+func (ass *assertion) hasItemsNoOrderFunc() (bool, []interface{}) {
+	return ass.checkHasItemsNoOrder, ass.hasItemsNoOrder
 }
 
 func (ass *assertion) hasSizeFunc() (bool, int) {
@@ -90,6 +97,13 @@ func HasItems(items ...interface{}) RxAssertion {
 	return newAssertion(func(a *assertion) {
 		a.checkHasItems = true
 		a.hasItems = items
+	})
+}
+
+func HasItemsNoOrder(items ...interface{}) RxAssertion {
+	return newAssertion(func(a *assertion) {
+		a.checkHasItemsNoOrder = true
+		a.hasItemsNoOrder = items
 	})
 }
 
@@ -151,6 +165,19 @@ func assertObservable(t *testing.T, ass RxAssertion, got []interface{}, err erro
 	checkHasItems, items := ass.hasItemsFunc()
 	if checkHasItems {
 		assert.Equal(t, items, got)
+	}
+
+	checkHasItemsNoOrder, itemsNoOrder := ass.hasItemsNoOrderFunc()
+	if checkHasItemsNoOrder {
+		m := make(map[interface{}]interface{})
+		for _, v := range itemsNoOrder {
+			m[v] = nil
+		}
+
+		for _, v := range got {
+			delete(m, v)
+		}
+		assert.Equal(t, 0, len(m))
 	}
 
 	checkHasSize, size := ass.hasSizeFunc()

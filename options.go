@@ -17,6 +17,7 @@ type Option interface {
 	apply(*funcOption)
 	Buffer() int
 	BackpressureStrategy() BackpressureStrategy
+	NewWorkerPool() int
 }
 
 // funcOption wraps a function that modifies options into an
@@ -25,6 +26,7 @@ type funcOption struct {
 	f          func(*funcOption)
 	buffer     int
 	bpStrategy BackpressureStrategy
+	workerPool int
 }
 
 func (fdo *funcOption) Buffer() int {
@@ -33,6 +35,10 @@ func (fdo *funcOption) Buffer() int {
 
 func (fdo *funcOption) BackpressureStrategy() BackpressureStrategy {
 	return fdo.bpStrategy
+}
+
+func (fdo *funcOption) NewWorkerPool() int {
+	return fdo.workerPool
 }
 
 func (fdo *funcOption) apply(do *funcOption) {
@@ -81,5 +87,11 @@ func WithBufferBackpressureStrategy(buffer int) Option {
 	return newFuncOption(func(options *funcOption) {
 		options.bpStrategy = Buffer
 		options.buffer = buffer
+	})
+}
+
+func WithWorkerPool(capacity int) Option {
+	return newFuncOption(func(options *funcOption) {
+		options.workerPool = capacity
 	})
 }

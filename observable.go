@@ -40,8 +40,8 @@ type Observable interface {
 	IgnoreElements() Observable
 	Last() Observable
 	LastOrDefault(defaultValue interface{}) Single
-	Map(apply Function) Observable
-	Marshal(Marshaler) Observable
+	Map(apply Function, opts ...Option) Observable
+	Marshal(Marshaler, ...Option) Observable
 	Max(comparator Comparator) OptionalSingle
 	Min(comparator Comparator) OptionalSingle
 	Notify(chan<- interface{})
@@ -73,7 +73,7 @@ type Observable interface {
 	ToMap(keySelector Function) Single
 	ToMapWithValueSelector(keySelector, valueSelector Function) Single
 	ToSlice() Single
-	Unmarshal(Unmarshaler, func() interface{}) Observable
+	Unmarshal(Unmarshaler, func() interface{}, ...Option) Observable
 	ZipFromObservable(publisher Observable, zipper Function2) Observable
 	getCustomErrorStrategy() func(Observable, Observer, error) error
 	getNextStrategy() func(Observer, interface{}) error
@@ -954,30 +954,80 @@ func (o *observable) LastOrDefault(defaultValue interface{}) Single {
 
 // Map maps a Function predicate to each item in Observable and
 // returns a new Observable with applied items.
-func (o *observable) Map(apply Function) Observable {
+func (o *observable) Map(apply Function, opts ...Option) Observable {
 	f := func(out chan interface{}) {
-		it := o.Iterator(context.Background())
-		for {
-			if item, err := it.Next(context.Background()); err == nil {
-				out <- apply(item)
-			} else {
-				break
+		options := ParseOptions(opts...)
+
+		newWorkerPool := options.NewWorkerPool()
+		if newWorkerPool != 0 {
+			var workerInputCh chan interface{}
+			var workerOutputCh chan interface{}
+			// TODO Pass a context
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			workerInputCh = make(chan interface{}, newWorkerPool)
+			workerOutputCh = make(chan interface{}, newWorkerPool)
+			wg := sync.WaitGroup{}
+
+			for i := 0; i < newWorkerPool; i++ {
+				go func() {
+					for {
+						select {
+						case <-ctx.Done():
+							return
+						case item := <-workerInputCh:
+							workerOutputCh <- apply(item)
+						}
+					}
+				}()
 			}
+
+			it := o.Iterator(context.Background())
+			for {
+				if item, err := it.Next(context.Background()); err == nil {
+					wg.Add(1)
+					workerInputCh <- item
+				} else {
+					break
+				}
+			}
+
+			go func() {
+				for {
+					select {
+					case output := <-workerOutputCh:
+						out <- output
+						wg.Done()
+					}
+				}
+			}()
+			wg.Wait()
+			close(out)
+		} else {
+			it := o.Iterator(context.Background())
+			for {
+				if item, err := it.Next(context.Background()); err == nil {
+					out <- apply(item)
+				} else {
+					break
+				}
+			}
+			close(out)
 		}
-		close(out)
 	}
 
 	return newColdObservableFromFunction(f)
 }
 
-func (o *observable) Marshal(marshaler Marshaler) Observable {
+func (o *observable) Marshal(marshaler Marshaler, opts ...Option) Observable {
 	return o.Map(func(i interface{}) interface{} {
 		b, err := marshaler(i)
 		if err != nil {
 			return err
 		}
 		return b
-	})
+	}, opts...)
 }
 
 // Max determines and emits the maximum-valued item emitted by an Observable according to a comparator.
@@ -1772,7 +1822,7 @@ func (o *observable) ToMapWithValueSelector(keySelector, valueSelector Function)
 	return newColdSingle(f)
 }
 
-func (o *observable) Unmarshal(unmarshaler Unmarshaler, factory func() interface{}) Observable {
+func (o *observable) Unmarshal(unmarshaler Unmarshaler, factory func() interface{}, opts ...Option) Observable {
 	return o.Map(func(i interface{}) interface{} {
 		v := factory()
 		err := unmarshaler(i.([]byte), v)
@@ -1780,7 +1830,7 @@ func (o *observable) Unmarshal(unmarshaler Unmarshaler, factory func() interface
 			return err
 		}
 		return v
-	})
+	}, opts...)
 }
 
 // ZipFromObservable che emissions of multiple Observables together via a specified function

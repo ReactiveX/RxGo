@@ -158,12 +158,12 @@ func (c *connectableObservable) LastOrDefault(defaultValue interface{}) Single {
 	return c.observable.LastOrDefault(defaultValue)
 }
 
-func (c *connectableObservable) Map(apply Function) Observable {
+func (c *connectableObservable) Map(apply Function, opts ...Option) Observable {
 	return c.observable.Map(apply)
 }
 
-func (c *connectableObservable) Marshal(m Marshaler) Observable {
-	return c.Marshal(m)
+func (c *connectableObservable) Marshal(m Marshaler, opts ...Option) Observable {
+	return c.Marshal(m, opts...)
 }
 
 func (c *connectableObservable) Max(comparator Comparator) OptionalSingle {
@@ -322,8 +322,8 @@ func (c *connectableObservable) ToMapWithValueSelector(keySelector, valueSelecto
 	return c.observable.ToMapWithValueSelector(keySelector, valueSelector)
 }
 
-func (c *connectableObservable) Unmarshal(unmarshaler Unmarshaler, factory func() interface{}) Observable {
-	return c.observable.Unmarshal(unmarshaler, factory)
+func (c *connectableObservable) Unmarshal(unmarshaler Unmarshaler, factory func() interface{}, opts ...Option) Observable {
+	return c.observable.Unmarshal(unmarshaler, factory, opts...)
 }
 
 func (c *connectableObservable) ZipFromObservable(publisher Observable, zipper Function2) Observable {
