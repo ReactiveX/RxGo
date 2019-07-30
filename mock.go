@@ -11,9 +11,13 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-const signalCh = byte(0)
+type mockData uint32
 
-var mockError = errors.New("")
+const (
+	signalCh mockData = iota
+)
+
+var errMock = errors.New("")
 
 type mockContext struct {
 	mock.Mock
@@ -134,7 +138,7 @@ func causality(in string) ([]Observable, []context.Context) {
 			case "e":
 				tasks = append(tasks, task{
 					index: types[index].index,
-					error: mockError,
+					error: errMock,
 				})
 			default:
 				n, err := strconv.Atoi(v)

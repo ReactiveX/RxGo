@@ -1,4 +1,3 @@
-// Package handlers provides handler types which implements EventHandler.
 package rxgo
 
 type (

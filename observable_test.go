@@ -1532,9 +1532,8 @@ func channel(ch chan interface{}, t time.Duration) (item interface{}, closed boo
 	case i, ok := <-ch:
 		if ok {
 			return i, false, false
-		} else {
-			return nil, true, false
 		}
+		return nil, true, false
 	case <-ctx.Done():
 		return nil, false, true
 	}
@@ -1584,8 +1583,8 @@ func TestSample(t *testing.T) {
 	defer cancel1()
 	ctx2, cancel2 := context.WithCancel(context.Background())
 	defer cancel2()
-	obs := Interval(50*time.Millisecond, ctx1).
-		Sample(Interval(250*time.Millisecond, ctx2)).
+	obs := Interval(ctx1, 50*time.Millisecond).
+		Sample(Interval(ctx2, 250*time.Millisecond)).
 		Take(2)
 
 	AssertObservable(t, obs, HasItems(3, 8))
@@ -1620,7 +1619,7 @@ x
 func TestSample_SourceObsClosedBeforeIntervalFired(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	obs := Just(1).Sample(Interval(time.Second, ctx))
+	obs := Just(1).Sample(Interval(ctx, time.Second))
 	AssertObservable(t, obs, IsEmpty())
 }
 
@@ -1629,13 +1628,13 @@ func TestSample_TimerFiredBeforeSourceObsEmitted(t *testing.T) {
 	defer cancel()
 	frequence50ms := new(mockDuration)
 	frequence50ms.On("duration").Return(50 * time.Millisecond)
-	obs := Interval(time.Second, ctx).Sample(Timer(frequence50ms))
+	obs := Interval(ctx, time.Second).Sample(Timer(frequence50ms))
 	AssertObservable(t, obs, IsEmpty())
 }
 func TestSample_Empty(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	obs := Empty().Sample(Interval(50*time.Millisecond, ctx))
+	obs := Empty().Sample(Interval(ctx, 50*time.Millisecond))
 	AssertObservable(t, obs, IsEmpty())
 }
 

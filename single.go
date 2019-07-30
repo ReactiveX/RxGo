@@ -2,6 +2,7 @@ package rxgo
 
 import (
 	"context"
+
 	"github.com/pkg/errors"
 )
 
@@ -13,6 +14,7 @@ type Single interface {
 	Subscribe(handler EventHandler, opts ...Option) Observer
 }
 
+// OptionalSingle represents an optional single observable type
 type OptionalSingle interface {
 	Subscribe(handler EventHandler, opts ...Option) Observer
 }
@@ -67,18 +69,14 @@ func (s *single) Filter(apply Predicate) OptionalSingle {
 	out := make(chan Optional)
 	go func() {
 		it := s.iterable.Iterator(context.Background())
-		for {
-			if item, err := it.Next(context.Background()); err == nil {
-				if apply(item) {
-					out <- Of(item)
-				} else {
-					out <- EmptyOptional()
-				}
-				close(out)
-				return
+		if item, err := it.Next(context.Background()); err == nil {
+			if apply(item) {
+				out <- Of(item)
 			} else {
-				break
+				out <- EmptyOptional()
 			}
+			close(out)
+			return
 		}
 	}()
 
@@ -90,14 +88,10 @@ func (s *single) Filter(apply Predicate) OptionalSingle {
 func (s *single) Map(apply Function) Single {
 	f := func(out chan interface{}) {
 		it := s.iterable.Iterator(context.Background())
-		for {
-			if item, err := it.Next(context.Background()); err == nil {
-				out <- apply(item)
-				close(out)
-				return
-			} else {
-				break
-			}
+		if item, err := it.Next(context.Background()); err == nil {
+			out <- apply(item)
+			close(out)
+			return
 		}
 	}
 	return newColdSingle(f)

@@ -2,10 +2,12 @@ package rxgo
 
 import (
 	"context"
-	"github.com/pkg/errors"
 	"sync"
+
+	"github.com/pkg/errors"
 )
 
+// ConnectableObservable is an observable that send items once an observer is connected
 type ConnectableObservable interface {
 	Observable
 	Connect() Observer

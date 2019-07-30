@@ -46,7 +46,7 @@ func Of(data interface{}) Optional {
 	}
 }
 
-// Empty returns an empty optional
+// EmptyOptional returns an empty optional
 func EmptyOptional() Optional {
 	return emptyOptional
 }

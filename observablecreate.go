@@ -298,7 +298,7 @@ func FromSlice(s []interface{}) Observable {
 
 // Interval creates an Observable emitting incremental integers infinitely between
 // each given time interval.
-func Interval(interval time.Duration, ctx context.Context) Observable {
+func Interval(ctx context.Context, interval time.Duration) Observable {
 	out := make(chan interface{})
 	go func() {
 		i := 0

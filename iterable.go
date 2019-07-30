@@ -2,6 +2,7 @@ package rxgo
 
 import "context"
 
+// Iterable creates an iterator
 type Iterable interface {
 	Iterator(ctx context.Context) Iterator
 }

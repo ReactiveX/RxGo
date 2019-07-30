@@ -1,5 +1,6 @@
 package rxgo
 
+// ClosedObserverError is thrown when an item or a signal is sent to a closed observer
 type ClosedObserverError struct {
 }
 
@@ -109,9 +110,8 @@ func (o *observer) OnNext(item interface{}) error {
 	if !o.IsDisposed() {
 		o.nextHandler(item)
 		return nil
-	} else {
-		return &ClosedObserverError{}
 	}
+	return &ClosedObserverError{}
 }
 
 // OnError applies Observer's ErrHandler to an error
@@ -120,9 +120,8 @@ func (o *observer) OnError(err error) error {
 		o.errHandler(err)
 		o.Dispose()
 		return nil
-	} else {
-		return &ClosedObserverError{}
 	}
+	return &ClosedObserverError{}
 }
 
 // OnDone terminates the Observer's internal Observable
@@ -131,9 +130,8 @@ func (o *observer) OnDone() error {
 		o.doneHandler()
 		o.Dispose()
 		return nil
-	} else {
-		return &ClosedObserverError{}
 	}
+	return &ClosedObserverError{}
 }
 
 // OnDone terminates the Observer's internal Observable
