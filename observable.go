@@ -87,8 +87,6 @@ type observable struct {
 	// errorOnSubscription defines an error to be sent to the observer once it subscribes to the observable
 	errorOnSubscription error
 
-	observableFactory func() Observable
-
 	// coldIterable is used while pulling data
 	coldIterable Iterable
 
@@ -910,7 +908,6 @@ func (o *observable) IgnoreElements() Observable {
 		subscribeStrategy:   coldSubscribe,
 		coldIterable:        o.coldIterable,
 		errorOnSubscription: o.errorOnSubscription,
-		observableFactory:   o.observableFactory,
 		nextStrategy:        onNextIgnore(),
 	}
 }
