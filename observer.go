@@ -1,13 +1,16 @@
 package rxgo
 
+type ClosedObserverError struct {
+}
+
 // Observer represents a group of EventHandlers.
 type Observer interface {
 	EventHandler
 	Disposable
 
-	OnNext(item interface{})
-	OnError(err error)
-	OnDone()
+	OnNext(item interface{}) error
+	OnError(err error) error
+	OnDone() error
 
 	Block()
 	setItemChannel(chan interface{})
@@ -25,6 +28,10 @@ type observer struct {
 	doneHandler DoneFunc
 	// disposedChannel is the notification channel used when an observer is disposed
 	disposedChannel chan struct{}
+}
+
+func (c *ClosedObserverError) Error() string {
+	return "closed observer"
 }
 
 func (o *observer) setItemChannel(ch chan interface{}) {
@@ -95,42 +102,40 @@ func (o *observer) IsDisposed() bool {
 }
 
 // OnNext applies Observer's NextHandler to an Item
-func (o *observer) OnNext(item interface{}) {
+func (o *observer) OnNext(item interface{}) error {
 	if !o.IsDisposed() {
-		switch item := item.(type) {
-		case error:
-			return
-		default:
-			if o.nextHandler != nil {
-				o.nextHandler(item)
-			}
+		if o.nextHandler != nil {
+			o.nextHandler(item)
 		}
+		return nil
 	} else {
-		// TODO
+		return &ClosedObserverError{}
 	}
 }
 
 // OnError applies Observer's ErrHandler to an error
-func (o *observer) OnError(err error) {
+func (o *observer) OnError(err error) error {
 	if !o.IsDisposed() {
 		if o.errHandler != nil {
 			o.errHandler(err)
 			o.Dispose()
 		}
+		return nil
 	} else {
-		// TODO
+		return &ClosedObserverError{}
 	}
 }
 
 // OnDone terminates the Observer's internal Observable
-func (o *observer) OnDone() {
+func (o *observer) OnDone() error {
 	if !o.IsDisposed() {
 		if o.doneHandler != nil {
 			o.doneHandler()
 			o.Dispose()
 		}
+		return nil
 	} else {
-		// TODO
+		return &ClosedObserverError{}
 	}
 }
 
