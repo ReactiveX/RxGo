@@ -20,33 +20,37 @@ func isClosed(ch <-chan interface{}) bool {
 	return false
 }
 
-// newColdObservableFromChannel creates an Observable from a given channel
-func newColdObservableFromChannel(ch chan interface{}) Observable {
+func newDefaultObservable() *observable {
 	return &observable{
 		subscribeStrategy: coldSubscribe,
-		coldIterable:      newIterableFromChannel(ch),
+		nextStrategy:      onNext(),
 	}
+}
+
+// newColdObservableFromChannel creates an Observable from a given channel
+func newColdObservableFromChannel(ch chan interface{}) Observable {
+	obs := newDefaultObservable()
+	obs.coldIterable = newIterableFromChannel(ch)
+	return obs
 }
 
 // newColdObservableFromFunction creates a cold observable
 func newColdObservableFromFunction(f func(chan interface{})) Observable {
-	return &observable{
-		subscribeStrategy: coldSubscribe,
-		coldIterable:      newIterableFromFunc(f),
-	}
+	obs := newDefaultObservable()
+	obs.coldIterable = newIterableFromFunc(f)
+	return obs
 }
 
 func newHotObservableFromChannel(ch chan interface{}, opts ...Option) Observable {
 	parsedOptions := ParseOptions(opts...)
 
-	obs := &observable{
-		subscribeStrategy:     hotSubscribe,
-		subscriptionsObserver: make([]Observer, 0),
-		subscriptionsChannel:  make([]chan<- interface{}, 0),
-		bpStrategy:            parsedOptions.BackpressureStrategy(),
-		bpBuffer:              parsedOptions.Buffer(),
-		hotItemChannel:        ch,
-	}
+	obs := newDefaultObservable()
+	obs.subscribeStrategy = hotSubscribe
+	obs.subscriptionsObserver = make([]Observer, 0)
+	obs.subscriptionsChannel = make([]chan<- interface{}, 0)
+	obs.bpStrategy = parsedOptions.BackpressureStrategy()
+	obs.bpBuffer = parsedOptions.Buffer()
+	obs.hotItemChannel = ch
 
 	startsHotObservable(obs)
 
@@ -55,26 +59,23 @@ func newHotObservableFromChannel(ch chan interface{}, opts ...Option) Observable
 
 // newObservableFromIterable creates an Observable from a given iterable
 func newObservableFromIterable(it Iterable) Observable {
-	return &observable{
-		subscribeStrategy: coldSubscribe,
-		coldIterable:      it,
-	}
+	obs := newDefaultObservable()
+	obs.coldIterable = it
+	return obs
 }
 
 // newObservableFromRange creates an Observable from a range.
 func newObservableFromRange(start, count int) Observable {
-	return &observable{
-		subscribeStrategy: coldSubscribe,
-		coldIterable:      newIterableFromRange(start, count),
-	}
+	obs := newDefaultObservable()
+	obs.coldIterable = newIterableFromRange(start, count)
+	return obs
 }
 
 // newObservableFromSlice creates an Observable from a given channel
 func newObservableFromSlice(s []interface{}) Observable {
-	return &observable{
-		subscribeStrategy: coldSubscribe,
-		coldIterable:      newIterableFromSlice(s),
-	}
+	obs := newDefaultObservable()
+	obs.coldIterable = newIterableFromSlice(s)
+	return obs
 }
 
 // Amb take several Observables, emit all of the items from only the first of these Observables
