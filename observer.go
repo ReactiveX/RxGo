@@ -10,32 +10,37 @@ type Observer interface {
 	OnDone()
 
 	Block() error
-	setChannel(chan interface{})
-	getChannel() chan interface{}
+	setItemChannel(chan interface{})
+	getItemChannel() chan interface{}
 }
 
 type observer struct {
-	disposed    chan struct{}
+	// itemChannel is the internal channel used to receive items from the parent observable
+	itemChannel chan interface{}
+	// nextHandler is the handler for the next items
 	nextHandler NextFunc
-	errHandler  ErrFunc
+	// errHandler is the error handler
+	errHandler ErrFunc
+	// doneHandler is the handler once an observable is done
 	doneHandler DoneFunc
-	done        chan error
-	channel     chan interface{}
+	// disposedChannel is the notification channel used when an observer is disposed
+	disposedChannel chan struct{}
+	done            chan error
 }
 
-func (o *observer) setChannel(ch chan interface{}) {
-	o.channel = ch
+func (o *observer) setItemChannel(ch chan interface{}) {
+	o.itemChannel = ch
 }
 
-func (o *observer) getChannel() chan interface{} {
-	return o.channel
+func (o *observer) getItemChannel() chan interface{} {
+	return o.itemChannel
 }
 
 // NewObserver constructs a new Observer instance with default Observer and accept
 // any number of EventHandler
 func NewObserver(eventHandlers ...EventHandler) Observer {
 	ob := observer{
-		disposed: make(chan struct{}),
+		disposedChannel: make(chan struct{}),
 	}
 
 	if len(eventHandlers) > 0 {
@@ -79,12 +84,12 @@ func (o *observer) Handle(item interface{}) {
 }
 
 func (o *observer) Dispose() {
-	close(o.disposed)
+	close(o.disposedChannel)
 }
 
 func (o *observer) IsDisposed() bool {
 	select {
-	case <-o.disposed:
+	case <-o.disposedChannel:
 		return true
 	default:
 		return false

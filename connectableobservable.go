@@ -80,7 +80,7 @@ func (c *connectableObservable) Connect() Observer {
 				for _, observer := range c.observers {
 					c.observersMutex.Unlock()
 					select {
-					case observer.getChannel() <- item:
+					case observer.getItemChannel() <- item:
 					default:
 					}
 					c.observersMutex.Lock()
@@ -237,7 +237,7 @@ func (o *connectableObservable) Subscribe(handler EventHandler, opts ...Option) 
 	} else {
 		ch = make(chan interface{})
 	}
-	ob.setChannel(ch)
+	ob.setItemChannel(ch)
 	o.observersMutex.Lock()
 	o.observers = append(o.observers, ob)
 	o.observersMutex.Unlock()
