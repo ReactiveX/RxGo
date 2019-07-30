@@ -84,9 +84,10 @@ type observable struct {
 	customErrorStrategy func(Observable, Observer, error) error
 	// nextStrategy represents the stategy for the next item
 	nextStrategy func(Observer, interface{}) error
-
+	// errorOnSubscription defines an error to be sent to the observer once it subscribes to the observable
 	errorOnSubscription error
-	observableFactory   func() Observable
+
+	observableFactory func() Observable
 
 	// coldIterable is used while pulling data
 	coldIterable Iterable
@@ -1460,12 +1461,10 @@ func (o *observable) Subscribe(handler EventHandler, opts ...Option) Observer {
 	ob := NewObserver(handler)
 
 	if o.errorOnSubscription != nil {
-		go func() {
-			err := ob.OnError(o.errorOnSubscription)
-			if err != nil {
-				panic(errors.Wrap(err, "error while sending error item from observable"))
-			}
-		}()
+		err := ob.OnError(o.errorOnSubscription)
+		if err != nil {
+			panic(errors.Wrap(err, "error while sending error item from observable"))
+		}
 		return ob
 	}
 
