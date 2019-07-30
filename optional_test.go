@@ -31,10 +31,7 @@ func TestEmpty(t *testing.T) {
 	empty := EmptyOptional()
 	got, err := empty.Get()
 	assert.True(t, empty.IsEmpty())
-	if err != nil {
-		assert.IsType(t, &NoSuchElementError{}, errors.Cause(err))
-	} else {
-		assert.Fail(t, "error is not nil")
-	}
+	assert.Error(t, err)
+	assert.IsType(t, &NoSuchElementError{}, errors.Cause(err))
 	assert.Exactly(t, got, nil)
 }

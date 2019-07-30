@@ -249,11 +249,8 @@ func AssertSingle(t *testing.T, single Single, assertions ...RxAssertion) {
 
 	checkHasValue, value := ass.hasValueFunc()
 	if checkHasValue {
-		if err != nil {
-			assert.Fail(t, "error is not nil")
-		} else {
-			assert.Equal(t, value, v)
-		}
+		assert.NoError(t, err)
+		assert.Equal(t, value, v)
 	}
 
 	checkHasRaisedAnError := ass.hasRaisedAnErrorFunc()
@@ -283,10 +280,7 @@ func AssertOptionalSingle(t *testing.T, optionalSingle OptionalSingle, assertion
 	}), ErrFunc(func(e error) {
 		err = e
 	}))).Block()
-
-	if err != nil {
-		assert.Fail(t, "error while retrieving OptionalSingle results")
-	}
+	assert.NoError(t, err)
 
 	if optional, ok := v.(Optional); ok {
 		checkIsEmpty, empty := ass.isEmptyFunc()

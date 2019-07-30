@@ -231,9 +231,7 @@ func TestFromStatefulIterable(t *testing.T) {
 
 func TestRange(t *testing.T) {
 	obs, err := Range(5, 3)
-	if err != nil {
-		t.Fail()
-	}
+	assert.NoError(t, err)
 	AssertObservable(t, obs, HasItems(5, 6, 7, 8))
 	AssertObservable(t, obs, HasItems(5, 6, 7, 8))
 }

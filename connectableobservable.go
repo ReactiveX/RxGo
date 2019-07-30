@@ -227,7 +227,7 @@ func (c *connectableObservable) StartWithObservable(observable Observable) Obser
 	return c.observable.StartWithObservable(observable)
 }
 
-func (o *connectableObservable) Subscribe(handler EventHandler, opts ...Option) Observer {
+func (c *connectableObservable) Subscribe(handler EventHandler, opts ...Option) Observer {
 	observableOptions := ParseOptions(opts...)
 
 	ob := NewObserver(handler)
@@ -238,9 +238,9 @@ func (o *connectableObservable) Subscribe(handler EventHandler, opts ...Option) 
 		ch = make(chan interface{})
 	}
 	ob.setItemChannel(ch)
-	o.observersMutex.Lock()
-	o.observers = append(o.observers, ob)
-	o.observersMutex.Unlock()
+	c.observersMutex.Lock()
+	c.observers = append(c.observers, ob)
+	c.observersMutex.Unlock()
 
 	go func() {
 		for item := range ch {

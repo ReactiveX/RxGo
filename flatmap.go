@@ -42,11 +42,11 @@ func flatObservedSequence(out chan interface{}, o Observable, apply func(interfa
 			sequence := apply(item)
 			// TODO Error handling
 			sem.Acquire(ctx, 1)
-			go func() {
+			go func(copy Observable) {
 				defer sem.Release(1)
 				// TODO Error handling
-				sequence.Subscribe(emissionObserver).Block()
-			}()
+				copy.Subscribe(emissionObserver).Block()
+			}(sequence)
 		} else {
 			break
 		}
