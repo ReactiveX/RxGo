@@ -1,5 +1,5 @@
 // Package handlers provides handler types which implements EventHandler.
-package handlers
+package rxgo
 
 type (
 	// NextFunc handles a next item in a stream.

@@ -1,4 +1,4 @@
-package options
+package rxgo
 
 type BackpressureStrategy uint32
 type Scheduler uint32

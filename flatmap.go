@@ -3,7 +3,6 @@ package rxgo
 import (
 	"context"
 
-	"github.com/reactivex/rxgo/handlers"
 	"golang.org/x/sync/semaphore"
 )
 
@@ -55,7 +54,7 @@ func flatObservedSequence(out chan interface{}, o Observable, apply func(interfa
 }
 
 func newFlattenEmissionObserver(out chan interface{}) Observer {
-	return NewObserver(handlers.NextFunc(func(element interface{}) {
+	return NewObserver(NextFunc(func(element interface{}) {
 		out <- element
 	}))
 }

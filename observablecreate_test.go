@@ -7,7 +7,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/reactivex/rxgo/handlers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -98,7 +97,7 @@ func TestError(t *testing.T) {
 	var got error
 	err := errors.New("foo")
 	stream := Error(err)
-	stream.Subscribe(handlers.ErrFunc(func(e error) {
+	stream.Subscribe(ErrFunc(func(e error) {
 		got = e
 	})).Block()
 

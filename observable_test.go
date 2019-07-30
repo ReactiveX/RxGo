@@ -9,9 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/reactivex/rxgo/options"
-
-	"github.com/reactivex/rxgo/handlers"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,14 +19,14 @@ func TestCheckEventHandler(t *testing.T) {
 
 	testtext := ""
 
-	df := handlers.DoneFunc(func() {
+	df := DoneFunc(func() {
 		testtext += "done"
 	})
 
 	myObserver := NewObserver(df)
 
-	ob1 := CheckEventHandler(myObserver)
-	ob2 := CheckEventHandler(df)
+	ob1 := NewObserver(myObserver)
+	ob2 := NewObserver(df)
 
 	ob1.OnDone()
 	assert.Equal(t, "done", testtext)
@@ -42,7 +39,7 @@ func TestEmptyOperator(t *testing.T) {
 	myStream := Empty()
 	text := ""
 
-	onDone := handlers.DoneFunc(func() {
+	onDone := DoneFunc(func() {
 		text += "done"
 	})
 	myStream.Subscribe(onDone).Block()
@@ -56,7 +53,7 @@ func TestJustOperator(t *testing.T) {
 	//yes := make(chan struct{})
 	stuff := []interface{}{}
 
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		stuff = append(stuff, item)
 	})
 
@@ -73,7 +70,7 @@ func TestFromOperator(t *testing.T) {
 	myStream := Just(1, 3.1416, &struct{ foo string }{"bar"})
 	nums := []interface{}{}
 
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		switch item := item.(type) {
 		case int, float64:
 			nums = append(nums, item)
@@ -163,17 +160,17 @@ func TestStartOperator(t *testing.T) {
 		return res
 	})
 
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if res, ok := item.(*http.Response); ok {
 			responseCodes = append(responseCodes, res.StatusCode)
 		}
 	})
 
-	onError := handlers.ErrFunc(func(err error) {
+	onError := ErrFunc(func(err error) {
 		t.Log(err)
 	})
 
-	onDone := handlers.DoneFunc(func() {
+	onDone := DoneFunc(func() {
 		done = true
 	})
 
@@ -194,7 +191,7 @@ func TestSubscribeToNextFunc(t *testing.T) {
 	myStream := Just(1, 2, 3, errors.New("4"), 5)
 	mynum := 0
 
-	nf := handlers.NextFunc(func(item interface{}) {
+	nf := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			mynum += num
 		}
@@ -226,7 +223,7 @@ func TestSubscribeToDoneFunc(t *testing.T) {
 
 	donetext := ""
 
-	df := handlers.DoneFunc(func() {
+	df := DoneFunc(func() {
 		donetext = "done"
 	})
 
@@ -245,7 +242,7 @@ func TestSubscribeToObserver(t *testing.T) {
 	integers := []int{}
 	finished := false
 
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		switch item := item.(type) {
 		case string:
 			words = append(words, item)
@@ -256,11 +253,11 @@ func TestSubscribeToObserver(t *testing.T) {
 		}
 	})
 
-	onError := handlers.ErrFunc(func(err error) {
+	onError := ErrFunc(func(err error) {
 		t.Logf("Error emitted in the stream: %v\n", err)
 	})
 
-	onDone := handlers.DoneFunc(func() {
+	onDone := DoneFunc(func() {
 		finished = true
 	})
 
@@ -305,7 +302,7 @@ func TestObservableTakeWithEmpty(t *testing.T) {
 	stream2 := stream1.Take(3)
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
@@ -321,7 +318,7 @@ func TestObservableTakeLast(t *testing.T) {
 	stream2 := stream1.TakeLast(3)
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
@@ -337,7 +334,7 @@ func TestObservableTakeLastLessThanNth(t *testing.T) {
 	stream2 := stream1.TakeLast(3)
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
@@ -353,7 +350,7 @@ func TestObservableTakeLastLessThanNth2(t *testing.T) {
 	stream2 := stream1.TakeLast(100000)
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
@@ -399,7 +396,7 @@ func TestObservableFilter(t *testing.T) {
 	stream2 := stream1.Filter(lt(9))
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
@@ -415,7 +412,7 @@ func TestObservableFirst(t *testing.T) {
 	stream2 := stream1.First()
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
@@ -432,7 +429,7 @@ func TestObservableFirstWithEmpty(t *testing.T) {
 	stream2 := stream1.First()
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
@@ -449,7 +446,7 @@ func TestObservableLast(t *testing.T) {
 	stream2 := stream1.Last()
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
@@ -532,7 +529,7 @@ func TestObservableLastWithEmpty(t *testing.T) {
 	stream2 := stream1.Last()
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
@@ -549,7 +546,7 @@ func TestObservableSkip(t *testing.T) {
 	stream2 := stream1.Skip(3)
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
@@ -566,7 +563,7 @@ func TestObservableSkipWithEmpty(t *testing.T) {
 	stream2 := stream1.Skip(3)
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
@@ -583,7 +580,7 @@ func TestObservableSkipLast(t *testing.T) {
 	stream2 := stream1.SkipLast(3)
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
@@ -600,7 +597,7 @@ func TestObservableSkipLastWithEmpty(t *testing.T) {
 	stream2 := stream1.SkipLast(3)
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
@@ -621,7 +618,7 @@ func TestObservableDistinct(t *testing.T) {
 	stream2 := stream1.Distinct(id)
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
@@ -642,7 +639,7 @@ func TestObservableDistinctUntilChanged(t *testing.T) {
 	stream2 := stream1.DistinctUntilChanged(id)
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
@@ -699,7 +696,7 @@ func TestObservableScanWithIntegers(t *testing.T) {
 	})
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
@@ -728,7 +725,7 @@ func TestObservableScanWithString(t *testing.T) {
 	})
 
 	words := []string{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if word, ok := item.(string); ok {
 			words = append(words, word)
 		}
@@ -751,7 +748,7 @@ func TestElementAt(t *testing.T) {
 	got := 0
 	just := Just(0, 1, 2, 3, 4)
 	single := just.ElementAt(2)
-	single.Subscribe(handlers.NextFunc(func(i interface{}) {
+	single.Subscribe(NextFunc(func(i interface{}) {
 		switch i := i.(type) {
 		case int:
 			got = i
@@ -765,7 +762,7 @@ func TestElementAtWithError(t *testing.T) {
 	got := 0
 	just := Just(0, 1, 2, 3, 4)
 	single := just.ElementAt(10)
-	single.Subscribe(handlers.ErrFunc(func(error) {
+	single.Subscribe(ErrFunc(func(error) {
 		got = 10
 	})).Block()
 
@@ -784,7 +781,7 @@ func TestObservableReduce(t *testing.T) {
 	}
 
 	var got Optional
-	_, err := stream1.Reduce(add).Subscribe(handlers.NextFunc(func(i interface{}) {
+	_, err := stream1.Reduce(add).Subscribe(NextFunc(func(i interface{}) {
 		got = i.(Optional)
 	})).Block()
 	if err != nil {
@@ -806,7 +803,7 @@ func TestObservableReduceEmpty(t *testing.T) {
 	stream := Empty()
 
 	var got Optional
-	_, err := stream.Reduce(add).Subscribe(handlers.NextFunc(func(i interface{}) {
+	_, err := stream.Reduce(add).Subscribe(NextFunc(func(i interface{}) {
 		got = i.(Optional)
 	})).Block()
 	if err != nil {
@@ -821,7 +818,7 @@ func TestObservableReduceNil(t *testing.T) {
 		return nil
 	}
 	var got Optional
-	_, err := stream.Reduce(nilReduce).Subscribe(handlers.NextFunc(func(i interface{}) {
+	_, err := stream.Reduce(nilReduce).Subscribe(NextFunc(func(i interface{}) {
 		got = i.(Optional)
 	})).Block()
 	if err != nil {
@@ -883,7 +880,7 @@ func TestObservableSkipWhile(t *testing.T) {
 		default:
 			return true
 		}
-	}).Subscribe(handlers.NextFunc(func(i interface{}) {
+	}).Subscribe(NextFunc(func(i interface{}) {
 		got = append(got, i)
 	})).Block()
 
@@ -899,7 +896,7 @@ func TestObservableSkipWhileWithEmpty(t *testing.T) {
 		default:
 			return false
 		}
-	}).Subscribe(handlers.NextFunc(func(i interface{}) {
+	}).Subscribe(NextFunc(func(i interface{}) {
 		got = append(got, i)
 	})).Block()
 
@@ -965,7 +962,7 @@ func TestObservableZipWithEmpty(t *testing.T) {
 	}
 	zip := stream1.ZipFromObservable(stream2, zipper)
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
@@ -976,13 +973,13 @@ func TestObservableZipWithEmpty(t *testing.T) {
 
 func TestCheckEventHandlers(t *testing.T) {
 	i := 0
-	nf := handlers.NextFunc(func(interface{}) {
+	nf := NextFunc(func(interface{}) {
 		i += 2
 	})
-	df := handlers.DoneFunc(func() {
+	df := DoneFunc(func() {
 		i += 5
 	})
-	ob1 := CheckEventHandlers(nf, df)
+	ob1 := NewObserver(nf, df)
 	ob1.OnNext("")
 	ob1.OnDone()
 	assert.Equal(t, 7, i)
@@ -995,7 +992,7 @@ func TestObservableForEach(t *testing.T) {
 	chars := []rune{}
 	integers := []int{}
 	finished := false
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		switch item := item.(type) {
 		case string:
 			words = append(words, item)
@@ -1005,10 +1002,10 @@ func TestObservableForEach(t *testing.T) {
 			integers = append(integers, item)
 		}
 	})
-	onError := handlers.ErrFunc(func(err error) {
+	onError := ErrFunc(func(err error) {
 		t.Logf("Error emitted in the stream: %v\n", err)
 	})
-	onDone := handlers.DoneFunc(func() {
+	onDone := DoneFunc(func() {
 		finished = true
 	})
 	sub := myStream.ForEach(onNext, onError, onDone).Block()
@@ -1057,13 +1054,13 @@ func TestContain(t *testing.T) {
 	var got1, got2 bool
 
 	Just(1, 2, 3).Contains(predicate).
-		Subscribe(handlers.NextFunc(func(i interface{}) {
+		Subscribe(NextFunc(func(i interface{}) {
 			got1 = i.(bool)
 		})).Block()
 	assert.True(t, got1)
 
 	Just(1, 5, 3).Contains(predicate).
-		Subscribe(handlers.NextFunc(func(i interface{}) {
+		Subscribe(NextFunc(func(i interface{}) {
 			got2 = i.(bool)
 		})).Block()
 	assert.False(t, got2)
@@ -1071,7 +1068,7 @@ func TestContain(t *testing.T) {
 
 func TestDefaultIfEmpty(t *testing.T) {
 	got1 := 0
-	Empty().DefaultIfEmpty(3).Subscribe(handlers.NextFunc(func(i interface{}) {
+	Empty().DefaultIfEmpty(3).Subscribe(NextFunc(func(i interface{}) {
 		got1 = i.(int)
 	})).Block()
 	assert.Equal(t, 3, got1)
@@ -1079,7 +1076,7 @@ func TestDefaultIfEmpty(t *testing.T) {
 
 func TestDefaultIfEmptyWithNonEmpty(t *testing.T) {
 	got1 := 0
-	Just(1).DefaultIfEmpty(3).Subscribe(handlers.NextFunc(func(i interface{}) {
+	Just(1).DefaultIfEmpty(3).Subscribe(NextFunc(func(i interface{}) {
 		got1 = i.(int)
 	})).Block()
 	assert.Equal(t, 1, got1)
@@ -1348,7 +1345,7 @@ func TestBufferWithTimeOrCountWithTime(t *testing.T) {
 	got := make([]interface{}, 0)
 
 	obs := from.BufferWithTimeOrCount(WithDuration(1*time.Millisecond), 10).
-		Subscribe(handlers.NextFunc(func(i interface{}) {
+		Subscribe(NextFunc(func(i interface{}) {
 			got = append(got, i)
 		}))
 	ch <- 1
@@ -1607,7 +1604,7 @@ func TestToChannel(t *testing.T) {
 }
 
 func TestToChannel_BufferedChannel(t *testing.T) {
-	ch := Just(1, 2, 3).ToChannel(options.WithBufferedChannel(3))
+	ch := Just(1, 2, 3).ToChannel(WithBufferedChannel(3))
 	item, _, _ := channel(ch, wait)
 	assert.Equal(t, 1, item)
 	item, _, _ = channel(ch, wait)
@@ -1833,4 +1830,19 @@ x
 `)
 	obs := observables[0].Timeout(contexts[0])
 	AssertObservable(t, obs, HasItems(1, 2, 3))
+}
+
+var x interface{}
+
+func BenchmarkSubscribe(b *testing.B) {
+	ch := make(chan interface{})
+	obs := FromChannel(ch)
+	o := obs.Subscribe(NextFunc(func(i interface{}) {
+		x = i
+	}))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		ch <- i
+	}
+	o.OnDone()
 }

@@ -1,14 +1,8 @@
 package rxgo
 
-import (
-	"github.com/reactivex/rxgo/options"
-
-	"github.com/reactivex/rxgo/handlers"
-)
-
 // Observer represents a group of EventHandlers.
 type Observer interface {
-	handlers.EventHandler
+	EventHandler
 	Disposable
 
 	OnNext(item interface{})
@@ -18,26 +12,26 @@ type Observer interface {
 	Block() error
 	setChannel(chan interface{})
 	getChannel() chan interface{}
-	setBackpressureStrategy(options.BackpressureStrategy)
-	getBackpressureStrategy() options.BackpressureStrategy
+	setBackpressureStrategy(BackpressureStrategy)
+	getBackpressureStrategy() BackpressureStrategy
 }
 
 type observer struct {
 	disposed             chan struct{}
-	nextHandler          handlers.NextFunc
-	errHandler           handlers.ErrFunc
-	doneHandler          handlers.DoneFunc
+	nextHandler          NextFunc
+	errHandler           ErrFunc
+	doneHandler          DoneFunc
 	done                 chan error
 	channel              chan interface{}
-	backpressureStrategy options.BackpressureStrategy
+	backpressureStrategy BackpressureStrategy
 	buffer               int
 }
 
-func (o *observer) setBackpressureStrategy(strategy options.BackpressureStrategy) {
+func (o *observer) setBackpressureStrategy(strategy BackpressureStrategy) {
 	o.backpressureStrategy = strategy
 }
 
-func (o *observer) getBackpressureStrategy() options.BackpressureStrategy {
+func (o *observer) getBackpressureStrategy() BackpressureStrategy {
 	return o.backpressureStrategy
 }
 
@@ -51,7 +45,7 @@ func (o *observer) getChannel() chan interface{} {
 
 // NewObserver constructs a new Observer instance with default Observer and accept
 // any number of EventHandler
-func NewObserver(eventHandlers ...handlers.EventHandler) Observer {
+func NewObserver(eventHandlers ...EventHandler) Observer {
 	ob := observer{
 		disposed: make(chan struct{}),
 	}
@@ -59,11 +53,11 @@ func NewObserver(eventHandlers ...handlers.EventHandler) Observer {
 	if len(eventHandlers) > 0 {
 		for _, handler := range eventHandlers {
 			switch handler := handler.(type) {
-			case handlers.NextFunc:
+			case NextFunc:
 				ob.nextHandler = handler
-			case handlers.ErrFunc:
+			case ErrFunc:
 				ob.errHandler = handler
-			case handlers.DoneFunc:
+			case DoneFunc:
 				ob.doneHandler = handler
 			case *observer:
 				ob = *handler

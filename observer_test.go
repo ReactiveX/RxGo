@@ -5,7 +5,6 @@ import (
 
 	"errors"
 
-	"github.com/reactivex/rxgo/handlers"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,13 +20,13 @@ func TestCreateNewObserverWithObserver(t *testing.T) {
 	nexttext := ""
 	donetext := ""
 
-	nextf := handlers.NextFunc(func(item interface{}) {
+	nextf := NextFunc(func(item interface{}) {
 		if text, ok := item.(string); ok {
 			nexttext = text
 		}
 	})
 
-	donef := handlers.DoneFunc(func() {
+	donef := DoneFunc(func() {
 		donetext = "Hello"
 	})
 
@@ -43,11 +42,11 @@ func TestCreateNewObserverWithObserver(t *testing.T) {
 func TestHandle(t *testing.T) {
 	i := 0
 
-	nextf := handlers.NextFunc(func(item interface{}) {
+	nextf := NextFunc(func(item interface{}) {
 		i += 5
 	})
 
-	errorf := handlers.ErrFunc(func(error) {
+	errorf := ErrFunc(func(error) {
 		i += 2
 	})
 

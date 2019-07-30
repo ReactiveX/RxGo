@@ -2,9 +2,6 @@ package rxgo
 
 import (
 	"context"
-
-	"github.com/reactivex/rxgo/handlers"
-	"github.com/reactivex/rxgo/options"
 )
 
 // Single is similar to an Observable but emits only one single element or an error notification.
@@ -12,11 +9,11 @@ type Single interface {
 	Iterable
 	Filter(apply Predicate) OptionalSingle
 	Map(apply Function) Single
-	Subscribe(handler handlers.EventHandler, opts ...options.Option) SingleObserver
+	Subscribe(handler EventHandler, opts ...Option) SingleObserver
 }
 
 type OptionalSingle interface {
-	Subscribe(handler handlers.EventHandler, opts ...options.Option) SingleObserver
+	Subscribe(handler EventHandler, opts ...Option) SingleObserver
 }
 
 type single struct {
@@ -49,7 +46,7 @@ func newOptionalSingleFrom(opt Optional) OptionalSingle {
 }
 
 // CheckSingleEventHandler checks the underlying type of an EventHandler.
-func CheckSingleEventHandler(handler handlers.EventHandler) SingleObserver {
+func CheckSingleEventHandler(handler EventHandler) SingleObserver {
 	return NewSingleObserver(handler)
 }
 
@@ -110,7 +107,7 @@ func (s *single) Map(apply Function) Single {
 	return newColdSingle(f)
 }
 
-func (s *single) Subscribe(handler handlers.EventHandler, opts ...options.Option) SingleObserver {
+func (s *single) Subscribe(handler EventHandler, opts ...Option) SingleObserver {
 	ob := CheckSingleEventHandler(handler)
 
 	go func() {
@@ -137,7 +134,7 @@ func (s *single) Subscribe(handler handlers.EventHandler, opts ...options.Option
 	return ob
 }
 
-func (s *optionalSingle) Subscribe(handler handlers.EventHandler, opts ...options.Option) SingleObserver {
+func (s *optionalSingle) Subscribe(handler EventHandler, opts ...Option) SingleObserver {
 	ob := CheckSingleEventHandler(handler)
 
 	go func() {

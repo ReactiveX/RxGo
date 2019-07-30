@@ -1,7 +1,6 @@
 package rxgo
 
 import (
-	"github.com/reactivex/rxgo/handlers"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -34,13 +33,13 @@ func (m *ObserverMock) OnNext(item interface{}) {
 
 func (m *ObserverMock) Capture() Observer {
 	ob := NewObserver(
-		handlers.NextFunc(func(el interface{}) {
+		NextFunc(func(el interface{}) {
 			m.OnNext(el)
 		}),
-		handlers.ErrFunc(func(err error) {
+		ErrFunc(func(err error) {
 			m.OnError(err)
 		}),
-		handlers.DoneFunc(func() {
+		DoneFunc(func() {
 			m.OnDone()
 		}),
 	)

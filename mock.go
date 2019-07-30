@@ -18,23 +18,6 @@ type mockContext struct {
 	mock.Mock
 }
 
-func (m mockContext) Deadline() (deadline time.Time, ok bool) {
-	panic("implement me")
-}
-
-func (m mockContext) Done() <-chan struct{} {
-	outputs := m.Called()
-	return outputs.Get(0).(chan struct{})
-}
-
-func (m mockContext) Err() error {
-	panic("implement me")
-}
-
-func (m mockContext) Value(key interface{}) interface{} {
-	panic("implement me")
-}
-
 type mockIterable struct {
 	iterator Iterator
 }
@@ -55,6 +38,23 @@ type mockType struct {
 	observable bool
 	context    bool
 	index      int
+}
+
+func (m mockContext) Deadline() (deadline time.Time, ok bool) {
+	panic("implement me")
+}
+
+func (m mockContext) Done() <-chan struct{} {
+	outputs := m.Called()
+	return outputs.Get(0).(chan struct{})
+}
+
+func (m mockContext) Err() error {
+	panic("implement me")
+}
+
+func (m mockContext) Value(key interface{}) interface{} {
+	panic("implement me")
 }
 
 func (s *mockIterable) Iterator(ctx context.Context) Iterator {
@@ -194,12 +194,12 @@ func causality(in string) ([]Observable, []context.Context) {
 				if iteratorContexts[index] == nil {
 					iteratorContexts[index] = ctx.On("Done").Once().Return(notif).
 						Run(func(args mock.Arguments) {
-							prenotif(notif, ch, nil)
+							preDone(notif, ch, nil)
 						})
 				} else {
 					iteratorContexts[index].On("Done").Once().Return(notif).
 						Run(func(args mock.Arguments) {
-							prenotif(notif, ch, nil)
+							preDone(notif, ch, nil)
 						})
 				}
 			} else {
@@ -212,12 +212,12 @@ func causality(in string) ([]Observable, []context.Context) {
 				if iteratorContexts[index] == nil {
 					iteratorContexts[index] = ctx.On("Done").Once().Return(notif).
 						Run(func(args mock.Arguments) {
-							prenotif(notif, ch, previous)
+							preDone(notif, ch, previous)
 						})
 				} else {
 					iteratorContexts[index].On("Done").Once().Return(notif).
 						Run(func(args mock.Arguments) {
-							prenotif(notif, ch, previous)
+							preDone(notif, ch, previous)
 						})
 				}
 				lastCh = ch
@@ -239,12 +239,12 @@ func causality(in string) ([]Observable, []context.Context) {
 					if iteratorCalls[index] == nil {
 						iteratorCalls[index] = obs.On("Next", mock.Anything).Once().Return(item, err).
 							Run(func(args mock.Arguments) {
-								run(args, ch, nil)
+								preNext(args, ch, nil)
 							})
 					} else {
 						iteratorCalls[index].On("Next", mock.Anything).Once().Return(item, err).
 							Run(func(args mock.Arguments) {
-								run(args, ch, nil)
+								preNext(args, ch, nil)
 							})
 					}
 				} else {
@@ -257,12 +257,12 @@ func causality(in string) ([]Observable, []context.Context) {
 					if iteratorCalls[index] == nil {
 						iteratorCalls[index] = obs.On("Next", mock.Anything).Once().Return(item, err).
 							Run(func(args mock.Arguments) {
-								run(args, ch, previous)
+								preNext(args, ch, previous)
 							})
 					} else {
 						iteratorCalls[index].On("Next", mock.Anything).Once().Return(item, err).
 							Run(func(args mock.Arguments) {
-								run(args, ch, previous)
+								preNext(args, ch, previous)
 							})
 					}
 					lastCh = ch
@@ -293,7 +293,7 @@ func args(t task) (interface{}, error) {
 	return t.item, nil
 }
 
-func prenotif(notif chan struct{}, wait chan struct{}, send chan struct{}) {
+func preDone(notif chan struct{}, wait chan struct{}, send chan struct{}) {
 	if send != nil {
 		send <- struct{}{}
 	}
@@ -303,7 +303,7 @@ func prenotif(notif chan struct{}, wait chan struct{}, send chan struct{}) {
 	notif <- struct{}{}
 }
 
-func run(args mock.Arguments, wait chan struct{}, send chan struct{}) {
+func preNext(args mock.Arguments, wait chan struct{}, send chan struct{}) {
 	if send != nil {
 		send <- struct{}{}
 	}

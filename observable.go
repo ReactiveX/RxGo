@@ -8,8 +8,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/reactivex/rxgo/handlers"
-	"github.com/reactivex/rxgo/options"
 )
 
 type observableType uint32
@@ -44,8 +42,8 @@ type Observable interface {
 	First() Observable
 	FirstOrDefault(defaultValue interface{}) Single
 	FlatMap(apply func(interface{}) Observable, maxInParallel uint) Observable
-	ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFunc,
-		doneFunc handlers.DoneFunc, opts ...options.Option) Observer
+	ForEach(nextFunc NextFunc, errFunc ErrFunc,
+		doneFunc DoneFunc, opts ...Option) Observer
 	IgnoreElements() Observable
 	Last() Observable
 	LastOrDefault(defaultValue interface{}) Single
@@ -67,7 +65,7 @@ type Observable interface {
 	StartWithItems(item interface{}, items ...interface{}) Observable
 	StartWithIterable(iterable Iterable) Observable
 	StartWithObservable(observable Observable) Observable
-	Subscribe(handler handlers.EventHandler, opts ...options.Option) Observer
+	Subscribe(handler EventHandler, opts ...Option) Observer
 	SumFloat32() Single
 	SumFloat64() Single
 	SumInt64() Single
@@ -76,7 +74,7 @@ type Observable interface {
 	TakeUntil(apply Predicate) Observable
 	TakeWhile(apply Predicate) Observable
 	Timeout(ctx context.Context) Observable
-	ToChannel(opts ...options.Option) Channel
+	ToChannel(opts ...Option) Channel
 	ToMap(keySelector Function) Single
 	ToMapWithValueSelector(keySelector, valueSelector Function) Single
 	ToSlice() Single
@@ -104,7 +102,7 @@ type observable struct {
 
 	// Hot observable
 	channel               chan interface{} // Push mode
-	bpStrategy            options.BackpressureStrategy
+	bpStrategy            BackpressureStrategy
 	bpBuffer              int
 	subscriptionsObserver []Observer
 	subscriptionsChannel  []chan interface{}
@@ -154,7 +152,7 @@ func popAndCompareFirstItems(
 }
 
 func startsHotObservable(observable *observable) {
-	if observable.bpStrategy == options.None {
+	if observable.bpStrategy == None {
 		go func() {
 			for {
 				if next, ok := <-observable.channel; ok {
@@ -168,7 +166,7 @@ func startsHotObservable(observable *observable) {
 				}
 			}
 		}()
-	} else if observable.bpStrategy == options.Buffer {
+	} else if observable.bpStrategy == Buffer {
 		go func() {
 			for {
 				if next, ok := <-observable.channel; ok {
@@ -186,16 +184,6 @@ func startsHotObservable(observable *observable) {
 			}
 		}()
 	}
-}
-
-// CheckEventHandler checks the underlying type of an EventHandler.
-func CheckEventHandler(handler handlers.EventHandler) Observer {
-	return NewObserver(handler)
-}
-
-// CheckEventHandlers checks the underlying type of an EventHandler.
-func CheckEventHandlers(handler ...handlers.EventHandler) Observer {
-	return NewObserver(handler...)
 }
 
 func (o *observable) Iterator(ctx context.Context) Iterator {
@@ -886,9 +874,9 @@ func (o *observable) First() Observable {
 }
 
 // ForEach subscribes to the Observable and receives notifications for each element.
-func (o *observable) ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFunc,
-	doneFunc handlers.DoneFunc, opts ...options.Option) Observer {
-	return o.Subscribe(CheckEventHandlers(nextFunc, errFunc, doneFunc), opts...)
+func (o *observable) ForEach(nextFunc NextFunc, errFunc ErrFunc,
+	doneFunc DoneFunc, opts ...Option) Observer {
+	return o.Subscribe(NewObserver(nextFunc, errFunc, doneFunc), opts...)
 }
 
 // IgnoreElements ignores all items emitted by the source ObservableSource and only calls onComplete
@@ -1419,8 +1407,8 @@ func (o *observable) SkipWhile(apply Predicate) Observable {
 }
 
 // Subscribe subscribes an EventHandler and returns a Subscription channel.
-func (o *observable) Subscribe(handler handlers.EventHandler, opts ...options.Option) Observer {
-	ob := CheckEventHandler(handler)
+func (o *observable) Subscribe(handler EventHandler, opts ...Option) Observer {
+	ob := NewObserver(handler)
 
 	if o.errorOnSubscription != nil {
 		go func() {
@@ -1439,11 +1427,11 @@ func (o *observable) Subscribe(handler handlers.EventHandler, opts ...options.Op
 		}()
 	} else if o.observableType == hot {
 		// In case of a hot observable, we add an observer subscription
-		if o.bpStrategy == options.None {
+		if o.bpStrategy == None {
 			o.subscriptionsMutex.Lock()
 			o.subscriptionsObserver = append(o.subscriptionsObserver, ob)
 			o.subscriptionsMutex.Unlock()
-		} else if o.bpStrategy == options.Buffer {
+		} else if o.bpStrategy == Buffer {
 			o.subscriptionsMutex.Lock()
 			ch := make(chan interface{}, o.bpBuffer)
 			go func() {
@@ -1689,8 +1677,8 @@ func (o *observable) Timeout(ctx context.Context) Observable {
 }
 
 // ToChannel collects all items from an Observable and emit them in a channel
-func (o *observable) ToChannel(opts ...options.Option) Channel {
-	options := options.ParseOptions(opts...)
+func (o *observable) ToChannel(opts ...Option) Channel {
+	options := ParseOptions(opts...)
 	var ch chan interface{}
 	if options.Buffer() != 0 {
 		ch = make(chan interface{}, options.Buffer())

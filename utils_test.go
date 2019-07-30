@@ -3,8 +3,6 @@ package rxgo
 import (
 	"errors"
 	"time"
-
-	"github.com/reactivex/rxgo/handlers"
 )
 
 const wait = 30 * time.Millisecond
@@ -35,20 +33,20 @@ func pollItems(ch chan interface{}, d time.Duration) []interface{} {
 	}
 }
 
-func nextHandler(out chan interface{}) handlers.NextFunc {
-	return handlers.NextFunc(func(i interface{}) {
+func nextHandler(out chan interface{}) NextFunc {
+	return NextFunc(func(i interface{}) {
 		out <- i
 	})
 }
 
-func doneHandler(out chan interface{}) handlers.DoneFunc {
-	return handlers.DoneFunc(func() {
+func doneHandler(out chan interface{}) DoneFunc {
+	return DoneFunc(func() {
 		out <- doneSignal
 	})
 }
 
-func errorHandler(out chan interface{}) handlers.ErrFunc {
-	return handlers.ErrFunc(func(err error) {
+func errorHandler(out chan interface{}) ErrFunc {
+	return ErrFunc(func(err error) {
 		out <- err
 	})
 }

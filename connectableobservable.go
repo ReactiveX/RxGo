@@ -3,9 +3,6 @@ package rxgo
 import (
 	"context"
 	"sync"
-
-	"github.com/reactivex/rxgo/handlers"
-	"github.com/reactivex/rxgo/options"
 )
 
 type ConnectableObservable interface {
@@ -141,8 +138,8 @@ func (c *connectableObservable) FlatMap(apply func(interface{}) Observable, maxI
 	return c.observable.FlatMap(apply, maxInParallel)
 }
 
-func (c *connectableObservable) ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFunc,
-	doneFunc handlers.DoneFunc, opts ...options.Option) Observer {
+func (c *connectableObservable) ForEach(nextFunc NextFunc, errFunc ErrFunc,
+	doneFunc DoneFunc, opts ...Option) Observer {
 	return c.observable.ForEach(nextFunc, errFunc, doneFunc, opts...)
 }
 
@@ -230,13 +227,13 @@ func (c *connectableObservable) StartWithObservable(observable Observable) Obser
 	return c.observable.StartWithObservable(observable)
 }
 
-func (o *connectableObservable) Subscribe(handler handlers.EventHandler, opts ...options.Option) Observer {
-	observableOptions := options.ParseOptions(opts...)
+func (o *connectableObservable) Subscribe(handler EventHandler, opts ...Option) Observer {
+	observableOptions := ParseOptions(opts...)
 
-	ob := CheckEventHandler(handler)
+	ob := NewObserver(handler)
 	ob.setBackpressureStrategy(observableOptions.BackpressureStrategy())
 	var ch chan interface{}
-	if observableOptions.BackpressureStrategy() == options.Buffer {
+	if observableOptions.BackpressureStrategy() == Buffer {
 		ch = make(chan interface{}, observableOptions.Buffer())
 	} else {
 		ch = make(chan interface{})
@@ -293,7 +290,7 @@ func (c *connectableObservable) Timeout(ctx context.Context) Observable {
 	return c.observable.Timeout(ctx)
 }
 
-func (c *connectableObservable) ToChannel(opts ...options.Option) Channel {
+func (c *connectableObservable) ToChannel(opts ...Option) Channel {
 	return c.observable.ToChannel(opts...)
 }
 

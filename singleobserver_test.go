@@ -4,14 +4,13 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/reactivex/rxgo/handlers"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestCreateNewSingleObserverWithConstructor(t *testing.T) {
 	var got int64
 	single := Just(1, 2, 3).Count().Subscribe(
-		handlers.NextFunc(func(i interface{}) {
+		NextFunc(func(i interface{}) {
 			got = i.(int64)
 		}))
 
@@ -25,7 +24,7 @@ func TestCreateNewSingleObserverWithConstructor(t *testing.T) {
 
 func TestCreateNewSingleObserverFromSingleObserver(t *testing.T) {
 	var got int64
-	singleObserver := CheckSingleEventHandler(handlers.NextFunc(func(i interface{}) {
+	singleObserver := CheckSingleEventHandler(NextFunc(func(i interface{}) {
 		got = i.(int64)
 	}))
 
@@ -40,7 +39,7 @@ func TestCreateNewSingleObserverFromSingleObserver(t *testing.T) {
 
 func TestSingleObserverHandle(t *testing.T) {
 	var got int64
-	singleObserver := CheckSingleEventHandler(handlers.NextFunc(func(i interface{}) {
+	singleObserver := CheckSingleEventHandler(NextFunc(func(i interface{}) {
 		got = 10
 	}))
 	singleObserver.Handle("")
@@ -49,7 +48,7 @@ func TestSingleObserverHandle(t *testing.T) {
 
 func TestSingleObserverHandleWithError(t *testing.T) {
 	var got int64
-	singleObserver := CheckSingleEventHandler(handlers.ErrFunc(func(err error) {
+	singleObserver := CheckSingleEventHandler(ErrFunc(func(err error) {
 		got = 10
 	}))
 	singleObserver.Handle(errors.New(""))

@@ -1,12 +1,8 @@
 package rxgo
 
-import (
-	"github.com/reactivex/rxgo/handlers"
-)
-
 // SingleObserver represents a group of EventHandlers.
 type SingleObserver interface {
-	handlers.EventHandler
+	EventHandler
 	Disposable
 
 	Block() (interface{}, error)
@@ -16,14 +12,14 @@ type SingleObserver interface {
 
 type singleObserver struct {
 	disposed    chan struct{}
-	nextHandler handlers.NextFunc
-	errHandler  handlers.ErrFunc
+	nextHandler NextFunc
+	errHandler  ErrFunc
 	done        chan interface{}
 }
 
 // NewSingleObserver constructs a new SingleObserver instance with default SingleObserver and accept
 // any number of EventHandler
-func NewSingleObserver(eventHandlers ...handlers.EventHandler) SingleObserver {
+func NewSingleObserver(eventHandlers ...EventHandler) SingleObserver {
 	ob := singleObserver{
 		disposed: make(chan struct{}),
 	}
@@ -31,9 +27,9 @@ func NewSingleObserver(eventHandlers ...handlers.EventHandler) SingleObserver {
 	if len(eventHandlers) > 0 {
 		for _, handler := range eventHandlers {
 			switch handler := handler.(type) {
-			case handlers.NextFunc:
+			case NextFunc:
 				ob.nextHandler = handler
-			case handlers.ErrFunc:
+			case ErrFunc:
 				ob.errHandler = handler
 			case *singleObserver:
 				ob = *handler
