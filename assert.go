@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const testWaitTime = 30 * time.Millisecond
+
 // RxAssertion lists the assertions which may be configured on an Observable.
 type RxAssertion interface {
 	apply(*assertion)
@@ -191,7 +193,6 @@ func AssertObservable(t *testing.T, observable Observable, assertions ...RxAsser
 	}, func(e error) {
 		err = e
 	}, nil).Block()
-
 	assertObservable(t, ass, got, err)
 }
 
@@ -213,6 +214,7 @@ func AssertObservableEventually(t *testing.T, observable Observable, timeout tim
 		chErr <- e
 	}, nil)
 	ctxTimeout, ctxTimeoutF := context.WithTimeout(context.Background(), timeout)
+	defer ctxTimeoutF()
 
 mainLoop:
 	for {
@@ -221,7 +223,6 @@ mainLoop:
 			if open {
 				got = append(got, item)
 			} else {
-				ctxTimeoutF()
 				break mainLoop
 			}
 		case e := <-chErr:
@@ -238,15 +239,18 @@ mainLoop:
 func AssertSingle(t *testing.T, single Single, assertions ...RxAssertion) {
 	ass := parseAssertions(assertions...)
 
-	v, err := single.Subscribe(nil).Block()
+	var v interface{}
+	var err error
+	single.Subscribe(NewObserver(NextFunc(func(i interface{}) {
+		v = i
+	}), ErrFunc(func(e error) {
+		err = e
+	}))).Block()
 
 	checkHasValue, value := ass.hasValueFunc()
 	if checkHasValue {
-		if err != nil {
-			assert.Fail(t, "error is not nil")
-		} else {
-			assert.Equal(t, value, v)
-		}
+		assert.NoError(t, err)
+		assert.Equal(t, value, v)
 	}
 
 	checkHasRaisedAnError := ass.hasRaisedAnErrorFunc()
@@ -269,11 +273,14 @@ func AssertSingle(t *testing.T, single Single, assertions ...RxAssertion) {
 func AssertOptionalSingle(t *testing.T, optionalSingle OptionalSingle, assertions ...RxAssertion) {
 	ass := parseAssertions(assertions...)
 
-	v, err := optionalSingle.Subscribe(nil).Block()
-
-	if err != nil {
-		assert.Fail(t, "error while retrieving OptionalSingle results")
-	}
+	var v interface{}
+	var err error
+	optionalSingle.Subscribe(NewObserver(NextFunc(func(i interface{}) {
+		v = i
+	}), ErrFunc(func(e error) {
+		err = e
+	}))).Block()
+	assert.NoError(t, err)
 
 	if optional, ok := v.(Optional); ok {
 		checkIsEmpty, empty := ass.isEmptyFunc()

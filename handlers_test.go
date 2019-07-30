@@ -1,4 +1,4 @@
-package handlers
+package rxgo
 
 //
 //func TestHandlersImplementEventHandler(t *testing.T) {

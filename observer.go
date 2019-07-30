@@ -1,69 +1,63 @@
 package rxgo
 
-import (
-	"github.com/reactivex/rxgo/options"
-
-	"github.com/reactivex/rxgo/handlers"
-)
+// ClosedObserverError is thrown when an item or a signal is sent to a closed observer
+type ClosedObserverError struct {
+}
 
 // Observer represents a group of EventHandlers.
 type Observer interface {
-	handlers.EventHandler
+	EventHandler
 	Disposable
 
-	OnNext(item interface{})
-	OnError(err error)
-	OnDone()
+	OnNext(item interface{}) error
+	OnError(err error) error
+	OnDone() error
 
-	Block() error
-	setChannel(chan interface{})
-	getChannel() chan interface{}
-	setBackpressureStrategy(options.BackpressureStrategy)
-	getBackpressureStrategy() options.BackpressureStrategy
+	Block()
+	setItemChannel(chan interface{})
+	getItemChannel() chan interface{}
 }
 
 type observer struct {
-	disposed             chan struct{}
-	nextHandler          handlers.NextFunc
-	errHandler           handlers.ErrFunc
-	doneHandler          handlers.DoneFunc
-	done                 chan error
-	channel              chan interface{}
-	backpressureStrategy options.BackpressureStrategy
-	buffer               int
+	// itemChannel is the internal channel used to receive items from the parent observable
+	itemChannel chan interface{}
+	// nextHandler is the handler for the next items
+	nextHandler NextFunc
+	// errHandler is the error handler
+	errHandler ErrFunc
+	// doneHandler is the handler once an observable is done
+	doneHandler DoneFunc
+	// disposedChannel is the notification channel used when an observer is disposed
+	disposedChannel chan struct{}
 }
 
-func (o *observer) setBackpressureStrategy(strategy options.BackpressureStrategy) {
-	o.backpressureStrategy = strategy
+func (c *ClosedObserverError) Error() string {
+	return "closed observer"
 }
 
-func (o *observer) getBackpressureStrategy() options.BackpressureStrategy {
-	return o.backpressureStrategy
+func (o *observer) setItemChannel(ch chan interface{}) {
+	o.itemChannel = ch
 }
 
-func (o *observer) setChannel(ch chan interface{}) {
-	o.channel = ch
-}
-
-func (o *observer) getChannel() chan interface{} {
-	return o.channel
+func (o *observer) getItemChannel() chan interface{} {
+	return o.itemChannel
 }
 
 // NewObserver constructs a new Observer instance with default Observer and accept
 // any number of EventHandler
-func NewObserver(eventHandlers ...handlers.EventHandler) Observer {
+func NewObserver(eventHandlers ...EventHandler) Observer {
 	ob := observer{
-		disposed: make(chan struct{}),
+		disposedChannel: make(chan struct{}),
 	}
 
 	if len(eventHandlers) > 0 {
 		for _, handler := range eventHandlers {
 			switch handler := handler.(type) {
-			case handlers.NextFunc:
+			case NextFunc:
 				ob.nextHandler = handler
-			case handlers.ErrFunc:
+			case ErrFunc:
 				ob.errHandler = handler
-			case handlers.DoneFunc:
+			case DoneFunc:
 				ob.doneHandler = handler
 			case *observer:
 				ob = *handler
@@ -80,7 +74,6 @@ func NewObserver(eventHandlers ...handlers.EventHandler) Observer {
 	if ob.doneHandler == nil {
 		ob.doneHandler = func() {}
 	}
-	ob.done = make(chan error, 1)
 
 	return &ob
 }
@@ -88,21 +81,24 @@ func NewObserver(eventHandlers ...handlers.EventHandler) Observer {
 // Handle registers Observer to EventHandler.
 func (o *observer) Handle(item interface{}) {
 	switch item := item.(type) {
-	case error:
-		o.errHandler(item)
-		return
 	default:
 		o.nextHandler(item)
+	case error:
+		o.errHandler(item)
 	}
 }
 
 func (o *observer) Dispose() {
-	close(o.disposed)
+	close(o.disposedChannel)
+}
+
+func (o *observer) Notify(ch chan<- struct{}) {
+	ch <- struct{}{}
 }
 
 func (o *observer) IsDisposed() bool {
 	select {
-	case <-o.disposed:
+	case <-o.disposedChannel:
 		return true
 	default:
 		return false
@@ -110,59 +106,35 @@ func (o *observer) IsDisposed() bool {
 }
 
 // OnNext applies Observer's NextHandler to an Item
-func (o *observer) OnNext(item interface{}) {
+func (o *observer) OnNext(item interface{}) error {
 	if !o.IsDisposed() {
-		switch item := item.(type) {
-		case error:
-			return
-		default:
-			if o.nextHandler != nil {
-				o.nextHandler(item)
-			}
-		}
-	} else {
-		// TODO
+		o.nextHandler(item)
+		return nil
 	}
+	return &ClosedObserverError{}
 }
 
 // OnError applies Observer's ErrHandler to an error
-func (o *observer) OnError(err error) {
+func (o *observer) OnError(err error) error {
 	if !o.IsDisposed() {
-		if o.errHandler != nil {
-			o.errHandler(err)
-			o.Dispose()
-			if o.done != nil {
-				o.done <- err
-				close(o.done)
-			}
-		}
-	} else {
-		// TODO
+		o.errHandler(err)
+		o.Dispose()
+		return nil
 	}
+	return &ClosedObserverError{}
 }
 
 // OnDone terminates the Observer's internal Observable
-func (o *observer) OnDone() {
+func (o *observer) OnDone() error {
 	if !o.IsDisposed() {
-		if o.doneHandler != nil {
-			o.doneHandler()
-			o.Dispose()
-			if o.done != nil {
-				o.done <- nil
-				close(o.done)
-			}
-		}
-	} else {
-		// TODO
+		o.doneHandler()
+		o.Dispose()
+		return nil
 	}
+	return &ClosedObserverError{}
 }
 
 // OnDone terminates the Observer's internal Observable
-func (o *observer) Block() error {
-	if !o.IsDisposed() {
-		for v := range o.done {
-			return v
-		}
-	}
-	return nil
+func (o *observer) Block() {
+	<-o.disposedChannel
 }

@@ -9,9 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/reactivex/rxgo/options"
-
-	"github.com/reactivex/rxgo/handlers"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,19 +19,21 @@ func TestCheckEventHandler(t *testing.T) {
 
 	testtext := ""
 
-	df := handlers.DoneFunc(func() {
+	df := DoneFunc(func() {
 		testtext += "done"
 	})
 
 	myObserver := NewObserver(df)
 
-	ob1 := CheckEventHandler(myObserver)
-	ob2 := CheckEventHandler(df)
+	ob1 := NewObserver(myObserver)
+	ob2 := NewObserver(df)
 
-	ob1.OnDone()
+	err := ob1.OnDone()
+	assert.NoError(t, err)
 	assert.Equal(t, "done", testtext)
 
-	ob2.OnDone()
+	err = ob2.OnDone()
+	assert.NoError(t, err)
 	assert.Equal(t, "donedone", testtext)
 }
 
@@ -42,11 +41,11 @@ func TestEmptyOperator(t *testing.T) {
 	myStream := Empty()
 	text := ""
 
-	onDone := handlers.DoneFunc(func() {
+	onDone := DoneFunc(func() {
 		text += "done"
 	})
-	myStream.Subscribe(onDone).Block()
 
+	myStream.Subscribe(onDone).Block()
 	assert.Equal(t, "done", text)
 }
 
@@ -56,12 +55,11 @@ func TestJustOperator(t *testing.T) {
 	//yes := make(chan struct{})
 	stuff := []interface{}{}
 
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		stuff = append(stuff, item)
 	})
 
 	myStream.Subscribe(onNext).Block()
-
 	expected := []interface{}{
 		1, 2.01, "foo", map[string]string{"bar": "baz"}, 'a',
 	}
@@ -73,7 +71,7 @@ func TestFromOperator(t *testing.T) {
 	myStream := Just(1, 3.1416, &struct{ foo string }{"bar"})
 	nums := []interface{}{}
 
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		switch item := item.(type) {
 		case int, float64:
 			nums = append(nums, item)
@@ -81,7 +79,6 @@ func TestFromOperator(t *testing.T) {
 	})
 
 	myStream.Subscribe(onNext).Block()
-
 	expected := []interface{}{1, 3.1416}
 	assert.Len(t, nums, 2)
 	for n, num := range nums {
@@ -89,7 +86,7 @@ func TestFromOperator(t *testing.T) {
 	}
 }
 
-func fakeGet(url string, delay time.Duration, result interface{}) (interface{}, error) {
+func fakeGet(_ string, delay time.Duration, result interface{}) (interface{}, error) {
 	<-time.After(delay)
 	if err, isErr := result.(error); isErr {
 		return nil, err
@@ -163,17 +160,17 @@ func TestStartOperator(t *testing.T) {
 		return res
 	})
 
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if res, ok := item.(*http.Response); ok {
 			responseCodes = append(responseCodes, res.StatusCode)
 		}
 	})
 
-	onError := handlers.ErrFunc(func(err error) {
+	onError := ErrFunc(func(err error) {
 		t.Log(err)
 	})
 
-	onDone := handlers.DoneFunc(func() {
+	onDone := DoneFunc(func() {
 		done = true
 	})
 
@@ -181,12 +178,9 @@ func TestStartOperator(t *testing.T) {
 
 	myStream := Start(d1, d3, d4, e1, d2)
 
-	err := myStream.Subscribe(myObserver).Block()
+	myStream.Subscribe(myObserver).Block()
 
 	assert.Exactly(t, []int{200, 301, 500}, responseCodes)
-	assert.Equal(t, "Bad URL", err.Error())
-
-	// Error should have prevented OnDone from being called
 	assert.False(t, done)
 }
 
@@ -194,14 +188,13 @@ func TestSubscribeToNextFunc(t *testing.T) {
 	myStream := Just(1, 2, 3, errors.New("4"), 5)
 	mynum := 0
 
-	nf := handlers.NextFunc(func(item interface{}) {
+	nf := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			mynum += num
 		}
 	})
 
 	myStream.Subscribe(nf).Block()
-
 	assert.Equal(t, 6, mynum)
 }
 
@@ -226,12 +219,11 @@ func TestSubscribeToDoneFunc(t *testing.T) {
 
 	donetext := ""
 
-	df := handlers.DoneFunc(func() {
+	df := DoneFunc(func() {
 		donetext = "done"
 	})
 
 	myStream.Subscribe(df).Block()
-
 	assert.Equal(t, "done", donetext)
 }
 
@@ -245,7 +237,7 @@ func TestSubscribeToObserver(t *testing.T) {
 	integers := []int{}
 	finished := false
 
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		switch item := item.(type) {
 		case string:
 			words = append(words, item)
@@ -256,18 +248,18 @@ func TestSubscribeToObserver(t *testing.T) {
 		}
 	})
 
-	onError := handlers.ErrFunc(func(err error) {
+	onError := ErrFunc(func(err error) {
 		t.Logf("Error emitted in the stream: %v\n", err)
 	})
 
-	onDone := handlers.DoneFunc(func() {
+	onDone := DoneFunc(func() {
 		finished = true
 	})
 
 	ob := NewObserver(onNext, onError, onDone)
 
 	done := myStream.Subscribe(ob)
-	sub := done.Block()
+	done.Block()
 
 	assert.Empty(integers)
 	assert.False(finished)
@@ -283,8 +275,6 @@ func TestSubscribeToObserver(t *testing.T) {
 	for n, char := range chars {
 		assert.Equal(expectedChars[n], char)
 	}
-
-	assert.Equal("bang", sub.Error())
 }
 
 func TestObservableMap(t *testing.T) {
@@ -305,14 +295,13 @@ func TestObservableTakeWithEmpty(t *testing.T) {
 	stream2 := stream1.Take(3)
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
 	})
 
 	stream2.Subscribe(onNext).Block()
-
 	assert.Exactly(t, []int{}, nums)
 }
 
@@ -321,14 +310,13 @@ func TestObservableTakeLast(t *testing.T) {
 	stream2 := stream1.TakeLast(3)
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
 	})
 
 	stream2.Subscribe(onNext).Block()
-
 	assert.Exactly(t, []int{3, 4, 5}, nums)
 }
 
@@ -337,14 +325,13 @@ func TestObservableTakeLastLessThanNth(t *testing.T) {
 	stream2 := stream1.TakeLast(3)
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
 	})
 
 	stream2.Subscribe(onNext).Block()
-
 	assert.Exactly(t, []int{4, 5}, nums)
 }
 
@@ -353,14 +340,13 @@ func TestObservableTakeLastLessThanNth2(t *testing.T) {
 	stream2 := stream1.TakeLast(100000)
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
 	})
 
 	stream2.Subscribe(onNext).Block()
-
 	assert.Exactly(t, []int{4, 5}, nums)
 }
 
@@ -399,14 +385,13 @@ func TestObservableFilter(t *testing.T) {
 	stream2 := stream1.Filter(lt(9))
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
 	})
 
 	stream2.Subscribe(onNext).Block()
-
 	assert.Exactly(t, []int{1, 2, 3, 7}, nums)
 }
 
@@ -415,14 +400,13 @@ func TestObservableFirst(t *testing.T) {
 	stream2 := stream1.First()
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
 	})
 
 	stream2.Subscribe(onNext).Block()
-
 	assert.Exactly(t, []int{0}, nums)
 }
 
@@ -432,14 +416,13 @@ func TestObservableFirstWithEmpty(t *testing.T) {
 	stream2 := stream1.First()
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
 	})
 
 	stream2.Subscribe(onNext).Block()
-
 	assert.Exactly(t, []int{}, nums)
 }
 
@@ -449,14 +432,13 @@ func TestObservableLast(t *testing.T) {
 	stream2 := stream1.Last()
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
 	})
 
 	stream2.Subscribe(onNext).Block()
-
 	assert.Exactly(t, []int{3}, nums)
 }
 
@@ -532,14 +514,13 @@ func TestObservableLastWithEmpty(t *testing.T) {
 	stream2 := stream1.Last()
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
 	})
 
 	stream2.Subscribe(onNext).Block()
-
 	assert.Exactly(t, []int{}, nums)
 }
 
@@ -549,14 +530,13 @@ func TestObservableSkip(t *testing.T) {
 	stream2 := stream1.Skip(3)
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
 	})
 
 	stream2.Subscribe(onNext).Block()
-
 	assert.Exactly(t, []int{5, 1, 8}, nums)
 }
 
@@ -566,14 +546,13 @@ func TestObservableSkipWithEmpty(t *testing.T) {
 	stream2 := stream1.Skip(3)
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
 	})
 
 	stream2.Subscribe(onNext).Block()
-
 	assert.Exactly(t, []int{}, nums)
 }
 
@@ -583,14 +562,13 @@ func TestObservableSkipLast(t *testing.T) {
 	stream2 := stream1.SkipLast(3)
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
 	})
 
 	stream2.Subscribe(onNext).Block()
-
 	assert.Exactly(t, []int{0, 1, 3}, nums)
 }
 
@@ -600,14 +578,13 @@ func TestObservableSkipLastWithEmpty(t *testing.T) {
 	stream2 := stream1.SkipLast(3)
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
 	})
 
 	stream2.Subscribe(onNext).Block()
-
 	assert.Exactly(t, []int{}, nums)
 }
 
@@ -621,14 +598,13 @@ func TestObservableDistinct(t *testing.T) {
 	stream2 := stream1.Distinct(id)
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
 	})
 
 	stream2.Subscribe(onNext).Block()
-
 	assert.Exactly(t, []int{1, 2, 3}, nums)
 }
 
@@ -642,14 +618,13 @@ func TestObservableDistinctUntilChanged(t *testing.T) {
 	stream2 := stream1.DistinctUntilChanged(id)
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
 	})
 
 	stream2.Subscribe(onNext).Block()
-
 	assert.Exactly(t, []int{1, 2, 1, 3}, nums)
 }
 
@@ -699,14 +674,13 @@ func TestObservableScanWithIntegers(t *testing.T) {
 	})
 
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
 	})
 
 	stream2.Subscribe(onNext).Block()
-
 	assert.Exactly(t, []int{0, 1, 4, 9, 10, 18}, nums)
 }
 
@@ -728,14 +702,13 @@ func TestObservableScanWithString(t *testing.T) {
 	})
 
 	words := []string{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if word, ok := item.(string); ok {
 			words = append(words, word)
 		}
 	})
 
 	stream2.Subscribe(onNext).Block()
-
 	expected := []string{
 		"hello",
 		"helloworld",
@@ -751,13 +724,12 @@ func TestElementAt(t *testing.T) {
 	got := 0
 	just := Just(0, 1, 2, 3, 4)
 	single := just.ElementAt(2)
-	single.Subscribe(handlers.NextFunc(func(i interface{}) {
+	single.Subscribe(NextFunc(func(i interface{}) {
 		switch i := i.(type) {
 		case int:
 			got = i
 		}
 	})).Block()
-
 	assert.Equal(t, 2, got)
 }
 
@@ -765,10 +737,9 @@ func TestElementAtWithError(t *testing.T) {
 	got := 0
 	just := Just(0, 1, 2, 3, 4)
 	single := just.ElementAt(10)
-	single.Subscribe(handlers.ErrFunc(func(error) {
+	single.Subscribe(ErrFunc(func(error) {
 		got = 10
 	})).Block()
-
 	assert.Equal(t, 10, got)
 }
 
@@ -784,12 +755,9 @@ func TestObservableReduce(t *testing.T) {
 	}
 
 	var got Optional
-	_, err := stream1.Reduce(add).Subscribe(handlers.NextFunc(func(i interface{}) {
+	stream1.Reduce(add).Subscribe(NextFunc(func(i interface{}) {
 		got = i.(Optional)
 	})).Block()
-	if err != nil {
-		t.Fail()
-	}
 	assert.False(t, got.IsEmpty())
 	assert.Exactly(t, Of(14), got)
 }
@@ -806,12 +774,9 @@ func TestObservableReduceEmpty(t *testing.T) {
 	stream := Empty()
 
 	var got Optional
-	_, err := stream.Reduce(add).Subscribe(handlers.NextFunc(func(i interface{}) {
+	stream.Reduce(add).Subscribe(NextFunc(func(i interface{}) {
 		got = i.(Optional)
 	})).Block()
-	if err != nil {
-		t.Fail()
-	}
 	assert.True(t, got.IsEmpty())
 }
 
@@ -821,12 +786,9 @@ func TestObservableReduceNil(t *testing.T) {
 		return nil
 	}
 	var got Optional
-	_, err := stream.Reduce(nilReduce).Subscribe(handlers.NextFunc(func(i interface{}) {
+	stream.Reduce(nilReduce).Subscribe(NextFunc(func(i interface{}) {
 		got = i.(Optional)
 	})).Block()
-	if err != nil {
-		t.Fail()
-	}
 	assert.False(t, got.IsEmpty())
 	g, err := got.Get()
 	assert.Nil(t, err)
@@ -835,43 +797,28 @@ func TestObservableReduceNil(t *testing.T) {
 
 func TestObservableCount(t *testing.T) {
 	stream := Just(1, 2, 3, "foo", "bar", errors.New("error"))
-	count, err := stream.Count().Subscribe(nil).Block()
-	if err != nil {
-		t.Fail()
-	}
-	assert.Exactly(t, int64(6), count)
+	obs := stream.Count()
+	AssertSingle(t, obs, HasValue(int64(6)))
 }
 
 func TestObservableFirstOrDefault(t *testing.T) {
-	v, err := Empty().FirstOrDefault(7).Subscribe(nil).Block()
-	if err != nil {
-		t.Fail()
-	}
-	assert.Exactly(t, 7, v)
+	obs := Empty().FirstOrDefault(7)
+	AssertSingle(t, obs, HasValue(7))
 }
 
 func TestObservableFirstOrDefaultWithValue(t *testing.T) {
-	v, err := Just(0, 1, 2).FirstOrDefault(7).Subscribe(nil).Block()
-	if err != nil {
-		t.Fail()
-	}
-	assert.Exactly(t, 0, v)
+	obs := Just(0, 1, 2).FirstOrDefault(7)
+	AssertSingle(t, obs, HasValue(0))
 }
 
 func TestObservableLastOrDefault(t *testing.T) {
-	v, err := Empty().LastOrDefault(7).Subscribe(nil).Block()
-	if err != nil {
-		t.Fail()
-	}
-	assert.Exactly(t, 7, v)
+	obs := Empty().LastOrDefault(7)
+	AssertSingle(t, obs, HasValue(7))
 }
 
 func TestObservableLastOrDefaultWithValue(t *testing.T) {
-	v, err := Just(0, 1, 3).LastOrDefault(7).Subscribe(nil).Block()
-	if err != nil {
-		t.Fail()
-	}
-	assert.Exactly(t, 3, v)
+	obs := Just(0, 1, 3).LastOrDefault(7)
+	AssertSingle(t, obs, HasValue(3))
 }
 
 func TestObservableSkipWhile(t *testing.T) {
@@ -883,10 +830,9 @@ func TestObservableSkipWhile(t *testing.T) {
 		default:
 			return true
 		}
-	}).Subscribe(handlers.NextFunc(func(i interface{}) {
+	}).Subscribe(NextFunc(func(i interface{}) {
 		got = append(got, i)
 	})).Block()
-
 	assert.Equal(t, []interface{}{3, 4, 5}, got)
 }
 
@@ -899,10 +845,9 @@ func TestObservableSkipWhileWithEmpty(t *testing.T) {
 		default:
 			return false
 		}
-	}).Subscribe(handlers.NextFunc(func(i interface{}) {
+	}).Subscribe(NextFunc(func(i interface{}) {
 		got = append(got, i)
 	})).Block()
-
 	assert.Equal(t, []interface{}{}, got)
 }
 
@@ -965,7 +910,7 @@ func TestObservableZipWithEmpty(t *testing.T) {
 	}
 	zip := stream1.ZipFromObservable(stream2, zipper)
 	nums := []int{}
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		if num, ok := item.(int); ok {
 			nums = append(nums, num)
 		}
@@ -976,15 +921,19 @@ func TestObservableZipWithEmpty(t *testing.T) {
 
 func TestCheckEventHandlers(t *testing.T) {
 	i := 0
-	nf := handlers.NextFunc(func(interface{}) {
+	nf := NextFunc(func(interface{}) {
 		i += 2
 	})
-	df := handlers.DoneFunc(func() {
+	df := DoneFunc(func() {
 		i += 5
 	})
-	ob1 := CheckEventHandlers(nf, df)
-	ob1.OnNext("")
-	ob1.OnDone()
+	ob1 := NewObserver(nf, df)
+	err := ob1.OnNext("")
+	assert.NoError(t, err)
+
+	err = ob1.OnDone()
+	assert.NoError(t, err)
+
 	assert.Equal(t, 7, i)
 }
 
@@ -995,7 +944,7 @@ func TestObservableForEach(t *testing.T) {
 	chars := []rune{}
 	integers := []int{}
 	finished := false
-	onNext := handlers.NextFunc(func(item interface{}) {
+	onNext := NextFunc(func(item interface{}) {
 		switch item := item.(type) {
 		case string:
 			words = append(words, item)
@@ -1005,13 +954,13 @@ func TestObservableForEach(t *testing.T) {
 			integers = append(integers, item)
 		}
 	})
-	onError := handlers.ErrFunc(func(err error) {
+	onError := ErrFunc(func(err error) {
 		t.Logf("Error emitted in the stream: %v\n", err)
 	})
-	onDone := handlers.DoneFunc(func() {
+	onDone := DoneFunc(func() {
 		finished = true
 	})
-	sub := myStream.ForEach(onNext, onError, onDone).Block()
+	myStream.ForEach(onNext, onError, onDone).Block()
 	assert.Empty(integers)
 	assert.False(finished)
 	expectedWords := []string{"foo", "bar", "baz"}
@@ -1024,7 +973,6 @@ func TestObservableForEach(t *testing.T) {
 	for n, char := range chars {
 		assert.Equal(expectedChars[n], char)
 	}
-	assert.Equal("bang", sub.Error())
 }
 
 func TestAll(t *testing.T) {
@@ -1057,13 +1005,13 @@ func TestContain(t *testing.T) {
 	var got1, got2 bool
 
 	Just(1, 2, 3).Contains(predicate).
-		Subscribe(handlers.NextFunc(func(i interface{}) {
+		Subscribe(NextFunc(func(i interface{}) {
 			got1 = i.(bool)
 		})).Block()
 	assert.True(t, got1)
 
 	Just(1, 5, 3).Contains(predicate).
-		Subscribe(handlers.NextFunc(func(i interface{}) {
+		Subscribe(NextFunc(func(i interface{}) {
 			got2 = i.(bool)
 		})).Block()
 	assert.False(t, got2)
@@ -1071,7 +1019,7 @@ func TestContain(t *testing.T) {
 
 func TestDefaultIfEmpty(t *testing.T) {
 	got1 := 0
-	Empty().DefaultIfEmpty(3).Subscribe(handlers.NextFunc(func(i interface{}) {
+	Empty().DefaultIfEmpty(3).Subscribe(NextFunc(func(i interface{}) {
 		got1 = i.(int)
 	})).Block()
 	assert.Equal(t, 3, got1)
@@ -1079,7 +1027,7 @@ func TestDefaultIfEmpty(t *testing.T) {
 
 func TestDefaultIfEmptyWithNonEmpty(t *testing.T) {
 	got1 := 0
-	Just(1).DefaultIfEmpty(3).Subscribe(handlers.NextFunc(func(i interface{}) {
+	Just(1).DefaultIfEmpty(3).Subscribe(NextFunc(func(i interface{}) {
 		got1 = i.(int)
 	})).Block()
 	assert.Equal(t, 1, got1)
@@ -1298,7 +1246,6 @@ func TestBufferWithTime_MinorMockedTime(t *testing.T) {
 	close(ch)
 
 	obs.Subscribe(nil).Block()
-
 	timespan.AssertCalled(t, "duration")
 }
 
@@ -1348,7 +1295,7 @@ func TestBufferWithTimeOrCountWithTime(t *testing.T) {
 	got := make([]interface{}, 0)
 
 	obs := from.BufferWithTimeOrCount(WithDuration(1*time.Millisecond), 10).
-		Subscribe(handlers.NextFunc(func(i interface{}) {
+		Subscribe(NextFunc(func(i interface{}) {
 			got = append(got, i)
 		}))
 	ch <- 1
@@ -1391,7 +1338,6 @@ func TestBufferWithTimeOrCountWithMockedTime(t *testing.T) {
 	close(ch)
 
 	obs.Subscribe(nil).Block()
-
 	timespan.AssertCalled(t, "duration")
 }
 
@@ -1586,9 +1532,8 @@ func channel(ch chan interface{}, t time.Duration) (item interface{}, closed boo
 	case i, ok := <-ch:
 		if ok {
 			return i, false, false
-		} else {
-			return nil, true, false
 		}
+		return nil, true, false
 	case <-ctx.Done():
 		return nil, false, true
 	}
@@ -1596,25 +1541,25 @@ func channel(ch chan interface{}, t time.Duration) (item interface{}, closed boo
 
 func TestToChannel(t *testing.T) {
 	ch := Just(1, 2, 3).ToChannel()
-	item, _, _ := channel(ch, wait)
+	item, _, _ := channel(ch, testWaitTime)
 	assert.Equal(t, 1, item)
-	item, _, _ = channel(ch, wait)
+	item, _, _ = channel(ch, testWaitTime)
 	assert.Equal(t, 2, item)
-	item, _, _ = channel(ch, wait)
+	item, _, _ = channel(ch, testWaitTime)
 	assert.Equal(t, 3, item)
-	_, closed, _ := channel(ch, wait)
+	_, closed, _ := channel(ch, testWaitTime)
 	assert.True(t, closed)
 }
 
 func TestToChannel_BufferedChannel(t *testing.T) {
-	ch := Just(1, 2, 3).ToChannel(options.WithBufferedChannel(3))
-	item, _, _ := channel(ch, wait)
+	ch := Just(1, 2, 3).ToChannel(WithBufferedChannel(3))
+	item, _, _ := channel(ch, testWaitTime)
 	assert.Equal(t, 1, item)
-	item, _, _ = channel(ch, wait)
+	item, _, _ = channel(ch, testWaitTime)
 	assert.Equal(t, 2, item)
-	item, _, _ = channel(ch, wait)
+	item, _, _ = channel(ch, testWaitTime)
 	assert.Equal(t, 3, item)
-	_, closed, _ := channel(ch, wait)
+	_, closed, _ := channel(ch, testWaitTime)
 	assert.True(t, closed)
 }
 
@@ -1632,16 +1577,22 @@ func TestTakeWhile_Empty(t *testing.T) {
 	AssertObservable(t, obs, IsEmpty())
 }
 
+// FIXME Non deterministic
 func TestSample(t *testing.T) {
-	obs := Interval(make(chan struct{}), 50*time.Millisecond).
-		Sample(Interval(make(chan struct{}), 250*time.Millisecond)).
+	ctx1, cancel1 := context.WithCancel(context.Background())
+	defer cancel1()
+	ctx2, cancel2 := context.WithCancel(context.Background())
+	defer cancel2()
+	obs := Interval(ctx1, 50*time.Millisecond).
+		Sample(Interval(ctx2, 250*time.Millisecond)).
 		Take(2)
 
 	AssertObservable(t, obs, HasItems(3, 8))
 }
 
 func TestSample_NotRepeatedItems(t *testing.T) {
-	observables := mockObservables(t, `
+	observables, _ := causality(`
+o	o
 1
 2
 	0
@@ -1666,18 +1617,24 @@ x
 }
 
 func TestSample_SourceObsClosedBeforeIntervalFired(t *testing.T) {
-	obs := Just(1).Sample(Interval(make(chan struct{}), time.Second))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	obs := Just(1).Sample(Interval(ctx, time.Second))
 	AssertObservable(t, obs, IsEmpty())
 }
 
 func TestSample_TimerFiredBeforeSourceObsEmitted(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	frequence50ms := new(mockDuration)
 	frequence50ms.On("duration").Return(50 * time.Millisecond)
-	obs := Interval(make(chan struct{}), time.Second).Sample(Timer(frequence50ms))
+	obs := Interval(ctx, time.Second).Sample(Timer(frequence50ms))
 	AssertObservable(t, obs, IsEmpty())
 }
 func TestSample_Empty(t *testing.T) {
-	obs := Empty().Sample(Interval(make(chan struct{}), 50*time.Millisecond))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	obs := Empty().Sample(Interval(ctx, 50*time.Millisecond))
 	AssertObservable(t, obs, IsEmpty())
 }
 
@@ -1767,30 +1724,77 @@ func TestStartWithObservable_Empty2(t *testing.T) {
 	AssertObservable(t, obs, HasItems(1, 2, 3))
 }
 
+//func TestTimeout(t *testing.T) {
+//	observables := causality(t, `
+//1
+//2
+//3
+//	0
+//4
+//5
+//x
+//	x
+//`)
+//	obs := observables[0].Timeout(observables[1])
+//	AssertObservable(t, obs, HasItems(1, 2, 3))
+//}
+//
+//func TestTimeout_ClosedChannel(t *testing.T) {
+//	observables := causality(t, `
+//1
+//2
+//3
+//x
+//	0
+//	x
+//`)
+//	obs := observables[0].Timeout(observables[1])
+//	AssertObservable(t, obs, HasItems(1, 2, 3))
+//}
+
 func TestTimeout(t *testing.T) {
-	observables := mockObservables(t, `
+	observables, contexts := causality(`
+o	c
 1
 2
 3
-	0
+	x
 4
 5
+6
 x
-	x
 `)
-	obs := observables[0].Timeout(observables[1])
+	obs := observables[0].Timeout(contexts[0])
 	AssertObservable(t, obs, HasItems(1, 2, 3))
 }
 
 func TestTimeout_ClosedChannel(t *testing.T) {
-	observables := mockObservables(t, `
+	observables, contexts := causality(`
+o	c
 1
 2
 3
 x
-	0
 	x
 `)
-	obs := observables[0].Timeout(observables[1])
+	obs := observables[0].Timeout(contexts[0])
 	AssertObservable(t, obs, HasItems(1, 2, 3))
+}
+
+var x interface{}
+
+func BenchmarkSubscribe(b *testing.B) {
+	ch := make(chan interface{})
+	obs := FromChannel(ch)
+	o := obs.Subscribe(NextFunc(func(i interface{}) {
+		x = i
+	}))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		ch <- i
+	}
+	err := o.OnDone()
+	if err != nil {
+		panic(err)
+	}
 }

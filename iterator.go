@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Iterator allows to iterates on an given structure
 type Iterator interface {
 	Next(ctx context.Context) (interface{}, error)
 }

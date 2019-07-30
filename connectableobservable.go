@@ -4,10 +4,10 @@ import (
 	"context"
 	"sync"
 
-	"github.com/reactivex/rxgo/handlers"
-	"github.com/reactivex/rxgo/options"
+	"github.com/pkg/errors"
 )
 
+// ConnectableObservable is an observable that send items once an observer is connected
 type ConnectableObservable interface {
 	Observable
 	Connect() Observer
@@ -83,7 +83,7 @@ func (c *connectableObservable) Connect() Observer {
 				for _, observer := range c.observers {
 					c.observersMutex.Unlock()
 					select {
-					case observer.getChannel() <- item:
+					case observer.getItemChannel() <- item:
 					default:
 					}
 					c.observersMutex.Lock()
@@ -141,8 +141,8 @@ func (c *connectableObservable) FlatMap(apply func(interface{}) Observable, maxI
 	return c.observable.FlatMap(apply, maxInParallel)
 }
 
-func (c *connectableObservable) ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFunc,
-	doneFunc handlers.DoneFunc, opts ...options.Option) Observer {
+func (c *connectableObservable) ForEach(nextFunc NextFunc, errFunc ErrFunc,
+	doneFunc DoneFunc, opts ...Option) Observer {
 	return c.observable.ForEach(nextFunc, errFunc, doneFunc, opts...)
 }
 
@@ -230,30 +230,35 @@ func (c *connectableObservable) StartWithObservable(observable Observable) Obser
 	return c.observable.StartWithObservable(observable)
 }
 
-func (o *connectableObservable) Subscribe(handler handlers.EventHandler, opts ...options.Option) Observer {
-	observableOptions := options.ParseOptions(opts...)
+func (c *connectableObservable) Subscribe(handler EventHandler, opts ...Option) Observer {
+	observableOptions := ParseOptions(opts...)
 
-	ob := CheckEventHandler(handler)
-	ob.setBackpressureStrategy(observableOptions.BackpressureStrategy())
+	ob := NewObserver(handler)
 	var ch chan interface{}
-	if observableOptions.BackpressureStrategy() == options.Buffer {
+	if observableOptions.BackpressureStrategy() == Buffer {
 		ch = make(chan interface{}, observableOptions.Buffer())
 	} else {
 		ch = make(chan interface{})
 	}
-	ob.setChannel(ch)
-	o.observersMutex.Lock()
-	o.observers = append(o.observers, ob)
-	o.observersMutex.Unlock()
+	ob.setItemChannel(ch)
+	c.observersMutex.Lock()
+	c.observers = append(c.observers, ob)
+	c.observersMutex.Unlock()
 
 	go func() {
 		for item := range ch {
 			switch item := item.(type) {
 			case error:
-				ob.OnError(item)
+				err := ob.OnError(item)
+				if err != nil {
+					panic(errors.Wrap(err, "error while sending error item from connectable observable"))
+				}
 				return
 			default:
-				ob.OnNext(item)
+				err := ob.OnNext(item)
+				if err != nil {
+					panic(errors.Wrap(err, "error while sending next item from connectable observable"))
+				}
 			}
 		}
 	}()
@@ -289,11 +294,11 @@ func (c *connectableObservable) TakeWhile(apply Predicate) Observable {
 	return c.observable.TakeWhile(apply)
 }
 
-func (c *connectableObservable) Timeout(observable Observable) Observable {
-	return c.observable.Timeout(observable)
+func (c *connectableObservable) Timeout(ctx context.Context) Observable {
+	return c.observable.Timeout(ctx)
 }
 
-func (c *connectableObservable) ToChannel(opts ...options.Option) Channel {
+func (c *connectableObservable) ToChannel(opts ...Option) Channel {
 	return c.observable.ToChannel(opts...)
 }
 

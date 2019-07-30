@@ -3,8 +3,6 @@ package rxgo
 import (
 	"testing"
 
-	"github.com/reactivex/rxgo/handlers"
-	"github.com/reactivex/rxgo/options"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -13,24 +11,24 @@ func TestConnectableObservable(t *testing.T) {
 	out1 := make(chan interface{}, 2)
 	out2 := make(chan interface{}, 2)
 	obs := FromChannel(in).Publish()
-	obs.Subscribe(handlers.NextFunc(func(i interface{}) {
+	obs.Subscribe(NextFunc(func(i interface{}) {
 		out1 <- i
-	}), options.WithBufferBackpressureStrategy(2))
-	obs.Subscribe(handlers.NextFunc(func(i interface{}) {
+	}), WithBufferBackpressureStrategy(2))
+	obs.Subscribe(NextFunc(func(i interface{}) {
 		out2 <- i
-	}), options.WithBufferBackpressureStrategy(2))
+	}), WithBufferBackpressureStrategy(2))
 	in <- 1
 	in <- 2
-	_, _, cancelled := channel(out1, wait)
+	_, _, cancelled := channel(out1, testWaitTime)
 	assert.True(t, cancelled)
 	obs.Connect()
-	item, _, _ := channel(out1, wait)
+	item, _, _ := channel(out1, testWaitTime)
 	assert.Equal(t, 1, item)
-	item, _, _ = channel(out1, wait)
+	item, _, _ = channel(out1, testWaitTime)
 	assert.Equal(t, 2, item)
-	item, _, _ = channel(out2, wait)
+	item, _, _ = channel(out2, testWaitTime)
 	assert.Equal(t, 1, item)
-	item, _, _ = channel(out2, wait)
+	item, _, _ = channel(out2, testWaitTime)
 	assert.Equal(t, 2, item)
 }
 

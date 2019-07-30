@@ -1,10 +1,10 @@
 package rxgo
 
 import (
-	"github.com/reactivex/rxgo/handlers"
 	"github.com/stretchr/testify/mock"
 )
 
+// NewObserverMock creates a mock observer
 func NewObserverMock() *ObserverMock {
 	obMock := new(ObserverMock)
 	obMock.On("OnDone").Return()
@@ -13,6 +13,8 @@ func NewObserverMock() *ObserverMock {
 	return obMock
 }
 
+// ObserverMock is a mock observer
+// TODO Visibility
 type ObserverMock struct {
 	mock.Mock
 }
@@ -32,15 +34,16 @@ func (m *ObserverMock) OnNext(item interface{}) {
 	m.Called(item)
 }
 
+// Capture captures observer inputs
 func (m *ObserverMock) Capture() Observer {
 	ob := NewObserver(
-		handlers.NextFunc(func(el interface{}) {
+		NextFunc(func(el interface{}) {
 			m.OnNext(el)
 		}),
-		handlers.ErrFunc(func(err error) {
+		ErrFunc(func(err error) {
 			m.OnError(err)
 		}),
-		handlers.DoneFunc(func() {
+		DoneFunc(func() {
 			m.OnDone()
 		}),
 	)

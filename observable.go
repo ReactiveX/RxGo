@@ -8,8 +8,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/reactivex/rxgo/handlers"
-	"github.com/reactivex/rxgo/options"
 )
 
 type observableType uint32
@@ -44,8 +42,8 @@ type Observable interface {
 	First() Observable
 	FirstOrDefault(defaultValue interface{}) Single
 	FlatMap(apply func(interface{}) Observable, maxInParallel uint) Observable
-	ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFunc,
-		doneFunc handlers.DoneFunc, opts ...options.Option) Observer
+	ForEach(nextFunc NextFunc, errFunc ErrFunc,
+		doneFunc DoneFunc, opts ...Option) Observer
 	IgnoreElements() Observable
 	Last() Observable
 	LastOrDefault(defaultValue interface{}) Single
@@ -67,7 +65,7 @@ type Observable interface {
 	StartWithItems(item interface{}, items ...interface{}) Observable
 	StartWithIterable(iterable Iterable) Observable
 	StartWithObservable(observable Observable) Observable
-	Subscribe(handler handlers.EventHandler, opts ...options.Option) Observer
+	Subscribe(handler EventHandler, opts ...Option) Observer
 	SumFloat32() Single
 	SumFloat64() Single
 	SumInt64() Single
@@ -75,8 +73,8 @@ type Observable interface {
 	TakeLast(nth uint) Observable
 	TakeUntil(apply Predicate) Observable
 	TakeWhile(apply Predicate) Observable
-	Timeout(observable Observable) Observable
-	ToChannel(opts ...options.Option) Channel
+	Timeout(ctx context.Context) Observable
+	ToChannel(opts ...Option) Channel
 	ToMap(keySelector Function) Single
 	ToMapWithValueSelector(keySelector, valueSelector Function) Single
 	ToSlice() Single
@@ -104,7 +102,7 @@ type observable struct {
 
 	// Hot observable
 	channel               chan interface{} // Push mode
-	bpStrategy            options.BackpressureStrategy
+	bpStrategy            BackpressureStrategy
 	bpBuffer              int
 	subscriptionsObserver []Observer
 	subscriptionsChannel  []chan interface{}
@@ -118,19 +116,31 @@ func iterate(observable Observable, observer Observer) error {
 			switch item := item.(type) {
 			case error:
 				if observable.getOnErrorReturn() != nil {
-					observer.OnNext(observable.getOnErrorReturn()(item))
+					err := observer.OnNext(observable.getOnErrorReturn()(item))
+					if err != nil {
+						panic(errors.Wrap(err, "error while sending next item from iteration"))
+					}
 				} else if observable.getOnErrorResumeNext() != nil {
 					observable = observable.getOnErrorResumeNext()(item)
 					it = observable.Iterator(context.Background())
 				} else if observable.getOnErrorReturnItem() != nil {
-					observer.OnNext(observable.getOnErrorReturnItem())
+					err := observer.OnNext(observable.getOnErrorReturnItem())
+					if err != nil {
+						panic(errors.Wrap(err, "error while sending next item from iteration"))
+					}
 				} else {
-					observer.OnError(item)
+					err := observer.OnError(item)
+					if err != nil {
+						panic(errors.Wrap(err, "error while sending error item from iteration"))
+					}
 					return item
 				}
 			default:
 				if !observable.getIgnoreElements() {
-					observer.OnNext(item)
+					err := observer.OnNext(item)
+					if err != nil {
+						panic(errors.Wrap(err, "error while sending next item from iteration"))
+					}
 				}
 			}
 		} else {
@@ -154,7 +164,7 @@ func popAndCompareFirstItems(
 }
 
 func startsHotObservable(observable *observable) {
-	if observable.bpStrategy == options.None {
+	if observable.bpStrategy == None {
 		go func() {
 			for {
 				if next, ok := <-observable.channel; ok {
@@ -168,7 +178,7 @@ func startsHotObservable(observable *observable) {
 				}
 			}
 		}()
-	} else if observable.bpStrategy == options.Buffer {
+	} else if observable.bpStrategy == Buffer {
 		go func() {
 			for {
 				if next, ok := <-observable.channel; ok {
@@ -186,16 +196,6 @@ func startsHotObservable(observable *observable) {
 			}
 		}()
 	}
-}
-
-// CheckEventHandler checks the underlying type of an EventHandler.
-func CheckEventHandler(handler handlers.EventHandler) Observer {
-	return NewObserver(handler)
-}
-
-// CheckEventHandlers checks the underlying type of an EventHandler.
-func CheckEventHandlers(handler ...handlers.EventHandler) Observer {
-	return NewObserver(handler...)
 }
 
 func (o *observable) Iterator(ctx context.Context) Iterator {
@@ -459,7 +459,7 @@ func (o *observable) BufferWithCount(count, skip int) Observable {
 			return
 		}
 
-		buffer := make([]interface{}, count, count)
+		buffer := make([]interface{}, count)
 		iCount := 0
 		iSkip := 0
 		it := o.iterable.Iterator(context.Background())
@@ -484,7 +484,7 @@ func (o *observable) BufferWithCount(count, skip int) Observable {
 
 					if iSkip == skip { // Send current buffer
 						out <- buffer
-						buffer = make([]interface{}, count, count)
+						buffer = make([]interface{}, count)
 						iCount = 0
 						iSkip = 0
 					}
@@ -886,9 +886,9 @@ func (o *observable) First() Observable {
 }
 
 // ForEach subscribes to the Observable and receives notifications for each element.
-func (o *observable) ForEach(nextFunc handlers.NextFunc, errFunc handlers.ErrFunc,
-	doneFunc handlers.DoneFunc, opts ...options.Option) Observer {
-	return o.Subscribe(CheckEventHandlers(nextFunc, errFunc, doneFunc), opts...)
+func (o *observable) ForEach(nextFunc NextFunc, errFunc ErrFunc,
+	doneFunc DoneFunc, opts ...Option) Observer {
+	return o.Subscribe(NewObserver(nextFunc, errFunc, doneFunc), opts...)
 }
 
 // IgnoreElements ignores all items emitted by the source ObservableSource and only calls onComplete
@@ -988,7 +988,7 @@ func (o *observable) Max(comparator Comparator) OptionalSingle {
 		}
 		close(out)
 	}()
-	return &optionalSingle{ch: out}
+	return &optionalSingle{itemChannel: out}
 }
 
 // Min determines and emits the minimum-valued item emitted by an Observable according to a comparator.
@@ -1020,7 +1020,7 @@ func (o *observable) Min(comparator Comparator) OptionalSingle {
 		}
 		close(out)
 	}()
-	return &optionalSingle{ch: out}
+	return &optionalSingle{itemChannel: out}
 }
 
 // OnErrorResumeNext Instructs an Observable to pass control to another Observable rather than invoking
@@ -1081,7 +1081,7 @@ func (o *observable) Reduce(apply Function2) OptionalSingle {
 // Repeat returns an Observable that repeats the sequence of items emitted by the source Observable
 // at most count times, at a particular frequency.
 func (o *observable) Repeat(count int64, frequency Duration) Observable {
-	if count != Indefinitely {
+	if count != Infinite {
 		if count < 0 {
 			count = 0
 		}
@@ -1099,7 +1099,7 @@ func (o *observable) Repeat(count int64, frequency Duration) Observable {
 			}
 		}
 		for {
-			if count != Indefinitely {
+			if count != Infinite {
 				if count == 0 {
 					break
 				}
@@ -1419,12 +1419,15 @@ func (o *observable) SkipWhile(apply Predicate) Observable {
 }
 
 // Subscribe subscribes an EventHandler and returns a Subscription channel.
-func (o *observable) Subscribe(handler handlers.EventHandler, opts ...options.Option) Observer {
-	ob := CheckEventHandler(handler)
+func (o *observable) Subscribe(handler EventHandler, opts ...Option) Observer {
+	ob := NewObserver(handler)
 
 	if o.errorOnSubscription != nil {
 		go func() {
-			ob.OnError(o.errorOnSubscription)
+			err := ob.OnError(o.errorOnSubscription)
+			if err != nil {
+				panic(errors.Wrap(err, "error while sending error item from observable"))
+			}
 		}()
 		return ob
 	}
@@ -1434,16 +1437,19 @@ func (o *observable) Subscribe(handler handlers.EventHandler, opts ...options.Op
 		go func() {
 			e := iterate(o, ob)
 			if e == nil {
-				ob.OnDone()
+				err := ob.OnDone()
+				if err != nil {
+					panic(errors.Wrap(err, "error while sending done signal from observable"))
+				}
 			}
 		}()
 	} else if o.observableType == hot {
 		// In case of a hot observable, we add an observer subscription
-		if o.bpStrategy == options.None {
+		if o.bpStrategy == None {
 			o.subscriptionsMutex.Lock()
 			o.subscriptionsObserver = append(o.subscriptionsObserver, ob)
 			o.subscriptionsMutex.Unlock()
-		} else if o.bpStrategy == options.Buffer {
+		} else if o.bpStrategy == Buffer {
 			o.subscriptionsMutex.Lock()
 			ch := make(chan interface{}, o.bpBuffer)
 			go func() {
@@ -1669,11 +1675,10 @@ func (o *observable) TakeWhile(apply Predicate) Observable {
 	return newColdObservableFromFunction(f)
 }
 
-func (o *observable) Timeout(observable Observable) Observable {
+func (o *observable) Timeout(ctx context.Context) Observable {
 	f := func(out chan interface{}) {
-		ctx, cancel := context.WithCancel(context.Background())
+		it := o.Iterator(context.Background())
 		go func() {
-			it := o.Iterator(ctx)
 			for {
 				if item, err := it.Next(ctx); err == nil {
 					out <- item
@@ -1682,19 +1687,16 @@ func (o *observable) Timeout(observable Observable) Observable {
 					break
 				}
 			}
-		}()
-		go func() {
-			it := observable.Iterator(context.Background())
-			it.Next(context.Background())
-			cancel()
+			close(out)
 		}()
 	}
+
 	return newColdObservableFromFunction(f)
 }
 
 // ToChannel collects all items from an Observable and emit them in a channel
-func (o *observable) ToChannel(opts ...options.Option) Channel {
-	options := options.ParseOptions(opts...)
+func (o *observable) ToChannel(opts ...Option) Channel {
+	options := ParseOptions(opts...)
 	var ch chan interface{}
 	if options.Buffer() != 0 {
 		ch = make(chan interface{}, options.Buffer())

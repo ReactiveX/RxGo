@@ -96,11 +96,6 @@ func TestFlatMapReturnsSliceElements(t *testing.T) {
 //	assert.Equal(t, uint(1), requestedMaxInParallel)
 //}
 
-var (
-	someElement  = "some element"
-	someSequence = Just(someElement)
-)
-
 func identity(el interface{}) Observable {
 	return Just(el)
 }

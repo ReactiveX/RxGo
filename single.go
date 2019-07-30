@@ -3,8 +3,7 @@ package rxgo
 import (
 	"context"
 
-	"github.com/reactivex/rxgo/handlers"
-	"github.com/reactivex/rxgo/options"
+	"github.com/pkg/errors"
 )
 
 // Single is similar to an Observable but emits only one single element or an error notification.
@@ -12,11 +11,12 @@ type Single interface {
 	Iterable
 	Filter(apply Predicate) OptionalSingle
 	Map(apply Function) Single
-	Subscribe(handler handlers.EventHandler, opts ...options.Option) SingleObserver
+	Subscribe(handler EventHandler, opts ...Option) Observer
 }
 
+// OptionalSingle represents an optional single observable type
 type OptionalSingle interface {
-	Subscribe(handler handlers.EventHandler, opts ...options.Option) SingleObserver
+	Subscribe(handler EventHandler, opts ...Option) Observer
 }
 
 type single struct {
@@ -24,7 +24,7 @@ type single struct {
 }
 
 type optionalSingle struct {
-	ch chan Optional
+	itemChannel chan Optional
 }
 
 func newSingleFrom(item interface{}) Single {
@@ -37,20 +37,15 @@ func newSingleFrom(item interface{}) Single {
 
 func newOptionalSingleFrom(opt Optional) OptionalSingle {
 	s := optionalSingle{
-		ch: make(chan Optional),
+		itemChannel: make(chan Optional),
 	}
 
 	go func() {
-		s.ch <- opt
-		close(s.ch)
+		s.itemChannel <- opt
+		close(s.itemChannel)
 	}()
 
 	return &s
-}
-
-// CheckSingleEventHandler checks the underlying type of an EventHandler.
-func CheckSingleEventHandler(handler handlers.EventHandler) SingleObserver {
-	return NewSingleObserver(handler)
 }
 
 func newColdSingle(f func(chan interface{})) Single {
@@ -62,7 +57,7 @@ func newColdSingle(f func(chan interface{})) Single {
 // NewOptionalSingleFromChannel creates a new OptionalSingle from a channel input
 func NewOptionalSingleFromChannel(ch chan Optional) OptionalSingle {
 	return &optionalSingle{
-		ch: ch,
+		itemChannel: ch,
 	}
 }
 
@@ -74,86 +69,82 @@ func (s *single) Filter(apply Predicate) OptionalSingle {
 	out := make(chan Optional)
 	go func() {
 		it := s.iterable.Iterator(context.Background())
-		for {
-			if item, err := it.Next(context.Background()); err == nil {
-				if apply(item) {
-					out <- Of(item)
-				} else {
-					out <- EmptyOptional()
-				}
-				close(out)
-				return
+		if item, err := it.Next(context.Background()); err == nil {
+			if apply(item) {
+				out <- Of(item)
 			} else {
-				break
+				out <- EmptyOptional()
 			}
+			close(out)
+			return
 		}
 	}()
 
 	return &optionalSingle{
-		ch: out,
+		itemChannel: out,
 	}
 }
 
 func (s *single) Map(apply Function) Single {
 	f := func(out chan interface{}) {
 		it := s.iterable.Iterator(context.Background())
-		for {
-			if item, err := it.Next(context.Background()); err == nil {
-				out <- apply(item)
-				close(out)
-				return
-			} else {
-				break
-			}
+		if item, err := it.Next(context.Background()); err == nil {
+			out <- apply(item)
+			close(out)
+			return
 		}
 	}
 	return newColdSingle(f)
 }
 
-func (s *single) Subscribe(handler handlers.EventHandler, opts ...options.Option) SingleObserver {
-	ob := CheckSingleEventHandler(handler)
+func (s *single) Subscribe(handler EventHandler, opts ...Option) Observer {
+	ob := NewObserver(handler)
 
 	go func() {
 		it := s.iterable.Iterator(context.Background())
-		for {
-			if item, err := it.Next(context.Background()); err == nil {
-				switch item := item.(type) {
-				case error:
-					ob.OnError(item)
-
-					// Record the error and break the loop.
-					return
-				default:
-					ob.OnSuccess(item)
+		if item, err := it.Next(context.Background()); err == nil {
+			switch item := item.(type) {
+			case error:
+				err := ob.OnError(item)
+				if err != nil {
+					panic(errors.Wrap(err, "error while sending error item from single"))
 				}
-			} else {
-				break
+			default:
+				err := ob.OnNext(item)
+				if err != nil {
+					panic(errors.Wrap(err, "error while sending next item from single"))
+				}
+				ob.Dispose()
+			}
+		} else {
+			err := ob.OnDone()
+			if err != nil {
+				panic(errors.Wrap(err, "error while sending done signal from single"))
 			}
 		}
-
-		return
 	}()
 
 	return ob
 }
 
-func (s *optionalSingle) Subscribe(handler handlers.EventHandler, opts ...options.Option) SingleObserver {
-	ob := CheckSingleEventHandler(handler)
+func (s *optionalSingle) Subscribe(handler EventHandler, opts ...Option) Observer {
+	ob := NewObserver(handler)
 
 	go func() {
-		for item := range s.ch {
-			switch item := item.(type) {
-			case error:
-				ob.OnError(item)
-
-				// Record the error and break the loop.
-				return
-			default:
-				ob.OnSuccess(item)
+		item := <-s.itemChannel
+		switch item := item.(type) {
+		case error:
+			err := ob.OnError(item)
+			if err != nil {
+				panic(errors.Wrap(err, "error while sending error item from optional single"))
 			}
+		default:
+			err := ob.OnNext(item)
+			if err != nil {
+				panic(errors.Wrap(err, "error while sending next item from optional single"))
+			}
+			ob.Dispose()
 		}
-
-		return
 	}()
 
 	return ob

@@ -1,13 +1,14 @@
-// Package fx provides predicate-like function types to be used with operators
-// such as Map, Filter, Scan, and Start.
 package rxgo
 
 // Comparison is the results of the Comparator function.
 type Comparison uint32
 
 const (
+	// Equals represents an equality
 	Equals Comparison = iota
+	// Greater represents an item greater than another
 	Greater
+	// Smaller represents an item smaller than another
 	Smaller
 )
 

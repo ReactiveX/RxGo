@@ -1,40 +1,42 @@
 package rxgo
 
 import (
+	"errors"
 	"testing"
 
-	"errors"
-
-	"github.com/reactivex/rxgo/handlers"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestCreateNewObserverWithConstructor(t *testing.T) {
 	ob := NewObserver()
-	ob.OnDone()
-	ob.OnError(errors.New(""))
-	ob.OnNext("")
-	ob.OnNext(errors.New(""))
+	err := ob.OnDone()
+	assert.NoError(t, err)
+
+	err = ob.OnNext("a")
+	assert.Error(t, err)
+	assert.IsType(t, &ClosedObserverError{}, err)
 }
 
 func TestCreateNewObserverWithObserver(t *testing.T) {
 	nexttext := ""
 	donetext := ""
 
-	nextf := handlers.NextFunc(func(item interface{}) {
+	nextf := NextFunc(func(item interface{}) {
 		if text, ok := item.(string); ok {
 			nexttext = text
 		}
 	})
 
-	donef := handlers.DoneFunc(func() {
+	donef := DoneFunc(func() {
 		donetext = "Hello"
 	})
 
 	ob := NewObserver(donef, nextf)
 
-	ob.OnNext("Next")
-	ob.OnDone()
+	err := ob.OnNext("Next")
+	assert.NoError(t, err)
+	err = ob.OnDone()
+	assert.NoError(t, err)
 
 	assert.Equal(t, "Next", nexttext)
 	assert.Equal(t, "Hello", donetext)
@@ -43,11 +45,11 @@ func TestCreateNewObserverWithObserver(t *testing.T) {
 func TestHandle(t *testing.T) {
 	i := 0
 
-	nextf := handlers.NextFunc(func(item interface{}) {
+	nextf := NextFunc(func(item interface{}) {
 		i += 5
 	})
 
-	errorf := handlers.ErrFunc(func(error) {
+	errorf := ErrFunc(func(error) {
 		i += 2
 	})
 

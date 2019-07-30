@@ -8,8 +8,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/reactivex/rxgo/handlers"
-	"github.com/reactivex/rxgo/options"
 )
 
 func isClosed(ch <-chan interface{}) bool {
@@ -38,8 +36,8 @@ func newColdObservableFromFunction(f func(chan interface{})) Observable {
 	}
 }
 
-func newHotObservableFromChannel(ch chan interface{}, opts ...options.Option) Observable {
-	parsedOptions := options.ParseOptions(opts...)
+func newHotObservableFromChannel(ch chan interface{}, opts ...Option) Observable {
+	parsedOptions := ParseOptions(opts...)
 
 	obs := &observable{
 		observableType:        hot,
@@ -121,8 +119,8 @@ func CombineLatest(f FunctionN, observable Observable, observables ...Observable
 	go func() {
 		var size = uint32(len(observables)) + 1
 		var counter uint32
-		s := make([]interface{}, size, size)
-		cancels := make([]context.CancelFunc, size, size)
+		s := make([]interface{}, size)
+		cancels := make([]context.CancelFunc, size)
 		mutex := sync.Mutex{}
 		wg := sync.WaitGroup{}
 		wg.Add(int(size))
@@ -222,16 +220,16 @@ func Concat(observable1 Observable, observables ...Observable) Observable {
 func Create(source func(emitter Observer, disposed bool)) Observable {
 	out := make(chan interface{})
 	emitter := NewObserver(
-		handlers.NextFunc(func(el interface{}) {
+		NextFunc(func(el interface{}) {
 			if !isClosed(out) {
 				out <- el
 			}
-		}), handlers.ErrFunc(func(err error) {
+		}), ErrFunc(func(err error) {
 			// decide how to deal with errors
 			if !isClosed(out) {
 				close(out)
 			}
-		}), handlers.DoneFunc(func() {
+		}), DoneFunc(func() {
 			if !isClosed(out) {
 				close(out)
 			}
@@ -268,7 +266,7 @@ func FromChannel(ch chan interface{}) Observable {
 }
 
 // FromEventSource creates a hot observable
-func FromEventSource(ch chan interface{}, opts ...options.Option) Observable {
+func FromEventSource(ch chan interface{}, opts ...Option) Observable {
 	return newHotObservableFromChannel(ch, opts...)
 }
 
@@ -300,22 +298,21 @@ func FromSlice(s []interface{}) Observable {
 
 // Interval creates an Observable emitting incremental integers infinitely between
 // each given time interval.
-func Interval(term chan struct{}, interval time.Duration) Observable {
+func Interval(ctx context.Context, interval time.Duration) Observable {
 	out := make(chan interface{})
-	go func(term chan struct{}) {
+	go func() {
 		i := 0
-	OuterLoop:
 		for {
 			select {
-			case <-term:
-				break OuterLoop
 			case <-time.After(interval):
 				out <- i
+				i++
+			case <-ctx.Done():
+				close(out)
+				return
 			}
-			i++
 		}
-		close(out)
-	}(term)
+	}()
 	return newColdObservableFromChannel(out)
 }
 

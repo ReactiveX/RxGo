@@ -1,7 +1,7 @@
-package options
+package rxgo
 
+// BackpressureStrategy is the backpressure strategy type
 type BackpressureStrategy uint32
-type Scheduler uint32
 
 const (
 	// None means backpressure management
