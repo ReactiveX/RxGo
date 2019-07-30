@@ -40,9 +40,11 @@ func flatObservedSequence(out chan interface{}, o Observable, apply func(interfa
 	for {
 		if item, err := it.Next(context.Background()); err == nil {
 			sequence := apply(item)
+			// TODO Error handling
 			sem.Acquire(ctx, 1)
 			go func() {
 				defer sem.Release(1)
+				// TODO Error handling
 				sequence.Subscribe(emissionObserver).Block()
 			}()
 		} else {
@@ -50,6 +52,7 @@ func flatObservedSequence(out chan interface{}, o Observable, apply func(interfa
 		}
 	}
 
+	// TODO Error handling
 	sem.Acquire(ctx, int64(maxInParallel))
 }
 

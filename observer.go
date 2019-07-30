@@ -24,7 +24,6 @@ type observer struct {
 	done                 chan error
 	channel              chan interface{}
 	backpressureStrategy BackpressureStrategy
-	buffer               int
 }
 
 func (o *observer) setBackpressureStrategy(strategy BackpressureStrategy) {

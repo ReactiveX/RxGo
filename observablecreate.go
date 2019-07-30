@@ -119,8 +119,8 @@ func CombineLatest(f FunctionN, observable Observable, observables ...Observable
 	go func() {
 		var size = uint32(len(observables)) + 1
 		var counter uint32
-		s := make([]interface{}, size, size)
-		cancels := make([]context.CancelFunc, size, size)
+		s := make([]interface{}, size)
+		cancels := make([]context.CancelFunc, size)
 		mutex := sync.Mutex{}
 		wg := sync.WaitGroup{}
 		wg.Add(int(size))

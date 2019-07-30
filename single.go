@@ -127,8 +127,6 @@ func (s *single) Subscribe(handler EventHandler, opts ...Option) SingleObserver 
 				break
 			}
 		}
-
-		return
 	}()
 
 	return ob
@@ -149,8 +147,6 @@ func (s *optionalSingle) Subscribe(handler EventHandler, opts ...Option) SingleO
 				ob.OnSuccess(item)
 			}
 		}
-
-		return
 	}()
 
 	return ob

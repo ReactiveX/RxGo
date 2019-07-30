@@ -447,7 +447,7 @@ func (o *observable) BufferWithCount(count, skip int) Observable {
 			return
 		}
 
-		buffer := make([]interface{}, count, count)
+		buffer := make([]interface{}, count)
 		iCount := 0
 		iSkip := 0
 		it := o.iterable.Iterator(context.Background())
@@ -472,7 +472,7 @@ func (o *observable) BufferWithCount(count, skip int) Observable {
 
 					if iSkip == skip { // Send current buffer
 						out <- buffer
-						buffer = make([]interface{}, count, count)
+						buffer = make([]interface{}, count)
 						iCount = 0
 						iSkip = 0
 					}

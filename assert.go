@@ -191,7 +191,6 @@ func AssertObservable(t *testing.T, observable Observable, assertions ...RxAsser
 	}, func(e error) {
 		err = e
 	}, nil).Block()
-
 	assertObservable(t, ass, got, err)
 }
 
@@ -213,6 +212,7 @@ func AssertObservableEventually(t *testing.T, observable Observable, timeout tim
 		chErr <- e
 	}, nil)
 	ctxTimeout, ctxTimeoutF := context.WithTimeout(context.Background(), timeout)
+	defer ctxTimeoutF()
 
 mainLoop:
 	for {
@@ -221,7 +221,6 @@ mainLoop:
 			if open {
 				got = append(got, item)
 			} else {
-				ctxTimeoutF()
 				break mainLoop
 			}
 		case e := <-chErr:

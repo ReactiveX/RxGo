@@ -3,11 +3,12 @@ package rxgo
 import (
 	"bufio"
 	"context"
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/mock"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/mock"
 )
 
 const signalCh = byte(0)
@@ -40,20 +41,20 @@ type mockType struct {
 	index      int
 }
 
-func (m mockContext) Deadline() (deadline time.Time, ok bool) {
+func (m *mockContext) Deadline() (deadline time.Time, ok bool) {
 	panic("implement me")
 }
 
-func (m mockContext) Done() <-chan struct{} {
+func (m *mockContext) Done() <-chan struct{} {
 	outputs := m.Called()
 	return outputs.Get(0).(chan struct{})
 }
 
-func (m mockContext) Err() error {
+func (m *mockContext) Err() error {
 	panic("implement me")
 }
 
-func (m mockContext) Value(key interface{}) interface{} {
+func (m *mockContext) Value(key interface{}) interface{} {
 	panic("implement me")
 }
 
@@ -184,7 +185,7 @@ func causality(in string) ([]Observable, []context.Context) {
 		t := tasks[i]
 		index := t.index
 
-		if t.context == true {
+		if t.context {
 			ctx := contexts[index]
 			notif := make(chan struct{}, 1)
 			lastObservableType = -1
