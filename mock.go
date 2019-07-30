@@ -139,7 +139,7 @@ func causality(in string) ([]Observable, []context.Context) {
 			default:
 				n, err := strconv.Atoi(v)
 				if err != nil {
-					panic(err)
+					panic(errors.Wrapf(err, "conversion error"))
 				}
 				tasks = append(tasks, task{
 					index: types[index].index,

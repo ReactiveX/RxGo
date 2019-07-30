@@ -17,7 +17,8 @@ func TestEmitsNoElements(t *testing.T) {
 
 	// and
 	sequence := Create(func(emitter Observer, disposed bool) {
-		emitter.OnDone()
+		err := emitter.OnDone()
+		assert.NoError(t, err)
 	})
 
 	// when
@@ -39,9 +40,11 @@ func TestEmitsElements(t *testing.T) {
 	// and
 	sequence := Create(func(emitter Observer, disposed bool) {
 		for _, el := range elementsToEmit {
-			emitter.OnNext(el)
+			err := emitter.OnNext(el)
+			assert.NoError(t, err)
 		}
-		emitter.OnDone()
+		err := emitter.OnDone()
+		assert.NoError(t, err)
 	})
 
 	// when
@@ -61,8 +64,12 @@ func TestOnlyFirstDoneCounts(t *testing.T) {
 
 	// and
 	sequence := Create(func(emitter Observer, disposed bool) {
-		emitter.OnDone()
-		emitter.OnDone()
+		err := emitter.OnDone()
+		assert.NoError(t, err)
+
+		err = emitter.OnDone()
+		assert.Error(t, err)
+		assert.IsType(t, &ClosedObserverError{}, err)
 	})
 
 	// when
@@ -80,8 +87,12 @@ func TestDoesntEmitElementsAfterDone(t *testing.T) {
 
 	// and
 	sequence := Create(func(emitter Observer, disposed bool) {
-		emitter.OnDone()
-		emitter.OnNext("it cannot be emitted")
+		err := emitter.OnDone()
+		assert.NoError(t, err)
+
+		err = emitter.OnNext("it cannot be emitted")
+		assert.Error(t, err)
+		assert.IsType(t, &ClosedObserverError{}, err)
 	})
 
 	// when

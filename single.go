@@ -2,6 +2,7 @@ package rxgo
 
 import (
 	"context"
+	"github.com/pkg/errors"
 )
 
 // Single is similar to an Observable but emits only one single element or an error notification.
@@ -43,11 +44,6 @@ func newOptionalSingleFrom(opt Optional) OptionalSingle {
 	}()
 
 	return &s
-}
-
-// CheckSingleEventHandler checks the underlying type of an EventHandler.
-func CheckSingleEventHandler(handler EventHandler) Observer {
-	return NewObserver(handler)
 }
 
 func newColdSingle(f func(chan interface{})) Single {
@@ -108,20 +104,29 @@ func (s *single) Map(apply Function) Single {
 }
 
 func (s *single) Subscribe(handler EventHandler, opts ...Option) Observer {
-	ob := CheckSingleEventHandler(handler)
+	ob := NewObserver(handler)
 
 	go func() {
 		it := s.iterable.Iterator(context.Background())
 		if item, err := it.Next(context.Background()); err == nil {
 			switch item := item.(type) {
 			case error:
-				ob.OnError(item)
+				err := ob.OnError(item)
+				if err != nil {
+					panic(errors.Wrap(err, "error while sending error item from single"))
+				}
 			default:
-				ob.OnNext(item)
+				err := ob.OnNext(item)
+				if err != nil {
+					panic(errors.Wrap(err, "error while sending next item from single"))
+				}
 				ob.Dispose()
 			}
 		} else {
-			ob.OnDone()
+			err := ob.OnDone()
+			if err != nil {
+				panic(errors.Wrap(err, "error while sending done signal from single"))
+			}
 		}
 	}()
 
@@ -129,19 +134,22 @@ func (s *single) Subscribe(handler EventHandler, opts ...Option) Observer {
 }
 
 func (s *optionalSingle) Subscribe(handler EventHandler, opts ...Option) Observer {
-	ob := CheckSingleEventHandler(handler)
+	ob := NewObserver(handler)
 
-	// TODO Improve
 	go func() {
-		for item := range s.itemChannel {
-			switch item := item.(type) {
-			case error:
-				ob.OnError(item)
-				return
-			default:
-				ob.OnNext(item)
-				ob.Dispose()
+		item := <-s.itemChannel
+		switch item := item.(type) {
+		case error:
+			err := ob.OnError(item)
+			if err != nil {
+				panic(errors.Wrap(err, "error while sending error item from optional single"))
 			}
+		default:
+			err := ob.OnNext(item)
+			if err != nil {
+				panic(errors.Wrap(err, "error while sending next item from optional single"))
+			}
+			ob.Dispose()
 		}
 	}()
 

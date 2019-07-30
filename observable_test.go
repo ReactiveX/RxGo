@@ -28,10 +28,12 @@ func TestCheckEventHandler(t *testing.T) {
 	ob1 := NewObserver(myObserver)
 	ob2 := NewObserver(df)
 
-	ob1.OnDone()
+	err := ob1.OnDone()
+	assert.NoError(t, err)
 	assert.Equal(t, "done", testtext)
 
-	ob2.OnDone()
+	err = ob2.OnDone()
+	assert.NoError(t, err)
 	assert.Equal(t, "donedone", testtext)
 }
 
@@ -926,8 +928,12 @@ func TestCheckEventHandlers(t *testing.T) {
 		i += 5
 	})
 	ob1 := NewObserver(nf, df)
-	ob1.OnNext("")
-	ob1.OnDone()
+	err := ob1.OnNext("")
+	assert.NoError(t, err)
+
+	err = ob1.OnDone()
+	assert.NoError(t, err)
+
 	assert.Equal(t, 7, i)
 }
 
@@ -1572,6 +1578,7 @@ func TestTakeWhile_Empty(t *testing.T) {
 	AssertObservable(t, obs, IsEmpty())
 }
 
+// FIXME Non deterministic
 func TestSample(t *testing.T) {
 	ctx1, cancel1 := context.WithCancel(context.Background())
 	defer cancel1()
@@ -1787,5 +1794,8 @@ func BenchmarkSubscribe(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		ch <- i
 	}
-	o.OnDone()
+	err := o.OnDone()
+	if err != nil {
+		panic(err)
+	}
 }

@@ -138,8 +138,5 @@ func (o *observer) OnDone() error {
 
 // OnDone terminates the Observer's internal Observable
 func (o *observer) Block() {
-	select {
-	case <-o.disposedChannel:
-		return
-	}
+	<-o.disposedChannel
 }

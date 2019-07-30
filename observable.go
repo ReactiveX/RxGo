@@ -116,19 +116,31 @@ func iterate(observable Observable, observer Observer) error {
 			switch item := item.(type) {
 			case error:
 				if observable.getOnErrorReturn() != nil {
-					observer.OnNext(observable.getOnErrorReturn()(item))
+					err := observer.OnNext(observable.getOnErrorReturn()(item))
+					if err != nil {
+						panic(errors.Wrap(err, "error while sending next item from iteration"))
+					}
 				} else if observable.getOnErrorResumeNext() != nil {
 					observable = observable.getOnErrorResumeNext()(item)
 					it = observable.Iterator(context.Background())
 				} else if observable.getOnErrorReturnItem() != nil {
-					observer.OnNext(observable.getOnErrorReturnItem())
+					err := observer.OnNext(observable.getOnErrorReturnItem())
+					if err != nil {
+						panic(errors.Wrap(err, "error while sending next item from iteration"))
+					}
 				} else {
-					observer.OnError(item)
+					err := observer.OnError(item)
+					if err != nil {
+						panic(errors.Wrap(err, "error while sending error item from iteration"))
+					}
 					return item
 				}
 			default:
 				if !observable.getIgnoreElements() {
-					observer.OnNext(item)
+					err := observer.OnNext(item)
+					if err != nil {
+						panic(errors.Wrap(err, "error while sending next item from iteration"))
+					}
 				}
 			}
 		} else {
@@ -1412,7 +1424,10 @@ func (o *observable) Subscribe(handler EventHandler, opts ...Option) Observer {
 
 	if o.errorOnSubscription != nil {
 		go func() {
-			ob.OnError(o.errorOnSubscription)
+			err := ob.OnError(o.errorOnSubscription)
+			if err != nil {
+				panic(errors.Wrap(err, "error while sending error item from observable"))
+			}
 		}()
 		return ob
 	}
@@ -1422,7 +1437,10 @@ func (o *observable) Subscribe(handler EventHandler, opts ...Option) Observer {
 		go func() {
 			e := iterate(o, ob)
 			if e == nil {
-				ob.OnDone()
+				err := ob.OnDone()
+				if err != nil {
+					panic(errors.Wrap(err, "error while sending done signal from observable"))
+				}
 			}
 		}()
 	} else if o.observableType == hot {

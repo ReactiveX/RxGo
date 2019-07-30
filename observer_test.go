@@ -9,10 +9,12 @@ import (
 
 func TestCreateNewObserverWithConstructor(t *testing.T) {
 	ob := NewObserver()
-	ob.OnDone()
-	ob.OnError(errors.New(""))
-	ob.OnNext("")
-	ob.OnNext(errors.New(""))
+	err := ob.OnDone()
+	assert.NoError(t, err)
+
+	err = ob.OnNext("a")
+	assert.Error(t, err)
+	assert.IsType(t, &ClosedObserverError{}, err)
 }
 
 func TestCreateNewObserverWithObserver(t *testing.T) {
@@ -31,8 +33,10 @@ func TestCreateNewObserverWithObserver(t *testing.T) {
 
 	ob := NewObserver(donef, nextf)
 
-	ob.OnNext("Next")
-	ob.OnDone()
+	err := ob.OnNext("Next")
+	assert.NoError(t, err)
+	err = ob.OnDone()
+	assert.NoError(t, err)
 
 	assert.Equal(t, "Next", nexttext)
 	assert.Equal(t, "Hello", donetext)

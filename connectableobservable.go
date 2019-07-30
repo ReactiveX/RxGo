@@ -2,6 +2,7 @@ package rxgo
 
 import (
 	"context"
+	"github.com/pkg/errors"
 	"sync"
 )
 
@@ -246,10 +247,16 @@ func (c *connectableObservable) Subscribe(handler EventHandler, opts ...Option) 
 		for item := range ch {
 			switch item := item.(type) {
 			case error:
-				ob.OnError(item)
+				err := ob.OnError(item)
+				if err != nil {
+					panic(errors.Wrap(err, "error while sending error item from connectable observable"))
+				}
 				return
 			default:
-				ob.OnNext(item)
+				err := ob.OnNext(item)
+				if err != nil {
+					panic(errors.Wrap(err, "error while sending next item from connectable observable"))
+				}
 			}
 		}
 	}()

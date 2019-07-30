@@ -2,6 +2,7 @@ package rxgo
 
 import (
 	"context"
+	"github.com/pkg/errors"
 
 	"golang.org/x/sync/semaphore"
 )
@@ -40,11 +41,12 @@ func flatObservedSequence(out chan interface{}, o Observable, apply func(interfa
 	for {
 		if item, err := it.Next(context.Background()); err == nil {
 			sequence := apply(item)
-			// TODO Error handling
-			sem.Acquire(ctx, 1)
+			err := sem.Acquire(ctx, 1)
+			if err != nil {
+				panic(errors.Wrap(err, "error while acquiring semaphore from flatmap"))
+			}
 			go func(copy Observable) {
 				defer sem.Release(1)
-				// TODO Error handling
 				copy.Subscribe(emissionObserver).Block()
 			}(sequence)
 		} else {
@@ -52,8 +54,10 @@ func flatObservedSequence(out chan interface{}, o Observable, apply func(interfa
 		}
 	}
 
-	// TODO Error handling
-	sem.Acquire(ctx, int64(maxInParallel))
+	err := sem.Acquire(ctx, int64(maxInParallel))
+	if err != nil {
+		panic(errors.Wrap(err, "error while acquiring semaphore from flatmap"))
+	}
 }
 
 func newFlattenEmissionObserver(out chan interface{}) Observer {
