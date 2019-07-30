@@ -23,16 +23,16 @@ func isClosed(ch <-chan interface{}) bool {
 // newColdObservableFromChannel creates an Observable from a given channel
 func newColdObservableFromChannel(ch chan interface{}) Observable {
 	return &observable{
-		observableType: cold,
-		iterable:       newIterableFromChannel(ch),
+		subscribeStrategy: coldSubscribe,
+		iterable:          newIterableFromChannel(ch),
 	}
 }
 
 // newColdObservableFromFunction creates a cold observable
 func newColdObservableFromFunction(f func(chan interface{})) Observable {
 	return &observable{
-		observableType: cold,
-		iterable:       newIterableFromFunc(f),
+		subscribeStrategy: coldSubscribe,
+		iterable:          newIterableFromFunc(f),
 	}
 }
 
@@ -40,7 +40,7 @@ func newHotObservableFromChannel(ch chan interface{}, opts ...Option) Observable
 	parsedOptions := ParseOptions(opts...)
 
 	obs := &observable{
-		observableType:        hot,
+		subscribeStrategy:     hotSubscribe,
 		subscriptionsObserver: make([]Observer, 0),
 		subscriptionsChannel:  make([]chan interface{}, 0),
 		bpStrategy:            parsedOptions.BackpressureStrategy(),
@@ -56,24 +56,24 @@ func newHotObservableFromChannel(ch chan interface{}, opts ...Option) Observable
 // newObservableFromIterable creates an Observable from a given iterable
 func newObservableFromIterable(it Iterable) Observable {
 	return &observable{
-		observableType: cold,
-		iterable:       it,
+		subscribeStrategy: coldSubscribe,
+		iterable:          it,
 	}
 }
 
 // newObservableFromRange creates an Observable from a range.
 func newObservableFromRange(start, count int) Observable {
 	return &observable{
-		observableType: cold,
-		iterable:       newIterableFromRange(start, count),
+		subscribeStrategy: coldSubscribe,
+		iterable:          newIterableFromRange(start, count),
 	}
 }
 
 // newObservableFromSlice creates an Observable from a given channel
 func newObservableFromSlice(s []interface{}) Observable {
 	return &observable{
-		observableType: cold,
-		iterable:       newIterableFromSlice(s),
+		subscribeStrategy: coldSubscribe,
+		iterable:          newIterableFromSlice(s),
 	}
 }
 

@@ -87,7 +87,8 @@ type Observable interface {
 
 // observable is a structure handling a channel of interface{} and implementing Observable
 type observable struct {
-	observableType observableType
+	// subscribeStrategy represents the observable strategy once an observer subscribes to the observable
+	subscribeStrategy func(o *observable, ob Observer)
 
 	errorOnSubscription error
 	ignoreElements      bool
@@ -895,6 +896,7 @@ func (o *observable) ForEach(nextFunc NextFunc, errFunc ErrFunc,
 // or onError.
 func (o *observable) IgnoreElements() Observable {
 	return &observable{
+		subscribeStrategy:   coldSubscribe,
 		iterable:            o.iterable,
 		errorOnSubscription: o.errorOnSubscription,
 		observableFactory:   o.observableFactory,
@@ -1418,6 +1420,38 @@ func (o *observable) SkipWhile(apply Predicate) Observable {
 	return newColdObservableFromFunction(f)
 }
 
+func coldSubscribe(o *observable, ob Observer) {
+	go func() {
+		e := iterate(o, ob)
+		if e == nil {
+			err := ob.OnDone()
+			if err != nil {
+				panic(errors.Wrap(err, "error while sending done signal from observable"))
+			}
+		}
+	}()
+}
+
+func hotSubscribe(o *observable, ob Observer) {
+	if o.bpStrategy == None {
+		o.subscriptionsMutex.Lock()
+		o.subscriptionsObserver = append(o.subscriptionsObserver, ob)
+		o.subscriptionsMutex.Unlock()
+	} else if o.bpStrategy == Buffer {
+		o.subscriptionsMutex.Lock()
+		ch := make(chan interface{}, o.bpBuffer)
+		go func() {
+			for item := range ch {
+				ob.Handle(item)
+			}
+		}()
+		o.subscriptionsChannel = append(o.subscriptionsChannel, ch)
+		o.subscriptionsMutex.Unlock()
+	} else {
+		panic(fmt.Sprintf("unknown strategy: %v", o.bpStrategy))
+	}
+}
+
 // Subscribe subscribes an EventHandler and returns a Subscription channel.
 func (o *observable) Subscribe(handler EventHandler, opts ...Option) Observer {
 	ob := NewObserver(handler)
@@ -1432,39 +1466,7 @@ func (o *observable) Subscribe(handler EventHandler, opts ...Option) Observer {
 		return ob
 	}
 
-	if o.observableType == cold {
-		// In case of a cold observable, we pull the items from an iterable
-		go func() {
-			e := iterate(o, ob)
-			if e == nil {
-				err := ob.OnDone()
-				if err != nil {
-					panic(errors.Wrap(err, "error while sending done signal from observable"))
-				}
-			}
-		}()
-	} else if o.observableType == hot {
-		// In case of a hot observable, we add an observer subscription
-		if o.bpStrategy == None {
-			o.subscriptionsMutex.Lock()
-			o.subscriptionsObserver = append(o.subscriptionsObserver, ob)
-			o.subscriptionsMutex.Unlock()
-		} else if o.bpStrategy == Buffer {
-			o.subscriptionsMutex.Lock()
-			ch := make(chan interface{}, o.bpBuffer)
-			go func() {
-				for item := range ch {
-					ob.Handle(item)
-				}
-			}()
-			o.subscriptionsChannel = append(o.subscriptionsChannel, ch)
-			o.subscriptionsMutex.Unlock()
-		} else {
-			panic(fmt.Sprintf("unknown strategy: %v", o.bpStrategy))
-		}
-
-	}
-
+	o.subscribeStrategy(o, ob)
 	return ob
 }
 
