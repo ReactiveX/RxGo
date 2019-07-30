@@ -1564,25 +1564,25 @@ func channel(ch chan interface{}, t time.Duration) (item interface{}, closed boo
 
 func TestToChannel(t *testing.T) {
 	ch := Just(1, 2, 3).ToChannel()
-	item, _, _ := channel(ch, wait)
+	item, _, _ := channel(ch, testWaitTime)
 	assert.Equal(t, 1, item)
-	item, _, _ = channel(ch, wait)
+	item, _, _ = channel(ch, testWaitTime)
 	assert.Equal(t, 2, item)
-	item, _, _ = channel(ch, wait)
+	item, _, _ = channel(ch, testWaitTime)
 	assert.Equal(t, 3, item)
-	_, closed, _ := channel(ch, wait)
+	_, closed, _ := channel(ch, testWaitTime)
 	assert.True(t, closed)
 }
 
 func TestToChannel_BufferedChannel(t *testing.T) {
 	ch := Just(1, 2, 3).ToChannel(WithBufferedChannel(3))
-	item, _, _ := channel(ch, wait)
+	item, _, _ := channel(ch, testWaitTime)
 	assert.Equal(t, 1, item)
-	item, _, _ = channel(ch, wait)
+	item, _, _ = channel(ch, testWaitTime)
 	assert.Equal(t, 2, item)
-	item, _, _ = channel(ch, wait)
+	item, _, _ = channel(ch, testWaitTime)
 	assert.Equal(t, 3, item)
-	_, closed, _ := channel(ch, wait)
+	_, closed, _ := channel(ch, testWaitTime)
 	assert.True(t, closed)
 }
 

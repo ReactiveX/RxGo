@@ -80,11 +80,10 @@ func NewObserver(eventHandlers ...EventHandler) Observer {
 // Handle registers Observer to EventHandler.
 func (o *observer) Handle(item interface{}) {
 	switch item := item.(type) {
-	case error:
-		o.errHandler(item)
-		return
 	default:
 		o.nextHandler(item)
+	case error:
+		o.errHandler(item)
 	}
 }
 
@@ -104,9 +103,7 @@ func (o *observer) IsDisposed() bool {
 // OnNext applies Observer's NextHandler to an Item
 func (o *observer) OnNext(item interface{}) error {
 	if !o.IsDisposed() {
-		if o.nextHandler != nil {
-			o.nextHandler(item)
-		}
+		o.nextHandler(item)
 		return nil
 	} else {
 		return &ClosedObserverError{}
@@ -116,10 +113,8 @@ func (o *observer) OnNext(item interface{}) error {
 // OnError applies Observer's ErrHandler to an error
 func (o *observer) OnError(err error) error {
 	if !o.IsDisposed() {
-		if o.errHandler != nil {
-			o.errHandler(err)
-			o.Dispose()
-		}
+		o.errHandler(err)
+		o.Dispose()
 		return nil
 	} else {
 		return &ClosedObserverError{}
@@ -129,10 +124,8 @@ func (o *observer) OnError(err error) error {
 // OnDone terminates the Observer's internal Observable
 func (o *observer) OnDone() error {
 	if !o.IsDisposed() {
-		if o.doneHandler != nil {
-			o.doneHandler()
-			o.Dispose()
-		}
+		o.doneHandler()
+		o.Dispose()
 		return nil
 	} else {
 		return &ClosedObserverError{}

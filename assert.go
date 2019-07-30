@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const testWaitTime = 30 * time.Millisecond
+
 // RxAssertion lists the assertions which may be configured on an Observable.
 type RxAssertion interface {
 	apply(*assertion)
