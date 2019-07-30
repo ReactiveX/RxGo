@@ -45,10 +45,10 @@ func flatObservedSequence(out chan interface{}, o Observable, apply func(interfa
 		sequence = apply(element)
 		count++
 		wg.Add(1)
-		go func() {
+		go func(copy Observable) {
 			defer wg.Done()
-			<-(sequence.Subscribe(*emissionObserver))
-		}()
+			<-(copy.Subscribe(*emissionObserver))
+		}(sequence)
 
 		if count%maxInParallel == 0 {
 			wg.Wait()
