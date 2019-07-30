@@ -69,7 +69,7 @@ func (s *mockIterable) Iterator(ctx context.Context) Iterator {
 func newMockObservable(iterator Iterator) Observable {
 	return &observable{
 		subscribeStrategy: coldSubscribe,
-		iterable: &mockIterable{
+		coldIterable: &mockIterable{
 			iterator: iterator,
 		},
 	}

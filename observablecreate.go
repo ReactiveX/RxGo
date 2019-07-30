@@ -24,7 +24,7 @@ func isClosed(ch <-chan interface{}) bool {
 func newColdObservableFromChannel(ch chan interface{}) Observable {
 	return &observable{
 		subscribeStrategy: coldSubscribe,
-		iterable:          newIterableFromChannel(ch),
+		coldIterable:      newIterableFromChannel(ch),
 	}
 }
 
@@ -32,7 +32,7 @@ func newColdObservableFromChannel(ch chan interface{}) Observable {
 func newColdObservableFromFunction(f func(chan interface{})) Observable {
 	return &observable{
 		subscribeStrategy: coldSubscribe,
-		iterable:          newIterableFromFunc(f),
+		coldIterable:      newIterableFromFunc(f),
 	}
 }
 
@@ -42,10 +42,10 @@ func newHotObservableFromChannel(ch chan interface{}, opts ...Option) Observable
 	obs := &observable{
 		subscribeStrategy:     hotSubscribe,
 		subscriptionsObserver: make([]Observer, 0),
-		subscriptionsChannel:  make([]chan interface{}, 0),
+		subscriptionsChannel:  make([]chan<- interface{}, 0),
 		bpStrategy:            parsedOptions.BackpressureStrategy(),
 		bpBuffer:              parsedOptions.Buffer(),
-		channel:               ch,
+		hotItemChannel:        ch,
 	}
 
 	startsHotObservable(obs)
@@ -57,7 +57,7 @@ func newHotObservableFromChannel(ch chan interface{}, opts ...Option) Observable
 func newObservableFromIterable(it Iterable) Observable {
 	return &observable{
 		subscribeStrategy: coldSubscribe,
-		iterable:          it,
+		coldIterable:      it,
 	}
 }
 
@@ -65,7 +65,7 @@ func newObservableFromIterable(it Iterable) Observable {
 func newObservableFromRange(start, count int) Observable {
 	return &observable{
 		subscribeStrategy: coldSubscribe,
-		iterable:          newIterableFromRange(start, count),
+		coldIterable:      newIterableFromRange(start, count),
 	}
 }
 
@@ -73,7 +73,7 @@ func newObservableFromRange(start, count int) Observable {
 func newObservableFromSlice(s []interface{}) Observable {
 	return &observable{
 		subscribeStrategy: coldSubscribe,
-		iterable:          newIterableFromSlice(s),
+		coldIterable:      newIterableFromSlice(s),
 	}
 }
 
