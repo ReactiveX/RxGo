@@ -958,51 +958,28 @@ func (o *observable) Map(apply Function, opts ...Option) Observable {
 	f := func(out chan interface{}) {
 		options := ParseOptions(opts...)
 
-		newWorkerPool := options.NewWorkerPool()
-		if newWorkerPool != 0 {
-			var workerInputCh chan interface{}
-			var workerOutputCh chan interface{}
+		workerPoolCapacity := options.NewWorkerPool()
+		if workerPoolCapacity != 0 {
 			// TODO Pass a context
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-
-			workerInputCh = make(chan interface{}, newWorkerPool)
-			workerOutputCh = make(chan interface{}, newWorkerPool)
+			workerPool := newWorkerPool(ctx, workerPoolCapacity)
+			output := make(chan interface{}, workerPoolCapacity)
 			wg := sync.WaitGroup{}
-
-			for i := 0; i < newWorkerPool; i++ {
-				go func() {
-					for {
-						select {
-						case <-ctx.Done():
-							return
-						case item := <-workerInputCh:
-							workerOutputCh <- apply(item)
-						}
-					}
-				}()
-			}
 
 			it := o.Iterator(context.Background())
 			for {
 				if item, err := it.Next(context.Background()); err == nil {
-					wg.Add(1)
-					workerInputCh <- item
+					workerPool.sendTask(item, apply, output, &wg)
 				} else {
 					break
 				}
 			}
 
-			go func() {
-				for {
-					select {
-					case output := <-workerOutputCh:
-						out <- output
-						wg.Done()
-					}
-				}
-			}()
-			wg.Wait()
+			workerPool.wait(func(i interface{}) {
+				out <- i
+			}, output, &wg)
+
 			close(out)
 		} else {
 			it := o.Iterator(context.Background())

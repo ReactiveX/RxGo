@@ -31,7 +31,7 @@ type mockIterator struct {
 	mock.Mock
 }
 
-type task struct {
+type mockTask struct {
 	index   int
 	item    int
 	error   error
@@ -91,7 +91,7 @@ func countTab(line string) int {
 func causality(in string) ([]Observable, []context.Context) {
 	scanner := bufio.NewScanner(strings.NewReader(in))
 	types := make([]mockType, 0)
-	tasks := make([]task, 0)
+	tasks := make([]mockTask, 0)
 	// Search header
 	countObservables := 0
 	countContexts := 0
@@ -131,12 +131,12 @@ func causality(in string) ([]Observable, []context.Context) {
 		if types[index].observable {
 			switch v {
 			case "x":
-				tasks = append(tasks, task{
+				tasks = append(tasks, mockTask{
 					index: types[index].index,
 					close: true,
 				})
 			case "e":
-				tasks = append(tasks, task{
+				tasks = append(tasks, mockTask{
 					index: types[index].index,
 					error: errMock,
 				})
@@ -145,13 +145,13 @@ func causality(in string) ([]Observable, []context.Context) {
 				if err != nil {
 					panic(errors.Wrapf(err, "conversion error"))
 				}
-				tasks = append(tasks, task{
+				tasks = append(tasks, mockTask{
 					index: types[index].index,
 					item:  n,
 				})
 			}
 		} else if types[index].context {
-			tasks = append(tasks, task{
+			tasks = append(tasks, mockTask{
 				index:   types[index].index,
 				context: true,
 			})
@@ -288,7 +288,7 @@ func causality(in string) ([]Observable, []context.Context) {
 	return observables, ctxs
 }
 
-func args(t task) (interface{}, error) {
+func args(t mockTask) (interface{}, error) {
 	if t.close {
 		return nil, &NoSuchElementError{}
 	}
