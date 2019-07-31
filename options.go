@@ -1,7 +1,5 @@
 package rxgo
 
-import "runtime"
-
 // BackpressureStrategy is the backpressure strategy type
 type BackpressureStrategy uint32
 
@@ -20,15 +18,17 @@ type Option interface {
 	Buffer() int
 	BackpressureStrategy() BackpressureStrategy
 	NewWorkerPool() int
+	WorkerPool() *workerPool
 }
 
 // funcOption wraps a function that modifies options into an
 // implementation of the Option interface.
 type funcOption struct {
-	f          func(*funcOption)
-	buffer     int
-	bpStrategy BackpressureStrategy
-	workerPool int
+	f             func(*funcOption)
+	buffer        int
+	bpStrategy    BackpressureStrategy
+	newWorkerPool int
+	workerPool    *workerPool
 }
 
 func (fdo *funcOption) Buffer() int {
@@ -40,6 +40,10 @@ func (fdo *funcOption) BackpressureStrategy() BackpressureStrategy {
 }
 
 func (fdo *funcOption) NewWorkerPool() int {
+	return fdo.newWorkerPool
+}
+
+func (fdo *funcOption) WorkerPool() *workerPool {
 	return fdo.workerPool
 }
 
@@ -92,14 +96,20 @@ func WithBufferBackpressureStrategy(buffer int) Option {
 	})
 }
 
-func WithNewCPUPool() Option {
+func WithCPUPool() Option {
 	return newFuncOption(func(options *funcOption) {
-		options.workerPool = runtime.NumCPU()
+		options.workerPool = &cpuPool
 	})
 }
 
 func WithNewWorkerPool(capacity int) Option {
 	return newFuncOption(func(options *funcOption) {
-		options.workerPool = capacity
+		options.newWorkerPool = capacity
+	})
+}
+
+func WithWorkerPool(wp *workerPool) Option {
+	return newFuncOption(func(options *funcOption) {
+		options.workerPool = wp
 	})
 }

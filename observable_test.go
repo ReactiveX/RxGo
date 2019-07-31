@@ -1379,11 +1379,35 @@ func TestSumFloat64(t *testing.T) {
 	AssertSingle(t, Empty().SumFloat64(), HasValue(float64(0)))
 }
 
+func TestMapWithCPUWorkerPool(t *testing.T) {
+	just := Just(1, 2, 3, 4, 5).Map(func(i interface{}) interface{} {
+		return 1 + i.(int)
+	}, WithCPUPool())
+
+	AssertObservable(t, just, HasItemsNoOrder(2, 3, 4, 5, 6))
+}
+
 func TestMapWithWorkerPool(t *testing.T) {
 	just := Just(1, 2, 3, 4, 5).Map(func(i interface{}) interface{} {
 		return 1 + i.(int)
 	}, WithNewWorkerPool(3))
 
+	AssertObservable(t, just, HasItemsNoOrder(2, 3, 4, 5, 6))
+}
+
+func TestMapWithReusedWorkerPool(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	wp := newWorkerPool(ctx, 3)
+
+	just := Just(1, 2, 3, 4, 5).Map(func(i interface{}) interface{} {
+		return 1 + i.(int)
+	}, WithWorkerPool(&wp))
+	AssertObservable(t, just, HasItemsNoOrder(2, 3, 4, 5, 6))
+
+	just = Just(1, 2, 3, 4, 5).Map(func(i interface{}) interface{} {
+		return 1 + i.(int)
+	}, WithWorkerPool(&wp))
 	AssertObservable(t, just, HasItemsNoOrder(2, 3, 4, 5, 6))
 }
 

@@ -2,6 +2,7 @@ package rxgo
 
 import (
 	"context"
+	"runtime"
 	"sync"
 )
 
@@ -15,6 +16,8 @@ type task struct {
 	apply  Function
 	output chan<- interface{}
 }
+
+var cpuPool workerPool = newWorkerPool(context.Background(), runtime.NumCPU())
 
 func newWorkerPool(ctx context.Context, capacity int) workerPool {
 	input := make(chan task, capacity)
@@ -36,7 +39,7 @@ func newWorkerPool(ctx context.Context, capacity int) workerPool {
 	}
 }
 
-func (wp workerPool) sendTask(item interface{}, apply Function, output chan<- interface{}, wg *sync.WaitGroup) {
+func (wp *workerPool) sendTask(item interface{}, apply Function, output chan<- interface{}, wg *sync.WaitGroup) {
 	wg.Add(1)
 	wp.input <- task{
 		item:   item,
@@ -45,7 +48,7 @@ func (wp workerPool) sendTask(item interface{}, apply Function, output chan<- in
 	}
 }
 
-func (wp workerPool) wait(f func(interface{}), output chan interface{}, wg *sync.WaitGroup) {
+func (wp *workerPool) wait(f func(interface{}), output chan interface{}, wg *sync.WaitGroup) {
 	go func() {
 		for {
 			select {

@@ -959,14 +959,22 @@ func (o *observable) Map(apply Function, opts ...Option) Observable {
 		options := ParseOptions(opts...)
 
 		workerPoolCapacity := options.NewWorkerPool()
-		if workerPoolCapacity != 0 {
+		wp := options.WorkerPool()
+		if workerPoolCapacity != 0 || wp != nil {
 			// TODO Pass a context
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			workerPool := newWorkerPool(ctx, workerPoolCapacity)
-			output := make(chan interface{}, workerPoolCapacity)
+			var workerPool *workerPool
 			wg := sync.WaitGroup{}
 
+			if wp != nil {
+				workerPool = wp
+			} else {
+				pool := newWorkerPool(ctx, workerPoolCapacity)
+				workerPool = &pool
+			}
+
+			output := make(chan interface{}, workerPoolCapacity)
 			it := o.Iterator(context.Background())
 			for {
 				if item, err := it.Next(context.Background()); err == nil {
