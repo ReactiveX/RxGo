@@ -1,6 +1,6 @@
 package observable
 
-import "github.com/reactivex/rxgo/observer"
+import "rxgo/observer"
 
 // Creates observable from based on source function. Keep it mind to call emitter.OnDone()
 // to signal sequence's end.

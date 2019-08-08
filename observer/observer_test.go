@@ -3,7 +3,7 @@ package observer
 import (
 	"testing"
 
-	"github.com/reactivex/rxgo/handlers"
+	"rxgo/handlers"
 	"github.com/stretchr/testify/assert"
 )
 

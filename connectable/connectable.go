@@ -5,11 +5,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/reactivex/rxgo"
-	"github.com/reactivex/rxgo/fx"
-	"github.com/reactivex/rxgo/observable"
-	"github.com/reactivex/rxgo/observer"
-	"github.com/reactivex/rxgo/subscription"
+	"rxgo"
+	"rxgo/fx"
+	"rxgo/observable"
+	"rxgo/observer"
+	"rxgo/subscription"
 )
 
 // Connectable is an Observable which can subscribe several

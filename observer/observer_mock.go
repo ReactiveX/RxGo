@@ -1,7 +1,7 @@
 package observer
 
 import (
-	"github.com/reactivex/rxgo/handlers"
+	"rxgo/handlers"
 	"github.com/stretchr/testify/mock"
 )
 

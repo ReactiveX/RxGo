@@ -1,4 +1,4 @@
-package rx
+package rxgo
 
 // EventHandler type is implemented by all handlers and Observer.
 type EventHandler interface {

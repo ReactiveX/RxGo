@@ -1,8 +1,8 @@
 package observer
 
 import (
-	"github.com/reactivex/rxgo"
-	"github.com/reactivex/rxgo/handlers"
+	"rxgo"
+	"rxgo/handlers"
 )
 
 // Observer represents a group of EventHandlers.
@@ -32,7 +32,7 @@ func (ob Observer) Handle(item interface{}) {
 
 // New constructs a new Observer instance with default Observer and accept
 // any number of EventHandler
-func New(eventHandlers ...rx.EventHandler) Observer {
+func New(eventHandlers ...rxgo.EventHandler) Observer {
 	ob := DefaultObserver
 	if len(eventHandlers) > 0 {
 		for _, handler := range eventHandlers {

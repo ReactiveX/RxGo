@@ -4,12 +4,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/reactivex/rxgo"
-	"github.com/reactivex/rxgo/errors"
-	"github.com/reactivex/rxgo/fx"
-	"github.com/reactivex/rxgo/handlers"
-	"github.com/reactivex/rxgo/observer"
-	"github.com/reactivex/rxgo/subscription"
+	"rxgo"
+	"rxgo/errors"
+	"rxgo/fx"
+	"rxgo/handlers"
+	"rxgo/observer"
+	"rxgo/subscription"
 )
 
 // Observable is a basic observable channel
