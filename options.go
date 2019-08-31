@@ -96,18 +96,21 @@ func WithBufferBackpressureStrategy(buffer int) Option {
 	})
 }
 
+// WithCPUPool indicates to apply a pool size based on GOMAXPROCS
 func WithCPUPool() Option {
 	return newFuncOption(func(options *funcOption) {
 		options.workerPool = &cpuPool
 	})
 }
 
+// WithNewWorkerPool indicates to apply a given pool size
 func WithNewWorkerPool(capacity int) Option {
 	return newFuncOption(func(options *funcOption) {
 		options.newWorkerPool = capacity
 	})
 }
 
+// WithWorkerPool indicates to apply a given worker pool
 func WithWorkerPool(wp *workerPool) Option {
 	return newFuncOption(func(options *funcOption) {
 		options.workerPool = wp

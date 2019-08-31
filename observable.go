@@ -60,6 +60,7 @@ type Observable interface {
 	StartWithItems(item interface{}, items ...interface{}) Observable
 	StartWithIterable(iterable Iterable) Observable
 	StartWithObservable(observable Observable) Observable
+	// TODO Pass a context to cancel the subscription
 	Subscribe(handler EventHandler, opts ...Option) Observer
 	SumFloat32() Single
 	SumFloat64() Single

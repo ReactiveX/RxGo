@@ -17,7 +17,7 @@ type task struct {
 	output chan<- interface{}
 }
 
-var cpuPool workerPool = newWorkerPool(context.Background(), runtime.NumCPU())
+var cpuPool = newWorkerPool(context.Background(), runtime.NumCPU())
 
 func newWorkerPool(ctx context.Context, capacity int) workerPool {
 	input := make(chan task, capacity)
@@ -50,12 +50,10 @@ func (wp *workerPool) sendTask(item interface{}, apply Function, output chan<- i
 
 func (wp *workerPool) wait(f func(interface{}), output chan interface{}, wg *sync.WaitGroup) {
 	go func() {
-		for {
-			select {
-			case o := <-output:
-				f(o)
-				wg.Done()
-			}
+		// TODO Cancel context
+		for o := range output {
+			f(o)
+			wg.Done()
 		}
 	}()
 
