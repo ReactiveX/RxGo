@@ -1,9 +1,7 @@
 language: go
 
 go:
-  - 1.9
-  - '1.10'
-  - '1.11'
+  - '1.13'
   - master
 
 matrix:
@@ -14,11 +12,7 @@ matrix:
 go_import_path: github.com/reactivex/rxgo
 
 install:
-  - go get github.com/mattn/goveralls
-  - go get github.com/stretchr/testify/assert
-  - go get github.com/gorilla/websocket
-  - go get golang.org/x/sync/semaphore
-  - go get github.com/pkg/errors
+  - go get ./...
 
 script:
   - go test -v -race -cover -coverprofile=/tmp/coverage.out
