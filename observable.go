@@ -961,10 +961,17 @@ func (o *observable) Map(apply Function, opts ...Option) Observable {
 
 		workerPoolCapacity := options.NewWorkerPool()
 		wp := options.WorkerPool()
-		if workerPoolCapacity != 0 || wp != nil {
-			// TODO Pass a context
-			ctx, cancel := context.WithCancel(context.Background())
+
+		var ctx context.Context
+		if c := options.Context(); c != nil {
+			ctx = c
+		} else {
+			c, cancel := context.WithCancel(context.Background())
+			ctx = c
 			defer cancel()
+		}
+
+		if workerPoolCapacity != 0 || wp != nil {
 			var workerPool *workerPool
 			wg := sync.WaitGroup{}
 

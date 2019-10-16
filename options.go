@@ -1,5 +1,7 @@
 package rxgo
 
+import "context"
+
 // BackpressureStrategy is the backpressure strategy type
 type BackpressureStrategy uint32
 
@@ -17,6 +19,7 @@ type Option interface {
 	apply(*funcOption)
 	Buffer() int
 	BackpressureStrategy() BackpressureStrategy
+	Context() context.Context
 	NewWorkerPool() int
 	WorkerPool() *workerPool
 }
@@ -27,6 +30,7 @@ type funcOption struct {
 	f             func(*funcOption)
 	buffer        int
 	bpStrategy    BackpressureStrategy
+	ctx           context.Context
 	newWorkerPool int
 	workerPool    *workerPool
 }
@@ -37,6 +41,10 @@ func (fdo *funcOption) Buffer() int {
 
 func (fdo *funcOption) BackpressureStrategy() BackpressureStrategy {
 	return fdo.bpStrategy
+}
+
+func (fdo *funcOption) Context() context.Context {
+	return fdo.ctx
 }
 
 func (fdo *funcOption) NewWorkerPool() int {
@@ -93,6 +101,13 @@ func WithBufferBackpressureStrategy(buffer int) Option {
 	return newFuncOption(func(options *funcOption) {
 		options.bpStrategy = Buffer
 		options.buffer = buffer
+	})
+}
+
+// WithContext passes a given context
+func WithContext(ctx context.Context) Option {
+	return newFuncOption(func(options *funcOption) {
+		options.ctx = ctx
 	})
 }
 
