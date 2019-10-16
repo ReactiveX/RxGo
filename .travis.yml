@@ -10,6 +10,7 @@ go_import_path: github.com/reactivex/rxgo
 
 install:
   - go get ./...
+  - go get github.com/mattn/goveralls
 
 script:
   - go test -v -race -cover -coverprofile=/tmp/coverage.out
