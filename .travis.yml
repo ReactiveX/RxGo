@@ -4,8 +4,6 @@ go:
   - master
 
 matrix:
-  allow_failures:
-    - go: master
   fast_finish: true
 
 go_import_path: github.com/reactivex/rxgo
