@@ -60,6 +60,7 @@ type Observable interface {
 	StartWithItems(item interface{}, items ...interface{}) Observable
 	StartWithIterable(iterable Iterable) Observable
 	StartWithObservable(observable Observable) Observable
+	// TODO Pass a context to cancel the subscription
 	Subscribe(handler EventHandler, opts ...Option) Observer
 	SumFloat32() Single
 	SumFloat64() Single
@@ -959,14 +960,29 @@ func (o *observable) Map(apply Function, opts ...Option) Observable {
 		options := ParseOptions(opts...)
 
 		workerPoolCapacity := options.NewWorkerPool()
-		if workerPoolCapacity != 0 {
-			// TODO Pass a context
-			ctx, cancel := context.WithCancel(context.Background())
+		wp := options.WorkerPool()
+
+		var ctx context.Context
+		if c := options.Context(); c != nil {
+			ctx = c
+		} else {
+			c, cancel := context.WithCancel(context.Background())
+			ctx = c
 			defer cancel()
-			workerPool := newWorkerPool(ctx, workerPoolCapacity)
-			output := make(chan interface{}, workerPoolCapacity)
+		}
+
+		if workerPoolCapacity != 0 || wp != nil {
+			var workerPool *workerPool
 			wg := sync.WaitGroup{}
 
+			if wp != nil {
+				workerPool = wp
+			} else {
+				pool := newWorkerPool(ctx, workerPoolCapacity)
+				workerPool = &pool
+			}
+
+			output := make(chan interface{}, workerPoolCapacity)
 			it := o.Iterator(context.Background())
 			for {
 				if item, err := it.Next(context.Background()); err == nil {

@@ -163,7 +163,7 @@ func (c *connectableObservable) Map(apply Function, opts ...Option) Observable {
 }
 
 func (c *connectableObservable) Marshal(m Marshaler, opts ...Option) Observable {
-	return c.Marshal(m, opts...)
+	return c.observable.Marshal(m, opts...)
 }
 
 func (c *connectableObservable) Max(comparator Comparator) OptionalSingle {

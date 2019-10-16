@@ -1,6 +1,6 @@
 package rxgo
 
-import "runtime"
+import "context"
 
 // BackpressureStrategy is the backpressure strategy type
 type BackpressureStrategy uint32
@@ -19,16 +19,20 @@ type Option interface {
 	apply(*funcOption)
 	Buffer() int
 	BackpressureStrategy() BackpressureStrategy
+	Context() context.Context
 	NewWorkerPool() int
+	WorkerPool() *workerPool
 }
 
 // funcOption wraps a function that modifies options into an
 // implementation of the Option interface.
 type funcOption struct {
-	f          func(*funcOption)
-	buffer     int
-	bpStrategy BackpressureStrategy
-	workerPool int
+	f             func(*funcOption)
+	buffer        int
+	bpStrategy    BackpressureStrategy
+	ctx           context.Context
+	newWorkerPool int
+	workerPool    *workerPool
 }
 
 func (fdo *funcOption) Buffer() int {
@@ -39,7 +43,15 @@ func (fdo *funcOption) BackpressureStrategy() BackpressureStrategy {
 	return fdo.bpStrategy
 }
 
+func (fdo *funcOption) Context() context.Context {
+	return fdo.ctx
+}
+
 func (fdo *funcOption) NewWorkerPool() int {
+	return fdo.newWorkerPool
+}
+
+func (fdo *funcOption) WorkerPool() *workerPool {
 	return fdo.workerPool
 }
 
@@ -92,14 +104,30 @@ func WithBufferBackpressureStrategy(buffer int) Option {
 	})
 }
 
-func WithNewCPUPool() Option {
+// WithContext passes a given context
+func WithContext(ctx context.Context) Option {
 	return newFuncOption(func(options *funcOption) {
-		options.workerPool = runtime.NumCPU()
+		options.ctx = ctx
 	})
 }
 
+// WithCPUPool indicates to apply a pool size based on GOMAXPROCS
+func WithCPUPool() Option {
+	return newFuncOption(func(options *funcOption) {
+		options.workerPool = &cpuPool
+	})
+}
+
+// WithNewWorkerPool indicates to apply a given pool size
 func WithNewWorkerPool(capacity int) Option {
 	return newFuncOption(func(options *funcOption) {
-		options.workerPool = capacity
+		options.newWorkerPool = capacity
+	})
+}
+
+// WithWorkerPool indicates to apply a given worker pool
+func WithWorkerPool(wp *workerPool) Option {
+	return newFuncOption(func(options *funcOption) {
+		options.workerPool = wp
 	})
 }

@@ -100,6 +100,7 @@ func HasItems(items ...interface{}) RxAssertion {
 	})
 }
 
+// HasItemsNoOrder checks that an observable produces the corresponding items regardless of the order.
 func HasItemsNoOrder(items ...interface{}) RxAssertion {
 	return newAssertion(func(a *assertion) {
 		a.checkHasItemsNoOrder = true

@@ -1,24 +1,16 @@
 language: go
 
 go:
-  - 1.9
-  - '1.10'
-  - '1.11'
   - master
 
 matrix:
-  allow_failures:
-    - go: master
   fast_finish: true
 
 go_import_path: github.com/reactivex/rxgo
 
 install:
+  - go get ./...
   - go get github.com/mattn/goveralls
-  - go get github.com/stretchr/testify/assert
-  - go get github.com/gorilla/websocket
-  - go get golang.org/x/sync/semaphore
-  - go get github.com/pkg/errors
 
 script:
   - go test -v -race -cover -coverprofile=/tmp/coverage.out
