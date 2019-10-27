@@ -26,6 +26,7 @@ type Observable interface {
 	BufferWithTimeOrCount(timespan Duration, count int) Observable
 	Contains(equal Predicate) Single
 	Count() Single
+	Debounce(debounceTimeValue time.Duration) Observable
 	DefaultIfEmpty(defaultValue interface{}) Observable
 	Distinct(apply Function) Observable
 	DistinctUntilChanged(apply Function) Observable
@@ -732,6 +733,23 @@ func (o *observable) Count() Single {
 		close(out)
 	}
 	return newColdSingle(f)
+}
+
+//Debounce only emit an item from an Observable if a particular timespan has passed
+func (o *observable) Debounce(debounceTimeValue time.Duration) Observable {
+	f := func(out chan interface{}) {
+		time.Sleep(debounceTimeValue * time.Second)
+		it := o.coldIterable.Iterator(context.Background())
+		for {
+			if item, err := it.Next(context.Background()); err == nil {
+				out <- item
+			} else {
+				break
+			}
+		}
+		close(out)
+	}
+	return newColdObservableFromFunction(f)
 }
 
 // DefaultIfEmpty returns an Observable that emits the items emitted by the source

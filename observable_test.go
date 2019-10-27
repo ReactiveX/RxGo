@@ -1022,6 +1022,25 @@ func TestContain(t *testing.T) {
 	assert.False(t, got2)
 }
 
+func TestDebounceShouldWaitBeforeDoOnEach(t *testing.T) {
+	sum := 0
+	stream := Just(1, 2, 3).Debounce(2).DoOnEach(func(i interface{}) {
+		sum += i.(int)
+	})
+	AssertObservable(t, stream, HasItems(1, 2, 3))
+	assert.Equal(t, 6, sum)
+}
+
+func TestDebounceShouldWaitBeforeRepeat(t *testing.T) {
+	frequency := new(mockDuration)
+	frequency.On("duration").Return(time.Millisecond)
+
+	repeat := Just(1, 2, 3).Debounce(5).Repeat(1, frequency)
+	AssertObservable(t, repeat, HasItems(1, 2, 3, 1, 2, 3))
+	frequency.AssertNumberOfCalls(t, "duration", 1)
+	frequency.AssertExpectations(t)
+}
+
 func TestDefaultIfEmpty(t *testing.T) {
 	got1 := 0
 	Empty().DefaultIfEmpty(3).Subscribe(NextFunc(func(i interface{}) {

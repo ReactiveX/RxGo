@@ -3,6 +3,7 @@ package rxgo
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/pkg/errors"
 )
@@ -103,6 +104,10 @@ func (c *connectableObservable) Contains(equal Predicate) Single {
 
 func (c *connectableObservable) Count() Single {
 	return c.observable.Count()
+}
+
+func (c *connectableObservable) Debounce(debounceValue time.Duration) Observable {
+	return c.observable.Debounce(debounceValue)
 }
 
 func (c *connectableObservable) DefaultIfEmpty(defaultValue interface{}) Observable {
