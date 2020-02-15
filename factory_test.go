@@ -6,14 +6,7 @@ import (
 )
 
 func Test_FromChannel(t *testing.T) {
-	next := make(chan Item)
-	go func() {
-		next <- FromValue(1)
-		next <- FromValue(2)
-		next <- FromValue(3)
-		close(next)
-	}()
-
+	next := channelValue(1, 2, 3, closeCmd)
 	obs := FromChannel(next)
 	assertObservable(t, context.Background(), obs, hasItems(1, 2, 3), hasNotRaisedError())
 }

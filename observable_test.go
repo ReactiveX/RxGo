@@ -9,15 +9,8 @@ import (
 func Test_ForEach(t *testing.T) {
 	count := 0
 	var gotErr error
-	next := make(chan Item)
 	done := make(chan struct{})
-
-	go func() {
-		next <- FromValue(1)
-		next <- FromValue(2)
-		next <- FromValue(3)
-		next <- FromError(fooErr)
-	}()
+	next := channelValue(1, 2, 3, fooErr)
 
 	obs := FromChannel(next)
 	obs.ForEach(context.Background(), func(i interface{}) {
@@ -34,13 +27,7 @@ func Test_ForEach(t *testing.T) {
 }
 
 func Test_Map_One(t *testing.T) {
-	next := make(chan Item)
-	go func() {
-		next <- FromValue(1)
-		next <- FromValue(2)
-		next <- FromValue(3)
-		close(next)
-	}()
+	next := channelValue(1, 2, 3, closeCmd)
 
 	obs := FromChannel(next).Map(context.Background(), func(i interface{}) (interface{}, error) {
 		return i.(int) + 1, nil
@@ -49,13 +36,7 @@ func Test_Map_One(t *testing.T) {
 }
 
 func Test_Map_Multiple(t *testing.T) {
-	next := make(chan Item)
-	go func() {
-		next <- FromValue(1)
-		next <- FromValue(2)
-		next <- FromValue(3)
-		close(next)
-	}()
+	next := channelValue(1, 2, 3, closeCmd)
 
 	obs := FromChannel(next).Map(context.Background(), func(i interface{}) (interface{}, error) {
 		return i.(int) + 1, nil
@@ -66,13 +47,7 @@ func Test_Map_Multiple(t *testing.T) {
 }
 
 func Test_Map_Error(t *testing.T) {
-	next := make(chan Item)
-	go func() {
-		next <- FromValue(1)
-		next <- FromValue(2)
-		next <- FromValue(3)
-		next <- FromError(fooErr)
-	}()
+	next := channelValue(1, 2, 3, fooErr)
 
 	obs := FromChannel(next).Map(context.Background(), func(i interface{}) (interface{}, error) {
 		return i.(int) + 1, nil
@@ -92,15 +67,7 @@ func Test_Map_Cancel(t *testing.T) {
 }
 
 func Test_SkipWhile(t *testing.T) {
-	next := make(chan Item)
-	go func() {
-		next <- FromValue(1)
-		next <- FromValue(2)
-		next <- FromValue(3)
-		next <- FromValue(4)
-		next <- FromValue(5)
-		close(next)
-	}()
+	next := channelValue(1, 2, 3, 4, 5, closeCmd)
 
 	obs := FromChannel(next).SkipWhile(context.Background(), func(i interface{}) bool {
 		switch i := i.(type) {
