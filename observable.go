@@ -54,17 +54,14 @@ func (o *observable) ForEach(ctx context.Context, nextFunc NextFunc, errFunc Err
 }
 
 func (o *observable) Map(ctx context.Context, apply Func) Observable {
-	cancel, cancelFunc := context.WithCancel(ctx)
 	handler := func(ctx context.Context, src <-chan Item, dst chan<- Item) {
 		for {
 			select {
 			case <-ctx.Done():
-				cancelFunc()
 				close(dst)
 				return
 			case i, ok := <-src:
 				if !ok {
-					cancelFunc()
 					close(dst)
 					return
 				}
@@ -82,5 +79,5 @@ func (o *observable) Map(ctx context.Context, apply Func) Observable {
 			}
 		}
 	}
-	return newObservable(cancel, o, handler)
+	return newObservable(ctx, o, handler)
 }
