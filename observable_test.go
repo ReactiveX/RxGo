@@ -6,6 +6,17 @@ import (
 	"testing"
 )
 
+func Test_Filter(t *testing.T) {
+	obs := FromChannel(channelValue(1, 2, 3, 4, closeCmd)).Filter(context.Background(),
+		func(i interface{}) bool {
+			if i.(int)%2 == 0 {
+				return true
+			}
+			return false
+		})
+	assertObservable(t, context.Background(), obs, hasItems(2, 4), hasNotRaisedError())
+}
+
 func Test_ForEach(t *testing.T) {
 	count := 0
 	var gotErr error

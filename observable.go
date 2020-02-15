@@ -6,6 +6,7 @@ import (
 
 type Observable interface {
 	Iterable
+	Filter(ctx context.Context, apply Predicate) Observable
 	ForEach(ctx context.Context, nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc)
 	Map(ctx context.Context, apply Func) Observable
 	SkipWhile(ctx context.Context, apply Predicate) Observable
@@ -62,6 +63,17 @@ func newOperator(ctx context.Context, source Observable, nextFunc Operator, errF
 
 func (o *observable) Next() <-chan Item {
 	return o.iterable.Next()
+}
+
+func (o *observable) Filter(ctx context.Context, apply Predicate) Observable {
+	return newOperator(ctx, o, func(item Item, dst chan<- Item, stop func()) {
+		if apply(item.Value) {
+			dst <- item
+		}
+	}, func(item Item, dst chan<- Item, stop func()) {
+		dst <- item
+		stop()
+	})
 }
 
 func (o *observable) ForEach(ctx context.Context, nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc) {
