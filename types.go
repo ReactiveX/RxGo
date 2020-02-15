@@ -3,8 +3,9 @@ package rxgo
 import "context"
 
 type (
-	Func    func(interface{}) (interface{}, error)
-	Handler func(ctx context.Context, src <-chan Item, dst chan<- Item)
+	Func      func(interface{}) (interface{}, error)
+	Handler   func(ctx context.Context, src <-chan Item, dst chan<- Item)
+	Predicate func(interface{}) bool
 
 	NextFunc func(interface{})
 	ErrFunc  func(error)

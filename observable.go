@@ -8,6 +8,7 @@ type Observable interface {
 	Iterable
 	ForEach(ctx context.Context, nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc)
 	Map(ctx context.Context, apply Func) Observable
+	SkipWhile(apply Predicate) Observable
 }
 
 type observable struct {
@@ -80,4 +81,8 @@ func (o *observable) Map(ctx context.Context, apply Func) Observable {
 		}
 	}
 	return newObservable(ctx, o, handler)
+}
+
+func (o *observable) SkipWhile(apply Predicate) Observable {
+	return nil
 }

@@ -8,17 +8,19 @@ import (
 
 type rxAssert interface {
 	apply(*rxAssertImpl)
-	hasItemsF() (bool, []interface{})
-	hasRaisedError() (bool, error)
-	hasNotRaisedError() bool
+	itemsToBeChecked() (bool, []interface{})
+	noItemsToBeChecked() bool
+	raisedErrorToBeChecked() (bool, error)
+	notRaisedErrorToBeChecked() bool
 }
 
 type rxAssertImpl struct {
 	f                      func(*rxAssertImpl)
 	checkHasItems          bool
-	hasItems               []interface{}
+	checkHasNoItems        bool
+	items                  []interface{}
 	checkHasRaisedError    bool
-	hasError               error
+	error                  error
 	checkHasNotRaisedError bool
 }
 
@@ -26,15 +28,19 @@ func (ass *rxAssertImpl) apply(do *rxAssertImpl) {
 	ass.f(do)
 }
 
-func (ass *rxAssertImpl) hasItemsF() (bool, []interface{}) {
-	return ass.checkHasItems, ass.hasItems
+func (ass *rxAssertImpl) itemsToBeChecked() (bool, []interface{}) {
+	return ass.checkHasItems, ass.items
 }
 
-func (ass *rxAssertImpl) hasRaisedError() (bool, error) {
-	return ass.checkHasRaisedError, ass.hasError
+func (ass *rxAssertImpl) noItemsToBeChecked() bool {
+	return ass.checkHasNoItems
 }
 
-func (ass *rxAssertImpl) hasNotRaisedError() bool {
+func (ass *rxAssertImpl) raisedErrorToBeChecked() (bool, error) {
+	return ass.checkHasRaisedError, ass.error
+}
+
+func (ass *rxAssertImpl) notRaisedErrorToBeChecked() bool {
 	return ass.checkHasNotRaisedError
 }
 
@@ -47,14 +53,21 @@ func newAssertion(f func(*rxAssertImpl)) *rxAssertImpl {
 func hasItems(items ...interface{}) rxAssert {
 	return newAssertion(func(a *rxAssertImpl) {
 		a.checkHasItems = true
-		a.hasItems = items
+		a.items = items
+	})
+}
+
+func hasNoItems(items ...interface{}) rxAssert {
+	return newAssertion(func(a *rxAssertImpl) {
+		a.checkHasNoItems = true
+		a.items = items
 	})
 }
 
 func hasRaisedError(err error) rxAssert {
 	return newAssertion(func(a *rxAssertImpl) {
 		a.checkHasRaisedError = true
-		a.hasError = err
+		a.error = err
 	})
 }
 
@@ -88,16 +101,21 @@ func assertObservable(t *testing.T, ctx context.Context, observable Observable, 
 		close(done)
 	})
 
-	if checkHasItems, expectedItems := ass.hasItemsF(); checkHasItems {
+	if checkHasItems, expectedItems := ass.itemsToBeChecked(); checkHasItems {
 		<-done
 		assert.Equal(t, expectedItems, got)
 	}
 
-	if checkHasRaisedError, expectedError := ass.hasRaisedError(); checkHasRaisedError {
+	if checkHasNoItems := ass.noItemsToBeChecked(); checkHasNoItems {
+		<-done
+		assert.Equal(t, 0, len(got))
+	}
+
+	if checkHasRaisedError, expectedError := ass.raisedErrorToBeChecked(); checkHasRaisedError {
 		assert.Equal(t, expectedError, err)
 	}
 
-	if ass.hasNotRaisedError() {
+	if ass.notRaisedErrorToBeChecked() {
 		assert.Nil(t, err)
 	}
 }
