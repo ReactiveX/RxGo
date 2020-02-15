@@ -4,28 +4,22 @@ import "context"
 
 type Iterable interface {
 	Done() <-chan struct{}
-	Error() <-chan error
-	Next() <-chan interface{}
+	Next() <-chan Item
 }
 
 type Source struct {
 	ctx  context.Context
-	next <-chan interface{}
-	errs <-chan error
+	next <-chan Item
 }
 
-func newIterable(ctx context.Context, next <-chan interface{}, errs <-chan error) Iterable {
-	return &Source{ctx: ctx, next: next, errs: errs}
+func newIterable(ctx context.Context, next <-chan Item) Iterable {
+	return &Source{ctx: ctx, next: next}
 }
 
 func (s *Source) Done() <-chan struct{} {
 	return s.ctx.Done()
 }
 
-func (s *Source) Error() <-chan error {
-	return s.errs
-}
-
-func (s *Source) Next() <-chan interface{} {
+func (s *Source) Next() <-chan Item {
 	return s.next
 }

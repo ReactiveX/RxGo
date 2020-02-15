@@ -16,13 +16,12 @@ type observable struct {
 }
 
 func newObservable(ctx context.Context, source Observable, handler Handler) Observable {
-	next := make(chan interface{})
-	errs := make(chan error)
+	next := make(chan Item)
 
-	go handler(ctx, source.Next(), source.Error(), next, errs)
+	go handler(ctx, source.Next(), next)
 
 	return &observable{
-		iterable: newIterable(ctx, next, errs),
+		iterable: newIterable(ctx, next),
 		handler:  handler,
 	}
 }
@@ -31,26 +30,23 @@ func (o *observable) Done() <-chan struct{} {
 	return o.iterable.Done()
 }
 
-func (o *observable) Error() <-chan error {
-	return o.iterable.Error()
-}
-
-func (o *observable) Next() <-chan interface{} {
+func (o *observable) Next() <-chan Item {
 	return o.iterable.Next()
 }
 
 func (o *observable) ForEach(ctx context.Context, nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc) {
-	handler := func(ctx context.Context, nextSrc <-chan interface{}, errsSrc <-chan error, nextDst chan<- interface{}, errsDst chan<- error) {
+	handler := func(ctx context.Context, src <-chan Item, dst chan<- Item) {
 		for {
 			select {
 			case <-ctx.Done():
 				doneFunc()
 				return
-			case i := <-nextSrc:
-				nextFunc(i)
-			case err := <-errsSrc:
-				errFunc(err)
-				return
+			case i := <-src:
+				if i.IsError() {
+					errFunc(i.Err)
+					return
+				}
+				nextFunc(i.Value)
 			}
 		}
 	}
@@ -59,20 +55,23 @@ func (o *observable) ForEach(ctx context.Context, nextFunc NextFunc, errFunc Err
 
 func (o *observable) Map(ctx context.Context, apply Func) Observable {
 	cancel, cancelFunc := context.WithCancel(ctx)
-	handler := func(ctx context.Context, nextSrc <-chan interface{}, errsSrc <-chan error, nextDst chan<- interface{}, errsDst chan<- error) {
+	handler := func(ctx context.Context, src <-chan Item, dst chan<- Item) {
 		for {
 			select {
 			case <-ctx.Done():
 				cancelFunc()
-			case i := <-nextSrc:
-				res, err := apply(i)
-				if err != nil {
-					errsDst <- err
+			case i := <-src:
+				if i.IsError() {
+					dst <- i
 					return
 				}
-				nextDst <- res
-			case err := <-errsSrc:
-				errsDst <- err
+
+				res, err := apply(i.Value)
+				if err != nil {
+					dst <- FromError(err)
+					return
+				}
+				dst <- FromValue(res)
 			}
 		}
 	}

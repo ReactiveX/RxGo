@@ -11,20 +11,19 @@ func Test_ForEach(t *testing.T) {
 	count := 0
 	var gotErr error
 
-	next := make(chan interface{})
-	errs := make(chan error)
+	next := make(chan Item)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	expectedErr := errors.New("foo")
 	go func() {
-		next <- 1
-		next <- 2
-		next <- 3
-		errs <- expectedErr
+		next <- FromValue(1)
+		next <- FromValue(2)
+		next <- FromValue(3)
+		next <- FromError(expectedErr)
 		cancel()
 	}()
 
-	obs := FromChannel(ctx, next, errs)
+	obs := FromChannel(ctx, next)
 	obs.ForEach(ctx, func(i interface{}) {
 		count += i.(int)
 	}, func(err error) {
@@ -35,4 +34,8 @@ func Test_ForEach(t *testing.T) {
 	<-ctx.Done()
 	assert.Equal(t, 6, count)
 	assert.Equal(t, expectedErr, gotErr)
+}
+
+func Test_Map(t *testing.T) {
+
 }
