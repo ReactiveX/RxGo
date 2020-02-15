@@ -26,11 +26,13 @@ type Observable interface {
 	Count(ctx context.Context) Single
 	Filter(ctx context.Context, apply Predicate) Observable
 	ForEach(ctx context.Context, nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc)
+	// TODO With pool
 	Map(ctx context.Context, apply Func) Observable
 	Marshal(ctx context.Context, marshaler Marshaler) Observable
 	// TODO Add backoff retry
 	Retry(ctx context.Context, count int) Observable
 	SkipWhile(ctx context.Context, apply Predicate) Observable
+	// TODO Throttling
 	Unmarshal(ctx context.Context, unmarshaler Unmarshaler, factory func() interface{}) Observable
 }
 
