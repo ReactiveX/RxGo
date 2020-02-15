@@ -4,8 +4,10 @@ import (
 	"errors"
 )
 
-var fooErr = errors.New("foo")
-var closeCmd = &struct{}{}
+var (
+	errFoo   = errors.New("foo")
+	closeCmd = &struct{}{}
+)
 
 func channelValue(items ...interface{}) chan Item {
 	next := make(chan Item)

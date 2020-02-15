@@ -4,6 +4,7 @@ import (
 	"context"
 )
 
+// Observable is the basic observable interface.
 type Observable interface {
 	Iterable
 	Filter(ctx context.Context, apply Predicate) Observable

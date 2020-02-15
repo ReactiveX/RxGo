@@ -3,29 +3,40 @@ package rxgo
 import "context"
 
 type (
-	Func      func(interface{}) (interface{}, error)
-	Handler   func(ctx context.Context, src <-chan Item, dst chan<- Item)
-	Operator  func(item Item, dst chan<- Item, stop func())
+	// Func defines a function that computes a value from an input value.
+	Func func(interface{}) (interface{}, error)
+	// Handler defines a function implementing the handler logic for a stream.
+	Handler func(ctx context.Context, src <-chan Item, dst chan<- Item)
+	// Operator defines an operator function.
+	Operator func(item Item, dst chan<- Item, stop func())
+	// Predicate defines a func that returns a bool from an input value.
 	Predicate func(interface{}) bool
 
+	// NextFunc handles a next item in a stream.
 	NextFunc func(interface{})
-	ErrFunc  func(error)
+	// ErrFunc handles an error in a stream.
+	ErrFunc func(error)
+	// DoneFunc handles the end of a stream.
 	DoneFunc func()
 
+	// Item is a wrapper having either a value or an error.
 	Item struct {
 		Value interface{}
 		Err   error
 	}
 )
 
+// IsError checks if an item is an error.
 func (i Item) IsError() bool {
 	return i.Err != nil
 }
 
+// FromValue creates an item from a value.
 func FromValue(i interface{}) Item {
 	return Item{Value: i}
 }
 
+// FromError creates an item from an error.
 func FromError(err error) Item {
 	return Item{Err: err}
 }

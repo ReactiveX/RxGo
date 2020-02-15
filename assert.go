@@ -2,20 +2,22 @@ package rxgo
 
 import (
 	"context"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-type rxAssert interface {
-	apply(*rxAssertImpl)
+// RxAssert lists the Observable assertions.
+type RxAssert interface {
+	apply(*rxAssert)
 	itemsToBeChecked() (bool, []interface{})
 	noItemsToBeChecked() bool
 	raisedErrorToBeChecked() (bool, error)
 	notRaisedErrorToBeChecked() bool
 }
 
-type rxAssertImpl struct {
-	f                      func(*rxAssertImpl)
+type rxAssert struct {
+	f                      func(*rxAssert)
 	checkHasItems          bool
 	checkHasNoItems        bool
 	items                  []interface{}
@@ -24,67 +26,72 @@ type rxAssertImpl struct {
 	checkHasNotRaisedError bool
 }
 
-func (ass *rxAssertImpl) apply(do *rxAssertImpl) {
+func (ass *rxAssert) apply(do *rxAssert) {
 	ass.f(do)
 }
 
-func (ass *rxAssertImpl) itemsToBeChecked() (bool, []interface{}) {
+func (ass *rxAssert) itemsToBeChecked() (bool, []interface{}) {
 	return ass.checkHasItems, ass.items
 }
 
-func (ass *rxAssertImpl) noItemsToBeChecked() bool {
+func (ass *rxAssert) noItemsToBeChecked() bool {
 	return ass.checkHasNoItems
 }
 
-func (ass *rxAssertImpl) raisedErrorToBeChecked() (bool, error) {
+func (ass *rxAssert) raisedErrorToBeChecked() (bool, error) {
 	return ass.checkHasRaisedError, ass.error
 }
 
-func (ass *rxAssertImpl) notRaisedErrorToBeChecked() bool {
+func (ass *rxAssert) notRaisedErrorToBeChecked() bool {
 	return ass.checkHasNotRaisedError
 }
 
-func newAssertion(f func(*rxAssertImpl)) *rxAssertImpl {
-	return &rxAssertImpl{
+func newAssertion(f func(*rxAssert)) *rxAssert {
+	return &rxAssert{
 		f: f,
 	}
 }
 
-func hasItems(items ...interface{}) rxAssert {
-	return newAssertion(func(a *rxAssertImpl) {
+// HasItems checks that the observable produces the corresponding items.
+func HasItems(items ...interface{}) RxAssert {
+	return newAssertion(func(a *rxAssert) {
 		a.checkHasItems = true
 		a.items = items
 	})
 }
 
-func hasNoItems() rxAssert {
-	return newAssertion(func(a *rxAssertImpl) {
+// HasNoItems checks that the observable has not produce any item.
+func HasNoItems() RxAssert {
+	return newAssertion(func(a *rxAssert) {
 		a.checkHasNoItems = true
 	})
 }
 
-func hasRaisedError(err error) rxAssert {
-	return newAssertion(func(a *rxAssertImpl) {
+// HasRaisedError checks that the observable has produce a specific error.
+func HasRaisedError(err error) RxAssert {
+	return newAssertion(func(a *rxAssert) {
 		a.checkHasRaisedError = true
 		a.error = err
 	})
 }
 
-func hasNotRaisedError() rxAssert {
-	return newAssertion(func(a *rxAssertImpl) {
+// HasNotRaisedError checks that the observable has not raised any error.
+func HasNotRaisedError() RxAssert {
+	return newAssertion(func(a *rxAssert) {
 		a.checkHasRaisedError = true
 	})
 }
 
-func parseAssertions(assertions ...rxAssert) rxAssert {
-	ass := new(rxAssertImpl)
+func parseAssertions(assertions ...RxAssert) RxAssert {
+	ass := new(rxAssert)
 	for _, assertion := range assertions {
 		assertion.apply(ass)
 	}
 	return ass
 }
 
-func assertObservable(t *testing.T, ctx context.Context, observable Observable, assertions ...rxAssert) {
+// AssertObservable asserts the result of an Observable against a list of assertions.
+func AssertObservable(ctx context.Context, t *testing.T, observable Observable, assertions ...RxAssert) {
 	ass := parseAssertions(assertions...)
 
 	got := make([]interface{}, 0)

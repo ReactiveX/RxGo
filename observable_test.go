@@ -2,26 +2,24 @@ package rxgo
 
 import (
 	"context"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_Filter(t *testing.T) {
 	obs := FromChannel(channelValue(1, 2, 3, 4, closeCmd)).Filter(context.Background(),
 		func(i interface{}) bool {
-			if i.(int)%2 == 0 {
-				return true
-			}
-			return false
+			return i.(int)%2 == 0
 		})
-	assertObservable(t, context.Background(), obs, hasItems(2, 4), hasNotRaisedError())
+	AssertObservable(context.Background(), t, obs, HasItems(2, 4), HasNotRaisedError())
 }
 
 func Test_ForEach(t *testing.T) {
 	count := 0
 	var gotErr error
 	done := make(chan struct{})
-	next := channelValue(1, 2, 3, fooErr)
+	next := channelValue(1, 2, 3, errFoo)
 
 	obs := FromChannel(next)
 	obs.ForEach(context.Background(), func(i interface{}) {
@@ -34,7 +32,7 @@ func Test_ForEach(t *testing.T) {
 	// We avoid using the assertion API on purpose
 	<-done
 	assert.Equal(t, 6, count)
-	assert.Equal(t, fooErr, gotErr)
+	assert.Equal(t, errFoo, gotErr)
 }
 
 func Test_Map_One(t *testing.T) {
@@ -43,7 +41,7 @@ func Test_Map_One(t *testing.T) {
 	obs := FromChannel(next).Map(context.Background(), func(i interface{}) (interface{}, error) {
 		return i.(int) + 1, nil
 	})
-	assertObservable(t, context.Background(), obs, hasItems(2, 3, 4), hasNotRaisedError())
+	AssertObservable(context.Background(), t, obs, HasItems(2, 3, 4), HasNotRaisedError())
 }
 
 func Test_Map_Multiple(t *testing.T) {
@@ -54,16 +52,16 @@ func Test_Map_Multiple(t *testing.T) {
 	}).Map(context.Background(), func(i interface{}) (interface{}, error) {
 		return i.(int) * 10, nil
 	})
-	assertObservable(t, context.Background(), obs, hasItems(20, 30, 40), hasNotRaisedError())
+	AssertObservable(context.Background(), t, obs, HasItems(20, 30, 40), HasNotRaisedError())
 }
 
 func Test_Map_Error(t *testing.T) {
-	next := channelValue(1, 2, 3, fooErr)
+	next := channelValue(1, 2, 3, errFoo)
 
 	obs := FromChannel(next).Map(context.Background(), func(i interface{}) (interface{}, error) {
 		return i.(int) + 1, nil
 	})
-	assertObservable(t, context.Background(), obs, hasItems(2, 3, 4), hasRaisedError(fooErr))
+	AssertObservable(context.Background(), t, obs, HasItems(2, 3, 4), HasRaisedError(errFoo))
 }
 
 func Test_Map_Cancel(t *testing.T) {
@@ -74,7 +72,7 @@ func Test_Map_Cancel(t *testing.T) {
 		return i.(int) + 1, nil
 	})
 	cancel()
-	assertObservable(t, context.Background(), obs, hasNoItems(), hasNotRaisedError())
+	AssertObservable(context.Background(), t, obs, HasNoItems(), HasNotRaisedError())
 }
 
 func Test_SkipWhile(t *testing.T) {
@@ -89,5 +87,5 @@ func Test_SkipWhile(t *testing.T) {
 		}
 	})
 
-	assertObservable(t, context.Background(), obs, hasItems(3, 4, 5), hasNotRaisedError())
+	AssertObservable(context.Background(), t, obs, HasItems(3, 4, 5), HasNotRaisedError())
 }
