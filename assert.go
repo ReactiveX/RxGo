@@ -11,6 +11,7 @@ import (
 type RxAssert interface {
 	apply(*rxAssert)
 	itemsToBeChecked() (bool, []interface{})
+	itemsNoOrderedToBeChecked() (bool, []interface{})
 	noItemsToBeChecked() bool
 	someItemsToBeChecked() bool
 	raisedErrorToBeChecked() (bool, error)
@@ -26,6 +27,8 @@ type rxAssert struct {
 	checkHasNoItems        bool
 	checkHasSomeItems      bool
 	items                  []interface{}
+	checkHasItemsNoOrder   bool
+	itemsNoOrder           []interface{}
 	checkHasRaisedError    bool
 	error                  error
 	checkHasRaisedAnError  bool
@@ -41,6 +44,10 @@ func (ass *rxAssert) apply(do *rxAssert) {
 
 func (ass *rxAssert) itemsToBeChecked() (bool, []interface{}) {
 	return ass.checkHasItems, ass.items
+}
+
+func (ass *rxAssert) itemsNoOrderedToBeChecked() (bool, []interface{}) {
+	return ass.checkHasItemsNoOrder, ass.itemsNoOrder
 }
 
 func (ass *rxAssert) noItemsToBeChecked() bool {
@@ -96,6 +103,14 @@ func HasSomeItems() RxAssert {
 func HasNoItems() RxAssert {
 	return newAssertion(func(a *rxAssert) {
 		a.checkHasNoItems = true
+	})
+}
+
+// HasItemsNoParticularOrder checks that an observable produces the corresponding items regardless of the order.
+func HasItemsNoParticularOrder(items ...interface{}) RxAssert {
+	return newAssertion(func(a *rxAssert) {
+		a.checkHasItemsNoOrder = true
+		a.itemsNoOrder = items
 	})
 }
 
@@ -164,6 +179,19 @@ func AssertObservable(ctx context.Context, t *testing.T, observable Observable, 
 	if checkHasItems, expectedItems := ass.itemsToBeChecked(); checkHasItems {
 		<-done
 		assert.Equal(t, expectedItems, got)
+	}
+
+	if checkHasItemsNoOrder, itemsNoOrder := ass.itemsNoOrderedToBeChecked(); checkHasItemsNoOrder {
+		<-done
+		m := make(map[interface{}]interface{})
+		for _, v := range itemsNoOrder {
+			m[v] = nil
+		}
+
+		for _, v := range got {
+			delete(m, v)
+		}
+		assert.Equal(t, 0, len(m))
 	}
 
 	if ass.noItemsToBeChecked() {

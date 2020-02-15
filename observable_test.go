@@ -2,6 +2,7 @@ package rxgo
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -235,6 +236,15 @@ func Test_Observable_Map_Cancel(t *testing.T) {
 	AssertObservable(context.Background(), t, obs, HasNoItems(), HasNotRaisedError())
 }
 
+func Test_Observable_Marshal(t *testing.T) {
+	obs := testObservable(testStruct{
+		ID: 1,
+	}, testStruct{
+		ID: 2,
+	}).Marshal(context.Background(), json.Marshal)
+	AssertObservable(context.Background(), t, obs, HasItems([]byte(`{"id":1}`), []byte(`{"id":2}`)))
+}
+
 func Test_Observable_Observe(t *testing.T) {
 	got := make([]int, 0)
 	ch := testObservable(1, 2, 3).Observe()
@@ -246,25 +256,27 @@ func Test_Observable_Observe(t *testing.T) {
 
 func Test_Observable_Retry(t *testing.T) {
 	i := 0
-	obs := FromFunc(func(ctx context.Context, next chan<- Item) {
+	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
 		next <- FromValue(1)
 		next <- FromValue(2)
 		if i == 2 {
 			next <- FromValue(3)
-			close(next)
+			done()
 		} else {
 			i++
 			next <- FromError(errFoo)
+			done()
 		}
 	}).Retry(context.Background(), 3)
 	AssertObservable(context.Background(), t, obs, HasItems(1, 2, 1, 2, 1, 2, 3), HasNotRaisedError())
 }
 
 func Test_Observable_Retry_Error(t *testing.T) {
-	obs := FromFunc(func(ctx context.Context, next chan<- Item) {
+	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
 		next <- FromValue(1)
 		next <- FromValue(2)
 		next <- FromError(errFoo)
+		done()
 	}).Retry(context.Background(), 3)
 	AssertObservable(context.Background(), t, obs, HasItems(1, 2, 1, 2, 1, 2, 1, 2), HasRaisedError(errFoo))
 }
@@ -280,4 +292,24 @@ func Test_Observable_SkipWhile(t *testing.T) {
 	})
 
 	AssertObservable(context.Background(), t, obs, HasItems(3, 4, 5), HasNotRaisedError())
+}
+
+func Test_Observable_Unmarshal(t *testing.T) {
+	obs := testObservable([]byte(`{"id":1}`), []byte(`{"id":2}`)).Unmarshal(context.Background(), json.Unmarshal,
+		func() interface{} {
+			return &testStruct{}
+		})
+	AssertObservable(context.Background(), t, obs, HasItems(&testStruct{
+		ID: 1,
+	}, &testStruct{
+		ID: 2,
+	}))
+}
+
+func Test_Observable_Unmarshal_Error(t *testing.T) {
+	obs := testObservable([]byte(`{"id":1`), []byte(`{"id":2}`)).Unmarshal(context.Background(), json.Unmarshal,
+		func() interface{} {
+			return &testStruct{}
+		})
+	AssertObservable(context.Background(), t, obs, HasRaisedAnError())
 }

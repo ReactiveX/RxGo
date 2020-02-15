@@ -14,6 +14,12 @@ type (
 	Operator func(item Item, dst chan<- Item, stop func())
 	// Predicate defines a func that returns a bool from an input value.
 	Predicate func(interface{}) bool
+	// Marshaler defines a marshaler type (interface{} to []byte).
+	Marshaler func(interface{}) ([]byte, error)
+	// Unmarshaler defines an unmarshaler type ([]byte to interface).
+	Unmarshaler func([]byte, interface{}) error
+	// Scatter defines a scatter implementation
+	Scatter func(ctx context.Context, next chan<- Item, done func())
 
 	// NextFunc handles a next item in a stream.
 	NextFunc func(interface{})

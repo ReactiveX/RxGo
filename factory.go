@@ -25,10 +25,10 @@ func FromEventSource(ctx context.Context, next <-chan Item, strategy Backpressur
 	}
 }
 
-// FromFunc creates an observable from a function.
-func FromFunc(f func(ctx context.Context, next chan<- Item)) Observable {
+// FromFuncs creates an observable from multiple functions.
+func FromFuncs(f ...Scatter) Observable {
 	return &observable{
-		iterable: newFuncIterable(f),
+		iterable: newFuncsIterable(f...),
 	}
 }
 

@@ -27,9 +27,11 @@ type Observable interface {
 	Filter(ctx context.Context, apply Predicate) Observable
 	ForEach(ctx context.Context, nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc)
 	Map(ctx context.Context, apply Func) Observable
+	Marshal(ctx context.Context, marshaler Marshaler) Observable
 	// TODO Add backoff retry
 	Retry(ctx context.Context, count int) Observable
 	SkipWhile(ctx context.Context, apply Predicate) Observable
+	Unmarshal(ctx context.Context, unmarshaler Unmarshaler, factory func() interface{}) Observable
 }
 
 type observable struct {
@@ -476,6 +478,12 @@ func (o *observable) Map(ctx context.Context, apply Func) Observable {
 	}, defaultErrorFuncOperator, defaultEndFuncOperator)
 }
 
+func (o *observable) Marshal(ctx context.Context, marshaler Marshaler) Observable {
+	return o.Map(ctx, func(i interface{}) (interface{}, error) {
+		return marshaler(i)
+	})
+}
+
 func (o *observable) Retry(ctx context.Context, count int) Observable {
 	next := make(chan Item)
 
@@ -529,4 +537,15 @@ func (o *observable) SkipWhile(ctx context.Context, apply Predicate) Observable 
 			}
 		}
 	}, defaultErrorFuncOperator, defaultEndFuncOperator)
+}
+
+func (o *observable) Unmarshal(ctx context.Context, unmarshaler Unmarshaler, factory func() interface{}) Observable {
+	return o.Map(ctx, func(i interface{}) (interface{}, error) {
+		v := factory()
+		err := unmarshaler(i.([]byte), v)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	})
 }

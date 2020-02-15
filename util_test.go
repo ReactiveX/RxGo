@@ -4,6 +4,10 @@ import (
 	"errors"
 )
 
+type testStruct struct {
+	ID int `json:"id"`
+}
+
 var errFoo = errors.New("foo")
 
 func channelValue(items ...interface{}) chan Item {

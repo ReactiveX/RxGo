@@ -16,6 +16,7 @@ func newEventSourceIterable(ctx context.Context, next <-chan Item, strategy Back
 		observers: make([]chan Item, 0),
 	}
 
+	// TODO Simplify implementation
 	go func() {
 		switch strategy {
 		default:

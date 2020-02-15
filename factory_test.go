@@ -15,43 +15,56 @@ func Test_FromChannel(t *testing.T) {
 	AssertObservable(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
 }
 
-func Test_FromFunc(t *testing.T) {
-	obs := FromFunc(func(ctx context.Context, next chan<- Item) {
+func Test_FromFuncs(t *testing.T) {
+	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
 		next <- FromValue(1)
 		next <- FromValue(2)
 		next <- FromValue(3)
-		close(next)
+		done()
 	})
 	AssertObservable(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
 }
 
-func Test_FromFunc_Close(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	obs := FromFunc(func(ctx context.Context, next chan<- Item) {
+func Test_FromFuncs_Multiple(t *testing.T) {
+	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
 		next <- FromValue(1)
 		next <- FromValue(2)
-		next <- FromValue(3)
-		cancel()
+		done()
+	}, func(ctx context.Context, next chan<- Item, done func()) {
+		next <- FromValue(10)
+		next <- FromValue(20)
+		done()
 	})
-	AssertObservable(ctx, t, obs, HasItems(1, 2, 3), HasNotRaisedError())
+	AssertObservable(context.Background(), t, obs, HasItemsNoParticularOrder(1, 2, 10, 20), HasNotRaisedError())
 }
 
-func Test_FromFunc_Dup(t *testing.T) {
-	obs := FromFunc(func(ctx context.Context, next chan<- Item) {
+func Test_FromFuncs_Close(t *testing.T) {
+	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
 		next <- FromValue(1)
 		next <- FromValue(2)
 		next <- FromValue(3)
-		close(next)
+		done()
+	})
+	AssertObservable(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
+}
+
+func Test_FromFuncs_Dup(t *testing.T) {
+	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
+		next <- FromValue(1)
+		next <- FromValue(2)
+		next <- FromValue(3)
+		done()
 	})
 	AssertObservable(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
 	AssertObservable(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
 }
 
-func Test_FromFunc_Error(t *testing.T) {
-	obs := FromFunc(func(ctx context.Context, next chan<- Item) {
+func Test_FromFuncs_Error(t *testing.T) {
+	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
 		next <- FromValue(1)
 		next <- FromValue(2)
 		next <- FromError(errFoo)
+		done()
 	})
 	AssertObservable(context.Background(), t, obs, HasItems(1, 2), HasRaisedError(errFoo))
 }
