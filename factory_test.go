@@ -15,3 +15,9 @@ func Test_FromChannel(t *testing.T) {
 	obs := FromChannel(next)
 	assertObservable(t, context.Background(), obs, hasItems(1, 2, 3), hasNotRaisedError())
 }
+
+func Test_Just(t *testing.T) {
+	obs := Just(FromValue(1), FromValue(2), FromValue(3))
+	assertObservable(t, context.Background(), obs, hasItems(1, 2, 3), hasNotRaisedError())
+	assertObservable(t, context.Background(), obs, hasItems(1, 2, 3), hasNotRaisedError())
+}

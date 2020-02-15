@@ -23,7 +23,7 @@ func newObservable(ctx context.Context, source Observable, handler Handler) Obse
 	go handler(ctx, source.Next(), next)
 
 	return &observable{
-		iterable: newIterable(next),
+		iterable: newChannelIterable(next),
 		handler:  handler,
 	}
 }
@@ -57,7 +57,7 @@ func newOperator(ctx context.Context, source Observable, nextFunc Operator, errF
 	}()
 
 	return &observable{
-		iterable: newIterable(next),
+		iterable: newChannelIterable(next),
 	}
 }
 
