@@ -18,6 +18,7 @@ type Observable interface {
 	AverageInt16(ctx context.Context) Single
 	AverageInt32(ctx context.Context) Single
 	AverageInt64(ctx context.Context) Single
+	BufferWithCount(ctx context.Context, count, skip int) Observable
 	Filter(ctx context.Context, apply Predicate) Observable
 	ForEach(ctx context.Context, nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc)
 	Map(ctx context.Context, apply Function) Observable
@@ -81,6 +82,15 @@ func operator(ctx context.Context, iterable Iterable, nextFunc, errFunc, endFunc
 // TODO Options
 func newObservableFromOperator(ctx context.Context, iterable Iterable, nextFunc, errFunc, endFunc Operator) Observable {
 	next := operator(ctx, iterable, nextFunc, errFunc, endFunc)
+	return &observable{
+		iterable: newChannelIterable(next),
+	}
+}
+
+func newObservableFromError(err error) Observable {
+	next := make(chan Item, 1)
+	next <- FromError(err)
+	close(next)
 	return &observable{
 		iterable: newChannelIterable(next),
 	}
@@ -251,6 +261,48 @@ func (o *observable) AverageInt64(ctx context.Context) Single {
 			dst <- FromValue(0)
 		} else {
 			dst <- FromValue(sum / count)
+		}
+	})
+}
+
+func (o *observable) BufferWithCount(ctx context.Context, count, skip int) Observable {
+	if count <= 0 {
+		newObservableFromError(errors.Wrap(&IllegalInputError{}, "count must be positive"))
+	}
+	if skip <= 0 {
+		newObservableFromError(errors.Wrap(&IllegalInputError{}, "skip must be positive"))
+	}
+
+	buffer := make([]interface{}, count)
+	iCount := 0
+	iSkip := 0
+
+	return newObservableFromOperator(ctx, o, func(item Item, dst chan<- Item, stop func()) {
+		if iCount >= count {
+			// Skip
+			iSkip++
+		} else {
+			// Add to buffer
+			buffer[iCount] = item.Value
+			iCount++
+			iSkip++
+		}
+		if iSkip == skip {
+			// Send current buffer
+			dst <- FromValue(buffer)
+			buffer = make([]interface{}, count)
+			iCount = 0
+			iSkip = 0
+		}
+	}, func(item Item, dst chan<- Item, stop func()) {
+		if iCount != 0 {
+			dst <- FromValue(buffer[:iCount])
+		}
+		dst <- item
+		stop()
+	}, func(_ Item, dst chan<- Item, _ func()) {
+		if iCount != 0 {
+			dst <- FromValue(buffer[:iCount])
 		}
 	})
 }

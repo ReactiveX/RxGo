@@ -11,8 +11,7 @@ func Test_Empty(t *testing.T) {
 }
 
 func Test_FromChannel(t *testing.T) {
-	next := channelValue(1, 2, 3, closeCmd)
-	obs := FromChannel(next)
+	obs := testObservable(1, 2, 3)
 	AssertObservable(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
 }
 

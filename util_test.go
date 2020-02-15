@@ -5,8 +5,7 @@ import (
 )
 
 var (
-	errFoo   = errors.New("foo")
-	closeCmd = &struct{}{}
+	errFoo = errors.New("foo")
 )
 
 func channelValue(items ...interface{}) chan Item {
@@ -15,10 +14,6 @@ func channelValue(items ...interface{}) chan Item {
 		for _, item := range items {
 			switch item := item.(type) {
 			default:
-				if item == closeCmd {
-					close(next)
-					return
-				}
 				next <- FromValue(item)
 			case error:
 				next <- FromError(item)
@@ -26,6 +21,11 @@ func channelValue(items ...interface{}) chan Item {
 				return
 			}
 		}
+		close(next)
 	}()
 	return next
+}
+
+func testObservable(items ...interface{}) Observable {
+	return FromChannel(channelValue(items...))
 }
