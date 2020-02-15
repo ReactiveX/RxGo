@@ -60,7 +60,7 @@ func newObservableFromOperator(ctx context.Context, source Observable, nextFunc 
 	}
 }
 
-func (o *observable) Observe() <-chan Item {
+func (o *observable) Observe(opts ...Option) <-chan Item {
 	return o.iterable.Observe()
 }
 

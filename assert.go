@@ -15,8 +15,8 @@ type RxAssert interface {
 	noItemsToBeChecked() bool
 	raisedErrorToBeChecked() (bool, error)
 	notRaisedErrorToBeChecked() bool
-	valueToBeChecked() (bool, interface{})
-	noValueToBeChecked() (bool, interface{})
+	itemToBeChecked() (bool, interface{})
+	noItemToBeChecked() (bool, interface{})
 }
 
 type rxAssert struct {
@@ -27,9 +27,9 @@ type rxAssert struct {
 	checkHasRaisedError    bool
 	error                  error
 	checkHasNotRaisedError bool
-	checkHasValue          bool
-	value                  interface{}
-	checkHasNoValue        bool
+	checkHasItem           bool
+	item                   interface{}
+	checkHasNoItem         bool
 }
 
 func (ass *rxAssert) apply(do *rxAssert) {
@@ -52,12 +52,12 @@ func (ass *rxAssert) notRaisedErrorToBeChecked() bool {
 	return ass.checkHasNotRaisedError
 }
 
-func (ass *rxAssert) valueToBeChecked() (bool, interface{}) {
-	return ass.checkHasValue, ass.value
+func (ass *rxAssert) itemToBeChecked() (bool, interface{}) {
+	return ass.checkHasItem, ass.item
 }
 
-func (ass *rxAssert) noValueToBeChecked() (bool, interface{}) {
-	return ass.checkHasNoValue, ass.value
+func (ass *rxAssert) noItemToBeChecked() (bool, interface{}) {
+	return ass.checkHasNoItem, ass.item
 }
 
 func newAssertion(f func(*rxAssert)) *rxAssert {
@@ -96,16 +96,18 @@ func HasNotRaisedError() RxAssert {
 	})
 }
 
-func HasValue(i interface{}) RxAssert {
+// HasItem checks if a single or optional single has a specific item.
+func HasItem(i interface{}) RxAssert {
 	return newAssertion(func(a *rxAssert) {
-		a.checkHasValue = true
-		a.value = i
+		a.checkHasItem = true
+		a.item = i
 	})
 }
 
-func HasNoValue() RxAssert {
+// HasNoItem checks if a single or optional single has no item.
+func HasNoItem() RxAssert {
 	return newAssertion(func(a *rxAssert) {
-		a.checkHasNoValue = true
+		a.checkHasNoItem = true
 	})
 }
 
@@ -155,26 +157,25 @@ func AssertObservable(ctx context.Context, t *testing.T, observable Observable, 
 	}
 }
 
+// AssertSingle asserts the result of an single against a list of assertions.
 func AssertSingle(ctx context.Context, t *testing.T, single Single, assertions ...RxAssert) {
 	ass := parseAssertions(assertions...)
 
 	var got interface{}
 	var err error
 
-	for item := range single.Observe() {
-		if item.IsError() {
-			err = item.Err
-			break
-		}
+	item := <-single.Observe()
+	if item.IsError() {
+		err = item.Err
+	} else {
 		got = item.Value
-		break
 	}
 
-	if checkHasValue, value := ass.valueToBeChecked(); checkHasValue {
+	if checkHasValue, value := ass.itemToBeChecked(); checkHasValue {
 		assert.Equal(t, value, got)
 	}
 
-	if checkHasNoValue, value := ass.noValueToBeChecked(); checkHasNoValue {
+	if checkHasNoValue, value := ass.noItemToBeChecked(); checkHasNoValue {
 		assert.Equal(t, value, got)
 	}
 
@@ -187,26 +188,25 @@ func AssertSingle(ctx context.Context, t *testing.T, single Single, assertions .
 	}
 }
 
+// AssertOptionalSingle asserts the result of an optional single against a list of assertions.
 func AssertOptionalSingle(ctx context.Context, t *testing.T, optionalSingle OptionalSingle, assertions ...RxAssert) {
 	ass := parseAssertions(assertions...)
 
 	var got interface{}
 	var err error
 
-	for item := range optionalSingle.Observe() {
-		if item.IsError() {
-			err = item.Err
-			break
-		}
+	item := <-optionalSingle.Observe()
+	if item.IsError() {
+		err = item.Err
+	} else {
 		got = item.Value
-		break
 	}
 
-	if checkHasValue, value := ass.valueToBeChecked(); checkHasValue {
+	if checkHasValue, value := ass.itemToBeChecked(); checkHasValue {
 		assert.Equal(t, value, got)
 	}
 
-	if checkHasNoValue, value := ass.noValueToBeChecked(); checkHasNoValue {
+	if checkHasNoValue, value := ass.noItemToBeChecked(); checkHasNoValue {
 		assert.Equal(t, value, got)
 	}
 

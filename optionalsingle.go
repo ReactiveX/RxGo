@@ -2,6 +2,7 @@ package rxgo
 
 import "context"
 
+// OptionalSingle is an optional single.
 type OptionalSingle interface {
 	Iterable
 }
@@ -25,11 +26,10 @@ func newOptionalSingleFromOperator(ctx context.Context, source Single, nextFunc 
 					errFunc(i, next, stop)
 					close(next)
 					return
-				} else {
-					nextFunc(i, next, stop)
-					close(next)
-					return
 				}
+				nextFunc(i, next, stop)
+				close(next)
+				return
 			}
 		}
 	}()
@@ -43,6 +43,6 @@ type optionalSingle struct {
 	iterable Iterable
 }
 
-func (o *optionalSingle) Observe() <-chan Item {
+func (o *optionalSingle) Observe(opts ...Option) <-chan Item {
 	return o.iterable.Observe()
 }

@@ -8,8 +8,15 @@ func newSliceIterable(items []Item) Iterable {
 	return &sliceIterable{items: items}
 }
 
-func (i *sliceIterable) Observe() <-chan Item {
-	next := make(chan Item)
+func (i *sliceIterable) Observe(opts ...Option) <-chan Item {
+	option := parseOptions(opts...)
+	var next chan Item
+	if toBeBuffered, cap := option.toBeBuffered(); toBeBuffered {
+		next = make(chan Item, cap)
+	} else {
+		next = make(chan Item)
+	}
+
 	go func() {
 		for _, item := range i.items {
 			next <- item

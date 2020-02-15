@@ -18,8 +18,8 @@ func Test_FromChannel(t *testing.T) {
 
 func Test_FromItem(t *testing.T) {
 	single := FromItem(FromValue(1))
-	AssertSingle(context.Background(), t, single, HasValue(1), HasNotRaisedError())
-	AssertSingle(context.Background(), t, single, HasValue(1), HasNotRaisedError())
+	AssertSingle(context.Background(), t, single, HasItem(1), HasNotRaisedError())
+	AssertSingle(context.Background(), t, single, HasItem(1), HasNotRaisedError())
 }
 
 func Test_FromItems(t *testing.T) {
@@ -29,7 +29,7 @@ func Test_FromItems(t *testing.T) {
 }
 
 // TODO Sleep
-//func Test_FromEventSource(t *testing.T) {
+// func Test_FromEventSource(t *testing.T) {
 //	next := make(chan Item, 100)
 //	ctx, cancel := context.WithCancel(context.Background())
 //	obs := FromEventSource(ctx, next, Block)

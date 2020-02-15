@@ -64,8 +64,15 @@ func (i *eventSourceIterable) closeAllObservers() {
 	i.Unlock()
 }
 
-func (i *eventSourceIterable) Observe() <-chan Item {
-	next := make(chan Item)
+func (i *eventSourceIterable) Observe(opts ...Option) <-chan Item {
+	option := parseOptions(opts...)
+	var next chan Item
+	if toBeBuffered, cap := option.toBeBuffered(); toBeBuffered {
+		next = make(chan Item, cap)
+	} else {
+		next = make(chan Item)
+	}
+
 	i.Lock()
 	i.observers = append(i.observers, next)
 	i.Unlock()

@@ -18,12 +18,14 @@ func FromChannel(next <-chan Item) Observable {
 	}
 }
 
+// FromEventSource creates a hot observable from a channel.
 func FromEventSource(ctx context.Context, next <-chan Item, strategy BackpressureStrategy) Observable {
 	return &observable{
 		iterable: newEventSourceIterable(ctx, next, strategy),
 	}
 }
 
+// FromItem creates a single from one item.
 func FromItem(item Item) Single {
 	return &single{
 		iterable: newSliceIterable([]Item{item}),
