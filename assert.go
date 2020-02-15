@@ -13,6 +13,7 @@ type RxAssert interface {
 	itemsToBeChecked() (bool, []interface{})
 	noItemsToBeChecked() bool
 	raisedErrorToBeChecked() (bool, error)
+	raisedAnErrorToBeChecked() (bool, error)
 	notRaisedErrorToBeChecked() bool
 	itemToBeChecked() (bool, interface{})
 	noItemToBeChecked() (bool, interface{})
@@ -25,6 +26,7 @@ type rxAssert struct {
 	items                  []interface{}
 	checkHasRaisedError    bool
 	error                  error
+	checkHasRaisedAnError  bool
 	checkHasNotRaisedError bool
 	checkHasItem           bool
 	item                   interface{}
@@ -45,6 +47,10 @@ func (ass *rxAssert) noItemsToBeChecked() bool {
 
 func (ass *rxAssert) raisedErrorToBeChecked() (bool, error) {
 	return ass.checkHasRaisedError, ass.error
+}
+
+func (ass *rxAssert) raisedAnErrorToBeChecked() (bool, error) {
+	return ass.checkHasRaisedAnError, ass.error
 }
 
 func (ass *rxAssert) notRaisedErrorToBeChecked() bool {
@@ -85,6 +91,13 @@ func HasRaisedError(err error) RxAssert {
 	return newAssertion(func(a *rxAssert) {
 		a.checkHasRaisedError = true
 		a.error = err
+	})
+}
+
+// HasRaisedAnError checks that the observable has produce an error.
+func HasRaisedAnError() RxAssert {
+	return newAssertion(func(a *rxAssert) {
+		a.checkHasRaisedAnError = true
 	})
 }
 
@@ -149,11 +162,16 @@ func AssertObservable(ctx context.Context, t *testing.T, observable Observable, 
 		assert.Equal(t, expectedError, err)
 	}
 
+	if checkHasRaisedAnError, expectedError := ass.raisedAnErrorToBeChecked(); checkHasRaisedAnError {
+		assert.Nil(t, expectedError)
+	}
+
 	if ass.notRaisedErrorToBeChecked() {
 		assert.Nil(t, err)
 	}
 }
 
+// TODO Reuse logic
 // AssertSingle asserts the result of an single against a list of assertions.
 func AssertSingle(ctx context.Context, t *testing.T, single Single, assertions ...RxAssert) {
 	ass := parseAssertions(assertions...)

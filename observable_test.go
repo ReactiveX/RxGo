@@ -17,10 +17,17 @@ func Test_Observable_All(t *testing.T) {
 		}
 	}
 
-	//AssertSingle(context.Background(), t, FromItems(FromValue(1), FromValue(2), FromValue(3)).All(context.Background(), predicateAllInt),
-	//	HasItem(true), HasNotRaisedError())
+	AssertSingle(context.Background(), t, FromItems(FromValue(1), FromValue(2), FromValue(3)).All(context.Background(), predicateAllInt),
+		HasItem(true), HasNotRaisedError())
 	AssertSingle(context.Background(), t, FromItems(FromValue(1), FromValue("x"), FromValue(3)).All(context.Background(), predicateAllInt),
 		HasItem(false), HasNotRaisedError())
+}
+
+func Test_Observable_AverageFloat32(t *testing.T) {
+	AssertSingle(context.Background(), t, FromItems(FromValue(float32(1)), FromValue(float32(2)), FromValue(float32(3))).AverageFloat32(context.Background()), HasItem(float32(2)))
+	AssertSingle(context.Background(), t, FromItems(FromValue(float32(1)), FromValue(float32(20))).AverageFloat32(context.Background()), HasItem(float32(10.5)))
+	AssertSingle(context.Background(), t, Empty().AverageFloat32(context.Background()), HasItem(0))
+	AssertSingle(context.Background(), t, FromItems(FromValue("x")).AverageFloat32(context.Background()), HasRaisedAnError())
 }
 
 func Test_Observable_Filter(t *testing.T) {

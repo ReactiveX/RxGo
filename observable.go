@@ -2,12 +2,15 @@ package rxgo
 
 import (
 	"context"
+	"fmt"
+	"github.com/pkg/errors"
 )
 
 // Observable is the basic observable interface.
 type Observable interface {
 	Iterable
 	All(ctx context.Context, predicate Predicate) Single
+	AverageFloat32(ctx context.Context) Single
 	Filter(ctx context.Context, apply Predicate) Observable
 	ForEach(ctx context.Context, nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc)
 	Map(ctx context.Context, apply Function) Observable
@@ -87,6 +90,28 @@ func (o *observable) All(ctx context.Context, predicate Predicate) Single {
 	}, defaultErrorFuncOperator, func(item Item, dst chan<- Item, stop func()) {
 		if all {
 			dst <- FromValue(true)
+		}
+	})
+}
+
+func (o *observable) AverageFloat32(ctx context.Context) Single {
+	var sum float32
+	var count float32
+
+	return newSingleFromOperator(ctx, o, func(item Item, dst chan<- Item, stop func()) {
+		if v, ok := item.Value.(float32); ok {
+			sum += v
+			count++
+		} else {
+			dst <- FromError(errors.Wrap(&IllegalInputError{},
+				fmt.Sprintf("expected type: float32, got: %t", item)))
+			stop()
+		}
+	}, defaultErrorFuncOperator, func(_ Item, dst chan<- Item, _ func()) {
+		if count == 0 {
+			dst <- FromValue(0)
+		} else {
+			dst <- FromValue(sum / count)
 		}
 	})
 }
