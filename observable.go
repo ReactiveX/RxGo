@@ -3,6 +3,8 @@ package rxgo
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
 
 	"github.com/pkg/errors"
 )
@@ -19,6 +21,7 @@ type Observable interface {
 	AverageInt32(ctx context.Context) Single
 	AverageInt64(ctx context.Context) Single
 	BufferWithCount(ctx context.Context, count, skip int) Observable
+	BufferWithTime(ctx context.Context, timespan, timeshift Duration) Observable
 	Filter(ctx context.Context, apply Predicate) Observable
 	ForEach(ctx context.Context, nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc)
 	Map(ctx context.Context, apply Function) Observable
@@ -267,10 +270,10 @@ func (o *observable) AverageInt64(ctx context.Context) Single {
 
 func (o *observable) BufferWithCount(ctx context.Context, count, skip int) Observable {
 	if count <= 0 {
-		newObservableFromError(errors.Wrap(&IllegalInputError{}, "count must be positive"))
+		return newObservableFromError(errors.Wrap(&IllegalInputError{}, "count must be positive"))
 	}
 	if skip <= 0 {
-		newObservableFromError(errors.Wrap(&IllegalInputError{}, "skip must be positive"))
+		return newObservableFromError(errors.Wrap(&IllegalInputError{}, "skip must be positive"))
 	}
 
 	buffer := make([]interface{}, count)
@@ -305,6 +308,98 @@ func (o *observable) BufferWithCount(ctx context.Context, count, skip int) Obser
 			dst <- FromValue(buffer[:iCount])
 		}
 	})
+}
+
+func (o *observable) BufferWithTime(ctx context.Context, timespan, timeshift Duration) Observable {
+	if timespan == nil || timespan.duration() == 0 {
+		return newObservableFromError(errors.Wrap(&IllegalInputError{}, "timespan must no be nil"))
+	}
+
+	if timeshift == nil {
+		timeshift = WithDuration(0)
+	}
+
+	var mux sync.Mutex
+	var listenMutex sync.Mutex
+	buffer := make([]interface{}, 0)
+	stop := false
+	listen := true
+
+	next := make(chan Item)
+
+	stopped := false
+
+	// First goroutine in charge to check the timespan
+	go func() {
+		for {
+			time.Sleep(timespan.duration())
+			mux.Lock()
+			if !stop {
+				next <- FromValue(buffer)
+				buffer = make([]interface{}, 0)
+				mux.Unlock()
+
+				if timeshift.duration() != 0 {
+					listenMutex.Lock()
+					listen = false
+					listenMutex.Unlock()
+					time.Sleep(timeshift.duration())
+					listenMutex.Lock()
+					listen = true
+					listenMutex.Unlock()
+				}
+			} else {
+				mux.Unlock()
+				return
+			}
+		}
+	}()
+
+	go func() {
+		observe := o.Observe()
+	loop:
+		for !stopped {
+			select {
+			case <-ctx.Done():
+				break loop
+			case i, ok := <-observe:
+				if !ok {
+					break loop
+				}
+				if i.IsError() {
+					mux.Lock()
+					if len(buffer) > 0 {
+						next <- FromValue(buffer)
+					}
+					next <- i
+					close(next)
+					stop = true
+					mux.Unlock()
+					return
+				}
+				listenMutex.Lock()
+				l := listen
+				listenMutex.Unlock()
+
+				mux.Lock()
+				if l {
+					buffer = append(buffer, i.Value)
+				}
+				mux.Unlock()
+			}
+		}
+		mux.Lock()
+		if len(buffer) > 0 {
+			next <- FromValue(buffer)
+		}
+		close(next)
+		stop = true
+		mux.Unlock()
+	}()
+
+	return &observable{
+		iterable: newChannelIterable(next),
+	}
 }
 
 func (o *observable) Observe(opts ...Option) <-chan Item {

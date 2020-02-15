@@ -12,6 +12,7 @@ type RxAssert interface {
 	apply(*rxAssert)
 	itemsToBeChecked() (bool, []interface{})
 	noItemsToBeChecked() bool
+	someItemsToBeChecked() bool
 	raisedErrorToBeChecked() (bool, error)
 	raisedAnErrorToBeChecked() (bool, error)
 	notRaisedErrorToBeChecked() bool
@@ -23,6 +24,7 @@ type rxAssert struct {
 	f                      func(*rxAssert)
 	checkHasItems          bool
 	checkHasNoItems        bool
+	checkHasSomeItems      bool
 	items                  []interface{}
 	checkHasRaisedError    bool
 	error                  error
@@ -43,6 +45,10 @@ func (ass *rxAssert) itemsToBeChecked() (bool, []interface{}) {
 
 func (ass *rxAssert) noItemsToBeChecked() bool {
 	return ass.checkHasNoItems
+}
+
+func (ass *rxAssert) someItemsToBeChecked() bool {
+	return ass.checkHasSomeItems
 }
 
 func (ass *rxAssert) raisedErrorToBeChecked() (bool, error) {
@@ -76,6 +82,13 @@ func HasItems(items ...interface{}) RxAssert {
 	return newAssertion(func(a *rxAssert) {
 		a.checkHasItems = true
 		a.items = items
+	})
+}
+
+// HasSomeItems checks that the observable produces some items.
+func HasSomeItems() RxAssert {
+	return newAssertion(func(a *rxAssert) {
+		a.checkHasSomeItems = true
 	})
 }
 
@@ -153,9 +166,14 @@ func AssertObservable(ctx context.Context, t *testing.T, observable Observable, 
 		assert.Equal(t, expectedItems, got)
 	}
 
-	if checkHasNoItems := ass.noItemsToBeChecked(); checkHasNoItems {
+	if ass.noItemsToBeChecked() {
 		<-done
 		assert.Equal(t, 0, len(got))
+	}
+
+	if ass.someItemsToBeChecked() {
+		<-done
+		assert.NotEqual(t, 0, len(got))
 	}
 
 	if checkHasRaisedError, expectedError := ass.raisedErrorToBeChecked(); checkHasRaisedError {

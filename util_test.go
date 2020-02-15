@@ -4,9 +4,7 @@ import (
 	"errors"
 )
 
-var (
-	errFoo = errors.New("foo")
-)
+var errFoo = errors.New("foo")
 
 func channelValue(items ...interface{}) chan Item {
 	next := make(chan Item)

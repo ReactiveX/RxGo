@@ -3,6 +3,7 @@ package rxgo
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -92,13 +93,63 @@ func Test_Observable_BufferWithCount_Error(t *testing.T) {
 	AssertObservable(context.Background(), t, obs, HasItems([]interface{}{1, 2, 3}, []interface{}{4}), HasRaisedError(errFoo))
 }
 
-//func Test_Observable_BufferWithInvalidInputs(t *testing.T) {
-//	obs := Just(1, 2, 3, 4).BufferWithCount(0, 5)
-//	AssertObservable(t, obs, HasRaisedAnError())
-//
-//	obs = Just(1, 2, 3, 4).BufferWithCount(5, 0)
-//	AssertObservable(t, obs, HasRaisedAnError())
-//}
+func Test_Observable_Buffer_InvalidInputs(t *testing.T) {
+	obs := testObservable(1, 2, 3, 4).BufferWithCount(context.Background(), 0, 5)
+	AssertObservable(context.Background(), t, obs, HasRaisedAnError())
+
+	obs = testObservable(1, 2, 3, 4).BufferWithCount(context.Background(), 5, 0)
+	AssertObservable(context.Background(), t, obs, HasRaisedAnError())
+}
+
+func Test_Observable_BufferWithTime_MockedTime(t *testing.T) {
+	timespan := new(mockDuration)
+	timespan.On("duration").Return(10 * time.Second)
+
+	timeshift := new(mockDuration)
+	timeshift.On("duration").Return(10 * time.Second)
+
+	obs := testObservable(1, 2, 3).BufferWithTime(context.Background(), timespan, timeshift)
+
+	AssertObservable(context.Background(), t, obs, HasItems([]interface{}{1, 2, 3}))
+	timespan.AssertCalled(t, "duration")
+	timeshift.AssertNotCalled(t, "duration")
+}
+
+func Test_Observable_BufferWithTime_MinorMockedTime(t *testing.T) {
+	ch := make(chan Item)
+	from := FromChannel(ch)
+
+	timespan := new(mockDuration)
+	timespan.On("duration").Return(1 * time.Millisecond)
+
+	timeshift := new(mockDuration)
+	timeshift.On("duration").Return(1 * time.Millisecond)
+
+	obs := from.BufferWithTime(context.Background(), timespan, timeshift)
+
+	ch <- FromValue(1)
+	close(ch)
+
+	<-obs.Observe()
+	timespan.AssertCalled(t, "duration")
+}
+
+func Test_Observable_BufferWithTime_IllegalInput(t *testing.T) {
+	AssertObservable(context.Background(), t, Empty().BufferWithTime(context.Background(), nil, nil), HasRaisedAnError())
+	AssertObservable(context.Background(), t, Empty().BufferWithTime(context.Background(), WithDuration(0*time.Second), nil), HasRaisedAnError())
+}
+
+func Test_Observable_BufferWithTime_NilTimeshift(t *testing.T) {
+	just := testObservable(1, 2, 3)
+	obs := just.BufferWithTime(context.Background(), WithDuration(1*time.Second), nil)
+	AssertObservable(context.Background(), t, obs, HasSomeItems())
+}
+
+func Test_Observable_BufferWithTime_Error(t *testing.T) {
+	just := testObservable(1, 2, 3, errFoo)
+	obs := just.BufferWithTime(context.Background(), WithDuration(1*time.Second), nil)
+	AssertObservable(context.Background(), t, obs, HasItems([]interface{}{1, 2, 3}), HasRaisedError(errFoo))
+}
 
 func Test_Observable_Filter(t *testing.T) {
 	obs := testObservable(1, 2, 3, 4).Filter(context.Background(),
