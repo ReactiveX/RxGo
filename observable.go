@@ -7,6 +7,7 @@ import (
 // Observable is the basic observable interface.
 type Observable interface {
 	Iterable
+	All(ctx context.Context, predicate Predicate) Single
 	Filter(ctx context.Context, apply Predicate) Observable
 	ForEach(ctx context.Context, nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc)
 	Map(ctx context.Context, apply Function) Observable
@@ -17,7 +18,7 @@ type observable struct {
 	iterable Iterable
 }
 
-func newObservableFromHandler(ctx context.Context, source Observable, handler Handler) Observable {
+func newObservableFromHandler(ctx context.Context, source Observable, handler Iterator) Observable {
 	next := make(chan Item)
 
 	go handler(ctx, source.Observe(), next)
@@ -27,23 +28,31 @@ func newObservableFromHandler(ctx context.Context, source Observable, handler Ha
 	}
 }
 
-func newObservableFromOperator(ctx context.Context, source Observable, nextFunc Operator, errFunc Operator) Observable {
+func defaultErrorFuncOperator(item Item, dst chan<- Item, stop func()) {
+	dst <- item
+	stop()
+}
+
+func defaultEndFuncOperator(_ Item, _ chan<- Item, _ func()) {}
+
+func operator(ctx context.Context, iterable Iterable, nextFunc, errFunc, endFunc Operator) chan Item {
 	next := make(chan Item)
 
 	stopped := false
 	stop := func() {
 		stopped = true
 	}
+
 	go func() {
+		observe := iterable.Observe()
+	loop:
 		for !stopped {
 			select {
 			case <-ctx.Done():
-				close(next)
-				return
-			case i, ok := <-source.Observe():
+				break loop
+			case i, ok := <-observe:
 				if !ok {
-					close(next)
-					return
+					break loop
 				}
 				if i.IsError() {
 					errFunc(i, next, stop)
@@ -52,12 +61,34 @@ func newObservableFromOperator(ctx context.Context, source Observable, nextFunc 
 				}
 			}
 		}
+		endFunc(FromValue(nil), next, nil)
 		close(next)
 	}()
 
+	return next
+}
+
+// TODO Options
+func newObservableFromOperator(ctx context.Context, iterable Iterable, nextFunc, errFunc, endFunc Operator) Observable {
+	next := operator(ctx, iterable, nextFunc, errFunc, endFunc)
 	return &observable{
 		iterable: newChannelIterable(next),
 	}
+}
+
+func (o *observable) All(ctx context.Context, predicate Predicate) Single {
+	all := true
+	return newSingleFromOperator(ctx, o, func(item Item, dst chan<- Item, stop func()) {
+		if !predicate(item.Value) {
+			dst <- FromValue(false)
+			all = false
+			stop()
+		}
+	}, defaultErrorFuncOperator, func(item Item, dst chan<- Item, stop func()) {
+		if all {
+			dst <- FromValue(true)
+		}
+	})
 }
 
 func (o *observable) Observe(opts ...Option) <-chan Item {
@@ -69,10 +100,7 @@ func (o *observable) Filter(ctx context.Context, apply Predicate) Observable {
 		if apply(item.Value) {
 			dst <- item
 		}
-	}, func(item Item, dst chan<- Item, stop func()) {
-		dst <- item
-		stop()
-	})
+	}, defaultErrorFuncOperator, defaultEndFuncOperator)
 }
 
 func (o *observable) ForEach(ctx context.Context, nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc) {
@@ -106,10 +134,7 @@ func (o *observable) Map(ctx context.Context, apply Function) Observable {
 			stop()
 		}
 		dst <- FromValue(res)
-	}, func(item Item, dst chan<- Item, stop func()) {
-		dst <- item
-		stop()
-	})
+	}, defaultErrorFuncOperator, defaultEndFuncOperator)
 }
 
 func (o *observable) SkipWhile(ctx context.Context, apply Predicate) Observable {
@@ -124,8 +149,5 @@ func (o *observable) SkipWhile(ctx context.Context, apply Predicate) Observable 
 				dst <- item
 			}
 		}
-	}, func(item Item, dst chan<- Item, stop func()) {
-		dst <- item
-		stop()
-	})
+	}, defaultErrorFuncOperator, defaultEndFuncOperator)
 }

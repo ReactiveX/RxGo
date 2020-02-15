@@ -8,8 +8,8 @@ type (
 
 	// Function defines a function that computes a value from an input value.
 	Function func(interface{}) (interface{}, error)
-	// Handler defines a function implementing the handler logic for a stream.
-	Handler func(ctx context.Context, src <-chan Item, dst chan<- Item)
+	// Iterator defines a function implementing the handler logic for a stream.
+	Iterator func(ctx context.Context, src <-chan Item, dst chan<- Item)
 	// Operator defines an operator function.
 	Operator func(item Item, dst chan<- Item, stop func())
 	// Predicate defines a func that returns a bool from an input value.

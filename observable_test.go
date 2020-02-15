@@ -7,6 +7,22 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func Test_Observable_All(t *testing.T) {
+	predicateAllInt := func(i interface{}) bool {
+		switch i.(type) {
+		case int:
+			return true
+		default:
+			return false
+		}
+	}
+
+	//AssertSingle(context.Background(), t, FromItems(FromValue(1), FromValue(2), FromValue(3)).All(context.Background(), predicateAllInt),
+	//	HasItem(true), HasNotRaisedError())
+	AssertSingle(context.Background(), t, FromItems(FromValue(1), FromValue("x"), FromValue(3)).All(context.Background(), predicateAllInt),
+		HasItem(false), HasNotRaisedError())
+}
+
 func Test_Observable_Filter(t *testing.T) {
 	obs := FromChannel(channelValue(1, 2, 3, 4, closeCmd)).Filter(context.Background(),
 		func(i interface{}) bool {

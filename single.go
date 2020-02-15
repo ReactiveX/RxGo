@@ -13,32 +13,8 @@ type single struct {
 	iterable Iterable
 }
 
-func newSingleFromOperator(ctx context.Context, source Single, nextFunc Operator, errFunc Operator) Single {
-	next := make(chan Item)
-
-	stop := func() {}
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				close(next)
-				return
-			case i, ok := <-source.Observe():
-				if !ok {
-					close(next)
-					return
-				}
-				if i.IsError() {
-					errFunc(i, next, stop)
-					close(next)
-					return
-				}
-				nextFunc(i, next, stop)
-				close(next)
-				return
-			}
-		}
-	}()
+func newSingleFromOperator(ctx context.Context, iterable Iterable, nextFunc, errFunc, endFunc Operator) Single {
+	next := operator(ctx, iterable, nextFunc, errFunc, endFunc)
 
 	return &single{
 		iterable: newChannelIterable(next),
@@ -54,10 +30,8 @@ func (s *single) Filter(ctx context.Context, apply Predicate) OptionalSingle {
 		if apply(item.Value) {
 			dst <- item
 		}
-	}, func(item Item, dst chan<- Item, stop func()) {
-		dst <- item
 		stop()
-	})
+	}, defaultEndFuncOperator, defaultEndFuncOperator)
 }
 
 func (s *single) Map(ctx context.Context, apply Function) Single {
@@ -66,10 +40,9 @@ func (s *single) Map(ctx context.Context, apply Function) Single {
 		if err != nil {
 			dst <- FromError(err)
 			stop()
+		} else {
+			dst <- FromValue(res)
+			stop()
 		}
-		dst <- FromValue(res)
-	}, func(item Item, dst chan<- Item, stop func()) {
-		dst <- item
-		stop()
-	})
+	}, defaultEndFuncOperator, defaultEndFuncOperator)
 }

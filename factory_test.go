@@ -39,7 +39,6 @@ func Test_FromItems(t *testing.T) {
 //	ch := obs.Observe()
 //	go func() {
 //		for i := range ch {
-//			fmt.Printf("%v\n", i)
 //		}
 //	}()
 //	next <- FromValue(2)
