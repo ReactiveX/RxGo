@@ -171,9 +171,9 @@ func AssertObservable(ctx context.Context, t *testing.T, observable Observable, 
 	}
 }
 
-// TODO Reuse logic
 // AssertSingle asserts the result of an single against a list of assertions.
 func AssertSingle(ctx context.Context, t *testing.T, single Single, assertions ...RxAssert) {
+	// TODO Reuse logic
 	ass := parseAssertions(assertions...)
 
 	var got interface{}

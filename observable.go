@@ -3,6 +3,7 @@ package rxgo
 import (
 	"context"
 	"fmt"
+
 	"github.com/pkg/errors"
 )
 
