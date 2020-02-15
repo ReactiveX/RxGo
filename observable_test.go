@@ -151,6 +151,29 @@ func Test_Observable_BufferWithTime_Error(t *testing.T) {
 	AssertObservable(context.Background(), t, obs, HasItems([]interface{}{1, 2, 3}), HasRaisedError(errFoo))
 }
 
+func Test_Observable_Contain(t *testing.T) {
+	predicate := func(i interface{}) bool {
+		switch i := i.(type) {
+		case int:
+			return i == 2
+		default:
+			return false
+		}
+	}
+
+	AssertSingle(context.Background(), t,
+		testObservable(1, 2, 3).Contains(context.Background(), predicate),
+		HasItem(true))
+	AssertSingle(context.Background(), t,
+		testObservable(1, 5, 3).Contains(context.Background(), predicate),
+		HasItem(false))
+}
+
+func Test_Observable_Count(t *testing.T) {
+	single := testObservable(1, 2, 3, "foo", "bar", errFoo).Count(context.Background())
+	AssertSingle(context.Background(), t, single, HasItem(int64(6)))
+}
+
 func Test_Observable_Filter(t *testing.T) {
 	obs := testObservable(1, 2, 3, 4).Filter(context.Background(),
 		func(i interface{}) bool {

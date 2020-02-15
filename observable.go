@@ -22,6 +22,8 @@ type Observable interface {
 	AverageInt64(ctx context.Context) Single
 	BufferWithCount(ctx context.Context, count, skip int) Observable
 	BufferWithTime(ctx context.Context, timespan, timeshift Duration) Observable
+	Contains(ctx context.Context, equal Predicate) Single
+	Count(ctx context.Context) Single
 	Filter(ctx context.Context, apply Predicate) Observable
 	ForEach(ctx context.Context, nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc)
 	Map(ctx context.Context, apply Func) Observable
@@ -402,6 +404,29 @@ func (o *observable) BufferWithTime(ctx context.Context, timespan, timeshift Dur
 	return &observable{
 		iterable: newChannelIterable(next),
 	}
+}
+
+func (o *observable) Contains(ctx context.Context, equal Predicate) Single {
+	return newSingleFromOperator(ctx, o, func(item Item, dst chan<- Item, stop func()) {
+		if equal(item.Value) {
+			dst <- FromValue(true)
+			stop()
+			return
+		}
+	}, defaultErrorFuncOperator, func(_ Item, dst chan<- Item, _ func()) {
+		dst <- FromValue(false)
+	})
+}
+
+func (o *observable) Count(ctx context.Context) Single {
+	var count int64
+	return newSingleFromOperator(ctx, o, func(_ Item, dst chan<- Item, _ func()) {
+		count++
+	}, func(_ Item, dst chan<- Item, stop func()) {
+		count++
+		dst <- FromValue(count)
+		stop()
+	}, defaultEndFuncOperator)
 }
 
 // TODO Options?
