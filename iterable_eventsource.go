@@ -8,6 +8,7 @@ import (
 type eventSourceIterable struct {
 	sync.RWMutex
 	observers []chan Item
+	disposed  bool
 }
 
 func newEventSourceIterable(ctx context.Context, next <-chan Item, strategy BackpressureStrategy) Iterable {
@@ -61,6 +62,7 @@ func (i *eventSourceIterable) closeAllObservers() {
 	for _, observer := range i.observers {
 		close(observer)
 	}
+	i.disposed = true
 	i.Unlock()
 }
 
@@ -74,7 +76,11 @@ func (i *eventSourceIterable) Observe(opts ...Option) <-chan Item {
 	}
 
 	i.Lock()
-	i.observers = append(i.observers, next)
+	if i.disposed {
+		close(next)
+	} else {
+		i.observers = append(i.observers, next)
+	}
 	i.Unlock()
 	return next
 }
