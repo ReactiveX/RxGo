@@ -30,6 +30,48 @@ func Test_Observable_AverageFloat32(t *testing.T) {
 	AssertSingle(context.Background(), t, FromItems(FromValue("x")).AverageFloat32(context.Background()), HasRaisedAnError())
 }
 
+func TestAverageFloat64(t *testing.T) {
+	AssertSingle(context.Background(), t, FromItems(FromValue(float64(1)), FromValue(float64(2)), FromValue(float64(3))).AverageFloat64(context.Background()), HasItem(float64(2)))
+	AssertSingle(context.Background(), t, FromItems(FromValue(float64(1)), FromValue(float64(20))).AverageFloat64(context.Background()), HasItem(10.5))
+	AssertSingle(context.Background(), t, Empty().AverageFloat64(context.Background()), HasItem(0))
+	AssertSingle(context.Background(), t, FromItems(FromValue("x")).AverageFloat64(context.Background()), HasRaisedAnError())
+}
+
+func TestAverageInt(t *testing.T) {
+	AssertSingle(context.Background(), t, FromItems(FromValue(1), FromValue(2), FromValue(3)).AverageInt(context.Background()), HasItem(2))
+	AssertSingle(context.Background(), t, FromItems(FromValue(1), FromValue(20)).AverageInt(context.Background()), HasItem(10))
+	AssertSingle(context.Background(), t, Empty().AverageInt(context.Background()), HasItem(0))
+	AssertSingle(context.Background(), t, FromItems(FromValue(1.1), FromValue(2.2), FromValue(3.3)).AverageInt(context.Background()), HasRaisedAnError())
+}
+
+func TestAverageInt8(t *testing.T) {
+	AssertSingle(context.Background(), t, FromItems(FromValue(int8(1)), FromValue(int8(2)), FromValue(int8(3))).AverageInt8(context.Background()), HasItem(int8(2)))
+	AssertSingle(context.Background(), t, FromItems(FromValue(int8(1)), FromValue(int8(20))).AverageInt8(context.Background()), HasItem(int8(10)))
+	AssertSingle(context.Background(), t, Empty().AverageInt8(context.Background()), HasItem(0))
+	AssertSingle(context.Background(), t, FromItems(FromValue(1.1), FromValue(2.2), FromValue(3.3)).AverageInt8(context.Background()), HasRaisedAnError())
+}
+
+func TestAverageInt16(t *testing.T) {
+	AssertSingle(context.Background(), t, FromItems(FromValue(int16(1)), FromValue(int16(2)), FromValue(int16(3))).AverageInt16(context.Background()), HasItem(int16(2)))
+	AssertSingle(context.Background(), t, FromItems(FromValue(int16(1)), FromValue(int16(20))).AverageInt16(context.Background()), HasItem(int16(10)))
+	AssertSingle(context.Background(), t, Empty().AverageInt16(context.Background()), HasItem(0))
+	AssertSingle(context.Background(), t, FromItems(FromValue(1.1), FromValue(2.2), FromValue(3.3)).AverageInt16(context.Background()), HasRaisedAnError())
+}
+
+func TestAverageInt32(t *testing.T) {
+	AssertSingle(context.Background(), t, FromItems(FromValue(int32(1)), FromValue(int32(2)), FromValue(int32(3))).AverageInt32(context.Background()), HasItem(int32(2)))
+	AssertSingle(context.Background(), t, FromItems(FromValue(int32(1)), FromValue(int32(20))).AverageInt32(context.Background()), HasItem(int32(10)))
+	AssertSingle(context.Background(), t, Empty().AverageInt32(context.Background()), HasItem(0))
+	AssertSingle(context.Background(), t, FromItems(FromValue(1.1), FromValue(2.2), FromValue(3.3)).AverageInt32(context.Background()), HasRaisedAnError())
+}
+
+func TestAverageInt64(t *testing.T) {
+	AssertSingle(context.Background(), t, FromItems(FromValue(int64(1)), FromValue(int64(2)), FromValue(int64(3))).AverageInt64(context.Background()), HasItem(int64(2)))
+	AssertSingle(context.Background(), t, FromItems(FromValue(int64(1)), FromValue(int64(20))).AverageInt64(context.Background()), HasItem(int64(10)))
+	AssertSingle(context.Background(), t, Empty().AverageInt64(context.Background()), HasItem(0))
+	AssertSingle(context.Background(), t, FromItems(FromValue(1.1), FromValue(2.2), FromValue(3.3)).AverageInt64(context.Background()), HasRaisedAnError())
+}
+
 func Test_Observable_Filter(t *testing.T) {
 	obs := FromChannel(channelValue(1, 2, 3, 4, closeCmd)).Filter(context.Background(),
 		func(i interface{}) bool {
