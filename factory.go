@@ -1,9 +1,7 @@
 package rxgo
 
-import "context"
-
-func FromChannel(ctx context.Context, next <-chan Item) Observable {
+func FromChannel(next <-chan Item) Observable {
 	return &observable{
-		iterable: newIterable(ctx, next),
+		iterable: newIterable(next),
 	}
 }

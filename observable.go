@@ -21,13 +21,9 @@ func newObservable(ctx context.Context, source Observable, handler Handler) Obse
 	go handler(ctx, source.Next(), next)
 
 	return &observable{
-		iterable: newIterable(ctx, next),
+		iterable: newIterable(next),
 		handler:  handler,
 	}
-}
-
-func (o *observable) Done() <-chan struct{} {
-	return o.iterable.Done()
 }
 
 func (o *observable) Next() <-chan Item {
@@ -41,7 +37,11 @@ func (o *observable) ForEach(ctx context.Context, nextFunc NextFunc, errFunc Err
 			case <-ctx.Done():
 				doneFunc()
 				return
-			case i := <-src:
+			case i, ok := <-src:
+				if !ok {
+					doneFunc()
+					return
+				}
 				if i.IsError() {
 					errFunc(i.Err)
 					return
@@ -60,12 +60,19 @@ func (o *observable) Map(ctx context.Context, apply Func) Observable {
 			select {
 			case <-ctx.Done():
 				cancelFunc()
-			case i := <-src:
-				if i.IsError() {
-					dst <- i
+				close(dst)
+				return
+			case i, ok := <-src:
+				if !ok {
+					cancelFunc()
+					close(dst)
 					return
 				}
-
+				if i.IsError() {
+					dst <- i
+					close(dst)
+					return
+				}
 				res, err := apply(i.Value)
 				if err != nil {
 					dst <- FromError(err)

@@ -10,14 +10,16 @@ type rxAssert interface {
 	apply(*rxAssertImpl)
 	hasItemsF() (bool, []interface{})
 	hasRaisedError() (bool, error)
+	hasNotRaisedError() bool
 }
 
 type rxAssertImpl struct {
-	f                   func(*rxAssertImpl)
-	checkHasItems       bool
-	hasItems            []interface{}
-	checkHasRaisedError bool
-	hasError            error
+	f                      func(*rxAssertImpl)
+	checkHasItems          bool
+	hasItems               []interface{}
+	checkHasRaisedError    bool
+	hasError               error
+	checkHasNotRaisedError bool
 }
 
 func (ass *rxAssertImpl) apply(do *rxAssertImpl) {
@@ -30,6 +32,10 @@ func (ass *rxAssertImpl) hasItemsF() (bool, []interface{}) {
 
 func (ass *rxAssertImpl) hasRaisedError() (bool, error) {
 	return ass.checkHasRaisedError, ass.hasError
+}
+
+func (ass *rxAssertImpl) hasNotRaisedError() bool {
+	return ass.checkHasNotRaisedError
 }
 
 func newAssertion(f func(*rxAssertImpl)) *rxAssertImpl {
@@ -52,6 +58,12 @@ func hasRaisedError(err error) rxAssert {
 	})
 }
 
+func hasNotRaisedError() rxAssert {
+	return newAssertion(func(a *rxAssertImpl) {
+		a.checkHasRaisedError = true
+	})
+}
+
 func parseAssertions(assertions ...rxAssert) rxAssert {
 	ass := new(rxAssertImpl)
 	for _, assertion := range assertions {
@@ -71,6 +83,7 @@ func assertObservable(t *testing.T, ctx context.Context, observable Observable, 
 		got = append(got, i)
 	}, func(e error) {
 		err = e
+		close(done)
 	}, func() {
 		close(done)
 	})
@@ -82,5 +95,9 @@ func assertObservable(t *testing.T, ctx context.Context, observable Observable, 
 
 	if checkHasRaisedError, expectedError := ass.hasRaisedError(); checkHasRaisedError {
 		assert.Equal(t, expectedError, err)
+	}
+
+	if ass.hasNotRaisedError() {
+		assert.Nil(t, err)
 	}
 }
