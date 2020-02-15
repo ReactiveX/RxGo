@@ -57,10 +57,9 @@ func hasItems(items ...interface{}) rxAssert {
 	})
 }
 
-func hasNoItems(items ...interface{}) rxAssert {
+func hasNoItems() rxAssert {
 	return newAssertion(func(a *rxAssertImpl) {
 		a.checkHasNoItems = true
-		a.items = items
 	})
 }
 
