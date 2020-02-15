@@ -24,7 +24,7 @@ type Observable interface {
 	BufferWithTime(ctx context.Context, timespan, timeshift Duration) Observable
 	Filter(ctx context.Context, apply Predicate) Observable
 	ForEach(ctx context.Context, nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc)
-	Map(ctx context.Context, apply Function) Observable
+	Map(ctx context.Context, apply Func) Observable
 	SkipWhile(ctx context.Context, apply Predicate) Observable
 }
 
@@ -437,7 +437,7 @@ func (o *observable) ForEach(ctx context.Context, nextFunc NextFunc, errFunc Err
 	newObservableFromHandler(ctx, o, handler)
 }
 
-func (o *observable) Map(ctx context.Context, apply Function) Observable {
+func (o *observable) Map(ctx context.Context, apply Func) Observable {
 	return newObservableFromOperator(ctx, o, func(item Item, dst chan<- Item, stop func()) {
 		res, err := apply(item.Value)
 		if err != nil {

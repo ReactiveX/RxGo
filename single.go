@@ -6,7 +6,7 @@ import "context"
 type Single interface {
 	Iterable
 	Filter(ctx context.Context, apply Predicate) OptionalSingle
-	Map(ctx context.Context, apply Function) Single
+	Map(ctx context.Context, apply Func) Single
 }
 
 type single struct {
@@ -34,7 +34,7 @@ func (s *single) Filter(ctx context.Context, apply Predicate) OptionalSingle {
 	}, defaultEndFuncOperator, defaultEndFuncOperator)
 }
 
-func (s *single) Map(ctx context.Context, apply Function) Single {
+func (s *single) Map(ctx context.Context, apply Func) Single {
 	return newSingleFromOperator(ctx, s, func(item Item, dst chan<- Item, stop func()) {
 		res, err := apply(item.Value)
 		if err != nil {

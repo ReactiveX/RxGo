@@ -69,7 +69,7 @@ func (i *eventSourceIterable) closeAllObservers() {
 func (i *eventSourceIterable) Observe(opts ...Option) <-chan Item {
 	option := parseOptions(opts...)
 	var next chan Item
-	if toBeBuffered, cap := option.toBeBuffered(); toBeBuffered {
+	if toBeBuffered, cap := option.withBuffer(); toBeBuffered {
 		next = make(chan Item, cap)
 	} else {
 		next = make(chan Item)

@@ -15,6 +15,47 @@ func Test_FromChannel(t *testing.T) {
 	AssertObservable(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
 }
 
+func Test_FromFunc(t *testing.T) {
+	obs := FromFunc(func(ctx context.Context, next chan<- Item) {
+		next <- FromValue(1)
+		next <- FromValue(2)
+		next <- FromValue(3)
+		close(next)
+	})
+	AssertObservable(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
+}
+
+func Test_FromFunc_Close(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	obs := FromFunc(func(ctx context.Context, next chan<- Item) {
+		next <- FromValue(1)
+		next <- FromValue(2)
+		next <- FromValue(3)
+		cancel()
+	})
+	AssertObservable(ctx, t, obs, HasItems(1, 2, 3), HasNotRaisedError())
+}
+
+func Test_FromFunc_Dup(t *testing.T) {
+	obs := FromFunc(func(ctx context.Context, next chan<- Item) {
+		next <- FromValue(1)
+		next <- FromValue(2)
+		next <- FromValue(3)
+		close(next)
+	})
+	AssertObservable(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
+	AssertObservable(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
+}
+
+func Test_FromFunc_Error(t *testing.T) {
+	obs := FromFunc(func(ctx context.Context, next chan<- Item) {
+		next <- FromValue(1)
+		next <- FromValue(2)
+		next <- FromError(errFoo)
+	})
+	AssertObservable(context.Background(), t, obs, HasItems(1, 2), HasRaisedError(errFoo))
+}
+
 func Test_FromItem(t *testing.T) {
 	single := FromItem(FromValue(1))
 	AssertSingle(context.Background(), t, single, HasItem(1), HasNotRaisedError())

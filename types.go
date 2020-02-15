@@ -6,8 +6,8 @@ type (
 	// BackpressureStrategy is the backpressure strategy type
 	BackpressureStrategy uint32
 
-	// Function defines a function that computes a value from an input value.
-	Function func(interface{}) (interface{}, error)
+	// Func defines a function that computes a value from an input value.
+	Func func(interface{}) (interface{}, error)
 	// Iterator defines a function implementing the handler logic for a stream.
 	Iterator func(ctx context.Context, src <-chan Item, dst chan<- Item)
 	// Operator defines an operator function.

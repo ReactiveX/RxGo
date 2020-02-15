@@ -25,6 +25,13 @@ func FromEventSource(ctx context.Context, next <-chan Item, strategy Backpressur
 	}
 }
 
+// FromEventSource creates an observable from a function.
+func FromFunc(f func(ctx context.Context, next chan<- Item)) Observable {
+	return &observable{
+		iterable: newFuncIterable(f),
+	}
+}
+
 // FromItem creates a single from one item.
 func FromItem(item Item) Single {
 	return &single{
