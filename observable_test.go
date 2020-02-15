@@ -221,6 +221,31 @@ func Test_Observable_Observe(t *testing.T) {
 	assert.Equal(t, []int{1, 2, 3}, got)
 }
 
+func Test_Observable_Retry(t *testing.T) {
+	i := 0
+	obs := FromFunc(func(ctx context.Context, next chan<- Item) {
+		next <- FromValue(1)
+		next <- FromValue(2)
+		if i == 2 {
+			next <- FromValue(3)
+			close(next)
+		} else {
+			i++
+			next <- FromError(errFoo)
+		}
+	}).Retry(context.Background(), 3)
+	AssertObservable(context.Background(), t, obs, HasItems(1, 2, 1, 2, 1, 2, 3), HasNotRaisedError())
+}
+
+func Test_Observable_Retry_Error(t *testing.T) {
+	obs := FromFunc(func(ctx context.Context, next chan<- Item) {
+		next <- FromValue(1)
+		next <- FromValue(2)
+		next <- FromError(errFoo)
+	}).Retry(context.Background(), 3)
+	AssertObservable(context.Background(), t, obs, HasItems(1, 2, 1, 2, 1, 2, 1, 2), HasRaisedError(errFoo))
+}
+
 func Test_Observable_SkipWhile(t *testing.T) {
 	obs := testObservable(1, 2, 3, 4, 5).SkipWhile(context.Background(), func(i interface{}) bool {
 		switch i := i.(type) {

@@ -25,6 +25,8 @@ type Observable interface {
 	Filter(ctx context.Context, apply Predicate) Observable
 	ForEach(ctx context.Context, nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc)
 	Map(ctx context.Context, apply Func) Observable
+	// TODO Add backoff retry
+	Retry(ctx context.Context, count int) Observable
 	SkipWhile(ctx context.Context, apply Predicate) Observable
 }
 
@@ -402,6 +404,7 @@ func (o *observable) BufferWithTime(ctx context.Context, timespan, timeshift Dur
 	}
 }
 
+// TODO Options?
 func (o *observable) Observe(opts ...Option) <-chan Item {
 	return o.iterable.Observe()
 }
@@ -446,6 +449,46 @@ func (o *observable) Map(ctx context.Context, apply Func) Observable {
 		}
 		dst <- FromValue(res)
 	}, defaultErrorFuncOperator, defaultEndFuncOperator)
+}
+
+func (o *observable) Retry(ctx context.Context, count int) Observable {
+	next := make(chan Item)
+
+	stopped := false
+	stop := func() {
+		stopped = true
+	}
+
+	go func() {
+		observe := o.Observe()
+	loop:
+		for !stopped {
+			select {
+			case <-ctx.Done():
+				break loop
+			case i, ok := <-observe:
+				if !ok {
+					break loop
+				}
+				if i.IsError() {
+					count--
+					if count < 0 {
+						next <- i
+						stop()
+						return
+					}
+					observe = o.Observe()
+				} else {
+					next <- i
+				}
+			}
+		}
+		close(next)
+	}()
+
+	return &observable{
+		iterable: newChannelIterable(next),
+	}
 }
 
 func (o *observable) SkipWhile(ctx context.Context, apply Predicate) Observable {
