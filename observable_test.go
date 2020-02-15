@@ -90,3 +90,26 @@ func Test_Map_Cancel(t *testing.T) {
 	cancel()
 	assertObservable(t, context.Background(), obs, hasNoItems(), hasNotRaisedError())
 }
+
+func Test_SkipWhile(t *testing.T) {
+	next := make(chan Item)
+	go func() {
+		next <- FromValue(1)
+		next <- FromValue(2)
+		next <- FromValue(3)
+		next <- FromValue(4)
+		next <- FromValue(5)
+		close(next)
+	}()
+
+	obs := FromChannel(next).SkipWhile(context.Background(), func(i interface{}) bool {
+		switch i := i.(type) {
+		case int:
+			return i != 3
+		default:
+			return true
+		}
+	})
+
+	assertObservable(t, context.Background(), obs, hasItems(3, 4, 5), hasNotRaisedError())
+}

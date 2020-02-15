@@ -8,7 +8,7 @@ type Observable interface {
 	Iterable
 	ForEach(ctx context.Context, nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc)
 	Map(ctx context.Context, apply Func) Observable
-	SkipWhile(apply Predicate) Observable
+	SkipWhile(ctx context.Context, apply Predicate) Observable
 }
 
 type observable struct {
@@ -83,6 +83,34 @@ func (o *observable) Map(ctx context.Context, apply Func) Observable {
 	return newObservable(ctx, o, handler)
 }
 
-func (o *observable) SkipWhile(apply Predicate) Observable {
-	return nil
+func (o *observable) SkipWhile(ctx context.Context, apply Predicate) Observable {
+	handler := func(ctx context.Context, src <-chan Item, dst chan<- Item) {
+		skip := true
+		for {
+			select {
+			case <-ctx.Done():
+				close(dst)
+				return
+			case i, ok := <-src:
+				if !ok {
+					close(dst)
+					return
+				}
+				if i.IsError() {
+					dst <- i
+					close(dst)
+					return
+				}
+				if !skip {
+					dst <- i
+				} else {
+					if !apply(i.Value) {
+						skip = false
+						dst <- i
+					}
+				}
+			}
+		}
+	}
+	return newObservable(ctx, o, handler)
 }
