@@ -27,6 +27,39 @@ func newObservable(ctx context.Context, source Observable, handler Handler) Obse
 	}
 }
 
+func newOperator(ctx context.Context, source Observable, nextFunc Operator, errFunc Operator) Observable {
+	next := make(chan Item)
+
+	stopped := false
+	stop := func() {
+		stopped = true
+	}
+	go func() {
+		for !stopped {
+			select {
+			case <-ctx.Done():
+				close(next)
+				return
+			case i, ok := <-source.Next():
+				if !ok {
+					close(next)
+					return
+				}
+				if i.IsError() {
+					errFunc(i, next, stop)
+				} else {
+					nextFunc(i, next, stop)
+				}
+			}
+		}
+		close(next)
+	}()
+
+	return &observable{
+		iterable: newIterable(next),
+	}
+}
+
 func (o *observable) Next() <-chan Item {
 	return o.iterable.Next()
 }
@@ -55,62 +88,33 @@ func (o *observable) ForEach(ctx context.Context, nextFunc NextFunc, errFunc Err
 }
 
 func (o *observable) Map(ctx context.Context, apply Func) Observable {
-	handler := func(ctx context.Context, src <-chan Item, dst chan<- Item) {
-		for {
-			select {
-			case <-ctx.Done():
-				close(dst)
-				return
-			case i, ok := <-src:
-				if !ok {
-					close(dst)
-					return
-				}
-				if i.IsError() {
-					dst <- i
-					close(dst)
-					return
-				}
-				res, err := apply(i.Value)
-				if err != nil {
-					dst <- FromError(err)
-					return
-				}
-				dst <- FromValue(res)
-			}
+	return newOperator(ctx, o, func(item Item, dst chan<- Item, stop func()) {
+		res, err := apply(item.Value)
+		if err != nil {
+			dst <- FromError(err)
+			stop()
 		}
-	}
-	return newObservable(ctx, o, handler)
+		dst <- FromValue(res)
+	}, func(item Item, dst chan<- Item, stop func()) {
+		dst <- item
+		stop()
+	})
 }
 
 func (o *observable) SkipWhile(ctx context.Context, apply Predicate) Observable {
-	handler := func(ctx context.Context, src <-chan Item, dst chan<- Item) {
-		skip := true
-		for {
-			select {
-			case <-ctx.Done():
-				close(dst)
-				return
-			case i, ok := <-src:
-				if !ok {
-					close(dst)
-					return
-				}
-				if i.IsError() {
-					dst <- i
-					close(dst)
-					return
-				}
-				if !skip {
-					dst <- i
-				} else {
-					if !apply(i.Value) {
-						skip = false
-						dst <- i
-					}
-				}
+	skip := true
+
+	return newOperator(ctx, o, func(item Item, dst chan<- Item, stop func()) {
+		if !skip {
+			dst <- item
+		} else {
+			if !apply(item.Value) {
+				skip = false
+				dst <- item
 			}
 		}
-	}
-	return newObservable(ctx, o, handler)
+	}, func(item Item, dst chan<- Item, stop func()) {
+		dst <- item
+		stop()
+	})
 }

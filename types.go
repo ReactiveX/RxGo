@@ -5,6 +5,7 @@ import "context"
 type (
 	Func      func(interface{}) (interface{}, error)
 	Handler   func(ctx context.Context, src <-chan Item, dst chan<- Item)
+	Operator  func(item Item, dst chan<- Item, stop func())
 	Predicate func(interface{}) bool
 
 	NextFunc func(interface{})
