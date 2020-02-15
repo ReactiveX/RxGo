@@ -3,6 +3,9 @@ package rxgo
 import "context"
 
 type (
+	// BackpressureStrategy is the backpressure strategy type
+	BackpressureStrategy uint32
+
 	// Function defines a function that computes a value from an input value.
 	Function func(interface{}) (interface{}, error)
 	// Handler defines a function implementing the handler logic for a stream.
@@ -24,6 +27,13 @@ type (
 		Value interface{}
 		Err   error
 	}
+)
+
+const (
+	// Block blocks until the channel is available
+	Block BackpressureStrategy = iota
+	// Drop drops the message
+	Drop
 )
 
 // IsError checks if an item is an error.

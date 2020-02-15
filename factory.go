@@ -1,5 +1,7 @@
 package rxgo
 
+import "context"
+
 // Empty creates an Observable with no item and terminate immediately.
 func Empty() Observable {
 	next := make(chan Item)
@@ -13,6 +15,12 @@ func Empty() Observable {
 func FromChannel(next <-chan Item) Observable {
 	return &observable{
 		iterable: newChannelIterable(next),
+	}
+}
+
+func FromEventSource(ctx context.Context, next <-chan Item, strategy BackpressureStrategy) Observable {
+	return &observable{
+		iterable: newEventSourceIterable(ctx, next, strategy),
 	}
 }
 

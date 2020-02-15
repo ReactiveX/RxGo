@@ -2,6 +2,7 @@ package rxgo
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -125,11 +126,13 @@ func AssertObservable(ctx context.Context, t *testing.T, observable Observable, 
 	done := make(chan struct{})
 
 	observable.ForEach(ctx, func(i interface{}) {
+		fmt.Printf("%v\n", i)
 		got = append(got, i)
 	}, func(e error) {
 		err = e
 		close(done)
 	}, func() {
+		fmt.Printf("%v\n", "done")
 		close(done)
 	})
 
