@@ -8,6 +8,6 @@ func newChannelIterable(next <-chan Item) Iterable {
 	return &channelIterable{next: next}
 }
 
-func (i *channelIterable) Next() <-chan Item {
+func (i *channelIterable) Observe() <-chan Item {
 	return i.next
 }

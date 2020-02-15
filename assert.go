@@ -14,6 +14,8 @@ type RxAssert interface {
 	noItemsToBeChecked() bool
 	raisedErrorToBeChecked() (bool, error)
 	notRaisedErrorToBeChecked() bool
+	valueToBeChecked() (bool, interface{})
+	noValueToBeChecked() (bool, interface{})
 }
 
 type rxAssert struct {
@@ -24,6 +26,9 @@ type rxAssert struct {
 	checkHasRaisedError    bool
 	error                  error
 	checkHasNotRaisedError bool
+	checkHasValue          bool
+	value                  interface{}
+	checkHasNoValue        bool
 }
 
 func (ass *rxAssert) apply(do *rxAssert) {
@@ -44,6 +49,14 @@ func (ass *rxAssert) raisedErrorToBeChecked() (bool, error) {
 
 func (ass *rxAssert) notRaisedErrorToBeChecked() bool {
 	return ass.checkHasNotRaisedError
+}
+
+func (ass *rxAssert) valueToBeChecked() (bool, interface{}) {
+	return ass.checkHasValue, ass.value
+}
+
+func (ass *rxAssert) noValueToBeChecked() (bool, interface{}) {
+	return ass.checkHasNoValue, ass.value
 }
 
 func newAssertion(f func(*rxAssert)) *rxAssert {
@@ -82,6 +95,19 @@ func HasNotRaisedError() RxAssert {
 	})
 }
 
+func HasValue(i interface{}) RxAssert {
+	return newAssertion(func(a *rxAssert) {
+		a.checkHasValue = true
+		a.value = i
+	})
+}
+
+func HasNoValue() RxAssert {
+	return newAssertion(func(a *rxAssert) {
+		a.checkHasNoValue = true
+	})
+}
+
 func parseAssertions(assertions ...RxAssert) RxAssert {
 	ass := new(rxAssert)
 	for _, assertion := range assertions {
@@ -115,6 +141,70 @@ func AssertObservable(ctx context.Context, t *testing.T, observable Observable, 
 	if checkHasNoItems := ass.noItemsToBeChecked(); checkHasNoItems {
 		<-done
 		assert.Equal(t, 0, len(got))
+	}
+
+	if checkHasRaisedError, expectedError := ass.raisedErrorToBeChecked(); checkHasRaisedError {
+		assert.Equal(t, expectedError, err)
+	}
+
+	if ass.notRaisedErrorToBeChecked() {
+		assert.Nil(t, err)
+	}
+}
+
+func AssertSingle(ctx context.Context, t *testing.T, single Single, assertions ...RxAssert) {
+	ass := parseAssertions(assertions...)
+
+	var got interface{}
+	var err error
+
+	for item := range single.Observe() {
+		if item.IsError() {
+			err = item.Err
+			break
+		}
+		got = item.Value
+		break
+	}
+
+	if checkHasValue, value := ass.valueToBeChecked(); checkHasValue {
+		assert.Equal(t, value, got)
+	}
+
+	if checkHasNoValue, value := ass.noValueToBeChecked(); checkHasNoValue {
+		assert.Equal(t, value, got)
+	}
+
+	if checkHasRaisedError, expectedError := ass.raisedErrorToBeChecked(); checkHasRaisedError {
+		assert.Equal(t, expectedError, err)
+	}
+
+	if ass.notRaisedErrorToBeChecked() {
+		assert.Nil(t, err)
+	}
+}
+
+func AssertOptionalSingle(ctx context.Context, t *testing.T, optionalSingle OptionalSingle, assertions ...RxAssert) {
+	ass := parseAssertions(assertions...)
+
+	var got interface{}
+	var err error
+
+	for item := range optionalSingle.Observe() {
+		if item.IsError() {
+			err = item.Err
+			break
+		}
+		got = item.Value
+		break
+	}
+
+	if checkHasValue, value := ass.valueToBeChecked(); checkHasValue {
+		assert.Equal(t, value, got)
+	}
+
+	if checkHasNoValue, value := ass.noValueToBeChecked(); checkHasNoValue {
+		assert.Equal(t, value, got)
 	}
 
 	if checkHasRaisedError, expectedError := ass.raisedErrorToBeChecked(); checkHasRaisedError {

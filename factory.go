@@ -16,8 +16,14 @@ func FromChannel(next <-chan Item) Observable {
 	}
 }
 
-// Just creates an Observable with the provided items.
-func Just(item Item, items ...Item) Observable {
+func FromItem(item Item) Single {
+	return &single{
+		iterable: newSliceIterable([]Item{item}),
+	}
+}
+
+// FromItems creates an Observable with the provided items.
+func FromItems(item Item, items ...Item) Observable {
 	if len(items) > 0 {
 		items = append([]Item{item}, items...)
 	} else {

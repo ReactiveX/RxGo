@@ -8,7 +8,7 @@ func newSliceIterable(items []Item) Iterable {
 	return &sliceIterable{items: items}
 }
 
-func (i *sliceIterable) Next() <-chan Item {
+func (i *sliceIterable) Observe() <-chan Item {
 	next := make(chan Item)
 	go func() {
 		for _, item := range i.items {

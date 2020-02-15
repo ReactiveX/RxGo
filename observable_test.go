@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_Filter(t *testing.T) {
+func Test_Observable_Filter(t *testing.T) {
 	obs := FromChannel(channelValue(1, 2, 3, 4, closeCmd)).Filter(context.Background(),
 		func(i interface{}) bool {
 			return i.(int)%2 == 0
@@ -15,7 +15,7 @@ func Test_Filter(t *testing.T) {
 	AssertObservable(context.Background(), t, obs, HasItems(2, 4), HasNotRaisedError())
 }
 
-func Test_ForEach(t *testing.T) {
+func Test_Observable_ForEach(t *testing.T) {
 	count := 0
 	var gotErr error
 	done := make(chan struct{})
@@ -35,7 +35,7 @@ func Test_ForEach(t *testing.T) {
 	assert.Equal(t, errFoo, gotErr)
 }
 
-func Test_Map_One(t *testing.T) {
+func Test_Observable_Map_One(t *testing.T) {
 	next := channelValue(1, 2, 3, closeCmd)
 
 	obs := FromChannel(next).Map(context.Background(), func(i interface{}) (interface{}, error) {
@@ -44,7 +44,7 @@ func Test_Map_One(t *testing.T) {
 	AssertObservable(context.Background(), t, obs, HasItems(2, 3, 4), HasNotRaisedError())
 }
 
-func Test_Map_Multiple(t *testing.T) {
+func Test_Observable_Map_Multiple(t *testing.T) {
 	next := channelValue(1, 2, 3, closeCmd)
 
 	obs := FromChannel(next).Map(context.Background(), func(i interface{}) (interface{}, error) {
@@ -55,7 +55,7 @@ func Test_Map_Multiple(t *testing.T) {
 	AssertObservable(context.Background(), t, obs, HasItems(20, 30, 40), HasNotRaisedError())
 }
 
-func Test_Map_Error(t *testing.T) {
+func Test_Observable_Map_Error(t *testing.T) {
 	next := channelValue(1, 2, 3, errFoo)
 
 	obs := FromChannel(next).Map(context.Background(), func(i interface{}) (interface{}, error) {
@@ -64,7 +64,7 @@ func Test_Map_Error(t *testing.T) {
 	AssertObservable(context.Background(), t, obs, HasItems(2, 3, 4), HasRaisedError(errFoo))
 }
 
-func Test_Map_Cancel(t *testing.T) {
+func Test_Observable_Map_Cancel(t *testing.T) {
 	next := make(chan Item)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -75,7 +75,16 @@ func Test_Map_Cancel(t *testing.T) {
 	AssertObservable(context.Background(), t, obs, HasNoItems(), HasNotRaisedError())
 }
 
-func Test_SkipWhile(t *testing.T) {
+func Test_Observable_Observe(t *testing.T) {
+	got := make([]int, 0)
+	ch := FromChannel(channelValue(1, 2, 3, closeCmd)).Observe()
+	for item := range ch {
+		got = append(got, item.Value.(int))
+	}
+	assert.Equal(t, []int{1, 2, 3}, got)
+}
+
+func Test_Observable_SkipWhile(t *testing.T) {
 	next := channelValue(1, 2, 3, 4, 5, closeCmd)
 
 	obs := FromChannel(next).SkipWhile(context.Background(), func(i interface{}) bool {

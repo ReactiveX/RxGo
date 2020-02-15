@@ -3,8 +3,8 @@ package rxgo
 import "context"
 
 type (
-	// Func defines a function that computes a value from an input value.
-	Func func(interface{}) (interface{}, error)
+	// Function defines a function that computes a value from an input value.
+	Function func(interface{}) (interface{}, error)
 	// Handler defines a function implementing the handler logic for a stream.
 	Handler func(ctx context.Context, src <-chan Item, dst chan<- Item)
 	// Operator defines an operator function.
