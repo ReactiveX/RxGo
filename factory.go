@@ -2,11 +2,12 @@ package rxgo
 
 import (
 	"context"
-	"github.com/pkg/errors"
 	"math"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 // Amb takes several Observables, emit all of the items from only the first of these Observables
@@ -205,8 +206,8 @@ func FromSlice(s []Item) Single {
 func Interval(interval Duration, opts ...Option) Observable {
 	option := parseOptions(opts...)
 	next := option.buildChannel()
-
 	ctx := option.buildContext()
+
 	go func() {
 		i := 0
 		for {
@@ -303,5 +304,32 @@ func Range(start, count int) Observable {
 	}
 	return &observable{
 		iterable: newRangeIterable(start, count),
+	}
+}
+
+// Start creates an Observable from one or more directive-like Supplier
+// and emits the result of each operation asynchronously on a new Observable.
+func Start(fs []Supplier, opts ...Option) Observable {
+	option := parseOptions(opts...)
+	next := option.buildChannel()
+	ctx := option.buildContext()
+
+	var wg sync.WaitGroup
+	for _, f := range fs {
+		f := f
+		wg.Add(1)
+		go func() {
+			next <- f(ctx)
+			wg.Done()
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		close(next)
+	}()
+
+	return &observable{
+		iterable: newChannelIterable(next),
 	}
 }

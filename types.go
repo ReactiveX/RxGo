@@ -36,6 +36,8 @@ type (
 	Unmarshaler func([]byte, interface{}) error
 	// Scatter defines a scatter implementation
 	Scatter func(ctx context.Context, next chan<- Item, done func())
+	// Supplier defines a function that supplies a result from nothing.
+	Supplier func(ctx context.Context) Item
 
 	// NextFunc handles a next item in a stream.
 	NextFunc func(interface{})

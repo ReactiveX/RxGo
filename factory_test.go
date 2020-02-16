@@ -341,3 +341,12 @@ func Test_Range_MaximumExceeded(t *testing.T) {
 	obs := Range(1<<31, 1)
 	Assert(context.Background(), t, obs, HasRaisedAnError())
 }
+
+func Test_Start(t *testing.T) {
+	obs := Start([]Supplier{func(ctx context.Context) Item {
+		return FromValue(1)
+	}, func(ctx context.Context) Item {
+		return FromValue(2)
+	}})
+	Assert(context.Background(), t, obs, HasItemsNoParticularOrder(1, 2))
+}
