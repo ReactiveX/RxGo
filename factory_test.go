@@ -75,7 +75,7 @@ func Test_FromFuncs_Close(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
 }
 
-func Test_FromFuncs_Dup(t *testing.T) {
+func Test_FromFuncs_SingleDup(t *testing.T) {
 	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
 		next <- FromValue(1)
 		next <- FromValue(2)
@@ -84,6 +84,19 @@ func Test_FromFuncs_Dup(t *testing.T) {
 	})
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
+}
+
+func Test_FromFuncs_ComposedDup(t *testing.T) {
+	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
+		next <- FromValue(1)
+		next <- FromValue(2)
+		next <- FromValue(3)
+		done()
+	}).Map(func(i interface{}) (_ interface{}, _ error) {
+		return i.(int) + 1, nil
+	})
+	Assert(context.Background(), t, obs, HasItems(2, 3, 4), HasNotRaisedError())
+	Assert(context.Background(), t, obs, HasItems(2, 3, 4), HasNotRaisedError())
 }
 
 func Test_FromFuncs_Error(t *testing.T) {

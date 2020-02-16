@@ -12,10 +12,16 @@ type single struct {
 }
 
 func newSingleFromOperator(iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler, opts ...Option) Single {
-	next := operator(iterable, nextFunc, errFunc, endFunc, opts...)
-
 	return &single{
-		iterable: newChannelIterable(next),
+		iterable: newColdIterable(func() <-chan Item {
+			next, ctx, pool := buildOptionValues(opts...)
+			if pool == 0 {
+				seq(ctx, next, iterable, nextFunc, errFunc, endFunc)
+			} else {
+				parallel(ctx, pool, next, iterable, nextFunc, errFunc, endFunc)
+			}
+			return next
+		}),
 	}
 }
 

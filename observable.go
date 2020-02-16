@@ -63,17 +63,17 @@ func defaultErrorFuncOperator(item Item, dst chan<- Item, stop func()) {
 
 func defaultEndFuncOperator(_ chan<- Item) {}
 
-func operator(iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler, opts ...Option) chan Item {
-	next, ctx, pool := buildOptionValues(opts...)
-
-	if pool == 0 {
-		seq(ctx, next, iterable, nextFunc, errFunc, endFunc)
-	} else {
-		parallel(ctx, pool, next, iterable, nextFunc, errFunc, endFunc)
-	}
-
-	return next
-}
+//func operator(iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler, opts ...Option) chan Item {
+//	next, ctx, pool := buildOptionValues(opts...)
+//
+//	if pool == 0 {
+//		seq(ctx, next, iterable, nextFunc, errFunc, endFunc)
+//	} else {
+//		parallel(ctx, pool, next, iterable, nextFunc, errFunc, endFunc)
+//	}
+//
+//	return next
+//}
 
 func seq(ctx context.Context, next chan Item, iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler) {
 	go func() {
@@ -144,9 +144,21 @@ func parallel(ctx context.Context, pool int, next chan Item, iterable Iterable, 
 }
 
 func newObservableFromOperator(iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler, opts ...Option) Observable {
-	next := operator(iterable, nextFunc, errFunc, endFunc, opts...)
+	// next := operator(iterable, nextFunc, errFunc, endFunc, opts...)
+	// return &observable{
+	//	iterable: newChannelIterable(next),
+	//}
+
 	return &observable{
-		iterable: newChannelIterable(next),
+		iterable: newColdIterable(func() <-chan Item {
+			next, ctx, pool := buildOptionValues(opts...)
+			if pool == 0 {
+				seq(ctx, next, iterable, nextFunc, errFunc, endFunc)
+			} else {
+				parallel(ctx, pool, next, iterable, nextFunc, errFunc, endFunc)
+			}
+			return next
+		}),
 	}
 }
 
