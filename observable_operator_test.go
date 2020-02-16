@@ -484,6 +484,44 @@ func Test_Observable_OnErrorReturnItem(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(1, 2, "foo", 4, "foo", 6), HasNotRaisedError())
 }
 
+func Test_Observable_Reduce(t *testing.T) {
+	obs := testObservable(1, 2, 3, 4, 5).Reduce(func(acc interface{}, elem interface{}) (interface{}, error) {
+		if a, ok := acc.(int); ok {
+			if b, ok := elem.(int); ok {
+				return a + b, nil
+			}
+		} else {
+			return elem.(int), nil
+		}
+		return 0, errFoo
+	})
+	Assert(context.Background(), t, obs, HasItem(15), HasNotRaisedError())
+}
+
+func Test_Observable_Empty(t *testing.T) {
+	obs := FromEmpty().Reduce(func(acc interface{}, elem interface{}) (interface{}, error) {
+		return 0, nil
+	})
+	Assert(context.Background(), t, obs, HasNoItem(), HasNotRaisedError())
+}
+
+func Test_Observable_Error(t *testing.T) {
+	obs := testObservable(1, 2, errFoo, 4, 5).Reduce(func(acc interface{}, elem interface{}) (interface{}, error) {
+		return 0, nil
+	})
+	Assert(context.Background(), t, obs, HasNoItem(), HasRaisedError(errFoo))
+}
+
+func Test_Observable_ReturnError(t *testing.T) {
+	obs := testObservable(1, 2, 3).Reduce(func(acc interface{}, elem interface{}) (interface{}, error) {
+		if elem == 2 {
+			return 0, errFoo
+		}
+		return elem, nil
+	})
+	Assert(context.Background(), t, obs, HasNoItem(), HasRaisedError(errFoo))
+}
+
 func Test_Observable_Retry(t *testing.T) {
 	i := 0
 	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {

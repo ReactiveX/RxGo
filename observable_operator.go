@@ -708,6 +708,27 @@ func (o *observable) OnErrorReturnItem(resume interface{}, opts ...Option) Obser
 	}, defaultEndFuncOperator, opts...)
 }
 
+// Reduce applies a function to each item emitted by an Observable, sequentially, and emit the final value.
+func (o *observable) Reduce(apply Func2, opts ...Option) OptionalSingle {
+	var acc interface{}
+	empty := true
+
+	return newObservableFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
+		empty = false
+		v, err := apply(acc, item.Value)
+		if err != nil {
+			dst <- FromError(err)
+			operator.stop()
+			return
+		}
+		acc = v
+	}, defaultErrorFuncOperator, func(dst chan<- Item) {
+		if !empty {
+			dst <- FromValue(acc)
+		}
+	}, opts...)
+}
+
 // Retry retries if a source Observable sends an error, resubscribe to it in the hopes that it will complete without error.
 func (o *observable) Retry(count int, opts ...Option) Observable {
 	option := parseOptions(opts...)

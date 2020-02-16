@@ -8,8 +8,10 @@ type testStruct struct {
 	ID int `json:"id"`
 }
 
-var errFoo = errors.New("foo")
-var errBar = errors.New("bar")
+var (
+	errFoo = errors.New("foo")
+	errBar = errors.New("bar")
+)
 
 func channelValue(items ...interface{}) chan Item {
 	next := make(chan Item)

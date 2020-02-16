@@ -43,6 +43,7 @@ type Observable interface {
 	OnErrorReturn(resumeFunc ErrorFunc, opts ...Option) Observable
 	OnErrorReturnItem(resume interface{}, opts ...Option) Observable
 	Retry(count int, opts ...Option) Observable
+	Reduce(apply Func2, opts ...Option) OptionalSingle
 	SkipWhile(apply Predicate, opts ...Option) Observable
 	Take(nth uint, opts ...Option) Observable
 	TakeLast(nth uint, opts ...Option) Observable
@@ -59,9 +60,9 @@ func defaultNextFuncOperator(item Item, dst chan<- Item, _ operatorOptions) {
 	dst <- item
 }
 
-func defaultErrorFuncOperator(item Item, dst chan<- Item, operatorOpts operatorOptions) {
+func defaultErrorFuncOperator(item Item, dst chan<- Item, operator operatorOptions) {
 	dst <- item
-	operatorOpts.stop()
+	operator.stop()
 }
 
 func defaultEndFuncOperator(_ chan<- Item) {}

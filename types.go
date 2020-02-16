@@ -20,6 +20,8 @@ type (
 	ErrorToObservable func(error) Observable
 	// Func defines a function that computes a value from an input value.
 	Func func(interface{}) (interface{}, error)
+	// Func2 defines a function that computes a value from two input values.
+	Func2 func(interface{}, interface{}) (interface{}, error)
 	// ErrorFunc defines a function that computes a value from an error.
 	ErrorFunc func(error) interface{}
 	// Predicate defines a func that returns a bool from an input value.
@@ -38,7 +40,7 @@ type (
 	// DoneFunc handles the end of a stream.
 	DoneFunc func()
 
-	operatorItem func(item Item, dst chan<- Item, operatorOpts operatorOptions)
+	operatorItem func(item Item, dst chan<- Item, operator operatorOptions)
 	operatorEnd  func(dst chan<- Item)
 
 	// Item is a wrapper having either a value or an error.
