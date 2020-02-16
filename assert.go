@@ -159,14 +159,14 @@ func parseAssertions(assertions ...RxAssert) RxAssert {
 	return ass
 }
 
-// AssertObservable asserts the result of an Observable against a list of assertions.
-func AssertObservable(ctx context.Context, t *testing.T, observable Observable, assertions ...RxAssert) {
+// Assert asserts the result of an iterable against a list of assertions.
+func Assert(ctx context.Context, t *testing.T, iterable Iterable, assertions ...RxAssert) {
 	ass := parseAssertions(assertions...)
 
 	got := make([]interface{}, 0)
 	var err error
 
-	observe := observable.Observe()
+	observe := iterable.Observe()
 loop:
 	for {
 		select {
@@ -187,7 +187,6 @@ loop:
 	if checkHasItems, expectedItems := ass.itemsToBeChecked(); checkHasItems {
 		assert.Equal(t, expectedItems, got)
 	}
-
 	if checkHasItemsNoOrder, itemsNoOrder := ass.itemsNoOrderedToBeChecked(); checkHasItemsNoOrder {
 		m := make(map[interface{}]interface{})
 		for _, v := range itemsNoOrder {
@@ -199,86 +198,21 @@ loop:
 		}
 		assert.Equal(t, 0, len(m))
 	}
-
+	if checkHasItem, value := ass.itemToBeChecked(); checkHasItem {
+		assert.Equal(t, value, got[0])
+	}
 	if ass.noItemsToBeChecked() {
 		assert.Equal(t, 0, len(got))
 	}
-
 	if ass.someItemsToBeChecked() {
 		assert.NotEqual(t, 0, len(got))
 	}
-
 	if checkHasRaisedError, expectedError := ass.raisedErrorToBeChecked(); checkHasRaisedError {
 		assert.Equal(t, expectedError, err)
 	}
-
 	if checkHasRaisedAnError, expectedError := ass.raisedAnErrorToBeChecked(); checkHasRaisedAnError {
 		assert.Nil(t, expectedError)
 	}
-
-	if ass.notRaisedErrorToBeChecked() {
-		assert.Nil(t, err)
-	}
-}
-
-// AssertSingle asserts the result of an single against a list of assertions.
-func AssertSingle(ctx context.Context, t *testing.T, single Single, assertions ...RxAssert) {
-	// TODO Reuse logic
-	ass := parseAssertions(assertions...)
-
-	var got interface{}
-	var err error
-
-	item := <-single.Observe()
-	if item.IsError() {
-		err = item.Err
-	} else {
-		got = item.Value
-	}
-
-	if checkHasValue, value := ass.itemToBeChecked(); checkHasValue {
-		assert.Equal(t, value, got)
-	}
-
-	if checkHasNoValue, value := ass.noItemToBeChecked(); checkHasNoValue {
-		assert.Equal(t, value, got)
-	}
-
-	if checkHasRaisedError, expectedError := ass.raisedErrorToBeChecked(); checkHasRaisedError {
-		assert.Equal(t, expectedError, err)
-	}
-
-	if ass.notRaisedErrorToBeChecked() {
-		assert.Nil(t, err)
-	}
-}
-
-// AssertOptionalSingle asserts the result of an optional single against a list of assertions.
-func AssertOptionalSingle(ctx context.Context, t *testing.T, optionalSingle OptionalSingle, assertions ...RxAssert) {
-	ass := parseAssertions(assertions...)
-
-	var got interface{}
-	var err error
-
-	item := <-optionalSingle.Observe()
-	if item.IsError() {
-		err = item.Err
-	} else {
-		got = item.Value
-	}
-
-	if checkHasValue, value := ass.itemToBeChecked(); checkHasValue {
-		assert.Equal(t, value, got)
-	}
-
-	if checkHasNoValue, value := ass.noItemToBeChecked(); checkHasNoValue {
-		assert.Equal(t, value, got)
-	}
-
-	if checkHasRaisedError, expectedError := ass.raisedErrorToBeChecked(); checkHasRaisedError {
-		assert.Equal(t, expectedError, err)
-	}
-
 	if ass.notRaisedErrorToBeChecked() {
 		assert.Nil(t, err)
 	}

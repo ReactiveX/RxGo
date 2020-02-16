@@ -19,87 +19,87 @@ func Test_Observable_All(t *testing.T) {
 		}
 	}
 
-	AssertSingle(context.Background(), t, testObservable(1, 2, 3).All(context.Background(), predicateAllInt),
+	Assert(context.Background(), t, testObservable(1, 2, 3).All(context.Background(), predicateAllInt),
 		HasItem(true), HasNotRaisedError())
-	AssertSingle(context.Background(), t, testObservable(1, "x", 3).All(context.Background(), predicateAllInt),
+	Assert(context.Background(), t, testObservable(1, "x", 3).All(context.Background(), predicateAllInt),
 		HasItem(false), HasNotRaisedError())
 }
 
 func Test_Observable_AverageFloat32(t *testing.T) {
-	AssertSingle(context.Background(), t, testObservable(float32(1), float32(2), float32(3)).AverageFloat32(context.Background()), HasItem(float32(2)))
-	AssertSingle(context.Background(), t, testObservable(float32(1), float32(20)).AverageFloat32(context.Background()), HasItem(float32(10.5)))
-	AssertSingle(context.Background(), t, Empty().AverageFloat32(context.Background()), HasItem(0))
-	AssertSingle(context.Background(), t, testObservable("x").AverageFloat32(context.Background()), HasRaisedAnError())
+	Assert(context.Background(), t, testObservable(float32(1), float32(2), float32(3)).AverageFloat32(context.Background()), HasItem(float32(2)))
+	Assert(context.Background(), t, testObservable(float32(1), float32(20)).AverageFloat32(context.Background()), HasItem(float32(10.5)))
+	Assert(context.Background(), t, Empty().AverageFloat32(context.Background()), HasItem(0))
+	Assert(context.Background(), t, testObservable("x").AverageFloat32(context.Background()), HasRaisedAnError())
 }
 
 func Test_Observable_AverageFloat64(t *testing.T) {
-	AssertSingle(context.Background(), t, testObservable(float64(1), float64(2), float64(3)).AverageFloat64(context.Background()), HasItem(float64(2)))
-	AssertSingle(context.Background(), t, testObservable(float64(1), float64(20)).AverageFloat64(context.Background()), HasItem(10.5))
-	AssertSingle(context.Background(), t, Empty().AverageFloat64(context.Background()), HasItem(0))
-	AssertSingle(context.Background(), t, testObservable("x").AverageFloat64(context.Background()), HasRaisedAnError())
+	Assert(context.Background(), t, testObservable(float64(1), float64(2), float64(3)).AverageFloat64(context.Background()), HasItem(float64(2)))
+	Assert(context.Background(), t, testObservable(float64(1), float64(20)).AverageFloat64(context.Background()), HasItem(10.5))
+	Assert(context.Background(), t, Empty().AverageFloat64(context.Background()), HasItem(0))
+	Assert(context.Background(), t, testObservable("x").AverageFloat64(context.Background()), HasRaisedAnError())
 }
 
 func Test_Observable_AverageInt(t *testing.T) {
-	AssertSingle(context.Background(), t, testObservable(1, 2, 3).AverageInt(context.Background()), HasItem(2))
-	AssertSingle(context.Background(), t, testObservable(1, 20).AverageInt(context.Background()), HasItem(10))
-	AssertSingle(context.Background(), t, Empty().AverageInt(context.Background()), HasItem(0))
-	AssertSingle(context.Background(), t, testObservable(1.1, 2.2, 3.3).AverageInt(context.Background()), HasRaisedAnError())
+	Assert(context.Background(), t, testObservable(1, 2, 3).AverageInt(context.Background()), HasItem(2))
+	Assert(context.Background(), t, testObservable(1, 20).AverageInt(context.Background()), HasItem(10))
+	Assert(context.Background(), t, Empty().AverageInt(context.Background()), HasItem(0))
+	Assert(context.Background(), t, testObservable(1.1, 2.2, 3.3).AverageInt(context.Background()), HasRaisedAnError())
 }
 
 func Test_Observable_AverageInt8(t *testing.T) {
-	AssertSingle(context.Background(), t, testObservable(int8(1), int8(2), int8(3)).AverageInt8(context.Background()), HasItem(int8(2)))
-	AssertSingle(context.Background(), t, testObservable(int8(1), int8(20)).AverageInt8(context.Background()), HasItem(int8(10)))
-	AssertSingle(context.Background(), t, Empty().AverageInt8(context.Background()), HasItem(0))
-	AssertSingle(context.Background(), t, testObservable(1.1, 2.2, 3.3).AverageInt8(context.Background()), HasRaisedAnError())
+	Assert(context.Background(), t, testObservable(int8(1), int8(2), int8(3)).AverageInt8(context.Background()), HasItem(int8(2)))
+	Assert(context.Background(), t, testObservable(int8(1), int8(20)).AverageInt8(context.Background()), HasItem(int8(10)))
+	Assert(context.Background(), t, Empty().AverageInt8(context.Background()), HasItem(0))
+	Assert(context.Background(), t, testObservable(1.1, 2.2, 3.3).AverageInt8(context.Background()), HasRaisedAnError())
 }
 
 func Test_Observable_AverageInt16(t *testing.T) {
-	AssertSingle(context.Background(), t, testObservable(int16(1), int16(2), int16(3)).AverageInt16(context.Background()), HasItem(int16(2)))
-	AssertSingle(context.Background(), t, testObservable(int16(1), int16(20)).AverageInt16(context.Background()), HasItem(int16(10)))
-	AssertSingle(context.Background(), t, Empty().AverageInt16(context.Background()), HasItem(0))
-	AssertSingle(context.Background(), t, testObservable(1.1, 2.2, 3.3).AverageInt16(context.Background()), HasRaisedAnError())
+	Assert(context.Background(), t, testObservable(int16(1), int16(2), int16(3)).AverageInt16(context.Background()), HasItem(int16(2)))
+	Assert(context.Background(), t, testObservable(int16(1), int16(20)).AverageInt16(context.Background()), HasItem(int16(10)))
+	Assert(context.Background(), t, Empty().AverageInt16(context.Background()), HasItem(0))
+	Assert(context.Background(), t, testObservable(1.1, 2.2, 3.3).AverageInt16(context.Background()), HasRaisedAnError())
 }
 
 func Test_Observable_AverageInt32(t *testing.T) {
-	AssertSingle(context.Background(), t, testObservable(int32(1), int32(2), int32(3)).AverageInt32(context.Background()), HasItem(int32(2)))
-	AssertSingle(context.Background(), t, testObservable(int32(1), int32(20)).AverageInt32(context.Background()), HasItem(int32(10)))
-	AssertSingle(context.Background(), t, Empty().AverageInt32(context.Background()), HasItem(0))
-	AssertSingle(context.Background(), t, testObservable(1.1, 2.2, 3.3).AverageInt32(context.Background()), HasRaisedAnError())
+	Assert(context.Background(), t, testObservable(int32(1), int32(2), int32(3)).AverageInt32(context.Background()), HasItem(int32(2)))
+	Assert(context.Background(), t, testObservable(int32(1), int32(20)).AverageInt32(context.Background()), HasItem(int32(10)))
+	Assert(context.Background(), t, Empty().AverageInt32(context.Background()), HasItem(0))
+	Assert(context.Background(), t, testObservable(1.1, 2.2, 3.3).AverageInt32(context.Background()), HasRaisedAnError())
 }
 
 func Test_Observable_AverageInt64(t *testing.T) {
-	AssertSingle(context.Background(), t, testObservable(int64(1), int64(2), int64(3)).AverageInt64(context.Background()), HasItem(int64(2)))
-	AssertSingle(context.Background(), t, testObservable(int64(1), int64(20)).AverageInt64(context.Background()), HasItem(int64(10)))
-	AssertSingle(context.Background(), t, Empty().AverageInt64(context.Background()), HasItem(0))
-	AssertSingle(context.Background(), t, testObservable(1.1, 2.2, 3.3).AverageInt64(context.Background()), HasRaisedAnError())
+	Assert(context.Background(), t, testObservable(int64(1), int64(2), int64(3)).AverageInt64(context.Background()), HasItem(int64(2)))
+	Assert(context.Background(), t, testObservable(int64(1), int64(20)).AverageInt64(context.Background()), HasItem(int64(10)))
+	Assert(context.Background(), t, Empty().AverageInt64(context.Background()), HasItem(0))
+	Assert(context.Background(), t, testObservable(1.1, 2.2, 3.3).AverageInt64(context.Background()), HasRaisedAnError())
 }
 
 func Test_Observable_BufferWithCount_CountAndSkipEqual(t *testing.T) {
 	obs := testObservable(1, 2, 3, 4, 5, 6).BufferWithCount(context.Background(), 3, 3)
-	AssertObservable(context.Background(), t, obs, HasItems([]interface{}{1, 2, 3}, []interface{}{4, 5, 6}))
+	Assert(context.Background(), t, obs, HasItems([]interface{}{1, 2, 3}, []interface{}{4, 5, 6}))
 }
 
 func Test_Observable_BufferWithCount_CountAndSkipNotEqual(t *testing.T) {
 	obs := testObservable(1, 2, 3, 4, 5, 6).BufferWithCount(context.Background(), 2, 3)
-	AssertObservable(context.Background(), t, obs, HasItems([]interface{}{1, 2}, []interface{}{4, 5}))
+	Assert(context.Background(), t, obs, HasItems([]interface{}{1, 2}, []interface{}{4, 5}))
 }
 
 func Test_Observable_BufferWithCount_IncompleteLastItem(t *testing.T) {
 	obs := testObservable(1, 2, 3, 4).BufferWithCount(context.Background(), 2, 3)
-	AssertObservable(context.Background(), t, obs, HasItems([]interface{}{1, 2}, []interface{}{4}))
+	Assert(context.Background(), t, obs, HasItems([]interface{}{1, 2}, []interface{}{4}))
 }
 
 func Test_Observable_BufferWithCount_Error(t *testing.T) {
 	obs := testObservable(1, 2, 3, 4, errFoo).BufferWithCount(context.Background(), 3, 3)
-	AssertObservable(context.Background(), t, obs, HasItems([]interface{}{1, 2, 3}, []interface{}{4}), HasRaisedError(errFoo))
+	Assert(context.Background(), t, obs, HasItems([]interface{}{1, 2, 3}, []interface{}{4}), HasRaisedError(errFoo))
 }
 
 func Test_Observable_Buffer_InvalidInputs(t *testing.T) {
 	obs := testObservable(1, 2, 3, 4).BufferWithCount(context.Background(), 0, 5)
-	AssertObservable(context.Background(), t, obs, HasRaisedAnError())
+	Assert(context.Background(), t, obs, HasRaisedAnError())
 
 	obs = testObservable(1, 2, 3, 4).BufferWithCount(context.Background(), 5, 0)
-	AssertObservable(context.Background(), t, obs, HasRaisedAnError())
+	Assert(context.Background(), t, obs, HasRaisedAnError())
 }
 
 func Test_Observable_BufferWithTime_MockedTime(t *testing.T) {
@@ -111,7 +111,7 @@ func Test_Observable_BufferWithTime_MockedTime(t *testing.T) {
 
 	obs := testObservable(1, 2, 3).BufferWithTime(context.Background(), timespan, timeshift)
 
-	AssertObservable(context.Background(), t, obs, HasItems([]interface{}{1, 2, 3}))
+	Assert(context.Background(), t, obs, HasItems([]interface{}{1, 2, 3}))
 	timespan.AssertCalled(t, "duration")
 	timeshift.AssertNotCalled(t, "duration")
 }
@@ -136,20 +136,20 @@ func Test_Observable_BufferWithTime_MinorMockedTime(t *testing.T) {
 }
 
 func Test_Observable_BufferWithTime_IllegalInput(t *testing.T) {
-	AssertObservable(context.Background(), t, Empty().BufferWithTime(context.Background(), nil, nil), HasRaisedAnError())
-	AssertObservable(context.Background(), t, Empty().BufferWithTime(context.Background(), WithDuration(0*time.Second), nil), HasRaisedAnError())
+	Assert(context.Background(), t, Empty().BufferWithTime(context.Background(), nil, nil), HasRaisedAnError())
+	Assert(context.Background(), t, Empty().BufferWithTime(context.Background(), WithDuration(0*time.Second), nil), HasRaisedAnError())
 }
 
 func Test_Observable_BufferWithTime_NilTimeshift(t *testing.T) {
 	just := testObservable(1, 2, 3)
 	obs := just.BufferWithTime(context.Background(), WithDuration(1*time.Second), nil)
-	AssertObservable(context.Background(), t, obs, HasSomeItems())
+	Assert(context.Background(), t, obs, HasSomeItems())
 }
 
 func Test_Observable_BufferWithTime_Error(t *testing.T) {
 	just := testObservable(1, 2, 3, errFoo)
 	obs := just.BufferWithTime(context.Background(), WithDuration(1*time.Second), nil)
-	AssertObservable(context.Background(), t, obs, HasItems([]interface{}{1, 2, 3}), HasRaisedError(errFoo))
+	Assert(context.Background(), t, obs, HasItems([]interface{}{1, 2, 3}), HasRaisedError(errFoo))
 }
 
 func Test_Observable_Contain(t *testing.T) {
@@ -162,17 +162,17 @@ func Test_Observable_Contain(t *testing.T) {
 		}
 	}
 
-	AssertSingle(context.Background(), t,
+	Assert(context.Background(), t,
 		testObservable(1, 2, 3).Contains(context.Background(), predicate),
 		HasItem(true))
-	AssertSingle(context.Background(), t,
+	Assert(context.Background(), t,
 		testObservable(1, 5, 3).Contains(context.Background(), predicate),
 		HasItem(false))
 }
 
 func Test_Observable_Count(t *testing.T) {
 	single := testObservable(1, 2, 3, "foo", "bar", errFoo).Count(context.Background())
-	AssertSingle(context.Background(), t, single, HasItem(int64(6)))
+	Assert(context.Background(), t, single, HasItem(int64(6)))
 }
 
 func Test_Observable_Filter(t *testing.T) {
@@ -180,7 +180,7 @@ func Test_Observable_Filter(t *testing.T) {
 		func(i interface{}) bool {
 			return i.(int)%2 == 0
 		})
-	AssertObservable(context.Background(), t, obs, HasItems(2, 4), HasNotRaisedError())
+	Assert(context.Background(), t, obs, HasItems(2, 4), HasNotRaisedError())
 }
 
 func Test_Observable_ForEach(t *testing.T) {
@@ -206,7 +206,7 @@ func Test_Observable_Map_One(t *testing.T) {
 	obs := testObservable(1, 2, 3).Map(context.Background(), func(i interface{}) (interface{}, error) {
 		return i.(int) + 1, nil
 	})
-	AssertObservable(context.Background(), t, obs, HasItems(2, 3, 4), HasNotRaisedError())
+	Assert(context.Background(), t, obs, HasItems(2, 3, 4), HasNotRaisedError())
 }
 
 func Test_Observable_Map_Multiple(t *testing.T) {
@@ -215,14 +215,14 @@ func Test_Observable_Map_Multiple(t *testing.T) {
 	}).Map(context.Background(), func(i interface{}) (interface{}, error) {
 		return i.(int) * 10, nil
 	})
-	AssertObservable(context.Background(), t, obs, HasItems(20, 30, 40), HasNotRaisedError())
+	Assert(context.Background(), t, obs, HasItems(20, 30, 40), HasNotRaisedError())
 }
 
 func Test_Observable_Map_Error(t *testing.T) {
 	obs := testObservable(1, 2, 3, errFoo).Map(context.Background(), func(i interface{}) (interface{}, error) {
 		return i.(int) + 1, nil
 	})
-	AssertObservable(context.Background(), t, obs, HasItems(2, 3, 4), HasRaisedError(errFoo))
+	Assert(context.Background(), t, obs, HasItems(2, 3, 4), HasRaisedError(errFoo))
 }
 
 func Test_Observable_Map_Cancel(t *testing.T) {
@@ -233,7 +233,7 @@ func Test_Observable_Map_Cancel(t *testing.T) {
 		return i.(int) + 1, nil
 	})
 	cancel()
-	AssertObservable(context.Background(), t, obs, HasNoItems(), HasNotRaisedError())
+	Assert(context.Background(), t, obs, HasNoItems(), HasNotRaisedError())
 }
 
 func Test_Observable_Marshal(t *testing.T) {
@@ -242,7 +242,7 @@ func Test_Observable_Marshal(t *testing.T) {
 	}, testStruct{
 		ID: 2,
 	}).Marshal(context.Background(), json.Marshal)
-	AssertObservable(context.Background(), t, obs, HasItems([]byte(`{"id":1}`), []byte(`{"id":2}`)))
+	Assert(context.Background(), t, obs, HasItems([]byte(`{"id":1}`), []byte(`{"id":2}`)))
 }
 
 func Test_Observable_Observe(t *testing.T) {
@@ -268,7 +268,7 @@ func Test_Observable_Retry(t *testing.T) {
 			done()
 		}
 	}).Retry(context.Background(), 3)
-	AssertObservable(context.Background(), t, obs, HasItems(1, 2, 1, 2, 1, 2, 3), HasNotRaisedError())
+	Assert(context.Background(), t, obs, HasItems(1, 2, 1, 2, 1, 2, 3), HasNotRaisedError())
 }
 
 func Test_Observable_Retry_Error(t *testing.T) {
@@ -278,7 +278,7 @@ func Test_Observable_Retry_Error(t *testing.T) {
 		next <- FromError(errFoo)
 		done()
 	}).Retry(context.Background(), 3)
-	AssertObservable(context.Background(), t, obs, HasItems(1, 2, 1, 2, 1, 2, 1, 2), HasRaisedError(errFoo))
+	Assert(context.Background(), t, obs, HasItems(1, 2, 1, 2, 1, 2, 1, 2), HasRaisedError(errFoo))
 }
 
 func Test_Observable_SkipWhile(t *testing.T) {
@@ -291,37 +291,37 @@ func Test_Observable_SkipWhile(t *testing.T) {
 		}
 	})
 
-	AssertObservable(context.Background(), t, obs, HasItems(3, 4, 5), HasNotRaisedError())
+	Assert(context.Background(), t, obs, HasItems(3, 4, 5), HasNotRaisedError())
 }
 
 func Test_Observable_Take(t *testing.T) {
 	obs := testObservable(1, 2, 3, 4, 5).Take(context.Background(), 3)
-	AssertObservable(context.Background(), t, obs, HasItems(1, 2, 3))
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3))
 }
 
 func Test_Observable_TakeLast(t *testing.T) {
 	obs := testObservable(1, 2, 3, 4, 5).TakeLast(context.Background(), 3)
-	AssertObservable(context.Background(), t, obs, HasItems(3, 4, 5))
+	Assert(context.Background(), t, obs, HasItems(3, 4, 5))
 }
 
 func Test_Observable_TakeLast_LessThanNth(t *testing.T) {
 	obs := testObservable(4, 5).TakeLast(context.Background(), 3)
-	AssertObservable(context.Background(), t, obs, HasItems(4, 5))
+	Assert(context.Background(), t, obs, HasItems(4, 5))
 }
 
 func Test_Observable_TakeLast_LessThanNth2(t *testing.T) {
 	obs := testObservable(4, 5).TakeLast(context.Background(), 100000)
-	AssertObservable(context.Background(), t, obs, HasItems(4, 5))
+	Assert(context.Background(), t, obs, HasItems(4, 5))
 }
 
 func Test_Observable_ToSlice(t *testing.T) {
 	single := testObservable(1, 2, 3).ToSlice(context.Background())
-	AssertSingle(context.Background(), t, single, HasItem([]interface{}{1, 2, 3}))
+	Assert(context.Background(), t, single, HasItem([]interface{}{1, 2, 3}))
 }
 
 func Test_Observable_ToSlice_Error(t *testing.T) {
 	single := testObservable(1, 2, errFoo, 3).ToSlice(context.Background())
-	AssertSingle(context.Background(), t, single, HasNoItem(), HasRaisedError(errFoo))
+	Assert(context.Background(), t, single, HasNoItem(), HasRaisedError(errFoo))
 }
 
 func Test_Observable_Unmarshal(t *testing.T) {
@@ -329,7 +329,7 @@ func Test_Observable_Unmarshal(t *testing.T) {
 		func() interface{} {
 			return &testStruct{}
 		})
-	AssertObservable(context.Background(), t, obs, HasItems(&testStruct{
+	Assert(context.Background(), t, obs, HasItems(&testStruct{
 		ID: 1,
 	}, &testStruct{
 		ID: 2,
@@ -341,5 +341,5 @@ func Test_Observable_Unmarshal_Error(t *testing.T) {
 		func() interface{} {
 			return &testStruct{}
 		})
-	AssertObservable(context.Background(), t, obs, HasRaisedAnError())
+	Assert(context.Background(), t, obs, HasRaisedAnError())
 }

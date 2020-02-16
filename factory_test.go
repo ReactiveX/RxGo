@@ -7,12 +7,12 @@ import (
 
 func Test_Empty(t *testing.T) {
 	obs := Empty()
-	AssertObservable(context.Background(), t, obs, HasNoItems())
+	Assert(context.Background(), t, obs, HasNoItems())
 }
 
 func Test_FromChannel(t *testing.T) {
 	obs := testObservable(1, 2, 3)
-	AssertObservable(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
 }
 
 func Test_FromFuncs(t *testing.T) {
@@ -22,7 +22,7 @@ func Test_FromFuncs(t *testing.T) {
 		next <- FromValue(3)
 		done()
 	})
-	AssertObservable(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
 }
 
 func Test_FromFuncs_Multiple(t *testing.T) {
@@ -35,7 +35,7 @@ func Test_FromFuncs_Multiple(t *testing.T) {
 		next <- FromValue(20)
 		done()
 	})
-	AssertObservable(context.Background(), t, obs, HasItemsNoParticularOrder(1, 2, 10, 20), HasNotRaisedError())
+	Assert(context.Background(), t, obs, HasItemsNoParticularOrder(1, 2, 10, 20), HasNotRaisedError())
 }
 
 func Test_FromFuncs_Close(t *testing.T) {
@@ -45,7 +45,7 @@ func Test_FromFuncs_Close(t *testing.T) {
 		next <- FromValue(3)
 		done()
 	})
-	AssertObservable(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
 }
 
 func Test_FromFuncs_Dup(t *testing.T) {
@@ -55,8 +55,8 @@ func Test_FromFuncs_Dup(t *testing.T) {
 		next <- FromValue(3)
 		done()
 	})
-	AssertObservable(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
-	AssertObservable(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
 }
 
 func Test_FromFuncs_Error(t *testing.T) {
@@ -66,19 +66,19 @@ func Test_FromFuncs_Error(t *testing.T) {
 		next <- FromError(errFoo)
 		done()
 	})
-	AssertObservable(context.Background(), t, obs, HasItems(1, 2), HasRaisedError(errFoo))
+	Assert(context.Background(), t, obs, HasItems(1, 2), HasRaisedError(errFoo))
 }
 
 func Test_FromItem(t *testing.T) {
 	single := FromItem(FromValue(1))
-	AssertSingle(context.Background(), t, single, HasItem(1), HasNotRaisedError())
-	AssertSingle(context.Background(), t, single, HasItem(1), HasNotRaisedError())
+	Assert(context.Background(), t, single, HasItem(1), HasNotRaisedError())
+	Assert(context.Background(), t, single, HasItem(1), HasNotRaisedError())
 }
 
 func Test_FromItems(t *testing.T) {
 	obs := FromItems(FromValue(1), FromValue(2), FromValue(3))
-	AssertObservable(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
-	AssertObservable(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
 }
 
 // TODO Sleep
