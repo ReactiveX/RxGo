@@ -94,7 +94,6 @@ func operator(iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandl
 	return next
 }
 
-// TODO Options
 func newObservableFromOperator(iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler, opts ...Option) Observable {
 	next := operator(iterable, nextFunc, errFunc, endFunc, opts...)
 	return &observable{
@@ -438,7 +437,6 @@ func (o *observable) Count(opts ...Option) Single {
 	}, defaultEndFuncOperator, opts...)
 }
 
-// TODO Options?
 func (o *observable) Observe(opts ...Option) <-chan Item {
 	return o.iterable.Observe(opts...)
 }
