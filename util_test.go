@@ -9,6 +9,7 @@ type testStruct struct {
 }
 
 var errFoo = errors.New("foo")
+var errBar = errors.New("bar")
 
 func channelValue(items ...interface{}) chan Item {
 	next := make(chan Item)
@@ -19,8 +20,6 @@ func channelValue(items ...interface{}) chan Item {
 				next <- FromValue(item)
 			case error:
 				next <- FromError(item)
-				close(next)
-				return
 			}
 		}
 		close(next)

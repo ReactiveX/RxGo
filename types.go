@@ -20,6 +20,8 @@ type (
 	ErrorToObservable func(error) Observable
 	// Func defines a function that computes a value from an input value.
 	Func func(interface{}) (interface{}, error)
+	// ErrorFunc defines a function that computes a value from an error.
+	ErrorFunc func(error) interface{}
 	// Predicate defines a func that returns a bool from an input value.
 	Predicate func(interface{}) bool
 	// Marshaler defines a marshaler type (interface{} to []byte).

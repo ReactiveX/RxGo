@@ -685,11 +685,26 @@ func (o *observable) Observe(opts ...Option) <-chan Item {
 	return o.iterable.Observe(opts...)
 }
 
+// OnErrorResumeNext instructs an Observable to pass control to another Observable rather than invoking
+// onError if it encounters an error.
 func (o *observable) OnErrorResumeNext(resumeSequence ErrorToObservable, opts ...Option) Observable {
-	return newObservableFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
-		dst <- item
-	}, func(item Item, dst chan<- Item, operator operatorOptions) {
+	return newObservableFromOperator(o, defaultNextFuncOperator, func(item Item, dst chan<- Item, operator operatorOptions) {
 		operator.resetIterable(resumeSequence(item.Err))
+	}, defaultEndFuncOperator, opts...)
+}
+
+// OnErrorReturn instructs an Observable to emit an item (returned by a specified function)
+// rather than invoking onError if it encounters an error.
+func (o *observable) OnErrorReturn(resumeFunc ErrorFunc, opts ...Option) Observable {
+	return newObservableFromOperator(o, defaultNextFuncOperator, func(item Item, dst chan<- Item, operator operatorOptions) {
+		dst <- FromValue(resumeFunc(item.Err))
+	}, defaultEndFuncOperator, opts...)
+}
+
+// OnErrorReturnItem instructs on observale to emit an item if it encounters an error.
+func (o *observable) OnErrorReturnItem(resume interface{}, opts ...Option) Observable {
+	return newObservableFromOperator(o, defaultNextFuncOperator, func(_ Item, dst chan<- Item, operator operatorOptions) {
+		dst <- FromValue(resume)
 	}, defaultEndFuncOperator, opts...)
 }
 

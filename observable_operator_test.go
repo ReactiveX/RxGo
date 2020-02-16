@@ -472,6 +472,18 @@ func Test_Observable_OnErrorResumeNext(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(1, 2, 10, 20), HasNotRaisedError())
 }
 
+func Test_Observable_OnErrorReturn(t *testing.T) {
+	obs := testObservable(1, 2, errFoo, 4, errBar, 6).OnErrorReturn(func(err error) interface{} {
+		return err.Error()
+	})
+	Assert(context.Background(), t, obs, HasItems(1, 2, "foo", 4, "bar", 6), HasNotRaisedError())
+}
+
+func Test_Observable_OnErrorReturnItem(t *testing.T) {
+	obs := testObservable(1, 2, errFoo, 4, errBar, 6).OnErrorReturnItem("foo")
+	Assert(context.Background(), t, obs, HasItems(1, 2, "foo", 4, "foo", 6), HasNotRaisedError())
+}
+
 func Test_Observable_Retry(t *testing.T) {
 	i := 0
 	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {

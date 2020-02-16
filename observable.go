@@ -40,6 +40,8 @@ type Observable interface {
 	Min(comparator Comparator, opts ...Option) OptionalSingle
 	// TODO Add backoff retry
 	OnErrorResumeNext(resumeSequence ErrorToObservable, opts ...Option) Observable
+	OnErrorReturn(resumeFunc ErrorFunc, opts ...Option) Observable
+	OnErrorReturnItem(resume interface{}, opts ...Option) Observable
 	Retry(count int, opts ...Option) Observable
 	SkipWhile(apply Predicate, opts ...Option) Observable
 	Take(nth uint, opts ...Option) Observable
@@ -51,6 +53,10 @@ type Observable interface {
 
 type observable struct {
 	iterable Iterable
+}
+
+func defaultNextFuncOperator(item Item, dst chan<- Item, _ operatorOptions) {
+	dst <- item
 }
 
 func defaultErrorFuncOperator(item Item, dst chan<- Item, operatorOpts operatorOptions) {
