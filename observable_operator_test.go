@@ -622,6 +622,11 @@ func Test_Observable_Skip(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(3, 4, 5))
 }
 
+func Test_Observable_SkipLast(t *testing.T) {
+	obs := testObservable(0, 1, 2, 3, 4, 5).SkipLast(3)
+	Assert(context.Background(), t, obs, HasItems(0, 1, 2))
+}
+
 func Test_Observable_SkipWhile(t *testing.T) {
 	obs := testObservable(1, 2, 3, 4, 5).SkipWhile(func(i interface{}) bool {
 		switch i := i.(type) {
@@ -633,6 +638,21 @@ func Test_Observable_SkipWhile(t *testing.T) {
 	})
 
 	Assert(context.Background(), t, obs, HasItems(3, 4, 5), HasNotRaisedError())
+}
+
+func Test_Observable_StartWithIterable(t *testing.T) {
+	obs := testObservable(4, 5, 6).StartWithIterable(testObservable(1, 2, 3))
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3, 4, 5, 6), HasNotRaisedError())
+}
+
+func Test_Observable_StartWithIterable_Error1(t *testing.T) {
+	obs := testObservable(4, 5, 6).StartWithIterable(testObservable(1, errFoo, 3))
+	Assert(context.Background(), t, obs, HasItems(1), HasRaisedError(errFoo))
+}
+
+func Test_Observable_StartWithIterable_Error2(t *testing.T) {
+	obs := testObservable(4, errFoo, 6).StartWithIterable(testObservable(1, 2, 3))
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3, 4), HasRaisedError(errFoo))
 }
 
 func Test_Observable_Take(t *testing.T) {

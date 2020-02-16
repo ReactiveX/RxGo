@@ -875,7 +875,16 @@ func (o *observable) Skip(nth uint, opts ...Option) Observable {
 // SkipLast suppresses the last n items in the original Observable and
 // returns a new Observable with the rest items.
 func (o *observable) SkipLast(nth uint, opts ...Option) Observable {
-	panic("implement me")
+	skipCount := 0
+
+	return newObservableFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
+		if skipCount >= int(nth) {
+			operator.stop()
+			return
+		}
+		skipCount++
+		dst <- item
+	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
 }
 
 // SkipWhile discard items emitted by an Observable until a specified condition becomes false.
@@ -897,13 +906,53 @@ func (o *observable) SkipWhile(apply Predicate, opts ...Option) Observable {
 // StartWithIterable returns an Observable that emits the items in a specified Iterable before it begins to
 // emit items emitted by the source Observable.
 func (o *observable) StartWithIterable(iterable Iterable, opts ...Option) Observable {
-	panic("implement me")
-}
+	option := parseOptions(opts...)
+	next := option.buildChannel()
+	ctx := option.buildContext()
 
-// StartWithObservable returns an Observable that emits the items in a specified Observable before it begins to
-// emit items emitted by the source Observable.
-func (o *observable) StartWithObservable(observable Observable, opts ...Option) Observable {
-	panic("implement me")
+	go func() {
+		defer close(next)
+		observe := iterable.Observe()
+	loop1:
+		for {
+			select {
+			case <-ctx.Done():
+				break loop1
+			case i, ok := <-observe:
+				if !ok {
+					break loop1
+				}
+				if i.IsError() {
+					next <- i
+					return
+				} else {
+					next <- i
+				}
+			}
+		}
+		observe = o.Observe()
+	loop2:
+		for {
+			select {
+			case <-ctx.Done():
+				break loop2
+			case i, ok := <-observe:
+				if !ok {
+					break loop2
+				}
+				if i.IsError() {
+					next <- i
+					return
+				} else {
+					next <- i
+				}
+			}
+		}
+	}()
+
+	return &observable{
+		iterable: newChannelIterable(next),
+	}
 }
 
 // SumFloat32 calculates the average of float32 emitted by an Observable and emits a float32.
