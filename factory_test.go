@@ -2,7 +2,9 @@ package rxgo
 
 import (
 	"context"
+	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -178,22 +180,46 @@ func Test_FromItems_ComposedCapacity(t *testing.T) {
 	assert.Equal(t, 12, cap(obs2.Observe(WithBufferedChannel(13))))
 }
 
-// TODO Sleep
-// func Test_FromEventSource(t *testing.T) {
-//	next := make(chan Item, 100)
-//	ctx, cancel := context.WithCancel(context.Background())
-//	obs := FromEventSource(ctx, next, Block)
-//	next <- FromValue(1)
-//	time.Sleep(50 * time.Millisecond)
-//
-//	ch := obs.Observe()
-//	go func() {
-//		for i := range ch {
-//		}
-//	}()
-//	next <- FromValue(2)
-//	time.Sleep(50 * time.Millisecond)
-//	next <- FromValue(3)
-//	time.Sleep(50 * time.Millisecond)
-//	cancel()
-//}
+func Test_FromEventSource_ObservationAfterAllSent(t *testing.T) {
+	const max = 10
+	next := make(chan Item, max)
+	obs := FromEventSource(context.Background(), next, Block)
+
+	go func() {
+		for i := 0; i < max; i++ {
+			next <- FromValue(i)
+		}
+		close(next)
+	}()
+	time.Sleep(50 * time.Millisecond)
+
+	Assert(context.Background(), t, obs, CustomPredicate(func(items []interface{}) error {
+		if len(items) != 0 {
+			return errors.New("items should be nil")
+		}
+		return nil
+	}))
+}
+
+func Test_FromEventSource_Drop(t *testing.T) {
+	const max = 100_000
+	next := make(chan Item, max)
+	obs := FromEventSource(context.Background(), next, Drop)
+
+	go func() {
+		for i := 0; i < max; i++ {
+			next <- FromValue(i)
+		}
+		close(next)
+	}()
+
+	Assert(context.Background(), t, obs, CustomPredicate(func(items []interface{}) error {
+		if len(items) == max {
+			return errors.New("some items should be dropped")
+		}
+		if len(items) == 0 {
+			return errors.New("no items")
+		}
+		return nil
+	}))
+}

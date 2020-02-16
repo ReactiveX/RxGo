@@ -43,9 +43,9 @@ type (
 )
 
 const (
-	// Block blocks until the channel is available
+	// Block blocks until the channel is available.
 	Block BackpressureStrategy = iota
-	// Drop drops the message
+	// Drop drops the message.
 	Drop
 )
 

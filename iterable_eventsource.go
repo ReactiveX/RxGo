@@ -16,41 +16,34 @@ func newEventSourceIterable(ctx context.Context, next <-chan Item, strategy Back
 		observers: make([]chan Item, 0),
 	}
 
-	// TODO Simplify implementation
 	go func() {
-		switch strategy {
-		default:
-			fallthrough
-		case Block:
-			for {
-				select {
-				case <-ctx.Done():
+		for {
+			select {
+			case <-ctx.Done():
+				it.closeAllObservers()
+				return
+			case item, ok := <-next:
+				if !ok {
 					it.closeAllObservers()
 					return
-				case item := <-next:
-					it.RLock()
+				}
+				it.RLock()
+				switch strategy {
+				default:
+					fallthrough
+				case Block:
 					for _, observer := range it.observers {
 						observer <- item
 					}
-					it.RUnlock()
-				}
-			}
-		case Drop:
-			for {
-				select {
-				case <-ctx.Done():
-					it.closeAllObservers()
-					return
-				case item := <-next:
-					it.RLock()
+				case Drop:
 					for _, observer := range it.observers {
 						select {
 						default:
 						case observer <- item:
 						}
 					}
-					it.RUnlock()
 				}
+				it.RUnlock()
 			}
 		}
 	}()

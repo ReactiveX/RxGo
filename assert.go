@@ -7,6 +7,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// AssertPredicate is a custom predicate based on the items.
+type AssertPredicate func(items []interface{}) error
+
 // RxAssert lists the Observable assertions.
 type RxAssert interface {
 	apply(*rxAssert)
@@ -19,23 +22,26 @@ type RxAssert interface {
 	notRaisedErrorToBeChecked() bool
 	itemToBeChecked() (bool, interface{})
 	noItemToBeChecked() (bool, interface{})
+	customPredicatesToBeChecked() (bool, []AssertPredicate)
 }
 
 type rxAssert struct {
-	f                      func(*rxAssert)
-	checkHasItems          bool
-	checkHasNoItems        bool
-	checkHasSomeItems      bool
-	items                  []interface{}
-	checkHasItemsNoOrder   bool
-	itemsNoOrder           []interface{}
-	checkHasRaisedError    bool
-	error                  error
-	checkHasRaisedAnError  bool
-	checkHasNotRaisedError bool
-	checkHasItem           bool
-	item                   interface{}
-	checkHasNoItem         bool
+	f                       func(*rxAssert)
+	checkHasItems           bool
+	checkHasNoItems         bool
+	checkHasSomeItems       bool
+	items                   []interface{}
+	checkHasItemsNoOrder    bool
+	itemsNoOrder            []interface{}
+	checkHasRaisedError     bool
+	error                   error
+	checkHasRaisedAnError   bool
+	checkHasNotRaisedError  bool
+	checkHasItem            bool
+	item                    interface{}
+	checkHasNoItem          bool
+	checkHasCustomPredicate bool
+	customPredicates        []AssertPredicate
 }
 
 func (ass *rxAssert) apply(do *rxAssert) {
@@ -76,6 +82,10 @@ func (ass *rxAssert) itemToBeChecked() (bool, interface{}) {
 
 func (ass *rxAssert) noItemToBeChecked() (bool, interface{}) {
 	return ass.checkHasNoItem, ass.item
+}
+
+func (ass *rxAssert) customPredicatesToBeChecked() (bool, []AssertPredicate) {
+	return ass.checkHasCustomPredicate, ass.customPredicates
 }
 
 func newAssertion(f func(*rxAssert)) *rxAssert {
@@ -151,6 +161,17 @@ func HasNoItem() RxAssert {
 	})
 }
 
+// CustomPredicate checks a custom predicate.
+func CustomPredicate(predicate AssertPredicate) RxAssert {
+	return newAssertion(func(a *rxAssert) {
+		if !a.checkHasCustomPredicate {
+			a.checkHasCustomPredicate = true
+			a.customPredicates = make([]AssertPredicate, 0)
+		}
+		a.customPredicates = append(a.customPredicates, predicate)
+	})
+}
+
 func parseAssertions(assertions ...RxAssert) RxAssert {
 	ass := new(rxAssert)
 	for _, assertion := range assertions {
@@ -184,6 +205,14 @@ loop:
 		}
 	}
 
+	if checked, predicates := ass.customPredicatesToBeChecked(); checked {
+		for _, predicate := range predicates {
+			err := predicate(got)
+			if err != nil {
+				assert.Fail(t, err.Error())
+			}
+		}
+	}
 	if checkHasItems, expectedItems := ass.itemsToBeChecked(); checkHasItems {
 		assert.Equal(t, expectedItems, got)
 	}
