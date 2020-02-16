@@ -826,10 +826,98 @@ func (o *observable) Scan(apply Func2, opts ...Option) Observable {
 	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
 }
 
+// Compares first items of two sequences and returns true if they are equal and false if
+// they are not. Besides, it returns two new sequences - input sequences without compared items.
+func popAndCompareFirstItems(
+	inputSequence1 []interface{},
+	inputSequence2 []interface{}) (bool, []interface{}, []interface{}) {
+	if len(inputSequence1) > 0 && len(inputSequence2) > 0 {
+		s1, sequence1 := inputSequence1[0], inputSequence1[1:]
+		s2, sequence2 := inputSequence2[0], inputSequence2[1:]
+		return s1 == s2, sequence1, sequence2
+	}
+	return true, inputSequence1, inputSequence2
+}
+
 // SequenceEqual emits true if an Observable and the input Observable emit the same items,
 // in the same order, with the same termination state. Otherwise, it emits false.
-func (o *observable) SequenceEqual(obs Observable, opts ...Option) Single {
-	panic("implement me")
+func (o *observable) SequenceEqual(iterable Iterable, opts ...Option) Single {
+	option := parseOptions(opts...)
+	next := option.buildChannel()
+	ctx := option.buildContext()
+	itCh := make(chan Item)
+	obsCh := make(chan Item)
+
+	go func() {
+		defer close(obsCh)
+		observe := o.Observe()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case i, ok := <-observe:
+				if !ok {
+					return
+				}
+				obsCh <- i
+			}
+		}
+	}()
+
+	go func() {
+		defer close(itCh)
+		observe := iterable.Observe()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case i, ok := <-observe:
+				if !ok {
+					return
+				}
+				itCh <- i
+			}
+		}
+	}()
+
+	go func() {
+		var mainSequence []interface{}
+		var obsSequence []interface{}
+		areCorrect := true
+		isMainChannelClosed := false
+		isObsChannelClosed := false
+
+	mainLoop:
+		for {
+			select {
+			case item, ok := <-itCh:
+				if ok {
+					mainSequence = append(mainSequence, item)
+					areCorrect, mainSequence, obsSequence = popAndCompareFirstItems(mainSequence, obsSequence)
+				} else {
+					isMainChannelClosed = true
+				}
+			case item, ok := <-obsCh:
+				if ok {
+					obsSequence = append(obsSequence, item)
+					areCorrect, mainSequence, obsSequence = popAndCompareFirstItems(mainSequence, obsSequence)
+				} else {
+					isObsChannelClosed = true
+				}
+			}
+
+			if !areCorrect || (isMainChannelClosed && isObsChannelClosed) {
+				break mainLoop
+			}
+		}
+
+		next <- FromValue(areCorrect && len(mainSequence) == 0 && len(obsSequence) == 0)
+		close(next)
+	}()
+
+	return &single{
+		iterable: newChannelIterable(next),
+	}
 }
 
 // Send sends the items to a given channel
@@ -1101,11 +1189,6 @@ func (o *observable) TakeWhile(apply Predicate, opts ...Option) Observable {
 		}
 		dst <- item
 	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
-}
-
-// Timeout mirrors the source Observable, but issue an error notification if a particular period of time elapses without any emitted items.
-func (o *observable) Timeout(opts ...Option) Observable {
-	panic("implement me")
 }
 
 // ToMap convert the sequence of items emitted by an Observable

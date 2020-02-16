@@ -48,7 +48,7 @@ type Observable interface {
 	Retry(count int, opts ...Option) Observable
 	Sample(obs Observable, opts ...Option) Observable
 	Scan(apply Func2, opts ...Option) Observable
-	SequenceEqual(obs Observable, opts ...Option) Single
+	SequenceEqual(iterable Iterable, opts ...Option) Single
 	Send(output chan<- Item, opts ...Option)
 	Skip(nth uint, opts ...Option) Observable
 	SkipLast(nth uint, opts ...Option) Observable
@@ -61,7 +61,6 @@ type Observable interface {
 	TakeLast(nth uint, opts ...Option) Observable
 	TakeUntil(apply Predicate, opts ...Option) Observable
 	TakeWhile(apply Predicate, opts ...Option) Observable
-	Timeout(opts ...Option) Observable
 	ToMap(keySelector Func, opts ...Option) Single
 	ToMapWithValueSelector(keySelector, valueSelector Func, opts ...Option) Single
 	ToSlice(opts ...Option) Single

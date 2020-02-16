@@ -500,14 +500,14 @@ func Test_Observable_Reduce(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItem(15), HasNotRaisedError())
 }
 
-func Test_Observable_Empty(t *testing.T) {
+func Test_Observable_Reduce_Empty(t *testing.T) {
 	obs := FromEmpty().Reduce(func(acc interface{}, elem interface{}) (interface{}, error) {
 		return 0, nil
 	})
 	Assert(context.Background(), t, obs, HasNoItem(), HasNotRaisedError())
 }
 
-func Test_Observable_Error(t *testing.T) {
+func Test_Observable_Reduce_Error(t *testing.T) {
 	obs := testObservable(1, 2, errFoo, 4, 5).Reduce(func(acc interface{}, elem interface{}) (interface{}, error) {
 		return 0, nil
 	})
@@ -615,6 +615,34 @@ func Test_Observable_Send(t *testing.T) {
 	assert.Equal(t, FromValue(2), <-ch)
 	assert.Equal(t, FromValue(3), <-ch)
 	assert.Equal(t, FromError(errFoo), <-ch)
+}
+
+func Test_Observable_SequenceEqual_EvenSequence(t *testing.T) {
+	sequence := testObservable(2, 5, 12, 43, 98, 100, 213)
+	result := testObservable(2, 5, 12, 43, 98, 100, 213).SequenceEqual(sequence)
+	Assert(context.Background(), t, result, HasItem(true))
+}
+
+func Test_Observable_SequenceEqual_UnevenSequence(t *testing.T) {
+	sequence := testObservable(2, 5, 12, 43, 98, 100, 213)
+	result := testObservable(2, 5, 12, 43, 15, 100, 213).SequenceEqual(sequence)
+	Assert(context.Background(), t, result, HasItem(false))
+}
+
+func Test_Observable_SequenceEqual_DifferentLengthSequence(t *testing.T) {
+	sequenceShorter := testObservable(2, 5, 12, 43, 98, 100)
+	sequenceLonger := testObservable(2, 5, 12, 43, 98, 100, 213, 512)
+
+	resultForShorter := testObservable(2, 5, 12, 43, 98, 100, 213).SequenceEqual(sequenceShorter)
+	Assert(context.Background(), t, resultForShorter, HasItem(false))
+
+	resultForLonger := testObservable(2, 5, 12, 43, 98, 100, 213).SequenceEqual(sequenceLonger)
+	Assert(context.Background(), t, resultForLonger, HasItem(false))
+}
+
+func Test_Observable_SequenceEqual_Empty(t *testing.T) {
+	result := FromEmpty().SequenceEqual(FromEmpty())
+	Assert(context.Background(), t, result, HasItem(true))
 }
 
 func Test_Observable_Skip(t *testing.T) {
