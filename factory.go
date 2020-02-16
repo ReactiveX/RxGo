@@ -2,8 +2,8 @@ package rxgo
 
 import "context"
 
-// Empty creates an Observable with no item and terminate immediately.
-func Empty() Observable {
+// FromEmpty creates an Observable with no item and terminate immediately.
+func FromEmpty() Observable {
 	next := make(chan Item)
 	close(next)
 	return &observable{

@@ -8,7 +8,7 @@ import (
 )
 
 func Test_Empty(t *testing.T) {
-	obs := Empty()
+	obs := FromEmpty()
 	Assert(context.Background(), t, obs, HasNoItems())
 }
 

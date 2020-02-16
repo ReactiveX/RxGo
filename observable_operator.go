@@ -245,7 +245,6 @@ func (o *observable) BufferWithTime(timespan, timeshift Duration, opts ...Option
 	if timespan == nil || timespan.duration() == 0 {
 		return newObservableFromError(errors.Wrap(&IllegalInputError{}, "timespan must no be nil"))
 	}
-
 	if timeshift == nil {
 		timeshift = WithDuration(0)
 	}
@@ -326,6 +325,86 @@ func (o *observable) BufferWithTime(timespan, timeshift Duration, opts ...Option
 		close(next)
 		stop = true
 		mux.Unlock()
+	}()
+
+	return &observable{
+		iterable: newChannelIterable(next),
+	}
+}
+
+func (o *observable) BufferWithTimeOrCount(timespan Duration, count int, opts ...Option) Observable {
+	if timespan == nil || timespan.duration() == 0 {
+		return newObservableFromError(errors.Wrap(&IllegalInputError{}, "timespan must no be nil"))
+	}
+	if count <= 0 {
+		return newObservableFromError(errors.Wrap(&IllegalInputError{}, "count must be positive"))
+	}
+
+	sendCh := make(chan []interface{})
+	errCh := make(chan error)
+	buffer := make([]interface{}, 0)
+	var bufferMutex sync.Mutex
+	next, ctx, _ := buildOptionValues(opts...)
+
+	// First sender goroutine
+	go func() {
+		for {
+			select {
+			case currentBuffer := <-sendCh:
+				next <- FromValue(currentBuffer)
+			case error := <-errCh:
+				bufferMutex.Lock()
+				if len(buffer) > 0 {
+					next <- FromValue(buffer)
+				}
+				bufferMutex.Unlock()
+				if error != nil {
+					next <- FromError(error)
+				}
+				close(next)
+				return
+			case <-time.After(timespan.duration()):
+				bufferMutex.Lock()
+				b := make([]interface{}, len(buffer))
+				copy(b, buffer)
+				buffer = make([]interface{}, 0)
+				bufferMutex.Unlock()
+				next <- FromValue(b)
+			}
+		}
+	}()
+
+	go func() {
+		observe := o.Observe()
+	loop:
+		for {
+			select {
+			case <-ctx.Done():
+				break loop
+			case i, ok := <-observe:
+				if !ok {
+					break loop
+				}
+				if i.IsError() {
+					errCh <- i.Err
+					break loop
+				}
+				bufferMutex.Lock()
+				buffer = append(buffer, i.Value)
+				if len(buffer) >= count {
+					b := make([]interface{}, len(buffer))
+					copy(b, buffer)
+					buffer = make([]interface{}, 0)
+					bufferMutex.Unlock()
+					sendCh <- b
+				} else {
+					bufferMutex.Unlock()
+				}
+			}
+		}
+		errCh <- nil
+		close(sendCh)
+		close(errCh)
 	}()
 
 	return &observable{
