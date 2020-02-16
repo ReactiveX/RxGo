@@ -40,8 +40,8 @@ type (
 	// DoneFunc handles the end of a stream.
 	DoneFunc func()
 
-	operatorItem func(item Item, dst chan<- Item, operator operatorOptions)
-	operatorEnd  func(dst chan<- Item)
+	operatorItem func(ctx context.Context, item Item, dst chan<- Item, operator operatorOptions)
+	operatorEnd  func(ctx context.Context, dst chan<- Item)
 
 	// Item is a wrapper having either a value or an error.
 	Item struct {

@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -510,6 +512,46 @@ func Test_Observable_Error(t *testing.T) {
 		return 0, nil
 	})
 	Assert(context.Background(), t, obs, HasNoItem(), HasRaisedError(errFoo))
+}
+
+func Test_Observable_Repeat(t *testing.T) {
+	repeat := testObservable(1, 2, 3).Repeat(1, nil)
+	Assert(context.Background(), t, repeat, HasItems(1, 2, 3, 1, 2, 3))
+}
+
+func Test_Observable_Repeat_Zero(t *testing.T) {
+	repeat := testObservable(1, 2, 3).Repeat(0, nil)
+	Assert(context.Background(), t, repeat, HasItems(1, 2, 3))
+}
+
+func Test_Observable_Repeat_NegativeCount(t *testing.T) {
+	repeat := testObservable(1, 2, 3).Repeat(-2, nil)
+	Assert(context.Background(), t, repeat, HasNoItem(), HasRaisedAnError())
+}
+
+func Test_Observable_Repeat_Infinite(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	repeat := testObservable(1, 2, 3).Repeat(Infinite, nil, WithContext(ctx))
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		cancel()
+	}()
+	Assert(context.Background(), t, repeat, HasNotRaisedError(), CustomPredicate(func(items []interface{}) error {
+		if len(items) == 0 {
+			return errors.New("no items")
+		}
+		return nil
+	}))
+}
+
+func Test_Observable_Repeat_Frequency(t *testing.T) {
+	frequency := new(mockDuration)
+	frequency.On("duration").Return(time.Millisecond)
+
+	repeat := testObservable(1, 2, 3).Repeat(1, frequency)
+	Assert(context.Background(), t, repeat, HasItems(1, 2, 3, 1, 2, 3))
+	frequency.AssertNumberOfCalls(t, "duration", 1)
+	frequency.AssertExpectations(t)
 }
 
 func Test_Observable_ReturnError(t *testing.T) {

@@ -42,8 +42,13 @@ type Observable interface {
 	OnErrorResumeNext(resumeSequence ErrorToObservable, opts ...Option) Observable
 	OnErrorReturn(resumeFunc ErrorFunc, opts ...Option) Observable
 	OnErrorReturnItem(resume interface{}, opts ...Option) Observable
-	Retry(count int, opts ...Option) Observable
 	Reduce(apply Func2, opts ...Option) OptionalSingle
+	Repeat(count int64, frequency Duration, opts ...Option) Observable
+	Retry(count int, opts ...Option) Observable
+	Sample(obs Observable, opts ...Option) Observable
+	Scan(apply Func2, opts ...Option) Observable
+	SequenceEqual(obs Observable, opts ...Option) Single
+	Send(chan<- interface{})
 	SkipWhile(apply Predicate, opts ...Option) Observable
 	Take(nth uint, opts ...Option) Observable
 	TakeLast(nth uint, opts ...Option) Observable
@@ -56,16 +61,16 @@ type observable struct {
 	iterable Iterable
 }
 
-func defaultNextFuncOperator(item Item, dst chan<- Item, _ operatorOptions) {
+func defaultNextFuncOperator(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
 	dst <- item
 }
 
-func defaultErrorFuncOperator(item Item, dst chan<- Item, operator operatorOptions) {
+func defaultErrorFuncOperator(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
 	dst <- item
 	operator.stop()
 }
 
-func defaultEndFuncOperator(_ chan<- Item) {}
+func defaultEndFuncOperator(_ context.Context, _ chan<- Item) {}
 
 func operator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, opts ...Option) Iterable {
 	option := parseOptions(opts...)
@@ -119,13 +124,13 @@ func seq(ctx context.Context, next chan Item, iterable Iterable, nextFunc, errFu
 					break loop
 				}
 				if i.IsError() {
-					errFunc(i, next, operator)
+					errFunc(ctx, i, next, operator)
 				} else {
-					nextFunc(i, next, operator)
+					nextFunc(ctx, i, next, operator)
 				}
 			}
 		}
-		endFunc(next)
+		endFunc(ctx, next)
 		close(next)
 	}()
 }
@@ -156,9 +161,9 @@ func parallel(ctx context.Context, pool int, next chan Item, iterable Iterable, 
 						return
 					}
 					if i.IsError() {
-						errFunc(i, next, operator)
+						errFunc(ctx, i, next, operator)
 					} else {
-						nextFunc(i, next, operator)
+						nextFunc(ctx, i, next, operator)
 					}
 				}
 			}
@@ -167,7 +172,7 @@ func parallel(ctx context.Context, pool int, next chan Item, iterable Iterable, 
 
 	go func() {
 		wg.Wait()
-		endFunc(next)
+		endFunc(ctx, next)
 		close(next)
 	}()
 }

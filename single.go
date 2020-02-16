@@ -1,5 +1,7 @@
 package rxgo
 
+import "context"
+
 // Single is a observable with a single element.
 type Single interface {
 	Iterable
@@ -22,7 +24,7 @@ func (s *single) Observe(opts ...Option) <-chan Item {
 }
 
 func (s *single) Filter(apply Predicate, opts ...Option) OptionalSingle {
-	return newOptionalSingleFromOperator(s, func(item Item, dst chan<- Item, operator operatorOptions) {
+	return newOptionalSingleFromOperator(s, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
 		if apply(item.Value) {
 			dst <- item
 		}
@@ -31,7 +33,7 @@ func (s *single) Filter(apply Predicate, opts ...Option) OptionalSingle {
 }
 
 func (s *single) Map(apply Func, opts ...Option) Single {
-	return newSingleFromOperator(s, func(item Item, dst chan<- Item, operator operatorOptions) {
+	return newSingleFromOperator(s, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
 		res, err := apply(item.Value)
 		if err != nil {
 			dst <- FromError(err)
