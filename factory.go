@@ -2,6 +2,8 @@ package rxgo
 
 import (
 	"context"
+	"github.com/pkg/errors"
+	"math"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -239,5 +241,67 @@ func Just(item Item, items ...Item) Observable {
 func JustItem(item Item) Single {
 	return &single{
 		iterable: newSliceIterable([]Item{item}),
+	}
+}
+
+// Merge combines multiple Observables into one by merging their emissions
+func Merge(observables []Observable, opts ...Option) Observable {
+	option := parseOptions(opts...)
+	ctx := option.buildContext()
+	next := option.buildChannel()
+	wg := sync.WaitGroup{}
+
+	f := func(o Observable) {
+		defer wg.Done()
+		observe := o.Observe()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case item, ok := <-observe:
+				if !ok {
+					return
+				}
+				if item.IsError() {
+					next <- item
+					return
+				}
+				next <- item
+			}
+		}
+	}
+
+	for _, o := range observables {
+		wg.Add(1)
+		go f(o)
+	}
+
+	go func() {
+		wg.Wait()
+		close(next)
+	}()
+	return &observable{
+		iterable: newChannelIterable(next),
+	}
+}
+
+// Never creates an Observable that emits no items and does not terminate.
+func Never() Observable {
+	next := make(chan Item)
+	return &observable{
+		iterable: newChannelIterable(next),
+	}
+}
+
+// Range creates an Observable that emits a particular range of sequential integers.
+func Range(start, count int) Observable {
+	if count < 0 {
+		return newObservableFromError(errors.Wrap(&IllegalInputError{}, "count must be positive"))
+	}
+	if start+count-1 > math.MaxInt32 {
+		return newObservableFromError(errors.Wrap(&IllegalInputError{}, "max value is bigger than math.MaxInt32"))
+	}
+	return &observable{
+		iterable: newRangeIterable(start, count),
 	}
 }

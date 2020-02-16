@@ -313,3 +313,31 @@ func Test_Observable_Interval_NoItem(t *testing.T) {
 	// As Interval is built on an event source, we expect no items
 	Assert(context.Background(), t, obs, HasNoItem())
 }
+
+func Test_Merge(t *testing.T) {
+	obs := Merge([]Observable{testObservable(1, 2), testObservable(3, 4)})
+	Assert(context.Background(), t, obs, HasItemsNoParticularOrder(1, 2, 3, 4))
+}
+
+func Test_Merge_Error(t *testing.T) {
+	obs := Merge([]Observable{testObservable(1, 2), testObservable(3, errFoo)})
+	// The content is not deterministic, hence we just test if we have some items
+	Assert(context.Background(), t, obs, HasSomeItems(), HasRaisedError(errFoo))
+}
+
+func Test_Range(t *testing.T) {
+	obs := Range(5, 3)
+	Assert(context.Background(), t, obs, HasItems(5, 6, 7, 8))
+	// Test whether the observable is reproducible
+	Assert(context.Background(), t, obs, HasItems(5, 6, 7, 8))
+}
+
+func Test_Range_NegativeCount(t *testing.T) {
+	obs := Range(1, -5)
+	Assert(context.Background(), t, obs, HasRaisedAnError())
+}
+
+func Test_Range_MaximumExceeded(t *testing.T) {
+	obs := Range(1<<31, 1)
+	Assert(context.Background(), t, obs, HasRaisedAnError())
+}
