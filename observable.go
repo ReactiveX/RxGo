@@ -31,6 +31,9 @@ type Observable interface {
 	First(opts ...Option) OptionalSingle
 	FirstOrDefault(defaultValue interface{}, opts ...Option) Single
 	ForEach(nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc, opts ...Option)
+	IgnoreElements(opts ...Option) Observable
+	Last(opts ...Option) OptionalSingle
+	LastOrDefault(defaultValue interface{}, opts ...Option) Single
 	Map(apply Func, opts ...Option) Observable
 	Marshal(marshaler Marshaler, opts ...Option) Observable
 	// TODO Add backoff retry

@@ -571,6 +571,46 @@ func (o *observable) ForEach(nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFu
 	go handler(ctx, o.Observe(), next)
 }
 
+// IgnoreElements ignores all items emitted by the source ObservableSource and only calls onComplete
+// or onError.
+func (o *observable) IgnoreElements(opts ...Option) Observable {
+	return newObservableFromOperator(o, func(_ Item, _ chan<- Item, _ func()) {
+	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
+}
+
+// Last returns a new Observable which emit only last item.
+func (o *observable) Last(opts ...Option) OptionalSingle {
+	var last Item
+	empty := true
+
+	return newOptionalSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+		last = item
+		empty = false
+	}, defaultErrorFuncOperator, func(dst chan<- Item) {
+		if !empty {
+			dst <- last
+		}
+	}, opts...)
+}
+
+// LastOrDefault returns a new Observable which emit only last item.
+// If the observable fails to emit any items, it emits a default value.
+func (o *observable) LastOrDefault(defaultValue interface{}, opts ...Option) Single {
+	var last Item
+	empty := true
+
+	return newSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+		last = item
+		empty = false
+	}, defaultErrorFuncOperator, func(dst chan<- Item) {
+		if !empty {
+			dst <- last
+		} else {
+			dst <- FromValue(defaultValue)
+		}
+	}, opts...)
+}
+
 // Map transforms the items emitted by an Observable by applying a function to each item.
 func (o *observable) Map(apply Func, opts ...Option) Observable {
 	return newObservableFromOperator(o, func(item Item, dst chan<- Item, stop func()) {

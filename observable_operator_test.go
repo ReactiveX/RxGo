@@ -337,6 +337,36 @@ func Test_Observable_ForEach_Done(t *testing.T) {
 	assert.Nil(t, gotErr)
 }
 
+func Test_Observable_IgnoreElements(t *testing.T) {
+	obs := testObservable(1, 2, 3).IgnoreElements()
+	Assert(context.Background(), t, obs, HasNoItem())
+}
+
+func Test_Observable_IgnoreElements_Error(t *testing.T) {
+	obs := testObservable(1, errFoo, 3).IgnoreElements()
+	Assert(context.Background(), t, obs, HasNoItem(), HasRaisedError(errFoo))
+}
+
+func Test_Observable_Last_NotEmpty(t *testing.T) {
+	obs := testObservable(1, 2, 3).Last()
+	Assert(context.Background(), t, obs, HasItem(3))
+}
+
+func Test_Observable_Last_Empty(t *testing.T) {
+	obs := FromEmpty().Last()
+	Assert(context.Background(), t, obs, HasNoItem())
+}
+
+func Test_Observable_LastOrDefault_NotEmpty(t *testing.T) {
+	obs := testObservable(1, 2, 3).LastOrDefault(10)
+	Assert(context.Background(), t, obs, HasItem(3))
+}
+
+func Test_Observable_LastOrDefault_Empty(t *testing.T) {
+	obs := FromEmpty().LastOrDefault(10)
+	Assert(context.Background(), t, obs, HasItem(10))
+}
+
 func Test_Observable_Map_One(t *testing.T) {
 	obs := testObservable(1, 2, 3).Map(func(i interface{}) (interface{}, error) {
 		return i.(int) + 1, nil
