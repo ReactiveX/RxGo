@@ -3,6 +3,7 @@ package rxgo
 // OptionalSingle is an optional single.
 type OptionalSingle interface {
 	Iterable
+	// TODO Map
 }
 
 func newOptionalSingleFromOperator(iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler, opts ...Option) OptionalSingle {

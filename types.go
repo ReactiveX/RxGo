@@ -6,6 +6,11 @@ type (
 	// BackpressureStrategy is the backpressure strategy type
 	BackpressureStrategy uint32
 
+	// Comparator defines a func that returns:
+	// - 0 if two elements are equals
+	// - A negative value if the first argument is less than the second
+	// - A positive value if the first argument is greater than the second
+	Comparator func(interface{}, interface{}) int
 	// Func defines a function that computes a value from an input value.
 	Func func(interface{}) (interface{}, error)
 	// Iterator defines a function implementing the handler logic for a stream.

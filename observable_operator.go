@@ -630,6 +630,50 @@ func (o *observable) Marshal(marshaler Marshaler, opts ...Option) Observable {
 	}, opts...)
 }
 
+// Max determines and emits the maximum-valued item emitted by an Observable according to a comparator.
+func (o *observable) Max(comparator Comparator, opts ...Option) OptionalSingle {
+	empty := true
+	var max interface{}
+
+	return newObservableFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+		empty = false
+
+		if max == nil {
+			max = item.Value
+		} else {
+			if comparator(max, item.Value) < 0 {
+				max = item.Value
+			}
+		}
+	}, defaultErrorFuncOperator, func(dst chan<- Item) {
+		if !empty {
+			dst <- FromValue(max)
+		}
+	}, opts...)
+}
+
+// Min determines and emits the minimum-valued item emitted by an Observable according to a comparator.
+func (o *observable) Min(comparator Comparator, opts ...Option) OptionalSingle {
+	empty := true
+	var min interface{}
+
+	return newObservableFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+		empty = false
+
+		if min == nil {
+			min = item.Value
+		} else {
+			if comparator(min, item.Value) > 0 {
+				min = item.Value
+			}
+		}
+	}, defaultErrorFuncOperator, func(dst chan<- Item) {
+		if !empty {
+			dst <- FromValue(min)
+		}
+	}, opts...)
+}
+
 // Observe observes an observable by returning its channel
 func (o *observable) Observe(opts ...Option) <-chan Item {
 	return o.iterable.Observe(opts...)

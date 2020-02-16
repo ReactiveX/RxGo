@@ -36,6 +36,8 @@ type Observable interface {
 	LastOrDefault(defaultValue interface{}, opts ...Option) Single
 	Map(apply Func, opts ...Option) Observable
 	Marshal(marshaler Marshaler, opts ...Option) Observable
+	Max(comparator Comparator, opts ...Option) OptionalSingle
+	Min(comparator Comparator, opts ...Option) OptionalSingle
 	// TODO Add backoff retry
 	Retry(count int, opts ...Option) Observable
 	SkipWhile(apply Predicate, opts ...Option) Observable

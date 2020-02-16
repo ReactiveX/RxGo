@@ -426,6 +426,36 @@ func Test_Observable_Marshal(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems([]byte(`{"id":1}`), []byte(`{"id":2}`)))
 }
 
+func Test_Observable_Max(t *testing.T) {
+	obs := testObservable(1, 5, 2, -1, 3).Max(func(e1 interface{}, e2 interface{}) int {
+		i1 := e1.(int)
+		i2 := e2.(int)
+		if i1 > i2 {
+			return 1
+		} else if i1 < i2 {
+			return -1
+		} else {
+			return 0
+		}
+	})
+	Assert(context.Background(), t, obs, HasItem(5))
+}
+
+func Test_Observable_Min(t *testing.T) {
+	obs := testObservable(1, 5, 2, -1, 3).Min(func(e1 interface{}, e2 interface{}) int {
+		i1 := e1.(int)
+		i2 := e2.(int)
+		if i1 > i2 {
+			return 1
+		} else if i1 < i2 {
+			return -1
+		} else {
+			return 0
+		}
+	})
+	Assert(context.Background(), t, obs, HasItem(-1))
+}
+
 func Test_Observable_Observe(t *testing.T) {
 	got := make([]int, 0)
 	ch := testObservable(1, 2, 3).Observe()
