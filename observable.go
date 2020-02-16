@@ -151,11 +151,11 @@ func newObservableFromOperator(iterable Iterable, nextFunc, errFunc ItemHandler,
 
 	return &observable{
 		iterable: newColdIterable(func() <-chan Item {
-			next, ctx, pool := buildOptionValues(opts...)
-			if pool == 0 {
-				seq(ctx, next, iterable, nextFunc, errFunc, endFunc)
-			} else {
+			next, ctx, option := buildOptionValues(opts...)
+			if withPool, pool := option.withPool(); withPool {
 				parallel(ctx, pool, next, iterable, nextFunc, errFunc, endFunc)
+			} else {
+				seq(ctx, next, iterable, nextFunc, errFunc, endFunc)
 			}
 			return next
 		}),

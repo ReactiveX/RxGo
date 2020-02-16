@@ -14,11 +14,11 @@ type single struct {
 func newSingleFromOperator(iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler, opts ...Option) Single {
 	return &single{
 		iterable: newColdIterable(func() <-chan Item {
-			next, ctx, pool := buildOptionValues(opts...)
-			if pool == 0 {
-				seq(ctx, next, iterable, nextFunc, errFunc, endFunc)
-			} else {
+			next, ctx, option := buildOptionValues(opts...)
+			if withPool, pool := option.withPool(); withPool {
 				parallel(ctx, pool, next, iterable, nextFunc, errFunc, endFunc)
+			} else {
+				seq(ctx, next, iterable, nextFunc, errFunc, endFunc)
 			}
 			return next
 		}),

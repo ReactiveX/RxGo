@@ -48,8 +48,8 @@ func parseOptions(opts ...Option) Option {
 	return o
 }
 
-func buildOptionValues(opts ...Option) (next chan Item, ctx context.Context, pool int) {
-	option := parseOptions(opts...)
+func buildOptionValues(opts ...Option) (next chan Item, ctx context.Context, option Option) {
+	option = parseOptions(opts...)
 
 	if toBeBuffered, cap := option.withBuffer(); toBeBuffered {
 		next = make(chan Item, cap)
@@ -63,11 +63,7 @@ func buildOptionValues(opts ...Option) (next chan Item, ctx context.Context, poo
 		ctx = context.Background()
 	}
 
-	if withPool, v := option.withPool(); withPool {
-		pool = v
-	}
-
-	return next, ctx, pool
+	return next, ctx, option
 }
 
 // WithBufferedChannel allows to configure the capacity of a buffered channel.
