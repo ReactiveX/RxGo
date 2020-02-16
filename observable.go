@@ -59,9 +59,9 @@ func defaultErrorFuncOperator(item Item, dst chan<- Item, stop func()) {
 	stop()
 }
 
-func defaultEndFuncOperator(_ Item, _ chan<- Item, _ func()) {}
+func defaultEndFuncOperator(_ chan<- Item) {}
 
-func operator(ctx context.Context, iterable Iterable, nextFunc, errFunc, endFunc Operator) chan Item {
+func operator(ctx context.Context, iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler) chan Item {
 	next := make(chan Item)
 
 	stopped := false
@@ -87,7 +87,7 @@ func operator(ctx context.Context, iterable Iterable, nextFunc, errFunc, endFunc
 				}
 			}
 		}
-		endFunc(FromValue(nil), next, nil)
+		endFunc(next)
 		close(next)
 	}()
 
@@ -95,7 +95,7 @@ func operator(ctx context.Context, iterable Iterable, nextFunc, errFunc, endFunc
 }
 
 // TODO Options
-func newObservableFromOperator(ctx context.Context, iterable Iterable, nextFunc, errFunc, endFunc Operator) Observable {
+func newObservableFromOperator(ctx context.Context, iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler) Observable {
 	next := operator(ctx, iterable, nextFunc, errFunc, endFunc)
 	return &observable{
 		iterable: newChannelIterable(next),
@@ -119,7 +119,7 @@ func (o *observable) All(ctx context.Context, predicate Predicate) Single {
 			all = false
 			stop()
 		}
-	}, defaultErrorFuncOperator, func(item Item, dst chan<- Item, stop func()) {
+	}, defaultErrorFuncOperator, func(dst chan<- Item) {
 		if all {
 			dst <- FromValue(true)
 		}
@@ -139,7 +139,7 @@ func (o *observable) AverageFloat32(ctx context.Context) Single {
 				fmt.Sprintf("expected type: float32, got: %t", item)))
 			stop()
 		}
-	}, defaultErrorFuncOperator, func(_ Item, dst chan<- Item, _ func()) {
+	}, defaultErrorFuncOperator, func(dst chan<- Item) {
 		if count == 0 {
 			dst <- FromValue(0)
 		} else {
@@ -161,7 +161,7 @@ func (o *observable) AverageFloat64(ctx context.Context) Single {
 				fmt.Sprintf("expected type: float64, got: %t", item)))
 			stop()
 		}
-	}, defaultErrorFuncOperator, func(_ Item, dst chan<- Item, _ func()) {
+	}, defaultErrorFuncOperator, func(dst chan<- Item) {
 		if count == 0 {
 			dst <- FromValue(0)
 		} else {
@@ -183,7 +183,7 @@ func (o *observable) AverageInt(ctx context.Context) Single {
 				fmt.Sprintf("expected type: int, got: %t", item)))
 			stop()
 		}
-	}, defaultErrorFuncOperator, func(_ Item, dst chan<- Item, _ func()) {
+	}, defaultErrorFuncOperator, func(dst chan<- Item) {
 		if count == 0 {
 			dst <- FromValue(0)
 		} else {
@@ -205,7 +205,7 @@ func (o *observable) AverageInt8(ctx context.Context) Single {
 				fmt.Sprintf("expected type: int8, got: %t", item)))
 			stop()
 		}
-	}, defaultErrorFuncOperator, func(_ Item, dst chan<- Item, _ func()) {
+	}, defaultErrorFuncOperator, func(dst chan<- Item) {
 		if count == 0 {
 			dst <- FromValue(0)
 		} else {
@@ -227,7 +227,7 @@ func (o *observable) AverageInt16(ctx context.Context) Single {
 				fmt.Sprintf("expected type: int16, got: %t", item)))
 			stop()
 		}
-	}, defaultErrorFuncOperator, func(_ Item, dst chan<- Item, _ func()) {
+	}, defaultErrorFuncOperator, func(dst chan<- Item) {
 		if count == 0 {
 			dst <- FromValue(0)
 		} else {
@@ -249,7 +249,7 @@ func (o *observable) AverageInt32(ctx context.Context) Single {
 				fmt.Sprintf("expected type: int32, got: %t", item)))
 			stop()
 		}
-	}, defaultErrorFuncOperator, func(_ Item, dst chan<- Item, _ func()) {
+	}, defaultErrorFuncOperator, func(dst chan<- Item) {
 		if count == 0 {
 			dst <- FromValue(0)
 		} else {
@@ -271,7 +271,7 @@ func (o *observable) AverageInt64(ctx context.Context) Single {
 				fmt.Sprintf("expected type: int64, got: %t", item)))
 			stop()
 		}
-	}, defaultErrorFuncOperator, func(_ Item, dst chan<- Item, _ func()) {
+	}, defaultErrorFuncOperator, func(dst chan<- Item) {
 		if count == 0 {
 			dst <- FromValue(0)
 		} else {
@@ -315,7 +315,7 @@ func (o *observable) BufferWithCount(ctx context.Context, count, skip int) Obser
 		}
 		dst <- item
 		stop()
-	}, func(_ Item, dst chan<- Item, _ func()) {
+	}, func(dst chan<- Item) {
 		if iCount != 0 {
 			dst <- FromValue(buffer[:iCount])
 		}
@@ -421,7 +421,7 @@ func (o *observable) Contains(ctx context.Context, equal Predicate) Single {
 			stop()
 			return
 		}
-	}, defaultErrorFuncOperator, func(_ Item, dst chan<- Item, _ func()) {
+	}, defaultErrorFuncOperator, func(dst chan<- Item) {
 		dst <- FromValue(false)
 	})
 }
@@ -565,7 +565,7 @@ func (o *observable) TakeLast(ctx context.Context, nth uint) Observable {
 		count++
 		r.Value = item.Value
 		r = r.Next()
-	}, defaultErrorFuncOperator, func(_ Item, dst chan<- Item, stop func()) {
+	}, defaultErrorFuncOperator, func(dst chan<- Item) {
 		if count < n {
 			remaining := n - count
 			if remaining <= count {
@@ -586,7 +586,7 @@ func (o *observable) ToSlice(ctx context.Context) Single {
 	s := make([]interface{}, 0)
 	return newSingleFromOperator(ctx, o, func(item Item, dst chan<- Item, stop func()) {
 		s = append(s, item.Value)
-	}, defaultErrorFuncOperator, func(_ Item, dst chan<- Item, _ func()) {
+	}, defaultErrorFuncOperator, func(dst chan<- Item) {
 		dst <- FromValue(s)
 	})
 }

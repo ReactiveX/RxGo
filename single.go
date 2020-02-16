@@ -13,7 +13,7 @@ type single struct {
 	iterable Iterable
 }
 
-func newSingleFromOperator(ctx context.Context, iterable Iterable, nextFunc, errFunc, endFunc Operator) Single {
+func newSingleFromOperator(ctx context.Context, iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler) Single {
 	next := operator(ctx, iterable, nextFunc, errFunc, endFunc)
 
 	return &single{
@@ -31,7 +31,7 @@ func (s *single) Filter(ctx context.Context, apply Predicate) OptionalSingle {
 			dst <- item
 		}
 		stop()
-	}, defaultEndFuncOperator, defaultEndFuncOperator)
+	}, defaultErrorFuncOperator, defaultEndFuncOperator)
 }
 
 func (s *single) Map(ctx context.Context, apply Func) Single {
@@ -44,5 +44,5 @@ func (s *single) Map(ctx context.Context, apply Func) Single {
 			dst <- FromValue(res)
 			stop()
 		}
-	}, defaultEndFuncOperator, defaultEndFuncOperator)
+	}, defaultErrorFuncOperator, defaultEndFuncOperator)
 }

@@ -10,8 +10,10 @@ type (
 	Func func(interface{}) (interface{}, error)
 	// Iterator defines a function implementing the handler logic for a stream.
 	Iterator func(ctx context.Context, src <-chan Item, dst chan<- Item)
-	// Operator defines an operator function.
-	Operator func(item Item, dst chan<- Item, stop func())
+	// ItemHandler defines an item handler function for an operator.
+	ItemHandler func(item Item, dst chan<- Item, stop func())
+	// EndHandler defines an end handler function for an operator.
+	EndHandler func(dst chan<- Item)
 	// Predicate defines a func that returns a bool from an input value.
 	Predicate func(interface{}) bool
 	// Marshaler defines a marshaler type (interface{} to []byte).
