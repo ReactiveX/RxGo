@@ -1111,19 +1111,52 @@ func (o *observable) Timeout(opts ...Option) Observable {
 // ToMap convert the sequence of items emitted by an Observable
 // into a map keyed by a specified key function.
 func (o *observable) ToMap(keySelector Func, opts ...Option) Single {
-	panic("implement me")
+	m := make(map[interface{}]interface{})
+
+	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
+		k, err := keySelector(item.Value)
+		if err != nil {
+			dst <- FromError(err)
+			operator.stop()
+			return
+		}
+		m[k] = item.Value
+	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
+		dst <- FromValue(m)
+	}, opts...)
 }
 
 // ToMapWithValueSelector convert the sequence of items emitted by an Observable
 // into a map keyed by a specified key function and valued by another
 // value function.
 func (o *observable) ToMapWithValueSelector(keySelector, valueSelector Func, opts ...Option) Single {
-	panic("implement me")
+	m := make(map[interface{}]interface{})
+
+	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
+		k, err := keySelector(item.Value)
+		if err != nil {
+			dst <- FromError(err)
+			operator.stop()
+			return
+		}
+
+		v, err := valueSelector(item.Value)
+		if err != nil {
+			dst <- FromError(err)
+			operator.stop()
+			return
+		}
+
+		m[k] = v
+	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
+		dst <- FromValue(m)
+	}, opts...)
 }
 
 // ToSlice collects all items from an Observable and emit them as a single slice.
 func (o *observable) ToSlice(opts ...Option) Single {
 	s := make([]interface{}, 0)
+
 	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
 		s = append(s, item.Value)
 	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {

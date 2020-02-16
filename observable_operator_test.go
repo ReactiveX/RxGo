@@ -715,6 +715,63 @@ func Test_Observable_TakeWhile(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(1, 2))
 }
 
+func Test_Observable_ToMap(t *testing.T) {
+	obs := testObservable(3, 4, 5, true, false).ToMap(func(i interface{}) (interface{}, error) {
+		switch v := i.(type) {
+		case int:
+			return v, nil
+		case bool:
+			if v {
+				return 0, nil
+			}
+			return 1, nil
+		default:
+			return i, nil
+		}
+	})
+	Assert(context.Background(), t, obs, HasItem(map[interface{}]interface{}{
+		3: 3,
+		4: 4,
+		5: 5,
+		0: true,
+		1: false,
+	}))
+}
+
+func Test_Observable_ToMapWithValueSelector(t *testing.T) {
+	keySelector := func(i interface{}) (interface{}, error) {
+		switch v := i.(type) {
+		case int:
+			return v, nil
+		case bool:
+			if v {
+				return 0, nil
+			}
+			return 1, nil
+		default:
+			return i, nil
+		}
+	}
+	valueSelector := func(i interface{}) (interface{}, error) {
+		switch v := i.(type) {
+		case int:
+			return v * 10, nil
+		case bool:
+			return v, nil
+		default:
+			return i, nil
+		}
+	}
+	single := testObservable(3, 4, 5, true, false).ToMapWithValueSelector(keySelector, valueSelector)
+	Assert(context.Background(), t, single, HasItem(map[interface{}]interface{}{
+		3: 30,
+		4: 40,
+		5: 50,
+		0: true,
+		1: false,
+	}))
+}
+
 func Test_Observable_ToSlice(t *testing.T) {
 	single := testObservable(1, 2, 3).ToSlice()
 	Assert(context.Background(), t, single, HasItem([]interface{}{1, 2, 3}))
