@@ -472,13 +472,6 @@ func Test_Observable_OnErrorResumeNext(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(1, 2, 10, 20), HasNotRaisedError())
 }
 
-func Test_Observable_OnErrorResumeNext_Parallel(t *testing.T) {
-	obs := testObservable(1, 2, errFoo, 4).OnErrorResumeNext(func(e error) Observable {
-		return testObservable(10, 20)
-	}, WithPool(3))
-	Assert(context.Background(), t, obs, HasItems(1, 2, 10, 20), HasNotRaisedError())
-}
-
 func Test_Observable_Retry(t *testing.T) {
 	i := 0
 	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {

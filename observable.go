@@ -134,6 +134,8 @@ func parallel(ctx context.Context, pool int, next chan Item, iterable Iterable, 
 		stop: func() {
 			stopped.Set()
 		},
+		// TODO Can we implement a reset strategy with a parallel implementation
+		resetIterable: func(_ Iterable) {},
 	}
 
 	wg := sync.WaitGroup{}
