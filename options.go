@@ -1,58 +1,64 @@
 package rxgo
 
-import "context"
-
-// BackpressureStrategy is the backpressure strategy type
-type BackpressureStrategy uint32
-
-const (
-	// None means backpressure management
-	None BackpressureStrategy = iota
-	// Drop least recent items
-	Drop
-	// Buffer items
-	Buffer
+import (
+	"context"
+	"runtime"
 )
 
-// Option is the configuration of an observable
+// Option handles configurable options.
 type Option interface {
 	apply(*funcOption)
-	Buffer() int
-	BackpressureStrategy() BackpressureStrategy
-	Context() context.Context
-	NewWorkerPool() int
-	WorkerPool() *workerPool
+	withBuffer() (bool, int)
+	withContext() (bool, context.Context)
+	withEagerObservation() bool
+	withPool() (bool, int)
+	buildChannel() chan Item
+	buildContext() context.Context
+	buildBackPressureStrategy() BackpressureStrategy
 }
 
-// funcOption wraps a function that modifies options into an
-// implementation of the Option interface.
 type funcOption struct {
-	f             func(*funcOption)
-	buffer        int
-	bpStrategy    BackpressureStrategy
-	ctx           context.Context
-	newWorkerPool int
-	workerPool    *workerPool
+	f                    func(*funcOption)
+	toBuffer             bool
+	buffer               int
+	ctx                  context.Context
+	eagerObservation     bool
+	pool                 int
+	backPressureStrategy BackpressureStrategy
 }
 
-func (fdo *funcOption) Buffer() int {
-	return fdo.buffer
+func (fdo *funcOption) withBuffer() (bool, int) {
+	return fdo.toBuffer, fdo.buffer
 }
 
-func (fdo *funcOption) BackpressureStrategy() BackpressureStrategy {
-	return fdo.bpStrategy
+func (fdo *funcOption) withContext() (bool, context.Context) {
+	return fdo.ctx != nil, fdo.ctx
 }
 
-func (fdo *funcOption) Context() context.Context {
-	return fdo.ctx
+func (fdo *funcOption) withEagerObservation() bool {
+	return fdo.eagerObservation
 }
 
-func (fdo *funcOption) NewWorkerPool() int {
-	return fdo.newWorkerPool
+func (fdo *funcOption) withPool() (bool, int) {
+	return fdo.pool > 0, fdo.pool
 }
 
-func (fdo *funcOption) WorkerPool() *workerPool {
-	return fdo.workerPool
+func (fdo *funcOption) buildChannel() chan Item {
+	if toBeBuffered, cap := fdo.withBuffer(); toBeBuffered {
+		return make(chan Item, cap)
+	}
+	return make(chan Item)
+}
+
+func (fdo *funcOption) buildContext() context.Context {
+	if withContext, c := fdo.withContext(); withContext {
+		return c
+	}
+	return context.Background()
+}
+
+func (fdo *funcOption) buildBackPressureStrategy() BackpressureStrategy {
+	return fdo.backPressureStrategy
 }
 
 func (fdo *funcOption) apply(do *funcOption) {
@@ -65,9 +71,7 @@ func newFuncOption(f func(*funcOption)) *funcOption {
 	}
 }
 
-// ParseOptions parse the given options and mutate the options
-// structure
-func ParseOptions(opts ...Option) Option {
+func parseOptions(opts ...Option) Option {
 	o := new(funcOption)
 	for _, opt := range opts {
 		opt.apply(o)
@@ -75,59 +79,45 @@ func ParseOptions(opts ...Option) Option {
 	return o
 }
 
-// WithBufferedChannel allows to configure the capacity of a buffered channel
+// WithBufferedChannel allows to configure the capacity of a buffered channel.
 func WithBufferedChannel(capacity int) Option {
 	return newFuncOption(func(options *funcOption) {
+		options.toBuffer = true
 		options.buffer = capacity
 	})
 }
 
-// WithoutBackpressureStrategy indicates to apply the None backpressure strategy
-func WithoutBackpressureStrategy() Option {
-	return newFuncOption(func(options *funcOption) {
-		options.bpStrategy = None
-	})
-}
-
-// WithDropBackpressureStrategy indicates to apply the Drop backpressure strategy
-func WithDropBackpressureStrategy() Option {
-	return newFuncOption(func(options *funcOption) {
-		options.bpStrategy = Drop
-	})
-}
-
-// WithBufferBackpressureStrategy indicates to apply the Drop backpressure strategy
-func WithBufferBackpressureStrategy(buffer int) Option {
-	return newFuncOption(func(options *funcOption) {
-		options.bpStrategy = Buffer
-		options.buffer = buffer
-	})
-}
-
-// WithContext passes a given context
+// WithContext allows to pass a context.
 func WithContext(ctx context.Context) Option {
 	return newFuncOption(func(options *funcOption) {
 		options.ctx = ctx
 	})
 }
 
-// WithCPUPool indicates to apply a pool size based on GOMAXPROCS
+// WithEagerObservation uses the eager observation mode meaning consuming the items even without subscription.
+func WithEagerObservation() Option {
+	return newFuncOption(func(options *funcOption) {
+		options.eagerObservation = true
+	})
+}
+
+// WithPool allows to specify an execution pool.
+func WithPool(pool int) Option {
+	return newFuncOption(func(options *funcOption) {
+		options.pool = pool
+	})
+}
+
+// WithCPUPool allows to specify an execution pool based on the number of logical CPUs.
 func WithCPUPool() Option {
 	return newFuncOption(func(options *funcOption) {
-		options.workerPool = &cpuPool
+		options.pool = runtime.NumCPU()
 	})
 }
 
-// WithNewWorkerPool indicates to apply a given pool size
-func WithNewWorkerPool(capacity int) Option {
+// WithBackPressureStrategy sets the back pressure strategy: drop or block.
+func WithBackPressureStrategy(strategy BackpressureStrategy) Option {
 	return newFuncOption(func(options *funcOption) {
-		options.newWorkerPool = capacity
-	})
-}
-
-// WithWorkerPool indicates to apply a given worker pool
-func WithWorkerPool(wp *workerPool) Option {
-	return newFuncOption(func(options *funcOption) {
-		options.workerPool = wp
+		options.backPressureStrategy = strategy
 	})
 }

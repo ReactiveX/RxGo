@@ -1,151 +1,46 @@
 package rxgo
 
-import (
-	"context"
+import "context"
 
-	"github.com/pkg/errors"
-)
-
-// Single is similar to an Observable but emits only one single element or an error notification.
+// Single is a observable with a single element.
 type Single interface {
 	Iterable
-	Filter(apply Predicate) OptionalSingle
-	Map(apply Function) Single
-	Subscribe(handler EventHandler, opts ...Option) Observer
-}
-
-// OptionalSingle represents an optional single observable type
-type OptionalSingle interface {
-	Subscribe(handler EventHandler, opts ...Option) Observer
+	Filter(apply Predicate, opts ...Option) OptionalSingle
+	Map(apply Func, opts ...Option) Single
 }
 
 type single struct {
 	iterable Iterable
 }
 
-type optionalSingle struct {
-	itemChannel chan Optional
-}
-
-func newSingleFrom(item interface{}) Single {
-	f := func(out chan interface{}) {
-		out <- item
-		close(out)
-	}
-	return newColdSingle(f)
-}
-
-func newOptionalSingleFrom(opt Optional) OptionalSingle {
-	s := optionalSingle{
-		itemChannel: make(chan Optional),
-	}
-
-	go func() {
-		s.itemChannel <- opt
-		close(s.itemChannel)
-	}()
-
-	return &s
-}
-
-func newColdSingle(f func(chan interface{})) Single {
+func newSingleFromOperator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, opts ...Option) Single {
 	return &single{
-		iterable: newIterableFromFunc(f),
+		iterable: operator(iterable, nextFunc, errFunc, endFunc, opts...),
 	}
 }
 
-// NewOptionalSingleFromChannel creates a new OptionalSingle from a channel input
-func NewOptionalSingleFromChannel(ch chan Optional) OptionalSingle {
-	return &optionalSingle{
-		itemChannel: ch,
-	}
+func (s *single) Observe(opts ...Option) <-chan Item {
+	return s.iterable.Observe()
 }
 
-func (s *single) Iterator(ctx context.Context) Iterator {
-	return s.iterable.Iterator(context.Background())
-}
-
-func (s *single) Filter(apply Predicate) OptionalSingle {
-	out := make(chan Optional)
-	go func() {
-		it := s.iterable.Iterator(context.Background())
-		if item, err := it.Next(context.Background()); err == nil {
-			if apply(item) {
-				out <- Of(item)
-			} else {
-				out <- EmptyOptional()
-			}
-			close(out)
-			return
+func (s *single) Filter(apply Predicate, opts ...Option) OptionalSingle {
+	return newOptionalSingleFromOperator(s, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
+		if apply(item.Value) {
+			dst <- item
 		}
-	}()
-
-	return &optionalSingle{
-		itemChannel: out,
-	}
+		operator.stop()
+	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
 }
 
-func (s *single) Map(apply Function) Single {
-	f := func(out chan interface{}) {
-		it := s.iterable.Iterator(context.Background())
-		if item, err := it.Next(context.Background()); err == nil {
-			out <- apply(item)
-			close(out)
-			return
-		}
-	}
-	return newColdSingle(f)
-}
-
-func (s *single) Subscribe(handler EventHandler, opts ...Option) Observer {
-	ob := NewObserver(handler)
-
-	go func() {
-		it := s.iterable.Iterator(context.Background())
-		if item, err := it.Next(context.Background()); err == nil {
-			switch item := item.(type) {
-			case error:
-				err := ob.OnError(item)
-				if err != nil {
-					panic(errors.Wrap(err, "error while sending error item from single"))
-				}
-			default:
-				err := ob.OnNext(item)
-				if err != nil {
-					panic(errors.Wrap(err, "error while sending next item from single"))
-				}
-				ob.Dispose()
-			}
+func (s *single) Map(apply Func, opts ...Option) Single {
+	return newSingleFromOperator(s, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
+		res, err := apply(item.Value)
+		if err != nil {
+			dst <- FromError(err)
+			operator.stop()
 		} else {
-			err := ob.OnDone()
-			if err != nil {
-				panic(errors.Wrap(err, "error while sending done signal from single"))
-			}
+			dst <- FromValue(res)
+			operator.stop()
 		}
-	}()
-
-	return ob
-}
-
-func (s *optionalSingle) Subscribe(handler EventHandler, opts ...Option) Observer {
-	ob := NewObserver(handler)
-
-	go func() {
-		item := <-s.itemChannel
-		switch item := item.(type) {
-		case error:
-			err := ob.OnError(item)
-			if err != nil {
-				panic(errors.Wrap(err, "error while sending error item from optional single"))
-			}
-		default:
-			err := ob.OnNext(item)
-			if err != nil {
-				panic(errors.Wrap(err, "error while sending next item from optional single"))
-			}
-			ob.Dispose()
-		}
-	}()
-
-	return ob
+	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
 }

@@ -2,174 +2,221 @@ package rxgo
 
 import (
 	"context"
-	"errors"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 )
 
-const testWaitTime = 30 * time.Millisecond
+// AssertPredicate is a custom predicate based on the items.
+type AssertPredicate func(items []interface{}) error
 
-// RxAssertion lists the assertions which may be configured on an Observable.
-type RxAssertion interface {
-	apply(*assertion)
-	hasItemsFunc() (bool, []interface{})
-	hasItemsNoOrderFunc() (bool, []interface{})
-	hasSizeFunc() (bool, int)
-	hasValueFunc() (bool, interface{})
-	hasRaisedErrorFunc() (bool, error)
-	hasRaisedAnErrorFunc() bool
-	hasNotRaisedAnErrorFunc() bool
-	isEmptyFunc() (bool, bool)
+// RxAssert lists the Observable assertions.
+type RxAssert interface {
+	apply(*rxAssert)
+	itemsToBeChecked() (bool, []interface{})
+	itemsNoOrderedToBeChecked() (bool, []interface{})
+	noItemsToBeChecked() bool
+	someItemsToBeChecked() bool
+	raisedErrorToBeChecked() (bool, error)
+	raisedAnErrorToBeChecked() (bool, error)
+	notRaisedErrorToBeChecked() bool
+	itemToBeChecked() (bool, interface{})
+	noItemToBeChecked() (bool, interface{})
+	customPredicatesToBeChecked() (bool, []AssertPredicate)
 }
 
-type assertion struct {
-	f                        func(*assertion)
-	checkHasItems            bool
-	hasItems                 []interface{}
-	checkHasItemsNoOrder     bool
-	hasItemsNoOrder          []interface{}
-	checkHasSize             bool
-	hasSize                  int
-	checkHasValue            bool
-	hasValue                 interface{}
-	checkHasRaisedError      bool
-	hasRaisedError           error
-	checkHasRaisedAnError    bool
-	checkHasNotRaisedAnError bool
-	checkIsEmpty             bool
-	isEmpty                  bool
+type rxAssert struct {
+	f                       func(*rxAssert)
+	checkHasItems           bool
+	checkHasNoItems         bool
+	checkHasSomeItems       bool
+	items                   []interface{}
+	checkHasItemsNoOrder    bool
+	itemsNoOrder            []interface{}
+	checkHasRaisedError     bool
+	error                   error
+	checkHasRaisedAnError   bool
+	checkHasNotRaisedError  bool
+	checkHasItem            bool
+	item                    interface{}
+	checkHasNoItem          bool
+	checkHasCustomPredicate bool
+	customPredicates        []AssertPredicate
 }
 
-func (ass *assertion) hasItemsFunc() (bool, []interface{}) {
-	return ass.checkHasItems, ass.hasItems
-}
-
-func (ass *assertion) hasItemsNoOrderFunc() (bool, []interface{}) {
-	return ass.checkHasItemsNoOrder, ass.hasItemsNoOrder
-}
-
-func (ass *assertion) hasSizeFunc() (bool, int) {
-	return ass.checkHasSize, ass.hasSize
-}
-
-func (ass *assertion) hasValueFunc() (bool, interface{}) {
-	return ass.checkHasValue, ass.hasValue
-}
-
-func (ass *assertion) hasRaisedErrorFunc() (bool, error) {
-	return ass.checkHasRaisedError, ass.hasRaisedError
-}
-
-func (ass *assertion) hasRaisedAnErrorFunc() bool {
-	return ass.checkHasRaisedAnError
-}
-
-func (ass *assertion) hasNotRaisedAnErrorFunc() bool {
-	return ass.checkHasNotRaisedAnError
-}
-
-func (ass *assertion) isEmptyFunc() (bool, bool) {
-	return ass.checkIsEmpty, ass.isEmpty
-}
-
-func (ass *assertion) apply(do *assertion) {
+func (ass *rxAssert) apply(do *rxAssert) {
 	ass.f(do)
 }
 
-func newAssertion(f func(*assertion)) *assertion {
-	return &assertion{
+func (ass *rxAssert) itemsToBeChecked() (bool, []interface{}) {
+	return ass.checkHasItems, ass.items
+}
+
+func (ass *rxAssert) itemsNoOrderedToBeChecked() (bool, []interface{}) {
+	return ass.checkHasItemsNoOrder, ass.itemsNoOrder
+}
+
+func (ass *rxAssert) noItemsToBeChecked() bool {
+	return ass.checkHasNoItems
+}
+
+func (ass *rxAssert) someItemsToBeChecked() bool {
+	return ass.checkHasSomeItems
+}
+
+func (ass *rxAssert) raisedErrorToBeChecked() (bool, error) {
+	return ass.checkHasRaisedError, ass.error
+}
+
+func (ass *rxAssert) raisedAnErrorToBeChecked() (bool, error) {
+	return ass.checkHasRaisedAnError, ass.error
+}
+
+func (ass *rxAssert) notRaisedErrorToBeChecked() bool {
+	return ass.checkHasNotRaisedError
+}
+
+func (ass *rxAssert) itemToBeChecked() (bool, interface{}) {
+	return ass.checkHasItem, ass.item
+}
+
+func (ass *rxAssert) noItemToBeChecked() (bool, interface{}) {
+	return ass.checkHasNoItem, ass.item
+}
+
+func (ass *rxAssert) customPredicatesToBeChecked() (bool, []AssertPredicate) {
+	return ass.checkHasCustomPredicate, ass.customPredicates
+}
+
+func newAssertion(f func(*rxAssert)) *rxAssert {
+	return &rxAssert{
 		f: f,
 	}
 }
 
-func parseAssertions(assertions ...RxAssertion) RxAssertion {
-	a := new(assertion)
-	for _, assertion := range assertions {
-		assertion.apply(a)
-	}
-	return a
-}
-
-// HasItems checks that an observable produces the corresponding items.
-func HasItems(items ...interface{}) RxAssertion {
-	return newAssertion(func(a *assertion) {
+// HasItems checks that the observable produces the corresponding items.
+func HasItems(items ...interface{}) RxAssert {
+	return newAssertion(func(a *rxAssert) {
 		a.checkHasItems = true
-		a.hasItems = items
+		a.items = items
 	})
 }
 
-// HasItemsNoOrder checks that an observable produces the corresponding items regardless of the order.
-func HasItemsNoOrder(items ...interface{}) RxAssertion {
-	return newAssertion(func(a *assertion) {
+// HasSomeItems checks that the observable produces some items.
+func HasSomeItems() RxAssert {
+	return newAssertion(func(a *rxAssert) {
+		a.checkHasSomeItems = true
+	})
+}
+
+// HasNoItems checks that the observable has not produce any item.
+func HasNoItems() RxAssert {
+	return newAssertion(func(a *rxAssert) {
+		a.checkHasNoItems = true
+	})
+}
+
+// HasItemsNoParticularOrder checks that an observable produces the corresponding items regardless of the order.
+func HasItemsNoParticularOrder(items ...interface{}) RxAssert {
+	return newAssertion(func(a *rxAssert) {
 		a.checkHasItemsNoOrder = true
-		a.hasItemsNoOrder = items
+		a.itemsNoOrder = items
 	})
 }
 
-// HasSize checks that an observable produces the corresponding number of items.
-func HasSize(size int) RxAssertion {
-	return newAssertion(func(a *assertion) {
-		a.checkHasSize = true
-		a.hasSize = size
-	})
-}
-
-// IsEmpty checks that an observable produces zero items.
-func IsEmpty() RxAssertion {
-	return newAssertion(func(a *assertion) {
-		a.checkIsEmpty = true
-		a.isEmpty = true
-	})
-}
-
-// IsNotEmpty checks that an observable produces items.
-func IsNotEmpty() RxAssertion {
-	return newAssertion(func(a *assertion) {
-		a.checkIsEmpty = true
-		a.isEmpty = false
-	})
-}
-
-// HasValue checks that a single produces the corresponding value.
-func HasValue(value interface{}) RxAssertion {
-	return newAssertion(func(a *assertion) {
-		a.checkHasValue = true
-		a.hasValue = value
-	})
-}
-
-// HasRaisedError checks that a single raises the corresponding error.
-func HasRaisedError(err error) RxAssertion {
-	return newAssertion(func(a *assertion) {
+// HasRaisedError checks that the observable has produce a specific error.
+func HasRaisedError(err error) RxAssert {
+	return newAssertion(func(a *rxAssert) {
 		a.checkHasRaisedError = true
-		a.hasRaisedError = err
+		a.error = err
 	})
 }
 
-// HasRaisedAnError checks that a single raises an error.
-func HasRaisedAnError() RxAssertion {
-	return newAssertion(func(a *assertion) {
+// HasRaisedAnError checks that the observable has produce an error.
+func HasRaisedAnError() RxAssert {
+	return newAssertion(func(a *rxAssert) {
 		a.checkHasRaisedAnError = true
 	})
 }
 
-// HasNotRaisedAnyError checks that a single does not raise an error.
-func HasNotRaisedAnyError() RxAssertion {
-	return newAssertion(func(a *assertion) {
-		a.checkHasNotRaisedAnError = true
+// HasNotRaisedError checks that the observable has not raised any error.
+func HasNotRaisedError() RxAssert {
+	return newAssertion(func(a *rxAssert) {
+		a.checkHasRaisedError = true
 	})
 }
 
-func assertObservable(t *testing.T, ass RxAssertion, got []interface{}, err error) {
-	checkHasItems, items := ass.hasItemsFunc()
-	if checkHasItems {
-		assert.Equal(t, items, got)
+// HasItem checks if a single or optional single has a specific item.
+func HasItem(i interface{}) RxAssert {
+	return newAssertion(func(a *rxAssert) {
+		a.checkHasItem = true
+		a.item = i
+	})
+}
+
+// HasNoItem checks if a single or optional single has no item.
+func HasNoItem() RxAssert {
+	return newAssertion(func(a *rxAssert) {
+		a.checkHasNoItem = true
+	})
+}
+
+// CustomPredicate checks a custom predicate.
+func CustomPredicate(predicate AssertPredicate) RxAssert {
+	return newAssertion(func(a *rxAssert) {
+		if !a.checkHasCustomPredicate {
+			a.checkHasCustomPredicate = true
+			a.customPredicates = make([]AssertPredicate, 0)
+		}
+		a.customPredicates = append(a.customPredicates, predicate)
+	})
+}
+
+func parseAssertions(assertions ...RxAssert) RxAssert {
+	ass := new(rxAssert)
+	for _, assertion := range assertions {
+		assertion.apply(ass)
+	}
+	return ass
+}
+
+// Assert asserts the result of an iterable against a list of assertions.
+func Assert(ctx context.Context, t *testing.T, iterable Iterable, assertions ...RxAssert) {
+	ass := parseAssertions(assertions...)
+
+	got := make([]interface{}, 0)
+	var err error
+
+	observe := iterable.Observe()
+loop:
+	for {
+		select {
+		case <-ctx.Done():
+			break loop
+		case item, ok := <-observe:
+			if !ok {
+				break loop
+			}
+			if item.IsError() {
+				err = item.Err
+			} else {
+				got = append(got, item.Value)
+			}
+		}
 	}
 
-	checkHasItemsNoOrder, itemsNoOrder := ass.hasItemsNoOrderFunc()
-	if checkHasItemsNoOrder {
+	if checked, predicates := ass.customPredicatesToBeChecked(); checked {
+		for _, predicate := range predicates {
+			err := predicate(got)
+			if err != nil {
+				assert.Fail(t, err.Error())
+			}
+		}
+	}
+	if checkHasItems, expectedItems := ass.itemsToBeChecked(); checkHasItems {
+		assert.Equal(t, expectedItems, got)
+	}
+	if checkHasItemsNoOrder, itemsNoOrder := ass.itemsNoOrderedToBeChecked(); checkHasItemsNoOrder {
 		m := make(map[interface{}]interface{})
 		for _, v := range itemsNoOrder {
 			m[v] = nil
@@ -180,164 +227,22 @@ func assertObservable(t *testing.T, ass RxAssertion, got []interface{}, err erro
 		}
 		assert.Equal(t, 0, len(m))
 	}
-
-	checkHasSize, size := ass.hasSizeFunc()
-	if checkHasSize {
-		assert.Equal(t, size, len(got))
+	if checkHasItem, value := ass.itemToBeChecked(); checkHasItem {
+		assert.Equal(t, value, got[0])
 	}
-
-	checkIsEmpty, empty := ass.isEmptyFunc()
-	if checkIsEmpty {
-		if empty {
-			assert.Equal(t, 0, len(got))
-		} else {
-			assert.NotEqual(t, 0, len(got))
-		}
+	if ass.noItemsToBeChecked() {
+		assert.Equal(t, 0, len(got))
 	}
-
-	checkHasRaisedAnError := ass.hasRaisedAnErrorFunc()
-	if checkHasRaisedAnError {
-		assert.NotNil(t, err)
+	if ass.someItemsToBeChecked() {
+		assert.NotEqual(t, 0, len(got))
 	}
-
-	checkHasRaisedError, value := ass.hasRaisedErrorFunc()
-	if checkHasRaisedError {
-		assert.Equal(t, value, err)
+	if checkHasRaisedError, expectedError := ass.raisedErrorToBeChecked(); checkHasRaisedError {
+		assert.Equal(t, expectedError, err)
 	}
-
-	checkHasNotRaisedError := ass.hasNotRaisedAnErrorFunc()
-	if checkHasNotRaisedError {
+	if checkHasRaisedAnError, expectedError := ass.raisedAnErrorToBeChecked(); checkHasRaisedAnError {
+		assert.Nil(t, expectedError)
+	}
+	if ass.notRaisedErrorToBeChecked() {
 		assert.Nil(t, err)
-	}
-}
-
-// AssertObservable asserts the result of an Observable against a list of assertions.
-func AssertObservable(t *testing.T, observable Observable, assertions ...RxAssertion) {
-	ass := parseAssertions(assertions...)
-	got := make([]interface{}, 0)
-	var err error
-	observable.ForEach(func(i interface{}) {
-		got = append(got, i)
-	}, func(e error) {
-		err = e
-	}, nil).Block()
-	assertObservable(t, ass, got, err)
-}
-
-// AssertObservableEventually asserts eventually the result of an Observable against a list of assertions.
-func AssertObservableEventually(t *testing.T, observable Observable, timeout time.Duration, assertions ...RxAssertion) {
-	ass := parseAssertions(assertions...)
-
-	chItem := make(chan interface{}, 1)
-	defer close(chItem)
-	chErr := make(chan error)
-	defer close(chErr)
-
-	got := make([]interface{}, 0)
-	var err error
-
-	observable.ForEach(func(i interface{}) {
-		chItem <- i
-	}, func(e error) {
-		chErr <- e
-	}, nil)
-	ctxTimeout, ctxTimeoutF := context.WithTimeout(context.Background(), timeout)
-	defer ctxTimeoutF()
-
-mainLoop:
-	for {
-		select {
-		case item, open := <-chItem:
-			if open {
-				got = append(got, item)
-			} else {
-				break mainLoop
-			}
-		case e := <-chErr:
-			err = e
-		case <-ctxTimeout.Done():
-			break mainLoop
-		}
-	}
-
-	assertObservable(t, ass, got, err)
-}
-
-// AssertSingle asserts the result of a Single against a list of assertions.
-func AssertSingle(t *testing.T, single Single, assertions ...RxAssertion) {
-	ass := parseAssertions(assertions...)
-
-	var v interface{}
-	var err error
-	single.Subscribe(NewObserver(NextFunc(func(i interface{}) {
-		v = i
-	}), ErrFunc(func(e error) {
-		err = e
-	}))).Block()
-
-	checkHasValue, value := ass.hasValueFunc()
-	if checkHasValue {
-		assert.NoError(t, err)
-		assert.Equal(t, value, v)
-	}
-
-	checkHasRaisedAnError := ass.hasRaisedAnErrorFunc()
-	if checkHasRaisedAnError {
-		assert.NotNil(t, err)
-	}
-
-	checkHasRaisedError, value := ass.hasRaisedErrorFunc()
-	if checkHasRaisedError {
-		assert.Equal(t, value, err)
-	}
-
-	checkHasNotRaisedError := ass.hasNotRaisedAnErrorFunc()
-	if checkHasNotRaisedError {
-		assert.Nil(t, err)
-	}
-}
-
-// AssertOptionalSingle asserts the result of an OptionalSingle against a list of assertions.
-func AssertOptionalSingle(t *testing.T, optionalSingle OptionalSingle, assertions ...RxAssertion) {
-	ass := parseAssertions(assertions...)
-
-	var v interface{}
-	var err error
-	optionalSingle.Subscribe(NewObserver(NextFunc(func(i interface{}) {
-		v = i
-	}), ErrFunc(func(e error) {
-		err = e
-	}))).Block()
-	assert.NoError(t, err)
-
-	if optional, ok := v.(Optional); ok {
-		checkIsEmpty, empty := ass.isEmptyFunc()
-		if checkIsEmpty {
-			if empty {
-				assert.True(t, optional.IsEmpty())
-			} else {
-				assert.False(t, optional.IsEmpty())
-			}
-		}
-
-		got, emptyError := optional.Get()
-
-		checkHasRaisedAnError := ass.hasRaisedAnErrorFunc()
-		if checkHasRaisedAnError {
-			assert.Nil(t, emptyError)
-			assert.IsType(t, errors.New(""), got)
-		}
-
-		checkHasRaisedError, emptyError := ass.hasRaisedErrorFunc()
-		if checkHasRaisedError {
-			assert.Equal(t, emptyError, got)
-		}
-
-		checkHasValue, value := ass.hasValueFunc()
-		if checkHasValue {
-			assert.Equal(t, value, got)
-		}
-	} else {
-		assert.Fail(t, "OptionalSingle did not produce an Optional")
 	}
 }
