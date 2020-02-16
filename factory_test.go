@@ -9,8 +9,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func Test_Amb1(t *testing.T) {
+	obs := Amb([]Observable{testObservable(1, 2, 3), Empty()})
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3))
+}
+
+func Test_Amb2(t *testing.T) {
+	obs := Amb([]Observable{Empty(), testObservable(1, 2, 3), Empty(), Empty()})
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3))
+}
+
 func Test_Empty(t *testing.T) {
-	obs := FromEmpty()
+	obs := Empty()
 	Assert(context.Background(), t, obs, HasNoItems())
 }
 
@@ -152,24 +162,24 @@ func Test_FromFuncs_ComposedCapacity(t *testing.T) {
 }
 
 func Test_FromItem(t *testing.T) {
-	single := FromItem(FromValue(1))
+	single := JustItem(FromValue(1))
 	Assert(context.Background(), t, single, HasItem(1), HasNotRaisedError())
 	Assert(context.Background(), t, single, HasItem(1), HasNotRaisedError())
 }
 
 func Test_FromItems(t *testing.T) {
-	obs := FromItems(FromValue(1), FromValue(2), FromValue(3))
+	obs := Just(FromValue(1), FromValue(2), FromValue(3))
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
 }
 
 func Test_FromItems_SimpleCapacity(t *testing.T) {
-	ch := FromItems(FromValue(1)).Observe(WithBufferedChannel(5))
+	ch := Just(FromValue(1)).Observe(WithBufferedChannel(5))
 	assert.Equal(t, 5, cap(ch))
 }
 
 func Test_FromItems_ComposedCapacity(t *testing.T) {
-	obs1 := FromItems(FromValue(1)).Map(func(_ interface{}) (interface{}, error) {
+	obs1 := Just(FromValue(1)).Map(func(_ interface{}) (interface{}, error) {
 		return 1, nil
 	}, WithBufferedChannel(11))
 	assert.Equal(t, 11, cap(obs1.Observe(WithBufferedChannel(13))))

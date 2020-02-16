@@ -1,9 +1,65 @@
 package rxgo
 
-import "context"
+import (
+	"context"
+	"sync"
+)
 
-// FromEmpty creates an Observable with no item and terminate immediately.
-func FromEmpty() Observable {
+// Amb take several Observables, emit all of the items from only the first of these Observables
+// to emit an item or notification
+func Amb(observables []Observable, opts ...Option) Observable {
+	option := parseOptions(opts...)
+	ctx := option.buildContext()
+	next := option.buildChannel()
+	once := sync.Once{}
+
+	f := func(o Observable) {
+		it := o.Observe()
+
+		select {
+		case <-ctx.Done():
+			return
+		case item, ok := <-it:
+			if !ok {
+				return
+			}
+			once.Do(func() {
+				defer close(next)
+				if item.IsError() {
+					next <- item
+					return
+				}
+				next <- item
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					case item, ok := <-it:
+						if !ok {
+							return
+						}
+						if item.IsError() {
+							next <- item
+							return
+						}
+						next <- item
+					}
+				}
+			})
+		}
+	}
+
+	for _, o := range observables {
+		go f(o)
+	}
+
+	return &observable{
+		iterable: newChannelIterable(next),
+	}
+}
+
+// Empty creates an Observable with no item and terminate immediately.
+func Empty() Observable {
 	next := make(chan Item)
 	close(next)
 	return &observable{
@@ -32,15 +88,8 @@ func FromFuncs(f ...Scatter) Observable {
 	}
 }
 
-// FromItem creates a single from one item.
-func FromItem(item Item) Single {
-	return &single{
-		iterable: newSliceIterable([]Item{item}),
-	}
-}
-
-// FromItems creates an Observable with the provided items.
-func FromItems(item Item, items ...Item) Observable {
+// Just creates an Observable with the provided items.
+func Just(item Item, items ...Item) Observable {
 	if len(items) > 0 {
 		items = append([]Item{item}, items...)
 	} else {
@@ -48,5 +97,12 @@ func FromItems(item Item, items ...Item) Observable {
 	}
 	return &observable{
 		iterable: newSliceIterable(items),
+	}
+}
+
+// JustItem creates a single from one item.
+func JustItem(item Item) Single {
+	return &single{
+		iterable: newSliceIterable([]Item{item}),
 	}
 }

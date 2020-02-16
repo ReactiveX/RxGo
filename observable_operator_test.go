@@ -30,49 +30,49 @@ func Test_Observable_All(t *testing.T) {
 func Test_Observable_AverageFloat32(t *testing.T) {
 	Assert(context.Background(), t, testObservable(float32(1), float32(2), float32(3)).AverageFloat32(), HasItem(float32(2)))
 	Assert(context.Background(), t, testObservable(float32(1), float32(20)).AverageFloat32(), HasItem(float32(10.5)))
-	Assert(context.Background(), t, FromEmpty().AverageFloat32(), HasItem(0))
+	Assert(context.Background(), t, Empty().AverageFloat32(), HasItem(0))
 	Assert(context.Background(), t, testObservable("x").AverageFloat32(), HasRaisedAnError())
 }
 
 func Test_Observable_AverageFloat64(t *testing.T) {
 	Assert(context.Background(), t, testObservable(float64(1), float64(2), float64(3)).AverageFloat64(), HasItem(float64(2)))
 	Assert(context.Background(), t, testObservable(float64(1), float64(20)).AverageFloat64(), HasItem(10.5))
-	Assert(context.Background(), t, FromEmpty().AverageFloat64(), HasItem(0))
+	Assert(context.Background(), t, Empty().AverageFloat64(), HasItem(0))
 	Assert(context.Background(), t, testObservable("x").AverageFloat64(), HasRaisedAnError())
 }
 
 func Test_Observable_AverageInt(t *testing.T) {
 	Assert(context.Background(), t, testObservable(1, 2, 3).AverageInt(), HasItem(2))
 	Assert(context.Background(), t, testObservable(1, 20).AverageInt(), HasItem(10))
-	Assert(context.Background(), t, FromEmpty().AverageInt(), HasItem(0))
+	Assert(context.Background(), t, Empty().AverageInt(), HasItem(0))
 	Assert(context.Background(), t, testObservable(1.1, 2.2, 3.3).AverageInt(), HasRaisedAnError())
 }
 
 func Test_Observable_AverageInt8(t *testing.T) {
 	Assert(context.Background(), t, testObservable(int8(1), int8(2), int8(3)).AverageInt8(), HasItem(int8(2)))
 	Assert(context.Background(), t, testObservable(int8(1), int8(20)).AverageInt8(), HasItem(int8(10)))
-	Assert(context.Background(), t, FromEmpty().AverageInt8(), HasItem(0))
+	Assert(context.Background(), t, Empty().AverageInt8(), HasItem(0))
 	Assert(context.Background(), t, testObservable(1.1, 2.2, 3.3).AverageInt8(), HasRaisedAnError())
 }
 
 func Test_Observable_AverageInt16(t *testing.T) {
 	Assert(context.Background(), t, testObservable(int16(1), int16(2), int16(3)).AverageInt16(), HasItem(int16(2)))
 	Assert(context.Background(), t, testObservable(int16(1), int16(20)).AverageInt16(), HasItem(int16(10)))
-	Assert(context.Background(), t, FromEmpty().AverageInt16(), HasItem(0))
+	Assert(context.Background(), t, Empty().AverageInt16(), HasItem(0))
 	Assert(context.Background(), t, testObservable(1.1, 2.2, 3.3).AverageInt16(), HasRaisedAnError())
 }
 
 func Test_Observable_AverageInt32(t *testing.T) {
 	Assert(context.Background(), t, testObservable(int32(1), int32(2), int32(3)).AverageInt32(), HasItem(int32(2)))
 	Assert(context.Background(), t, testObservable(int32(1), int32(20)).AverageInt32(), HasItem(int32(10)))
-	Assert(context.Background(), t, FromEmpty().AverageInt32(), HasItem(0))
+	Assert(context.Background(), t, Empty().AverageInt32(), HasItem(0))
 	Assert(context.Background(), t, testObservable(1.1, 2.2, 3.3).AverageInt32(), HasRaisedAnError())
 }
 
 func Test_Observable_AverageInt64(t *testing.T) {
 	Assert(context.Background(), t, testObservable(int64(1), int64(2), int64(3)).AverageInt64(), HasItem(int64(2)))
 	Assert(context.Background(), t, testObservable(int64(1), int64(20)).AverageInt64(), HasItem(int64(10)))
-	Assert(context.Background(), t, FromEmpty().AverageInt64(), HasItem(0))
+	Assert(context.Background(), t, Empty().AverageInt64(), HasItem(0))
 	Assert(context.Background(), t, testObservable(1.1, 2.2, 3.3).AverageInt64(), HasRaisedAnError())
 }
 
@@ -138,8 +138,8 @@ func Test_Observable_BufferWithTime_MinorMockedTime(t *testing.T) {
 }
 
 func Test_Observable_BufferWithTime_IllegalInput(t *testing.T) {
-	Assert(context.Background(), t, FromEmpty().BufferWithTime(nil, nil), HasRaisedAnError())
-	Assert(context.Background(), t, FromEmpty().BufferWithTime(WithDuration(0*time.Second), nil), HasRaisedAnError())
+	Assert(context.Background(), t, Empty().BufferWithTime(nil, nil), HasRaisedAnError())
+	Assert(context.Background(), t, Empty().BufferWithTime(WithDuration(0*time.Second), nil), HasRaisedAnError())
 }
 
 func Test_Observable_BufferWithTime_NilTimeshift(t *testing.T) {
@@ -155,13 +155,13 @@ func Test_Observable_BufferWithTime_Error(t *testing.T) {
 }
 
 func Test_Observable_BufferWithTimeOrCount_InvalidInputs(t *testing.T) {
-	obs := FromEmpty().BufferWithTimeOrCount(nil, 5)
+	obs := Empty().BufferWithTimeOrCount(nil, 5)
 	Assert(context.Background(), t, obs, HasRaisedAnError())
 
-	obs = FromEmpty().BufferWithTimeOrCount(WithDuration(0), 5)
+	obs = Empty().BufferWithTimeOrCount(WithDuration(0), 5)
 	Assert(context.Background(), t, obs, HasRaisedAnError())
 
-	obs = FromEmpty().BufferWithTimeOrCount(WithDuration(time.Millisecond*5), 0)
+	obs = Empty().BufferWithTimeOrCount(WithDuration(time.Millisecond*5), 0)
 	Assert(context.Background(), t, obs, HasRaisedAnError())
 }
 
@@ -219,7 +219,7 @@ func Test_Observable_Count(t *testing.T) {
 }
 
 func Test_Observable_DefaultIfEmpty_Empty(t *testing.T) {
-	obs := FromEmpty().DefaultIfEmpty(3)
+	obs := Empty().DefaultIfEmpty(3)
 	Assert(context.Background(), t, obs, HasItems(3))
 }
 
@@ -283,7 +283,7 @@ func Test_Observable_First_NotEmpty(t *testing.T) {
 }
 
 func Test_Observable_First_Empty(t *testing.T) {
-	obs := FromEmpty().First()
+	obs := Empty().First()
 	Assert(context.Background(), t, obs, HasNoItem())
 }
 
@@ -293,7 +293,7 @@ func Test_Observable_FirstOrDefault_NotEmpty(t *testing.T) {
 }
 
 func Test_Observable_FirstOrDefault_Empty(t *testing.T) {
-	obs := FromEmpty().FirstOrDefault(10)
+	obs := Empty().FirstOrDefault(10)
 	Assert(context.Background(), t, obs, HasItem(10))
 }
 
@@ -382,7 +382,7 @@ func Test_Observable_Last_NotEmpty(t *testing.T) {
 }
 
 func Test_Observable_Last_Empty(t *testing.T) {
-	obs := FromEmpty().Last()
+	obs := Empty().Last()
 	Assert(context.Background(), t, obs, HasNoItem())
 }
 
@@ -392,7 +392,7 @@ func Test_Observable_LastOrDefault_NotEmpty(t *testing.T) {
 }
 
 func Test_Observable_LastOrDefault_Empty(t *testing.T) {
-	obs := FromEmpty().LastOrDefault(10)
+	obs := Empty().LastOrDefault(10)
 	Assert(context.Background(), t, obs, HasItem(10))
 }
 
@@ -528,7 +528,7 @@ func Test_Observable_Reduce(t *testing.T) {
 }
 
 func Test_Observable_Reduce_Empty(t *testing.T) {
-	obs := FromEmpty().Reduce(func(acc interface{}, elem interface{}) (interface{}, error) {
+	obs := Empty().Reduce(func(acc interface{}, elem interface{}) (interface{}, error) {
 		return 0, nil
 	})
 	Assert(context.Background(), t, obs, HasNoItem(), HasNotRaisedError())
@@ -619,7 +619,7 @@ func Test_Observable_Retry_Error(t *testing.T) {
 }
 
 func Test_Observable_Sample(t *testing.T) {
-	obs := testObservable(1).Sample(FromEmpty())
+	obs := testObservable(1).Sample(Empty())
 	Assert(context.Background(), t, obs, HasNoItem(), HasNotRaisedError())
 }
 
@@ -673,7 +673,7 @@ func Test_Observable_SequenceEqual_DifferentLengthSequence(t *testing.T) {
 }
 
 func Test_Observable_SequenceEqual_Empty(t *testing.T) {
-	result := FromEmpty().SequenceEqual(FromEmpty())
+	result := Empty().SequenceEqual(Empty())
 	Assert(context.Background(), t, result, HasItem(true))
 }
 
@@ -721,7 +721,7 @@ func Test_Observable_SumFloat32(t *testing.T) {
 	Assert(context.Background(), t, testObservable(float32(1.1), 2, int8(3), int16(1), int32(1), int64(1)).SumFloat32(),
 		HasItem(float32(9.1)))
 	Assert(context.Background(), t, testObservable(1.1, 2.2, 3.3).SumFloat32(), HasRaisedAnError())
-	Assert(context.Background(), t, FromEmpty().SumFloat32(), HasItem(float32(0)))
+	Assert(context.Background(), t, Empty().SumFloat32(), HasItem(float32(0)))
 }
 
 func Test_Observable_SumFloat64(t *testing.T) {
@@ -730,7 +730,7 @@ func Test_Observable_SumFloat64(t *testing.T) {
 	Assert(context.Background(), t, testObservable(float32(1.0), 2, int8(3), 4., int16(1), int32(1), int64(1)).SumFloat64(),
 		HasItem(13.))
 	Assert(context.Background(), t, testObservable("x").SumFloat64(), HasRaisedAnError())
-	Assert(context.Background(), t, FromEmpty().SumFloat64(), HasItem(float64(0)))
+	Assert(context.Background(), t, Empty().SumFloat64(), HasItem(float64(0)))
 }
 
 func Test_Observable_SumInt64(t *testing.T) {
@@ -738,7 +738,7 @@ func Test_Observable_SumInt64(t *testing.T) {
 	Assert(context.Background(), t, testObservable(int8(1), int(2), int16(3), int32(4), int64(5)).SumInt64(),
 		HasItem(int64(15)))
 	Assert(context.Background(), t, testObservable(1.1, 2.2, 3.3).SumInt64(), HasRaisedAnError())
-	Assert(context.Background(), t, FromEmpty().SumInt64(), HasItem(int64(0)))
+	Assert(context.Background(), t, Empty().SumInt64(), HasItem(int64(0)))
 }
 
 func Test_Observable_Take(t *testing.T) {
