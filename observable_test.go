@@ -189,7 +189,7 @@ func Test_Observable_ForEach(t *testing.T) {
 	done := make(chan struct{})
 
 	obs := testObservable(1, 2, 3, errFoo)
-	obs.ForEach(context.Background(), func(i interface{}) {
+	obs.ForEach(func(i interface{}) {
 		count += i.(int)
 	}, func(err error) {
 		gotErr = err

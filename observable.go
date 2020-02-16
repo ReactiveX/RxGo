@@ -28,7 +28,7 @@ type Observable interface {
 	Contains(equal Predicate, opts ...Option) Single
 	Count(opts ...Option) Single
 	Filter(apply Predicate, opts ...Option) Observable
-	ForEach(ctx context.Context, nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc)
+	ForEach(nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc, opts ...Option)
 	// TODO With pool
 	Map(apply Func, opts ...Option) Observable
 	Marshal(marshaler Marshaler, opts ...Option) Observable
@@ -44,16 +44,6 @@ type Observable interface {
 
 type observable struct {
 	iterable Iterable
-}
-
-func newObservableFromHandler(ctx context.Context, source Observable, handler Iterator) Observable {
-	next := make(chan Item)
-
-	go handler(ctx, source.Observe(), next)
-
-	return &observable{
-		iterable: newChannelIterable(next),
-	}
 }
 
 func defaultErrorFuncOperator(item Item, dst chan<- Item, stop func()) {
@@ -508,10 +498,10 @@ func (o *observable) Filter(apply Predicate, opts ...Option) Observable {
 		if apply(item.Value) {
 			dst <- item
 		}
-	}, defaultErrorFuncOperator, defaultEndFuncOperator)
+	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
 }
 
-func (o *observable) ForEach(ctx context.Context, nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc) {
+func (o *observable) ForEach(nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc, opts ...Option) {
 	handler := func(ctx context.Context, src <-chan Item, dst chan<- Item) {
 		for {
 			select {
@@ -531,7 +521,9 @@ func (o *observable) ForEach(ctx context.Context, nextFunc NextFunc, errFunc Err
 			}
 		}
 	}
-	newObservableFromHandler(ctx, o, handler)
+
+	next, ctx, _ := buildOptionValues(opts...)
+	go handler(ctx, o.Observe(), next)
 }
 
 func (o *observable) Map(apply Func, opts ...Option) Observable {
