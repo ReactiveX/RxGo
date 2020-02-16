@@ -389,6 +389,7 @@ func (o *observable) BufferWithTimeOrCount(timespan Duration, count int, opts ..
 					errCh <- i.Err
 					break loop
 				}
+				// TODO Improve implementation without mutex (sending data over channel)
 				bufferMutex.Lock()
 				buffer = append(buffer, i.Value)
 				if len(buffer) >= count {
@@ -435,6 +436,19 @@ func (o *observable) Count(opts ...Option) Single {
 		dst <- FromValue(count)
 		stop()
 	}, defaultEndFuncOperator, opts...)
+}
+
+func (o *observable) DefaultIfEmpty(defaultValue interface{}, opts ...Option) Observable {
+	empty := true
+
+	return newObservableFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+		empty = false
+		dst <- item
+	}, defaultErrorFuncOperator, func(dst chan<- Item) {
+		if empty {
+			dst <- FromValue(defaultValue)
+		}
+	}, opts...)
 }
 
 // Observe observes an observable by returning its channel

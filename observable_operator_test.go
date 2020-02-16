@@ -152,7 +152,7 @@ func Test_Observable_BufferWithTime_Error(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems([]interface{}{1, 2, 3}), HasRaisedError(errFoo))
 }
 
-func Test_BufferWithTimeOrCount_InvalidInputs(t *testing.T) {
+func Test_Observable_BufferWithTimeOrCount_InvalidInputs(t *testing.T) {
 	obs := FromEmpty().BufferWithTimeOrCount(nil, 5)
 	Assert(context.Background(), t, obs, HasRaisedAnError())
 
@@ -163,13 +163,13 @@ func Test_BufferWithTimeOrCount_InvalidInputs(t *testing.T) {
 	Assert(context.Background(), t, obs, HasRaisedAnError())
 }
 
-func Test_BufferWithTimeOrCount_Count(t *testing.T) {
+func Test_Observable_BufferWithTimeOrCount_Count(t *testing.T) {
 	just := testObservable(1, 2, 3)
 	obs := just.BufferWithTimeOrCount(WithDuration(1*time.Second), 2)
 	Assert(context.Background(), t, obs, HasItems([]interface{}{1, 2}, []interface{}{3}))
 }
 
-func Test_BufferWithTimeOrCount_MockedTime(t *testing.T) {
+func Test_Observable_BufferWithTimeOrCount_MockedTime(t *testing.T) {
 	ch := make(chan Item)
 	from := FromChannel(ch)
 
@@ -186,7 +186,7 @@ func Test_BufferWithTimeOrCount_MockedTime(t *testing.T) {
 	timespan.AssertCalled(t, "duration")
 }
 
-func Test_BufferWithTimeOrCount_Error(t *testing.T) {
+func Test_Observable_BufferWithTimeOrCount_Error(t *testing.T) {
 	just := testObservable(1, 2, 3, errFoo, 4)
 	obs := just.BufferWithTimeOrCount(WithDuration(10*time.Second), 2)
 	Assert(context.Background(), t, obs, HasItems([]interface{}{1, 2}, []interface{}{3}),
@@ -214,6 +214,16 @@ func Test_Observable_Contain(t *testing.T) {
 func Test_Observable_Count(t *testing.T) {
 	single := testObservable(1, 2, 3, "foo", "bar", errFoo).Count()
 	Assert(context.Background(), t, single, HasItem(int64(6)))
+}
+
+func Test_Observable_DefaultIfEmpty_Empty(t *testing.T) {
+	obs := FromEmpty().DefaultIfEmpty(3)
+	Assert(context.Background(), t, obs, HasItems(3))
+}
+
+func Test_Observable_DefaultIfEmpty_NotEmpty(t *testing.T) {
+	obs := testObservable(1, 2).DefaultIfEmpty(3)
+	Assert(context.Background(), t, obs, HasItems(1, 2))
 }
 
 func Test_Observable_Filter(t *testing.T) {

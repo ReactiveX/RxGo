@@ -23,6 +23,7 @@ type Observable interface {
 	BufferWithTime(timespan, timeshift Duration, opts ...Option) Observable
 	Contains(equal Predicate, opts ...Option) Single
 	Count(opts ...Option) Single
+	DefaultIfEmpty(defaultValue interface{}, opts ...Option) Observable
 	Filter(apply Predicate, opts ...Option) Observable
 	ForEach(nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc, opts ...Option)
 	// TODO With pool
