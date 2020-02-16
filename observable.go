@@ -24,6 +24,9 @@ type Observable interface {
 	Contains(equal Predicate, opts ...Option) Single
 	Count(opts ...Option) Single
 	DefaultIfEmpty(defaultValue interface{}, opts ...Option) Observable
+	Distinct(apply Func, opts ...Option) Observable
+	DistinctUntilChanged(apply Func, opts ...Option) Observable
+	ElementAt(index uint, opts ...Option) Single
 	Filter(apply Predicate, opts ...Option) Observable
 	ForEach(nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc, opts ...Option)
 	// TODO With pool

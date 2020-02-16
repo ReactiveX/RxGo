@@ -226,6 +226,47 @@ func Test_Observable_DefaultIfEmpty_NotEmpty(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(1, 2))
 }
 
+func Test_Observable_Distinct(t *testing.T) {
+	obs := testObservable(1, 2, 2, 1, 3).Distinct(func(item interface{}) (interface{}, error) {
+		return item, nil
+	})
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
+}
+
+func Test_Observable_Distinct_Error(t *testing.T) {
+	obs := testObservable(1, 2, 2, errFoo, 3).Distinct(func(item interface{}) (interface{}, error) {
+		return item, nil
+	})
+	Assert(context.Background(), t, obs, HasItems(1, 2), HasRaisedError(errFoo))
+}
+
+func Test_Observable_Distinct_Error2(t *testing.T) {
+	obs := testObservable(1, 2, 2, 2, 3, 4).Distinct(func(item interface{}) (interface{}, error) {
+		if item.(int) == 3 {
+			return nil, errFoo
+		}
+		return item, nil
+	})
+	Assert(context.Background(), t, obs, HasItems(1, 2), HasRaisedError(errFoo))
+}
+
+func Test_Observable_DistinctUntilChanged(t *testing.T) {
+	obs := testObservable(1, 2, 2, 1, 3).DistinctUntilChanged(func(item interface{}) (interface{}, error) {
+		return item, nil
+	})
+	Assert(context.Background(), t, obs, HasItems(1, 2, 1, 3))
+}
+
+func Test_Observable_ElementAt(t *testing.T) {
+	obs := testObservable(0, 1, 2, 3, 4).ElementAt(2)
+	Assert(context.Background(), t, obs, HasItems(2))
+}
+
+func Test_Observable_ElementAt_Error(t *testing.T) {
+	obs := testObservable(0, 1, 2, 3, 4).ElementAt(10)
+	Assert(context.Background(), t, obs, HasNoItem(), HasRaisedAnError())
+}
+
 func Test_Observable_Filter(t *testing.T) {
 	obs := testObservable(1, 2, 3, 4).Filter(
 		func(i interface{}) bool {

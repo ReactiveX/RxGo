@@ -438,6 +438,8 @@ func (o *observable) Count(opts ...Option) Single {
 	}, defaultEndFuncOperator, opts...)
 }
 
+// DefaultIfEmpty returns an Observable that emits the items emitted by the source
+// Observable or a specified default item if the source Observable is empty.
 func (o *observable) DefaultIfEmpty(defaultValue interface{}, opts ...Option) Observable {
 	empty := true
 
@@ -447,6 +449,65 @@ func (o *observable) DefaultIfEmpty(defaultValue interface{}, opts ...Option) Ob
 	}, defaultErrorFuncOperator, func(dst chan<- Item) {
 		if empty {
 			dst <- FromValue(defaultValue)
+		}
+	}, opts...)
+}
+
+// Distinct suppresses duplicate items in the original Observable and returns
+// a new Observable.
+func (o *observable) Distinct(apply Func, opts ...Option) Observable {
+	keyset := make(map[interface{}]interface{})
+
+	return newObservableFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+		key, err := apply(item.Value)
+		if err != nil {
+			dst <- FromError(err)
+			stop()
+			return
+		}
+		_, ok := keyset[key]
+		if !ok {
+			dst <- item
+		}
+		keyset[key] = nil
+	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
+}
+
+// DistinctUntilChanged suppresses consecutive duplicate items in the original
+// Observable and returns a new Observable.
+func (o *observable) DistinctUntilChanged(apply Func, opts ...Option) Observable {
+	var current interface{}
+
+	return newObservableFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+		key, err := apply(item.Value)
+		if err != nil {
+			dst <- FromError(err)
+			stop()
+			return
+		}
+		if current != key {
+			dst <- item
+			current = key
+		}
+	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
+}
+
+// ElementAt emits only item n emitted by an Observable.
+func (o *observable) ElementAt(index uint, opts ...Option) Single {
+	takeCount := 0
+	sent := false
+
+	return newSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+		if takeCount == int(index) {
+			dst <- item
+			sent = true
+			stop()
+			return
+		}
+		takeCount++
+	}, defaultErrorFuncOperator, func(dst chan<- Item) {
+		if !sent {
+			dst <- FromError(&IllegalInputError{})
 		}
 	}, opts...)
 }
