@@ -6,6 +6,11 @@ type (
 	// BackpressureStrategy is the backpressure strategy type
 	BackpressureStrategy uint32
 
+	operatorOptions struct {
+		stop          func()
+		resetIterable func(Iterable)
+	}
+
 	// Comparator defines a func that returns:
 	// - 0 if two elements are equals
 	// - A negative value if the first argument is less than the second
@@ -15,12 +20,6 @@ type (
 	ErrorToObservable func(error) Observable
 	// Func defines a function that computes a value from an input value.
 	Func func(interface{}) (interface{}, error)
-	// Iterator defines a function implementing the handler logic for a stream.
-	Iterator func(ctx context.Context, src <-chan Item, dst chan<- Item)
-	// ItemHandler defines an item handler function for an operator.
-	ItemHandler func(item Item, dst chan<- Item, stop func())
-	// EndHandler defines an end handler function for an operator.
-	EndHandler func(dst chan<- Item)
 	// Predicate defines a func that returns a bool from an input value.
 	Predicate func(interface{}) bool
 	// Marshaler defines a marshaler type (interface{} to []byte).
@@ -36,6 +35,9 @@ type (
 	ErrFunc func(error)
 	// DoneFunc handles the end of a stream.
 	DoneFunc func()
+
+	operatorItem func(item Item, dst chan<- Item, operatorOpts operatorOptions)
+	operatorEnd  func(dst chan<- Item)
 
 	// Item is a wrapper having either a value or an error.
 	Item struct {

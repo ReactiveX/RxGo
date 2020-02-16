@@ -13,11 +13,11 @@ import (
 // All determine whether all items emitted by an Observable meet some criteria.
 func (o *observable) All(predicate Predicate, opts ...Option) Single {
 	all := true
-	return newSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+	return newSingleFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
 		if !predicate(item.Value) {
 			dst <- FromValue(false)
 			all = false
-			stop()
+			operator.stop()
 		}
 	}, defaultErrorFuncOperator, func(dst chan<- Item) {
 		if all {
@@ -31,14 +31,14 @@ func (o *observable) AverageFloat32(opts ...Option) Single {
 	var sum float32
 	var count float32
 
-	return newSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+	return newSingleFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
 		if v, ok := item.Value.(float32); ok {
 			sum += v
 			count++
 		} else {
 			dst <- FromError(errors.Wrap(&IllegalInputError{},
 				fmt.Sprintf("expected type: float32, got: %t", item)))
-			stop()
+			operator.stop()
 		}
 	}, defaultErrorFuncOperator, func(dst chan<- Item) {
 		if count == 0 {
@@ -54,14 +54,14 @@ func (o *observable) AverageFloat64(opts ...Option) Single {
 	var sum float64
 	var count float64
 
-	return newSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+	return newSingleFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
 		if v, ok := item.Value.(float64); ok {
 			sum += v
 			count++
 		} else {
 			dst <- FromError(errors.Wrap(&IllegalInputError{},
 				fmt.Sprintf("expected type: float64, got: %t", item)))
-			stop()
+			operator.stop()
 		}
 	}, defaultErrorFuncOperator, func(dst chan<- Item) {
 		if count == 0 {
@@ -77,14 +77,14 @@ func (o *observable) AverageInt(opts ...Option) Single {
 	var sum int
 	var count int
 
-	return newSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+	return newSingleFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
 		if v, ok := item.Value.(int); ok {
 			sum += v
 			count++
 		} else {
 			dst <- FromError(errors.Wrap(&IllegalInputError{},
 				fmt.Sprintf("expected type: int, got: %t", item)))
-			stop()
+			operator.stop()
 		}
 	}, defaultErrorFuncOperator, func(dst chan<- Item) {
 		if count == 0 {
@@ -100,14 +100,14 @@ func (o *observable) AverageInt8(opts ...Option) Single {
 	var sum int8
 	var count int8
 
-	return newSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+	return newSingleFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
 		if v, ok := item.Value.(int8); ok {
 			sum += v
 			count++
 		} else {
 			dst <- FromError(errors.Wrap(&IllegalInputError{},
 				fmt.Sprintf("expected type: int8, got: %t", item)))
-			stop()
+			operator.stop()
 		}
 	}, defaultErrorFuncOperator, func(dst chan<- Item) {
 		if count == 0 {
@@ -123,14 +123,14 @@ func (o *observable) AverageInt16(opts ...Option) Single {
 	var sum int16
 	var count int16
 
-	return newSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+	return newSingleFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
 		if v, ok := item.Value.(int16); ok {
 			sum += v
 			count++
 		} else {
 			dst <- FromError(errors.Wrap(&IllegalInputError{},
 				fmt.Sprintf("expected type: int16, got: %t", item)))
-			stop()
+			operator.stop()
 		}
 	}, defaultErrorFuncOperator, func(dst chan<- Item) {
 		if count == 0 {
@@ -146,14 +146,14 @@ func (o *observable) AverageInt32(opts ...Option) Single {
 	var sum int32
 	var count int32
 
-	return newSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+	return newSingleFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
 		if v, ok := item.Value.(int32); ok {
 			sum += v
 			count++
 		} else {
 			dst <- FromError(errors.Wrap(&IllegalInputError{},
 				fmt.Sprintf("expected type: int32, got: %t", item)))
-			stop()
+			operator.stop()
 		}
 	}, defaultErrorFuncOperator, func(dst chan<- Item) {
 		if count == 0 {
@@ -169,14 +169,14 @@ func (o *observable) AverageInt64(opts ...Option) Single {
 	var sum int64
 	var count int64
 
-	return newSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+	return newSingleFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
 		if v, ok := item.Value.(int64); ok {
 			sum += v
 			count++
 		} else {
 			dst <- FromError(errors.Wrap(&IllegalInputError{},
 				fmt.Sprintf("expected type: int64, got: %t", item)))
-			stop()
+			operator.stop()
 		}
 	}, defaultErrorFuncOperator, func(dst chan<- Item) {
 		if count == 0 {
@@ -205,7 +205,7 @@ func (o *observable) BufferWithCount(count, skip int, opts ...Option) Observable
 	iCount := 0
 	iSkip := 0
 
-	return newObservableFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+	return newObservableFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
 		if iCount >= count {
 			// Skip
 			iSkip++
@@ -222,13 +222,13 @@ func (o *observable) BufferWithCount(count, skip int, opts ...Option) Observable
 			iCount = 0
 			iSkip = 0
 		}
-	}, func(item Item, dst chan<- Item, stop func()) {
+	}, func(item Item, dst chan<- Item, operator operatorOptions) {
 		if iCount != 0 {
 			dst <- FromValue(buffer[:iCount])
 		}
 		dst <- item
 		iCount = 0
-		stop()
+		operator.stop()
 	}, func(dst chan<- Item) {
 		if iCount != 0 {
 			dst <- FromValue(buffer[:iCount])
@@ -419,10 +419,10 @@ func (o *observable) BufferWithTimeOrCount(timespan Duration, count int, opts ..
 
 // Contains determines whether an Observable emits a particular item or not.
 func (o *observable) Contains(equal Predicate, opts ...Option) Single {
-	return newSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+	return newSingleFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
 		if equal(item.Value) {
 			dst <- FromValue(true)
-			stop()
+			operator.stop()
 			return
 		}
 	}, defaultErrorFuncOperator, func(dst chan<- Item) {
@@ -433,12 +433,12 @@ func (o *observable) Contains(equal Predicate, opts ...Option) Single {
 // Count counts the number of items emitted by the source Observable and emit only this value.
 func (o *observable) Count(opts ...Option) Single {
 	var count int64
-	return newSingleFromOperator(o, func(_ Item, dst chan<- Item, _ func()) {
+	return newSingleFromOperator(o, func(_ Item, dst chan<- Item, _ operatorOptions) {
 		count++
-	}, func(_ Item, dst chan<- Item, stop func()) {
+	}, func(_ Item, dst chan<- Item, operator operatorOptions) {
 		count++
 		dst <- FromValue(count)
-		stop()
+		operator.stop()
 	}, defaultEndFuncOperator, opts...)
 }
 
@@ -447,7 +447,7 @@ func (o *observable) Count(opts ...Option) Single {
 func (o *observable) DefaultIfEmpty(defaultValue interface{}, opts ...Option) Observable {
 	empty := true
 
-	return newObservableFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+	return newObservableFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
 		empty = false
 		dst <- item
 	}, defaultErrorFuncOperator, func(dst chan<- Item) {
@@ -462,11 +462,11 @@ func (o *observable) DefaultIfEmpty(defaultValue interface{}, opts ...Option) Ob
 func (o *observable) Distinct(apply Func, opts ...Option) Observable {
 	keyset := make(map[interface{}]interface{})
 
-	return newObservableFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+	return newObservableFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
 		key, err := apply(item.Value)
 		if err != nil {
 			dst <- FromError(err)
-			stop()
+			operator.stop()
 			return
 		}
 		_, ok := keyset[key]
@@ -482,11 +482,11 @@ func (o *observable) Distinct(apply Func, opts ...Option) Observable {
 func (o *observable) DistinctUntilChanged(apply Func, opts ...Option) Observable {
 	var current interface{}
 
-	return newObservableFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+	return newObservableFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
 		key, err := apply(item.Value)
 		if err != nil {
 			dst <- FromError(err)
-			stop()
+			operator.stop()
 			return
 		}
 		if current != key {
@@ -501,11 +501,11 @@ func (o *observable) ElementAt(index uint, opts ...Option) Single {
 	takeCount := 0
 	sent := false
 
-	return newSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+	return newSingleFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
 		if takeCount == int(index) {
 			dst <- item
 			sent = true
-			stop()
+			operator.stop()
 			return
 		}
 		takeCount++
@@ -518,7 +518,7 @@ func (o *observable) ElementAt(index uint, opts ...Option) Single {
 
 // Filter emits only those items from an Observable that pass a predicate test.
 func (o *observable) Filter(apply Predicate, opts ...Option) Observable {
-	return newObservableFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+	return newObservableFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
 		if apply(item.Value) {
 			dst <- item
 		}
@@ -527,9 +527,9 @@ func (o *observable) Filter(apply Predicate, opts ...Option) Observable {
 
 // First returns new Observable which emit only first item.
 func (o *observable) First(opts ...Option) OptionalSingle {
-	return newSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+	return newSingleFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
 		dst <- item
-		stop()
+		operator.stop()
 	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
 }
 
@@ -538,10 +538,10 @@ func (o *observable) First(opts ...Option) OptionalSingle {
 func (o *observable) FirstOrDefault(defaultValue interface{}, opts ...Option) Single {
 	sent := false
 
-	return newSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+	return newSingleFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
 		dst <- item
 		sent = true
-		stop()
+		operator.stop()
 	}, defaultErrorFuncOperator, func(dst chan<- Item) {
 		if !sent {
 			dst <- FromValue(defaultValue)
@@ -580,7 +580,7 @@ func (o *observable) ForEach(nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFu
 // IgnoreElements ignores all items emitted by the source ObservableSource and only calls onComplete
 // or onError.
 func (o *observable) IgnoreElements(opts ...Option) Observable {
-	return newObservableFromOperator(o, func(_ Item, _ chan<- Item, _ func()) {
+	return newObservableFromOperator(o, func(_ Item, _ chan<- Item, _ operatorOptions) {
 	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
 }
 
@@ -589,7 +589,7 @@ func (o *observable) Last(opts ...Option) OptionalSingle {
 	var last Item
 	empty := true
 
-	return newOptionalSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+	return newOptionalSingleFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
 		last = item
 		empty = false
 	}, defaultErrorFuncOperator, func(dst chan<- Item) {
@@ -605,7 +605,7 @@ func (o *observable) LastOrDefault(defaultValue interface{}, opts ...Option) Sin
 	var last Item
 	empty := true
 
-	return newSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+	return newSingleFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
 		last = item
 		empty = false
 	}, defaultErrorFuncOperator, func(dst chan<- Item) {
@@ -619,11 +619,11 @@ func (o *observable) LastOrDefault(defaultValue interface{}, opts ...Option) Sin
 
 // Map transforms the items emitted by an Observable by applying a function to each item.
 func (o *observable) Map(apply Func, opts ...Option) Observable {
-	return newObservableFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+	return newObservableFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
 		res, err := apply(item.Value)
 		if err != nil {
 			dst <- FromError(err)
-			stop()
+			operator.stop()
 		}
 		dst <- FromValue(res)
 	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
@@ -641,7 +641,7 @@ func (o *observable) Max(comparator Comparator, opts ...Option) OptionalSingle {
 	empty := true
 	var max interface{}
 
-	return newObservableFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+	return newObservableFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
 		empty = false
 
 		if max == nil {
@@ -663,7 +663,7 @@ func (o *observable) Min(comparator Comparator, opts ...Option) OptionalSingle {
 	empty := true
 	var min interface{}
 
-	return newObservableFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+	return newObservableFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
 		empty = false
 
 		if min == nil {
@@ -686,14 +686,14 @@ func (o *observable) Observe(opts ...Option) <-chan Item {
 }
 
 func (o *observable) OnErrorResumeNext(resumeSequence ErrorToObservable, opts ...Option) Observable {
-	//return newObservableFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
-	//	dst <- item
-	//}, func(item Item, dst chan<- Item, stop func()) {
-	//	stop()
-	//	resume := resumeSequence(item.Err)
-	//	operator(resume, defaultNextFuncOperator, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
-	//}, defaultEndFuncOperator, opts...)
-	return nil
+	var obs Observable
+	newObservableFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
+		dst <- item
+	}, func(item Item, dst chan<- Item, operator operatorOptions) {
+		operator.stop()
+		//resume := resumeSequence(item.Err)
+	}, defaultEndFuncOperator, opts...)
+	return obs
 }
 
 // Retry retries if a source Observable sends an error, resubscribe to it in the hopes that it will complete without error.
@@ -737,7 +737,7 @@ func (o *observable) Retry(count int, opts ...Option) Observable {
 func (o *observable) SkipWhile(apply Predicate, opts ...Option) Observable {
 	skip := true
 
-	return newObservableFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+	return newObservableFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
 		if !skip {
 			dst <- item
 		} else {
@@ -753,7 +753,7 @@ func (o *observable) SkipWhile(apply Predicate, opts ...Option) Observable {
 func (o *observable) Take(nth uint, opts ...Option) Observable {
 	takeCount := 0
 
-	return newObservableFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+	return newObservableFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
 		if takeCount < int(nth) {
 			takeCount++
 			dst <- item
@@ -767,7 +767,7 @@ func (o *observable) TakeLast(nth uint, opts ...Option) Observable {
 	r := ring.New(n)
 	count := 0
 
-	return newObservableFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+	return newObservableFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
 		count++
 		r.Value = item.Value
 		r = r.Next()
@@ -791,7 +791,7 @@ func (o *observable) TakeLast(nth uint, opts ...Option) Observable {
 // ToSlice collects all items from an Observable and emit them as a single slice.
 func (o *observable) ToSlice(opts ...Option) Single {
 	s := make([]interface{}, 0)
-	return newSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+	return newSingleFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
 		s = append(s, item.Value)
 	}, defaultErrorFuncOperator, func(dst chan<- Item) {
 		dst <- FromValue(s)

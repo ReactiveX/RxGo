@@ -39,6 +39,7 @@ type Observable interface {
 	Max(comparator Comparator, opts ...Option) OptionalSingle
 	Min(comparator Comparator, opts ...Option) OptionalSingle
 	// TODO Add backoff retry
+	OnErrorResumeNext(resumeSequence ErrorToObservable, opts ...Option) Observable
 	Retry(count int, opts ...Option) Observable
 	SkipWhile(apply Predicate, opts ...Option) Observable
 	Take(nth uint, opts ...Option) Observable
@@ -52,14 +53,18 @@ type observable struct {
 	iterable Iterable
 }
 
-func defaultErrorFuncOperator(item Item, dst chan<- Item, stop func()) {
+func defaultNextFuncOperator(item Item, dst chan<- Item, _ operatorOptions) {
 	dst <- item
-	stop()
+}
+
+func defaultErrorFuncOperator(item Item, dst chan<- Item, operatorOpts operatorOptions) {
+	dst <- item
+	operatorOpts.stop()
 }
 
 func defaultEndFuncOperator(_ chan<- Item) {}
 
-func operator(iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler, opts ...Option) Iterable {
+func operator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, opts ...Option) Iterable {
 	option := parseOptions(opts...)
 
 	if option.withEagerObservation() {
@@ -88,14 +93,19 @@ func operator(iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandl
 	}
 }
 
-func seq(ctx context.Context, next chan Item, iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler) {
+func seq(ctx context.Context, next chan Item, iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd) {
 	go func() {
 		stopped := false
-		stop := func() {
-			stopped = true
+		observe := iterable.Observe()
+		operator := operatorOptions{
+			stop: func() {
+				stopped = true
+			},
+			resetIterable: func(newIterable Iterable) {
+				observe = newIterable.Observe()
+			},
 		}
 
-		observe := iterable.Observe()
 	loop:
 		for !stopped {
 			select {
@@ -106,9 +116,9 @@ func seq(ctx context.Context, next chan Item, iterable Iterable, nextFunc, errFu
 					break loop
 				}
 				if i.IsError() {
-					errFunc(i, next, stop)
+					errFunc(i, next, operator)
 				} else {
-					nextFunc(i, next, stop)
+					nextFunc(i, next, operator)
 				}
 			}
 		}
@@ -117,13 +127,14 @@ func seq(ctx context.Context, next chan Item, iterable Iterable, nextFunc, errFu
 	}()
 }
 
-func parallel(ctx context.Context, pool int, next chan Item, iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler) {
+func parallel(ctx context.Context, pool int, next chan Item, iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd) {
 	stopped := abool.New()
-	stop := func() {
-		stopped.Set()
-	}
-
 	observe := iterable.Observe()
+	operator := operatorOptions{
+		stop: func() {
+			stopped.Set()
+		},
+	}
 
 	wg := sync.WaitGroup{}
 	wg.Add(pool)
@@ -140,9 +151,9 @@ func parallel(ctx context.Context, pool int, next chan Item, iterable Iterable, 
 						return
 					}
 					if i.IsError() {
-						errFunc(i, next, stop)
+						errFunc(i, next, operator)
 					} else {
-						nextFunc(i, next, stop)
+						nextFunc(i, next, operator)
 					}
 				}
 			}
@@ -156,7 +167,7 @@ func parallel(ctx context.Context, pool int, next chan Item, iterable Iterable, 
 	}()
 }
 
-func newObservableFromOperator(iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler, opts ...Option) Observable {
+func newObservableFromOperator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, opts ...Option) Observable {
 	return &observable{
 		iterable: operator(iterable, nextFunc, errFunc, endFunc, opts...),
 	}

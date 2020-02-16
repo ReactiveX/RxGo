@@ -6,7 +6,7 @@ type OptionalSingle interface {
 	// TODO Map
 }
 
-func newOptionalSingleFromOperator(iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler, opts ...Option) OptionalSingle {
+func newOptionalSingleFromOperator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, opts ...Option) OptionalSingle {
 	return &optionalSingle{
 		iterable: operator(iterable, nextFunc, errFunc, endFunc, opts...),
 	}
