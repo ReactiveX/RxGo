@@ -804,7 +804,7 @@ func (o *observable) Retry(count int, opts ...Option) Observable {
 }
 
 // Sample returns an Observable that emits the most recent items emitted by the source
-// ObservableSource whenever the input Observable emits an item.
+// Observable whenever the input Observable emits an item.
 func (o *observable) Sample(obs Observable, opts ...Option) Observable {
 	panic("implement me")
 }
@@ -812,7 +812,18 @@ func (o *observable) Sample(obs Observable, opts ...Option) Observable {
 // Scan applies Func2 predicate to each item in the original
 // Observable sequentially and emits each successive value on a new Observable.
 func (o *observable) Scan(apply Func2, opts ...Option) Observable {
-	panic("implement me")
+	var current interface{}
+
+	return newObservableFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
+		v, err := apply(current, item.Value)
+		if err != nil {
+			dst <- FromError(err)
+			operator.stop()
+			return
+		}
+		dst <- FromValue(v)
+		current = v
+	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
 }
 
 // SequenceEqual emits true if an Observable and the input Observable emit the same items,

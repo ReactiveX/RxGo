@@ -591,6 +591,23 @@ func Test_Observable_Retry_Error(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(1, 2, 1, 2, 1, 2, 1, 2), HasRaisedError(errFoo))
 }
 
+func Test_Observable_Scan(t *testing.T) {
+	obs := testObservable(0, 1, 3, 5, 1, 8).Scan(func(x interface{}, y interface{}) (interface{}, error) {
+		var v1, v2 int
+
+		if x, ok := x.(int); ok {
+			v1 = x
+		}
+
+		if y, ok := y.(int); ok {
+			v2 = y
+		}
+
+		return v1 + v2, nil
+	})
+	Assert(context.Background(), t, obs, HasItems(0, 1, 4, 9, 10, 18))
+}
+
 func Test_Observable_SkipWhile(t *testing.T) {
 	obs := testObservable(1, 2, 3, 4, 5).SkipWhile(func(i interface{}) bool {
 		switch i := i.(type) {
