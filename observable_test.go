@@ -183,7 +183,7 @@ func Test_Observable_Filter(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(2, 4), HasNotRaisedError())
 }
 
-func Test_Observable_ForEach(t *testing.T) {
+func Test_Observable_ForEach_Error(t *testing.T) {
 	count := 0
 	var gotErr error
 	done := make(chan struct{})
@@ -194,12 +194,35 @@ func Test_Observable_ForEach(t *testing.T) {
 	}, func(err error) {
 		gotErr = err
 		done <- struct{}{}
-	}, func() {})
+	}, func() {
+		done <- struct{}{}
+	})
 
 	// We avoid using the assertion API on purpose
 	<-done
 	assert.Equal(t, 6, count)
 	assert.Equal(t, errFoo, gotErr)
+}
+
+func Test_Observable_ForEach_Done(t *testing.T) {
+	count := 0
+	var gotErr error
+	done := make(chan struct{})
+
+	obs := testObservable(1, 2, 3)
+	obs.ForEach(func(i interface{}) {
+		count += i.(int)
+	}, func(err error) {
+		gotErr = err
+		done <- struct{}{}
+	}, func() {
+		done <- struct{}{}
+	})
+
+	// We avoid using the assertion API on purpose
+	<-done
+	assert.Equal(t, 6, count)
+	assert.Nil(t, gotErr)
 }
 
 func Test_Observable_Map_One(t *testing.T) {
