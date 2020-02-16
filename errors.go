@@ -1,6 +1,6 @@
 package rxgo
 
-// IllegalInputError is triggered when the observable receives an illegal input
+// IllegalInputError is triggered when the observable receives an illegal input.
 type IllegalInputError struct {
 }
 
