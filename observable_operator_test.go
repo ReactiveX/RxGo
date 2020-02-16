@@ -465,12 +465,19 @@ func Test_Observable_Observe(t *testing.T) {
 	assert.Equal(t, []int{1, 2, 3}, got)
 }
 
-//func Test_Observable_OnErrorResumeNext(t *testing.T) {
-//	obs := testObservable(1, 2, errFoo, 4).OnErrorResumeNext(func(e error) Observable {
-//		return testObservable(10, 20)
-//	})
-//	Assert(context.Background(), t, obs, HasItems(1, 2, 10, 20), HasNotRaisedError())
-//}
+func Test_Observable_OnErrorResumeNext(t *testing.T) {
+	obs := testObservable(1, 2, errFoo, 4).OnErrorResumeNext(func(e error) Observable {
+		return testObservable(10, 20)
+	})
+	Assert(context.Background(), t, obs, HasItems(1, 2, 10, 20), HasNotRaisedError())
+}
+
+func Test_Observable_OnErrorResumeNext_Parallel(t *testing.T) {
+	obs := testObservable(1, 2, errFoo, 4).OnErrorResumeNext(func(e error) Observable {
+		return testObservable(10, 20)
+	}, WithPool(3))
+	Assert(context.Background(), t, obs, HasItems(1, 2, 10, 20), HasNotRaisedError())
+}
 
 func Test_Observable_Retry(t *testing.T) {
 	i := 0

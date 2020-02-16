@@ -686,14 +686,11 @@ func (o *observable) Observe(opts ...Option) <-chan Item {
 }
 
 func (o *observable) OnErrorResumeNext(resumeSequence ErrorToObservable, opts ...Option) Observable {
-	var obs Observable
-	newObservableFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
+	return newObservableFromOperator(o, func(item Item, dst chan<- Item, operator operatorOptions) {
 		dst <- item
 	}, func(item Item, dst chan<- Item, operator operatorOptions) {
-		operator.stop()
-		//resume := resumeSequence(item.Err)
+		operator.resetIterable(resumeSequence(item.Err))
 	}, defaultEndFuncOperator, opts...)
-	return obs
 }
 
 // Retry retries if a source Observable sends an error, resubscribe to it in the hopes that it will complete without error.
