@@ -294,6 +294,16 @@ func Test_Observable_SkipWhile(t *testing.T) {
 	AssertObservable(context.Background(), t, obs, HasItems(3, 4, 5), HasNotRaisedError())
 }
 
+func Test_Observable_ToSlice(t *testing.T) {
+	single := testObservable(1, 2, 3).ToSlice(context.Background())
+	AssertSingle(context.Background(), t, single, HasItem([]interface{}{1, 2, 3}))
+}
+
+func Test_Observable_ToSlice_Error(t *testing.T) {
+	single := testObservable(1, 2, errFoo, 3).ToSlice(context.Background())
+	AssertSingle(context.Background(), t, single, HasNoItem(), HasRaisedError(errFoo))
+}
+
 func Test_Observable_Unmarshal(t *testing.T) {
 	obs := testObservable([]byte(`{"id":1}`), []byte(`{"id":2}`)).Unmarshal(context.Background(), json.Unmarshal,
 		func() interface{} {

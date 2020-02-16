@@ -32,6 +32,7 @@ type Observable interface {
 	// TODO Add backoff retry
 	Retry(ctx context.Context, count int) Observable
 	SkipWhile(ctx context.Context, apply Predicate) Observable
+	ToSlice(ctx context.Context) Single
 	// TODO Throttling
 	Unmarshal(ctx context.Context, unmarshaler Unmarshaler, factory func() interface{}) Observable
 }
@@ -539,6 +540,15 @@ func (o *observable) SkipWhile(ctx context.Context, apply Predicate) Observable 
 			}
 		}
 	}, defaultErrorFuncOperator, defaultEndFuncOperator)
+}
+
+func (o *observable) ToSlice(ctx context.Context) Single {
+	s := make([]interface{}, 0)
+	return newSingleFromOperator(ctx, o, func(item Item, dst chan<- Item, stop func()) {
+		s = append(s, item.Value)
+	}, defaultErrorFuncOperator, func(_ Item, dst chan<- Item, _ func()) {
+		dst <- FromValue(s)
+	})
 }
 
 func (o *observable) Unmarshal(ctx context.Context, unmarshaler Unmarshaler, factory func() interface{}) Observable {
