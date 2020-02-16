@@ -94,9 +94,28 @@ func Test_FromFuncs_ComposedDup(t *testing.T) {
 		done()
 	}).Map(func(i interface{}) (_ interface{}, _ error) {
 		return i.(int) + 1, nil
+	}).Map(func(i interface{}) (_ interface{}, _ error) {
+		return i.(int) + 1, nil
 	})
-	Assert(context.Background(), t, obs, HasItems(2, 3, 4), HasNotRaisedError())
-	Assert(context.Background(), t, obs, HasItems(2, 3, 4), HasNotRaisedError())
+	Assert(context.Background(), t, obs, HasItems(3, 4, 5), HasNotRaisedError())
+	Assert(context.Background(), t, obs, HasItems(3, 4, 5), HasNotRaisedError())
+}
+
+func Test_FromFuncs_ComposedDup_EagerObservation(t *testing.T) {
+	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
+		next <- FromValue(1)
+		next <- FromValue(2)
+		next <- FromValue(3)
+		done()
+	}).Map(func(i interface{}) (_ interface{}, _ error) {
+		return i.(int) + 1, nil
+	}, WithEagerObservation()).Map(func(i interface{}) (_ interface{}, _ error) {
+		return i.(int) + 1, nil
+	})
+	Assert(context.Background(), t, obs, HasItems(3, 4, 5), HasNotRaisedError())
+	// In the case of an eager observation, we already consumed the items produced by FromFuncs
+	// So if we create another subscription, it will be empty
+	Assert(context.Background(), t, obs, HasNoItem(), HasNotRaisedError())
 }
 
 func Test_FromFuncs_Error(t *testing.T) {

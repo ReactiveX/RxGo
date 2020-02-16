@@ -7,15 +7,17 @@ type Option interface {
 	apply(*funcOption)
 	withBuffer() (bool, int)
 	withContext() (bool, context.Context)
+	withEagerObservation() bool
 	withPool() (bool, int)
 }
 
 type funcOption struct {
-	f        func(*funcOption)
-	toBuffer bool
-	buffer   int
-	ctx      context.Context
-	pool     int
+	f                func(*funcOption)
+	toBuffer         bool
+	buffer           int
+	ctx              context.Context
+	eagerObservation bool
+	pool             int
 }
 
 func (fdo *funcOption) withBuffer() (bool, int) {
@@ -24,6 +26,10 @@ func (fdo *funcOption) withBuffer() (bool, int) {
 
 func (fdo *funcOption) withContext() (bool, context.Context) {
 	return fdo.ctx != nil, fdo.ctx
+}
+
+func (fdo *funcOption) withEagerObservation() bool {
+	return fdo.eagerObservation
 }
 
 func (fdo *funcOption) withPool() (bool, int) {
@@ -78,6 +84,13 @@ func WithBufferedChannel(capacity int) Option {
 func WithContext(ctx context.Context) Option {
 	return newFuncOption(func(options *funcOption) {
 		options.ctx = ctx
+	})
+}
+
+// WithEagerObservation uses the eager observation mode meaning consuming the items even without subscription.
+func WithEagerObservation() Option {
+	return newFuncOption(func(options *funcOption) {
+		options.eagerObservation = true
 	})
 }
 

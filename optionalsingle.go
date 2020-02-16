@@ -7,15 +7,7 @@ type OptionalSingle interface {
 
 func newOptionalSingleFromOperator(iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler, opts ...Option) OptionalSingle {
 	return &optionalSingle{
-		iterable: newColdIterable(func() <-chan Item {
-			next, ctx, option := buildOptionValues(opts...)
-			if withPool, pool := option.withPool(); withPool {
-				parallel(ctx, pool, next, iterable, nextFunc, errFunc, endFunc)
-			} else {
-				seq(ctx, next, iterable, nextFunc, errFunc, endFunc)
-			}
-			return next
-		}),
+		iterable: operator(iterable, nextFunc, errFunc, endFunc, opts...),
 	}
 }
 
