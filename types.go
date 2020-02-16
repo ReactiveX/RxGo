@@ -34,8 +34,8 @@ type (
 	Marshaler func(interface{}) ([]byte, error)
 	// Unmarshaler defines an unmarshaler type ([]byte to interface).
 	Unmarshaler func([]byte, interface{}) error
-	// Scatter defines a scatter implementation
-	Scatter func(ctx context.Context, next chan<- Item, done func())
+	// ScatterFunc defines a scatter implementation
+	ScatterFunc func(ctx context.Context, next chan<- Item, done func())
 	// Supplier defines a function that supplies a result from nothing.
 	Supplier func(ctx context.Context) Item
 

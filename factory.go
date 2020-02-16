@@ -187,13 +187,6 @@ func FromEventSource(next <-chan Item, opts ...Option) Observable {
 	}
 }
 
-// FromFuncs creates an observable from multiple functions.
-func FromFuncs(f ...Scatter) Observable {
-	return &observable{
-		iterable: newFuncsIterable(f...),
-	}
-}
-
 // FromSlice creates an observable from a slice.
 func FromSlice(s []Item) Single {
 	return &single{
@@ -304,6 +297,13 @@ func Range(start, count int) Observable {
 	}
 	return &observable{
 		iterable: newRangeIterable(start, count),
+	}
+}
+
+// Scatter creates an observable from multiple functions.
+func Scatter(f ...ScatterFunc) Observable {
+	return &observable{
+		iterable: newFuncsIterable(f...),
 	}
 }
 

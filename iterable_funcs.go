@@ -5,10 +5,10 @@ import (
 )
 
 type funcsIterable struct {
-	f []Scatter
+	f []ScatterFunc
 }
 
-func newFuncsIterable(f ...Scatter) Iterable {
+func newFuncsIterable(f ...ScatterFunc) Iterable {
 	return &funcsIterable{f: f}
 }
 

@@ -20,8 +20,8 @@ type Observable interface {
 	AverageInt32(opts ...Option) Single
 	AverageInt64(opts ...Option) Single
 	BufferWithCount(count, skip int, opts ...Option) Observable
-	BufferWithTimeOrCount(timespan Duration, count int, opts ...Option) Observable
 	BufferWithTime(timespan, timeshift Duration, opts ...Option) Observable
+	BufferWithTimeOrCount(timespan Duration, count int, opts ...Option) Observable
 	Contains(equal Predicate, opts ...Option) Single
 	Count(opts ...Option) Single
 	DefaultIfEmpty(defaultValue interface{}, opts ...Option) Observable
