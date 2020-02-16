@@ -294,6 +294,26 @@ func Test_Observable_SkipWhile(t *testing.T) {
 	AssertObservable(context.Background(), t, obs, HasItems(3, 4, 5), HasNotRaisedError())
 }
 
+func Test_Observable_Take(t *testing.T) {
+	obs := testObservable(1, 2, 3, 4, 5).Take(context.Background(), 3)
+	AssertObservable(context.Background(), t, obs, HasItems(1, 2, 3))
+}
+
+func Test_Observable_TakeLast(t *testing.T) {
+	obs := testObservable(1, 2, 3, 4, 5).TakeLast(context.Background(), 3)
+	AssertObservable(context.Background(), t, obs, HasItems(3, 4, 5))
+}
+
+func Test_Observable_TakeLast_LessThanNth(t *testing.T) {
+	obs := testObservable(4, 5).TakeLast(context.Background(), 3)
+	AssertObservable(context.Background(), t, obs, HasItems(4, 5))
+}
+
+func Test_Observable_TakeLast_LessThanNth2(t *testing.T) {
+	obs := testObservable(4, 5).TakeLast(context.Background(), 100000)
+	AssertObservable(context.Background(), t, obs, HasItems(4, 5))
+}
+
 func Test_Observable_ToSlice(t *testing.T) {
 	single := testObservable(1, 2, 3).ToSlice(context.Background())
 	AssertSingle(context.Background(), t, single, HasItem([]interface{}{1, 2, 3}))

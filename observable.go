@@ -1,6 +1,7 @@
 package rxgo
 
 import (
+	"container/ring"
 	"context"
 	"fmt"
 	"sync"
@@ -32,6 +33,8 @@ type Observable interface {
 	// TODO Add backoff retry
 	Retry(ctx context.Context, count int) Observable
 	SkipWhile(ctx context.Context, apply Predicate) Observable
+	Take(ctx context.Context, nth uint) Observable
+	TakeLast(ctx context.Context, nth uint) Observable
 	ToSlice(ctx context.Context) Single
 	// TODO Throttling
 	Unmarshal(ctx context.Context, unmarshaler Unmarshaler, factory func() interface{}) Observable
@@ -540,6 +543,43 @@ func (o *observable) SkipWhile(ctx context.Context, apply Predicate) Observable 
 			}
 		}
 	}, defaultErrorFuncOperator, defaultEndFuncOperator)
+}
+
+func (o *observable) Take(ctx context.Context, nth uint) Observable {
+	takeCount := 0
+
+	return newObservableFromOperator(ctx, o, func(item Item, dst chan<- Item, stop func()) {
+		if takeCount < int(nth) {
+			takeCount++
+			dst <- item
+		}
+	}, defaultErrorFuncOperator, defaultEndFuncOperator)
+}
+
+func (o *observable) TakeLast(ctx context.Context, nth uint) Observable {
+	n := int(nth)
+	r := ring.New(n)
+	count := 0
+
+	return newObservableFromOperator(ctx, o, func(item Item, dst chan<- Item, stop func()) {
+		count++
+		r.Value = item.Value
+		r = r.Next()
+	}, defaultErrorFuncOperator, func(_ Item, dst chan<- Item, stop func()) {
+		if count < n {
+			remaining := n - count
+			if remaining <= count {
+				r = r.Move(n - count)
+			} else {
+				r = r.Move(-count)
+			}
+			n = count
+		}
+		for i := 0; i < n; i++ {
+			dst <- FromValue(r.Value)
+			r = r.Next()
+		}
+	})
 }
 
 func (o *observable) ToSlice(ctx context.Context) Single {
