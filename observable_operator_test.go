@@ -608,6 +608,15 @@ func Test_Observable_Scan(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(0, 1, 4, 9, 10, 18))
 }
 
+func Test_Observable_Send(t *testing.T) {
+	ch := make(chan Item, 10)
+	testObservable(1, 2, 3, errFoo).Send(ch)
+	assert.Equal(t, FromValue(1), <-ch)
+	assert.Equal(t, FromValue(2), <-ch)
+	assert.Equal(t, FromValue(3), <-ch)
+	assert.Equal(t, FromError(errFoo), <-ch)
+}
+
 func Test_Observable_SkipWhile(t *testing.T) {
 	obs := testObservable(1, 2, 3, 4, 5).SkipWhile(func(i interface{}) bool {
 		switch i := i.(type) {

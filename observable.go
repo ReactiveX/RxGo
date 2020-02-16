@@ -49,7 +49,7 @@ type Observable interface {
 	Sample(obs Observable, opts ...Option) Observable
 	Scan(apply Func2, opts ...Option) Observable
 	SequenceEqual(obs Observable, opts ...Option) Single
-	Send(chan<- interface{})
+	Send(output chan<- Item, opts ...Option)
 	Skip(nth uint, opts ...Option) Observable
 	SkipLast(nth uint, opts ...Option) Observable
 	SkipWhile(apply Predicate, opts ...Option) Observable

@@ -833,8 +833,29 @@ func (o *observable) SequenceEqual(obs Observable, opts ...Option) Single {
 }
 
 // Send sends the items to a given channel
-func (o *observable) Send(chan<- interface{}) {
-	panic("implement me")
+func (o *observable) Send(output chan<- Item, opts ...Option) {
+	go func() {
+		option := parseOptions(opts...)
+		ctx := option.buildContext()
+		observe := o.Observe()
+	loop:
+		for {
+			select {
+			case <-ctx.Done():
+				break loop
+			case i, ok := <-observe:
+				if !ok {
+					break loop
+				}
+				if i.IsError() {
+					output <- i
+					break loop
+				}
+				output <- i
+			}
+		}
+		close(output)
+	}()
 }
 
 // Skip suppresses the first n items in the original Observable and
