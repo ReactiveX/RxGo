@@ -3,6 +3,7 @@ package rxgo
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 )
 
 // Amb take several Observables, emit all of the items from only the first of these Observables
@@ -52,6 +53,72 @@ func Amb(observables []Observable, opts ...Option) Observable {
 	for _, o := range observables {
 		go f(o)
 	}
+
+	return &observable{
+		iterable: newChannelIterable(next),
+	}
+}
+
+// CombineLatest combine the latest item emitted by each Observable via a specified function
+// and emit items based on the results of this function
+func CombineLatest(f FuncN, observables []Observable, opts ...Option) Observable {
+	option := parseOptions(opts...)
+	ctx := option.buildContext()
+	next := option.buildChannel()
+
+	go func() {
+		size := uint32(len(observables))
+		var counter uint32
+		s := make([]interface{}, size)
+		mutex := sync.Mutex{}
+		wg := sync.WaitGroup{}
+		wg.Add(int(size))
+		errCh := make(chan struct{})
+
+		handler := func(ctx context.Context, it Iterable, i int) {
+			defer wg.Done()
+			observe := it.Observe()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case item, ok := <-observe:
+					if !ok {
+						return
+					}
+					if item.IsError() {
+						next <- item
+						errCh <- struct{}{}
+						return
+					}
+					if s[i] == nil {
+						atomic.AddUint32(&counter, 1)
+					}
+					mutex.Lock()
+					s[i] = item.Value
+					mutex.Unlock()
+					if atomic.LoadUint32(&counter) == size {
+						next <- FromValue(f(s...))
+					}
+				}
+			}
+		}
+
+		ctx, cancel := context.WithCancel(ctx)
+		for i, o := range observables {
+			go handler(ctx, o, i)
+		}
+
+		go func() {
+			for range errCh {
+				cancel()
+			}
+		}()
+
+		wg.Wait()
+		close(next)
+		close(errCh)
+	}()
 
 	return &observable{
 		iterable: newChannelIterable(next),

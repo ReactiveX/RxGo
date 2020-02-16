@@ -19,6 +19,39 @@ func Test_Amb2(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3))
 }
 
+func Test_CombineLatest(t *testing.T) {
+	obs := CombineLatest(func(ii ...interface{}) interface{} {
+		sum := 0
+		for _, v := range ii {
+			sum += v.(int)
+		}
+		return sum
+	}, []Observable{testObservable(1, 2), testObservable(10, 11)})
+	Assert(context.Background(), t, obs, HasSomeItems())
+}
+
+func Test_CombineLatest_Empty(t *testing.T) {
+	obs := CombineLatest(func(ii ...interface{}) interface{} {
+		sum := 0
+		for _, v := range ii {
+			sum += v.(int)
+		}
+		return sum
+	}, []Observable{testObservable(1, 2), Empty()})
+	Assert(context.Background(), t, obs, HasNoItems())
+}
+
+func Test_CombineLatest_Error(t *testing.T) {
+	obs := CombineLatest(func(ii ...interface{}) interface{} {
+		sum := 0
+		for _, v := range ii {
+			sum += v.(int)
+		}
+		return sum
+	}, []Observable{testObservable(1, 2), testObservable(errFoo)})
+	Assert(context.Background(), t, obs, HasNoItems(), HasRaisedError(errFoo))
+}
+
 func Test_Empty(t *testing.T) {
 	obs := Empty()
 	Assert(context.Background(), t, obs, HasNoItems())

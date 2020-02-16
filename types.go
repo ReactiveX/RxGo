@@ -24,6 +24,8 @@ type (
 	Func func(interface{}) (interface{}, error)
 	// Func2 defines a function that computes a value from two input values.
 	Func2 func(interface{}, interface{}) (interface{}, error)
+	// FuncN defines a function that computes a value from N input values.
+	FuncN func(...interface{}) interface{}
 	// ErrorFunc defines a function that computes a value from an error.
 	ErrorFunc func(error) interface{}
 	// Predicate defines a func that returns a bool from an input value.
