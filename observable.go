@@ -28,7 +28,7 @@ type Observable interface {
 	Filter(ctx context.Context, apply Predicate) Observable
 	ForEach(ctx context.Context, nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc)
 	// TODO With pool
-	Map(ctx context.Context, apply Func) Observable
+	Map(ctx context.Context, apply Func, opts ...Option) Observable
 	Marshal(ctx context.Context, marshaler Marshaler) Observable
 	// TODO Add backoff retry
 	Retry(ctx context.Context, count int) Observable
@@ -61,8 +61,8 @@ func defaultErrorFuncOperator(item Item, dst chan<- Item, stop func()) {
 
 func defaultEndFuncOperator(_ chan<- Item) {}
 
-func operator(ctx context.Context, iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler) chan Item {
-	next := make(chan Item)
+func operator(ctx context.Context, iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler, opts ...Option) chan Item {
+	next, _ := buildOptionValues(opts...)
 
 	stopped := false
 	stop := func() {
@@ -95,8 +95,8 @@ func operator(ctx context.Context, iterable Iterable, nextFunc, errFunc ItemHand
 }
 
 // TODO Options
-func newObservableFromOperator(ctx context.Context, iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler) Observable {
-	next := operator(ctx, iterable, nextFunc, errFunc, endFunc)
+func newObservableFromOperator(ctx context.Context, iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler, opts ...Option) Observable {
+	next := operator(ctx, iterable, nextFunc, errFunc, endFunc, opts...)
 	return &observable{
 		iterable: newChannelIterable(next),
 	}
@@ -474,7 +474,7 @@ func (o *observable) ForEach(ctx context.Context, nextFunc NextFunc, errFunc Err
 	newObservableFromHandler(ctx, o, handler)
 }
 
-func (o *observable) Map(ctx context.Context, apply Func) Observable {
+func (o *observable) Map(ctx context.Context, apply Func, opts ...Option) Observable {
 	return newObservableFromOperator(ctx, o, func(item Item, dst chan<- Item, stop func()) {
 		res, err := apply(item.Value)
 		if err != nil {
@@ -482,7 +482,7 @@ func (o *observable) Map(ctx context.Context, apply Func) Observable {
 			stop()
 		}
 		dst <- FromValue(res)
-	}, defaultErrorFuncOperator, defaultEndFuncOperator)
+	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
 }
 
 func (o *observable) Marshal(ctx context.Context, marshaler Marshaler) Observable {

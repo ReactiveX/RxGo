@@ -2,6 +2,7 @@ package rxgo
 
 import (
 	"context"
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
@@ -11,8 +12,33 @@ func Test_Empty(t *testing.T) {
 }
 
 func Test_FromChannel(t *testing.T) {
-	obs := testObservable(1, 2, 3)
+	ch := make(chan Item)
+	go func() {
+		ch <- FromValue(1)
+		ch <- FromValue(2)
+		ch <- FromValue(3)
+		close(ch)
+	}()
+	obs := FromChannel(ch)
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
+}
+
+func Test_FromChannel_SimpleCapacity(t *testing.T) {
+	ch := FromChannel(make(chan Item, 10)).Observe(WithBufferedChannel(11))
+	assert.Equal(t, 10, cap(ch))
+}
+
+func Test_FromChannel_ComposedCapacity(t *testing.T) {
+	obs1 := FromChannel(make(chan Item, 10)).
+		Map(context.Background(), func(_ interface{}) (interface{}, error) {
+			return 1, nil
+		}, WithBufferedChannel(11))
+	assert.Equal(t, 11, cap(obs1.Observe(WithBufferedChannel(13))))
+
+	obs2 := obs1.Map(context.Background(), func(_ interface{}) (interface{}, error) {
+		return 1, nil
+	}, WithBufferedChannel(12))
+	assert.Equal(t, 12, cap(obs2.Observe(WithBufferedChannel(13))))
 }
 
 func Test_FromFuncs(t *testing.T) {
@@ -69,6 +95,27 @@ func Test_FromFuncs_Error(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(1, 2), HasRaisedError(errFoo))
 }
 
+func Test_FromFuncs_SimpleCapacity(t *testing.T) {
+	ch := FromFuncs(func(_ context.Context, _ chan<- Item, done func()) {
+		done()
+	}).Observe(WithBufferedChannel(5))
+	assert.Equal(t, 5, cap(ch))
+}
+
+func Test_FromFuncs_ComposedCapacity(t *testing.T) {
+	obs1 := FromFuncs(func(_ context.Context, _ chan<- Item, done func()) {
+		done()
+	}).Map(context.Background(), func(_ interface{}) (interface{}, error) {
+		return 1, nil
+	}, WithBufferedChannel(11))
+	assert.Equal(t, 11, cap(obs1.Observe(WithBufferedChannel(13))))
+
+	obs2 := obs1.Map(context.Background(), func(_ interface{}) (interface{}, error) {
+		return 1, nil
+	}, WithBufferedChannel(12))
+	assert.Equal(t, 12, cap(obs2.Observe(WithBufferedChannel(13))))
+}
+
 func Test_FromItem(t *testing.T) {
 	single := FromItem(FromValue(1))
 	Assert(context.Background(), t, single, HasItem(1), HasNotRaisedError())
@@ -79,6 +126,23 @@ func Test_FromItems(t *testing.T) {
 	obs := FromItems(FromValue(1), FromValue(2), FromValue(3))
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
+}
+
+func Test_FromItems_SimpleCapacity(t *testing.T) {
+	ch := FromItems(FromValue(1)).Observe(WithBufferedChannel(5))
+	assert.Equal(t, 5, cap(ch))
+}
+
+func Test_FromItems_ComposedCapacity(t *testing.T) {
+	obs1 := FromItems(FromValue(1)).Map(context.Background(), func(_ interface{}) (interface{}, error) {
+		return 1, nil
+	}, WithBufferedChannel(11))
+	assert.Equal(t, 11, cap(obs1.Observe(WithBufferedChannel(13))))
+
+	obs2 := obs1.Map(context.Background(), func(_ interface{}) (interface{}, error) {
+		return 1, nil
+	}, WithBufferedChannel(12))
+	assert.Equal(t, 12, cap(obs2.Observe(WithBufferedChannel(13))))
 }
 
 // TODO Sleep
