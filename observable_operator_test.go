@@ -701,6 +701,20 @@ func Test_Observable_TakeLast_LessThanNth2(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(4, 5))
 }
 
+func Test_Observable_TakeUntil(t *testing.T) {
+	obs := testObservable(1, 2, 3, 4, 5).TakeUntil(func(item interface{}) bool {
+		return item == 3
+	})
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3))
+}
+
+func Test_Observable_TakeWhile(t *testing.T) {
+	obs := testObservable(1, 2, 3, 4, 5).TakeWhile(func(item interface{}) bool {
+		return item != 3
+	})
+	Assert(context.Background(), t, obs, HasItems(1, 2))
+}
+
 func Test_Observable_ToSlice(t *testing.T) {
 	single := testObservable(1, 2, 3).ToSlice()
 	Assert(context.Background(), t, single, HasItem([]interface{}{1, 2, 3}))

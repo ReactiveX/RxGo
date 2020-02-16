@@ -1082,13 +1082,25 @@ func (o *observable) TakeLast(nth uint, opts ...Option) Observable {
 // TakeUntil returns an Observable that emits items emitted by the source Observable,
 // checks the specified predicate for each item, and then completes when the condition is satisfied.
 func (o *observable) TakeUntil(apply Predicate, opts ...Option) Observable {
-	panic("implement me")
+	return newObservableFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
+		dst <- item
+		if apply(item.Value) {
+			operator.stop()
+			return
+		}
+	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
 }
 
 // TakeWhile returns an Observable that emits items emitted by the source ObservableSource so long as each
 // item satisfied a specified condition, and then completes as soon as this condition is not satisfied.
 func (o *observable) TakeWhile(apply Predicate, opts ...Option) Observable {
-	panic("implement me")
+	return newObservableFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
+		if !apply(item.Value) {
+			operator.stop()
+			return
+		}
+		dst <- item
+	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
 }
 
 // Timeout mirrors the source Observable, but issue an error notification if a particular period of time elapses without any emitted items.
