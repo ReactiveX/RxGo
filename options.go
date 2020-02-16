@@ -42,6 +42,27 @@ func parseOptions(opts ...Option) Option {
 	return o
 }
 
+func buildOptionValues(opts ...Option) (chan Item, context.Context) {
+	option := parseOptions(opts...)
+
+	var next chan Item
+	if toBeBuffered, cap := option.withBuffer(); toBeBuffered {
+		next = make(chan Item, cap)
+	} else {
+		next = make(chan Item)
+	}
+
+	var ctx context.Context
+	withContext, c := option.withContext()
+	if withContext {
+		ctx = c
+	} else {
+		ctx = context.Background()
+	}
+
+	return next, ctx
+}
+
 // WithBufferedChannel allows to configure the capacity of a buffered channel.
 func WithBufferedChannel(capacity int) Option {
 	return newFuncOption(func(options *funcOption) {

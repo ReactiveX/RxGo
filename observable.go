@@ -440,7 +440,7 @@ func (o *observable) Count(ctx context.Context) Single {
 
 // TODO Options?
 func (o *observable) Observe(opts ...Option) <-chan Item {
-	return o.iterable.Observe()
+	return o.iterable.Observe(opts...)
 }
 
 func (o *observable) Filter(ctx context.Context, apply Predicate) Observable {
