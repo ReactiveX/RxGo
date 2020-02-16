@@ -861,7 +861,15 @@ func (o *observable) Send(output chan<- Item, opts ...Option) {
 // Skip suppresses the first n items in the original Observable and
 // returns a new Observable with the rest items.
 func (o *observable) Skip(nth uint, opts ...Option) Observable {
-	panic("implement me")
+	skipCount := 0
+
+	return newObservableFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
+		if skipCount < int(nth) {
+			skipCount++
+			return
+		}
+		dst <- item
+	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
 }
 
 // SkipLast suppresses the last n items in the original Observable and

@@ -617,6 +617,11 @@ func Test_Observable_Send(t *testing.T) {
 	assert.Equal(t, FromError(errFoo), <-ch)
 }
 
+func Test_Observable_Skip(t *testing.T) {
+	obs := testObservable(0, 1, 2, 3, 4, 5).Skip(3)
+	Assert(context.Background(), t, obs, HasItems(3, 4, 5))
+}
+
 func Test_Observable_SkipWhile(t *testing.T) {
 	obs := testObservable(1, 2, 3, 4, 5).SkipWhile(func(i interface{}) bool {
 		switch i := i.(type) {
