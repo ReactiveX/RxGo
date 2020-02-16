@@ -1,14 +1,12 @@
 package rxgo
 
-import "context"
-
 // OptionalSingle is an optional single.
 type OptionalSingle interface {
 	Iterable
 }
 
-func newOptionalSingleFromOperator(ctx context.Context, iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler) OptionalSingle {
-	next := operator(ctx, iterable, nextFunc, errFunc, endFunc)
+func newOptionalSingleFromOperator(iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler, opts ...Option) OptionalSingle {
+	next := operator(iterable, nextFunc, errFunc, endFunc, opts...)
 
 	return &optionalSingle{
 		iterable: newChannelIterable(next),

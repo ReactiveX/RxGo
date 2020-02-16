@@ -13,31 +13,31 @@ import (
 // Observable is the basic observable interface.
 type Observable interface {
 	Iterable
-	All(ctx context.Context, predicate Predicate) Single
-	AverageFloat32(ctx context.Context) Single
-	AverageFloat64(ctx context.Context) Single
-	AverageInt(ctx context.Context) Single
-	AverageInt8(ctx context.Context) Single
-	AverageInt16(ctx context.Context) Single
-	AverageInt32(ctx context.Context) Single
-	AverageInt64(ctx context.Context) Single
-	BufferWithCount(ctx context.Context, count, skip int) Observable
-	BufferWithTime(ctx context.Context, timespan, timeshift Duration) Observable
-	Contains(ctx context.Context, equal Predicate) Single
-	Count(ctx context.Context) Single
-	Filter(ctx context.Context, apply Predicate) Observable
+	All(predicate Predicate, opts ...Option) Single
+	AverageFloat32(opts ...Option) Single
+	AverageFloat64(opts ...Option) Single
+	AverageInt(opts ...Option) Single
+	AverageInt8(opts ...Option) Single
+	AverageInt16(opts ...Option) Single
+	AverageInt32(opts ...Option) Single
+	AverageInt64(opts ...Option) Single
+	BufferWithCount(count, skip int, opts ...Option) Observable
+	BufferWithTime(timespan, timeshift Duration, opts ...Option) Observable
+	Contains(equal Predicate, opts ...Option) Single
+	Count(opts ...Option) Single
+	Filter(apply Predicate, opts ...Option) Observable
 	ForEach(ctx context.Context, nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc)
 	// TODO With pool
-	Map(ctx context.Context, apply Func, opts ...Option) Observable
-	Marshal(ctx context.Context, marshaler Marshaler) Observable
+	Map(apply Func, opts ...Option) Observable
+	Marshal(marshaler Marshaler, opts ...Option) Observable
 	// TODO Add backoff retry
-	Retry(ctx context.Context, count int) Observable
-	SkipWhile(ctx context.Context, apply Predicate) Observable
-	Take(ctx context.Context, nth uint) Observable
-	TakeLast(ctx context.Context, nth uint) Observable
-	ToSlice(ctx context.Context) Single
+	Retry(count int, opts ...Option) Observable
+	SkipWhile(apply Predicate, opts ...Option) Observable
+	Take(nth uint, opts ...Option) Observable
+	TakeLast(nth uint, opts ...Option) Observable
+	ToSlice(opts ...Option) Single
 	// TODO Throttling
-	Unmarshal(ctx context.Context, unmarshaler Unmarshaler, factory func() interface{}) Observable
+	Unmarshal(unmarshaler Unmarshaler, factory func() interface{}, opts ...Option) Observable
 }
 
 type observable struct {
@@ -61,8 +61,8 @@ func defaultErrorFuncOperator(item Item, dst chan<- Item, stop func()) {
 
 func defaultEndFuncOperator(_ chan<- Item) {}
 
-func operator(ctx context.Context, iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler, opts ...Option) chan Item {
-	next, _ := buildOptionValues(opts...)
+func operator(iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler, opts ...Option) chan Item {
+	next, ctx := buildOptionValues(opts...)
 
 	stopped := false
 	stop := func() {
@@ -95,8 +95,8 @@ func operator(ctx context.Context, iterable Iterable, nextFunc, errFunc ItemHand
 }
 
 // TODO Options
-func newObservableFromOperator(ctx context.Context, iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler, opts ...Option) Observable {
-	next := operator(ctx, iterable, nextFunc, errFunc, endFunc, opts...)
+func newObservableFromOperator(iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler, opts ...Option) Observable {
+	next := operator(iterable, nextFunc, errFunc, endFunc, opts...)
 	return &observable{
 		iterable: newChannelIterable(next),
 	}
@@ -111,9 +111,9 @@ func newObservableFromError(err error) Observable {
 	}
 }
 
-func (o *observable) All(ctx context.Context, predicate Predicate) Single {
+func (o *observable) All(predicate Predicate, opts ...Option) Single {
 	all := true
-	return newSingleFromOperator(ctx, o, func(item Item, dst chan<- Item, stop func()) {
+	return newSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
 		if !predicate(item.Value) {
 			dst <- FromValue(false)
 			all = false
@@ -126,11 +126,11 @@ func (o *observable) All(ctx context.Context, predicate Predicate) Single {
 	})
 }
 
-func (o *observable) AverageFloat32(ctx context.Context) Single {
+func (o *observable) AverageFloat32(opts ...Option) Single {
 	var sum float32
 	var count float32
 
-	return newSingleFromOperator(ctx, o, func(item Item, dst chan<- Item, stop func()) {
+	return newSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
 		if v, ok := item.Value.(float32); ok {
 			sum += v
 			count++
@@ -145,14 +145,14 @@ func (o *observable) AverageFloat32(ctx context.Context) Single {
 		} else {
 			dst <- FromValue(sum / count)
 		}
-	})
+	}, opts...)
 }
 
-func (o *observable) AverageFloat64(ctx context.Context) Single {
+func (o *observable) AverageFloat64(opts ...Option) Single {
 	var sum float64
 	var count float64
 
-	return newSingleFromOperator(ctx, o, func(item Item, dst chan<- Item, stop func()) {
+	return newSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
 		if v, ok := item.Value.(float64); ok {
 			sum += v
 			count++
@@ -167,14 +167,14 @@ func (o *observable) AverageFloat64(ctx context.Context) Single {
 		} else {
 			dst <- FromValue(sum / count)
 		}
-	})
+	}, opts...)
 }
 
-func (o *observable) AverageInt(ctx context.Context) Single {
+func (o *observable) AverageInt(opts ...Option) Single {
 	var sum int
 	var count int
 
-	return newSingleFromOperator(ctx, o, func(item Item, dst chan<- Item, stop func()) {
+	return newSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
 		if v, ok := item.Value.(int); ok {
 			sum += v
 			count++
@@ -189,14 +189,14 @@ func (o *observable) AverageInt(ctx context.Context) Single {
 		} else {
 			dst <- FromValue(sum / count)
 		}
-	})
+	}, opts...)
 }
 
-func (o *observable) AverageInt8(ctx context.Context) Single {
+func (o *observable) AverageInt8(opts ...Option) Single {
 	var sum int8
 	var count int8
 
-	return newSingleFromOperator(ctx, o, func(item Item, dst chan<- Item, stop func()) {
+	return newSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
 		if v, ok := item.Value.(int8); ok {
 			sum += v
 			count++
@@ -211,14 +211,14 @@ func (o *observable) AverageInt8(ctx context.Context) Single {
 		} else {
 			dst <- FromValue(sum / count)
 		}
-	})
+	}, opts...)
 }
 
-func (o *observable) AverageInt16(ctx context.Context) Single {
+func (o *observable) AverageInt16(opts ...Option) Single {
 	var sum int16
 	var count int16
 
-	return newSingleFromOperator(ctx, o, func(item Item, dst chan<- Item, stop func()) {
+	return newSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
 		if v, ok := item.Value.(int16); ok {
 			sum += v
 			count++
@@ -233,14 +233,14 @@ func (o *observable) AverageInt16(ctx context.Context) Single {
 		} else {
 			dst <- FromValue(sum / count)
 		}
-	})
+	}, opts...)
 }
 
-func (o *observable) AverageInt32(ctx context.Context) Single {
+func (o *observable) AverageInt32(opts ...Option) Single {
 	var sum int32
 	var count int32
 
-	return newSingleFromOperator(ctx, o, func(item Item, dst chan<- Item, stop func()) {
+	return newSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
 		if v, ok := item.Value.(int32); ok {
 			sum += v
 			count++
@@ -255,14 +255,14 @@ func (o *observable) AverageInt32(ctx context.Context) Single {
 		} else {
 			dst <- FromValue(sum / count)
 		}
-	})
+	}, opts...)
 }
 
-func (o *observable) AverageInt64(ctx context.Context) Single {
+func (o *observable) AverageInt64(opts ...Option) Single {
 	var sum int64
 	var count int64
 
-	return newSingleFromOperator(ctx, o, func(item Item, dst chan<- Item, stop func()) {
+	return newSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
 		if v, ok := item.Value.(int64); ok {
 			sum += v
 			count++
@@ -277,10 +277,10 @@ func (o *observable) AverageInt64(ctx context.Context) Single {
 		} else {
 			dst <- FromValue(sum / count)
 		}
-	})
+	}, opts...)
 }
 
-func (o *observable) BufferWithCount(ctx context.Context, count, skip int) Observable {
+func (o *observable) BufferWithCount(count, skip int, opts ...Option) Observable {
 	if count <= 0 {
 		return newObservableFromError(errors.Wrap(&IllegalInputError{}, "count must be positive"))
 	}
@@ -292,7 +292,7 @@ func (o *observable) BufferWithCount(ctx context.Context, count, skip int) Obser
 	iCount := 0
 	iSkip := 0
 
-	return newObservableFromOperator(ctx, o, func(item Item, dst chan<- Item, stop func()) {
+	return newObservableFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
 		if iCount >= count {
 			// Skip
 			iSkip++
@@ -320,10 +320,10 @@ func (o *observable) BufferWithCount(ctx context.Context, count, skip int) Obser
 		if iCount != 0 {
 			dst <- FromValue(buffer[:iCount])
 		}
-	})
+	}, opts...)
 }
 
-func (o *observable) BufferWithTime(ctx context.Context, timespan, timeshift Duration) Observable {
+func (o *observable) BufferWithTime(timespan, timeshift Duration, opts ...Option) Observable {
 	if timespan == nil || timespan.duration() == 0 {
 		return newObservableFromError(errors.Wrap(&IllegalInputError{}, "timespan must no be nil"))
 	}
@@ -338,7 +338,7 @@ func (o *observable) BufferWithTime(ctx context.Context, timespan, timeshift Dur
 	stop := false
 	listen := true
 
-	next := make(chan Item)
+	next, ctx := buildOptionValues(opts...)
 
 	stopped := false
 
@@ -415,8 +415,8 @@ func (o *observable) BufferWithTime(ctx context.Context, timespan, timeshift Dur
 	}
 }
 
-func (o *observable) Contains(ctx context.Context, equal Predicate) Single {
-	return newSingleFromOperator(ctx, o, func(item Item, dst chan<- Item, stop func()) {
+func (o *observable) Contains(equal Predicate, opts ...Option) Single {
+	return newSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
 		if equal(item.Value) {
 			dst <- FromValue(true)
 			stop()
@@ -424,18 +424,18 @@ func (o *observable) Contains(ctx context.Context, equal Predicate) Single {
 		}
 	}, defaultErrorFuncOperator, func(dst chan<- Item) {
 		dst <- FromValue(false)
-	})
+	}, opts...)
 }
 
-func (o *observable) Count(ctx context.Context) Single {
+func (o *observable) Count(opts ...Option) Single {
 	var count int64
-	return newSingleFromOperator(ctx, o, func(_ Item, dst chan<- Item, _ func()) {
+	return newSingleFromOperator(o, func(_ Item, dst chan<- Item, _ func()) {
 		count++
 	}, func(_ Item, dst chan<- Item, stop func()) {
 		count++
 		dst <- FromValue(count)
 		stop()
-	}, defaultEndFuncOperator)
+	}, defaultEndFuncOperator, opts...)
 }
 
 // TODO Options?
@@ -443,8 +443,8 @@ func (o *observable) Observe(opts ...Option) <-chan Item {
 	return o.iterable.Observe(opts...)
 }
 
-func (o *observable) Filter(ctx context.Context, apply Predicate) Observable {
-	return newObservableFromOperator(ctx, o, func(item Item, dst chan<- Item, stop func()) {
+func (o *observable) Filter(apply Predicate, opts ...Option) Observable {
+	return newObservableFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
 		if apply(item.Value) {
 			dst <- item
 		}
@@ -474,8 +474,8 @@ func (o *observable) ForEach(ctx context.Context, nextFunc NextFunc, errFunc Err
 	newObservableFromHandler(ctx, o, handler)
 }
 
-func (o *observable) Map(ctx context.Context, apply Func, opts ...Option) Observable {
-	return newObservableFromOperator(ctx, o, func(item Item, dst chan<- Item, stop func()) {
+func (o *observable) Map(apply Func, opts ...Option) Observable {
+	return newObservableFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
 		res, err := apply(item.Value)
 		if err != nil {
 			dst <- FromError(err)
@@ -485,14 +485,14 @@ func (o *observable) Map(ctx context.Context, apply Func, opts ...Option) Observ
 	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
 }
 
-func (o *observable) Marshal(ctx context.Context, marshaler Marshaler) Observable {
-	return o.Map(ctx, func(i interface{}) (interface{}, error) {
+func (o *observable) Marshal(marshaler Marshaler, opts ...Option) Observable {
+	return o.Map(func(i interface{}) (interface{}, error) {
 		return marshaler(i)
-	})
+	}, opts...)
 }
 
-func (o *observable) Retry(ctx context.Context, count int) Observable {
-	next := make(chan Item)
+func (o *observable) Retry(count int, opts ...Option) Observable {
+	next, ctx := buildOptionValues(opts...)
 
 	go func() {
 		observe := o.Observe()
@@ -525,10 +525,10 @@ func (o *observable) Retry(ctx context.Context, count int) Observable {
 	}
 }
 
-func (o *observable) SkipWhile(ctx context.Context, apply Predicate) Observable {
+func (o *observable) SkipWhile(apply Predicate, opts ...Option) Observable {
 	skip := true
 
-	return newObservableFromOperator(ctx, o, func(item Item, dst chan<- Item, stop func()) {
+	return newObservableFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
 		if !skip {
 			dst <- item
 		} else {
@@ -537,26 +537,26 @@ func (o *observable) SkipWhile(ctx context.Context, apply Predicate) Observable 
 				dst <- item
 			}
 		}
-	}, defaultErrorFuncOperator, defaultEndFuncOperator)
+	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
 }
 
-func (o *observable) Take(ctx context.Context, nth uint) Observable {
+func (o *observable) Take(nth uint, opts ...Option) Observable {
 	takeCount := 0
 
-	return newObservableFromOperator(ctx, o, func(item Item, dst chan<- Item, stop func()) {
+	return newObservableFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
 		if takeCount < int(nth) {
 			takeCount++
 			dst <- item
 		}
-	}, defaultErrorFuncOperator, defaultEndFuncOperator)
+	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
 }
 
-func (o *observable) TakeLast(ctx context.Context, nth uint) Observable {
+func (o *observable) TakeLast(nth uint, opts ...Option) Observable {
 	n := int(nth)
 	r := ring.New(n)
 	count := 0
 
-	return newObservableFromOperator(ctx, o, func(item Item, dst chan<- Item, stop func()) {
+	return newObservableFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
 		count++
 		r.Value = item.Value
 		r = r.Next()
@@ -574,25 +574,25 @@ func (o *observable) TakeLast(ctx context.Context, nth uint) Observable {
 			dst <- FromValue(r.Value)
 			r = r.Next()
 		}
-	})
+	}, opts...)
 }
 
-func (o *observable) ToSlice(ctx context.Context) Single {
+func (o *observable) ToSlice(opts ...Option) Single {
 	s := make([]interface{}, 0)
-	return newSingleFromOperator(ctx, o, func(item Item, dst chan<- Item, stop func()) {
+	return newSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
 		s = append(s, item.Value)
 	}, defaultErrorFuncOperator, func(dst chan<- Item) {
 		dst <- FromValue(s)
-	})
+	}, opts...)
 }
 
-func (o *observable) Unmarshal(ctx context.Context, unmarshaler Unmarshaler, factory func() interface{}) Observable {
-	return o.Map(ctx, func(i interface{}) (interface{}, error) {
+func (o *observable) Unmarshal(unmarshaler Unmarshaler, factory func() interface{}, opts ...Option) Observable {
+	return o.Map(func(i interface{}) (interface{}, error) {
 		v := factory()
 		err := unmarshaler(i.([]byte), v)
 		if err != nil {
 			return nil, err
 		}
 		return v, nil
-	})
+	}, opts...)
 }

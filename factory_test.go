@@ -2,8 +2,9 @@ package rxgo
 
 import (
 	"context"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_Empty(t *testing.T) {
@@ -30,12 +31,12 @@ func Test_FromChannel_SimpleCapacity(t *testing.T) {
 
 func Test_FromChannel_ComposedCapacity(t *testing.T) {
 	obs1 := FromChannel(make(chan Item, 10)).
-		Map(context.Background(), func(_ interface{}) (interface{}, error) {
+		Map(func(_ interface{}) (interface{}, error) {
 			return 1, nil
 		}, WithBufferedChannel(11))
 	assert.Equal(t, 11, cap(obs1.Observe(WithBufferedChannel(13))))
 
-	obs2 := obs1.Map(context.Background(), func(_ interface{}) (interface{}, error) {
+	obs2 := obs1.Map(func(_ interface{}) (interface{}, error) {
 		return 1, nil
 	}, WithBufferedChannel(12))
 	assert.Equal(t, 12, cap(obs2.Observe(WithBufferedChannel(13))))
@@ -105,12 +106,12 @@ func Test_FromFuncs_SimpleCapacity(t *testing.T) {
 func Test_FromFuncs_ComposedCapacity(t *testing.T) {
 	obs1 := FromFuncs(func(_ context.Context, _ chan<- Item, done func()) {
 		done()
-	}).Map(context.Background(), func(_ interface{}) (interface{}, error) {
+	}).Map(func(_ interface{}) (interface{}, error) {
 		return 1, nil
 	}, WithBufferedChannel(11))
 	assert.Equal(t, 11, cap(obs1.Observe(WithBufferedChannel(13))))
 
-	obs2 := obs1.Map(context.Background(), func(_ interface{}) (interface{}, error) {
+	obs2 := obs1.Map(func(_ interface{}) (interface{}, error) {
 		return 1, nil
 	}, WithBufferedChannel(12))
 	assert.Equal(t, 12, cap(obs2.Observe(WithBufferedChannel(13))))
@@ -134,12 +135,12 @@ func Test_FromItems_SimpleCapacity(t *testing.T) {
 }
 
 func Test_FromItems_ComposedCapacity(t *testing.T) {
-	obs1 := FromItems(FromValue(1)).Map(context.Background(), func(_ interface{}) (interface{}, error) {
+	obs1 := FromItems(FromValue(1)).Map(func(_ interface{}) (interface{}, error) {
 		return 1, nil
 	}, WithBufferedChannel(11))
 	assert.Equal(t, 11, cap(obs1.Observe(WithBufferedChannel(13))))
 
-	obs2 := obs1.Map(context.Background(), func(_ interface{}) (interface{}, error) {
+	obs2 := obs1.Map(func(_ interface{}) (interface{}, error) {
 		return 1, nil
 	}, WithBufferedChannel(12))
 	assert.Equal(t, 12, cap(obs2.Observe(WithBufferedChannel(13))))
