@@ -236,6 +236,22 @@ func Test_Observable_Map_Cancel(t *testing.T) {
 	Assert(context.Background(), t, obs, HasNoItems(), HasNotRaisedError())
 }
 
+func Test_Observable_Map_Parallel(t *testing.T) {
+	const len = 10
+	ch := make(chan Item, len)
+	go func() {
+		for i := 0; i < len; i++ {
+			ch <- FromValue(i)
+		}
+		close(ch)
+	}()
+
+	obs := FromChannel(ch).Map(func(i interface{}) (interface{}, error) {
+		return i.(int) + 1, nil
+	}, WithPool(len))
+	Assert(context.Background(), t, obs, HasItemsNoParticularOrder(1, 2, 3, 4, 5, 6, 7, 8, 9, 10), HasNotRaisedError())
+}
+
 func Test_Observable_Marshal(t *testing.T) {
 	obs := testObservable(testStruct{
 		ID: 1,

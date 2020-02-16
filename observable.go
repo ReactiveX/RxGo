@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tevino/abool"
+
 	"github.com/pkg/errors"
 )
 
@@ -62,14 +64,24 @@ func defaultErrorFuncOperator(item Item, dst chan<- Item, stop func()) {
 func defaultEndFuncOperator(_ chan<- Item) {}
 
 func operator(iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler, opts ...Option) chan Item {
-	next, ctx := buildOptionValues(opts...)
+	next, ctx, pool := buildOptionValues(opts...)
 
-	stopped := false
-	stop := func() {
-		stopped = true
+	if pool == 0 {
+		seq(ctx, next, iterable, nextFunc, errFunc, endFunc)
+	} else {
+		parallel(ctx, pool, next, iterable, nextFunc, errFunc, endFunc)
 	}
 
+	return next
+}
+
+func seq(ctx context.Context, next chan Item, iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler) {
 	go func() {
+		stopped := false
+		stop := func() {
+			stopped = true
+		}
+
 		observe := iterable.Observe()
 	loop:
 		for !stopped {
@@ -90,8 +102,45 @@ func operator(iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandl
 		endFunc(next)
 		close(next)
 	}()
+}
 
-	return next
+func parallel(ctx context.Context, pool int, next chan Item, iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler) {
+	stopped := abool.New()
+	stop := func() {
+		stopped.Set()
+	}
+
+	observe := iterable.Observe()
+
+	wg := sync.WaitGroup{}
+	wg.Add(pool)
+	for i := 0; i < pool; i++ {
+		go func() {
+			for !stopped.IsSet() {
+				select {
+				case <-ctx.Done():
+					wg.Done()
+					return
+				case i, ok := <-observe:
+					if !ok {
+						wg.Done()
+						return
+					}
+					if i.IsError() {
+						errFunc(i, next, stop)
+					} else {
+						nextFunc(i, next, stop)
+					}
+				}
+			}
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		endFunc(next)
+		close(next)
+	}()
 }
 
 func newObservableFromOperator(iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler, opts ...Option) Observable {
@@ -122,7 +171,7 @@ func (o *observable) All(predicate Predicate, opts ...Option) Single {
 		if all {
 			dst <- FromValue(true)
 		}
-	})
+	}, opts...)
 }
 
 func (o *observable) AverageFloat32(opts ...Option) Single {
@@ -337,7 +386,7 @@ func (o *observable) BufferWithTime(timespan, timeshift Duration, opts ...Option
 	stop := false
 	listen := true
 
-	next, ctx := buildOptionValues(opts...)
+	next, ctx, _ := buildOptionValues(opts...)
 
 	stopped := false
 
@@ -490,7 +539,7 @@ func (o *observable) Marshal(marshaler Marshaler, opts ...Option) Observable {
 }
 
 func (o *observable) Retry(count int, opts ...Option) Observable {
-	next, ctx := buildOptionValues(opts...)
+	next, ctx, _ := buildOptionValues(opts...)
 
 	go func() {
 		observe := o.Observe()

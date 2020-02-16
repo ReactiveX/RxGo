@@ -7,6 +7,7 @@ type Option interface {
 	apply(*funcOption)
 	withBuffer() (bool, int)
 	withContext() (bool, context.Context)
+	withPool() (bool, int)
 }
 
 type funcOption struct {
@@ -14,6 +15,7 @@ type funcOption struct {
 	toBuffer bool
 	buffer   int
 	ctx      context.Context
+	pool     int
 }
 
 func (fdo *funcOption) withBuffer() (bool, int) {
@@ -22,6 +24,10 @@ func (fdo *funcOption) withBuffer() (bool, int) {
 
 func (fdo *funcOption) withContext() (bool, context.Context) {
 	return fdo.ctx != nil, fdo.ctx
+}
+
+func (fdo *funcOption) withPool() (bool, int) {
+	return fdo.pool > 0, fdo.pool
 }
 
 func (fdo *funcOption) apply(do *funcOption) {
@@ -42,25 +48,26 @@ func parseOptions(opts ...Option) Option {
 	return o
 }
 
-func buildOptionValues(opts ...Option) (chan Item, context.Context) {
+func buildOptionValues(opts ...Option) (next chan Item, ctx context.Context, pool int) {
 	option := parseOptions(opts...)
 
-	var next chan Item
 	if toBeBuffered, cap := option.withBuffer(); toBeBuffered {
 		next = make(chan Item, cap)
 	} else {
 		next = make(chan Item)
 	}
 
-	var ctx context.Context
-	withContext, c := option.withContext()
-	if withContext {
+	if withContext, c := option.withContext(); withContext {
 		ctx = c
 	} else {
 		ctx = context.Background()
 	}
 
-	return next, ctx
+	if withPool, v := option.withPool(); withPool {
+		pool = v
+	}
+
+	return next, ctx, pool
 }
 
 // WithBufferedChannel allows to configure the capacity of a buffered channel.
@@ -75,5 +82,12 @@ func WithBufferedChannel(capacity int) Option {
 func WithContext(ctx context.Context) Option {
 	return newFuncOption(func(options *funcOption) {
 		options.ctx = ctx
+	})
+}
+
+// WithPool allows to specify an execution pool.
+func WithPool(pool int) Option {
+	return newFuncOption(func(options *funcOption) {
+		options.pool = pool
 	})
 }
