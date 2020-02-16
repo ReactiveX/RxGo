@@ -13,7 +13,9 @@ func newFuncsIterable(f ...Scatter) Iterable {
 }
 
 func (i *funcsIterable) Observe(opts ...Option) <-chan Item {
-	next, ctx, _ := buildOptionValues(opts...)
+	option := parseOptions(opts...)
+	next := option.buildChannel()
+	ctx := option.buildContext()
 
 	wg := sync.WaitGroup{}
 	done := func() {

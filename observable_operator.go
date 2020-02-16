@@ -255,7 +255,9 @@ func (o *observable) BufferWithTime(timespan, timeshift Duration, opts ...Option
 	stop := false
 	listen := true
 
-	next, ctx, _ := buildOptionValues(opts...)
+	option := parseOptions(opts...)
+	next := option.buildChannel()
+	ctx := option.buildContext()
 
 	stopped := false
 
@@ -344,7 +346,9 @@ func (o *observable) BufferWithTimeOrCount(timespan Duration, count int, opts ..
 	errCh := make(chan error)
 	buffer := make([]interface{}, 0)
 	var bufferMutex sync.Mutex
-	next, ctx, _ := buildOptionValues(opts...)
+	option := parseOptions(opts...)
+	next := option.buildChannel()
+	ctx := option.buildContext()
 
 	// First sender goroutine
 	go func() {
@@ -567,7 +571,9 @@ func (o *observable) ForEach(nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFu
 		}
 	}
 
-	next, ctx, _ := buildOptionValues(opts...)
+	option := parseOptions(opts...)
+	next := option.buildChannel()
+	ctx := option.buildContext()
 	go handler(ctx, o.Observe(), next)
 }
 
@@ -679,9 +685,22 @@ func (o *observable) Observe(opts ...Option) <-chan Item {
 	return o.iterable.Observe(opts...)
 }
 
+func (o *observable) OnErrorResumeNext(resumeSequence ErrorToObservable, opts ...Option) Observable {
+	//return newObservableFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+	//	dst <- item
+	//}, func(item Item, dst chan<- Item, stop func()) {
+	//	stop()
+	//	resume := resumeSequence(item.Err)
+	//	operator(resume, defaultNextFuncOperator, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
+	//}, defaultEndFuncOperator, opts...)
+	return nil
+}
+
 // Retry retries if a source Observable sends an error, resubscribe to it in the hopes that it will complete without error.
 func (o *observable) Retry(count int, opts ...Option) Observable {
-	next, ctx, _ := buildOptionValues(opts...)
+	option := parseOptions(opts...)
+	next := option.buildChannel()
+	ctx := option.buildContext()
 
 	go func() {
 		observe := o.Observe()

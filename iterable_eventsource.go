@@ -61,7 +61,8 @@ func (i *eventSourceIterable) closeAllObservers() {
 }
 
 func (i *eventSourceIterable) Observe(opts ...Option) <-chan Item {
-	next, _, _ := buildOptionValues(opts...)
+	option := parseOptions(opts...)
+	next := option.buildChannel()
 
 	i.Lock()
 	if i.disposed {

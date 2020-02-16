@@ -60,9 +60,11 @@ func defaultErrorFuncOperator(item Item, dst chan<- Item, stop func()) {
 func defaultEndFuncOperator(_ chan<- Item) {}
 
 func operator(iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandler, opts ...Option) Iterable {
-	next, ctx, option := buildOptionValues(opts...)
+	option := parseOptions(opts...)
 
 	if option.withEagerObservation() {
+		next := option.buildChannel()
+		ctx := option.buildContext()
 		if withPool, pool := option.withPool(); withPool {
 			parallel(ctx, pool, next, iterable, nextFunc, errFunc, endFunc)
 		} else {
@@ -74,7 +76,8 @@ func operator(iterable Iterable, nextFunc, errFunc ItemHandler, endFunc EndHandl
 
 	return &observable{
 		iterable: newColdIterable(func() <-chan Item {
-			next, ctx, option := buildOptionValues(opts...)
+			next := option.buildChannel()
+			ctx := option.buildContext()
 			if withPool, pool := option.withPool(); withPool {
 				parallel(ctx, pool, next, iterable, nextFunc, errFunc, endFunc)
 			} else {

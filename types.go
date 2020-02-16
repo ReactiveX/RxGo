@@ -11,6 +11,8 @@ type (
 	// - A negative value if the first argument is less than the second
 	// - A positive value if the first argument is greater than the second
 	Comparator func(interface{}, interface{}) int
+	// ErrorToObservable defines a function that computes an observable from an error.
+	ErrorToObservable func(error) Observable
 	// Func defines a function that computes a value from an input value.
 	Func func(interface{}) (interface{}, error)
 	// Iterator defines a function implementing the handler logic for a stream.

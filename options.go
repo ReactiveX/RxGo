@@ -9,6 +9,8 @@ type Option interface {
 	withContext() (bool, context.Context)
 	withEagerObservation() bool
 	withPool() (bool, int)
+	buildChannel() chan Item
+	buildContext() context.Context
 }
 
 type funcOption struct {
@@ -36,6 +38,20 @@ func (fdo *funcOption) withPool() (bool, int) {
 	return fdo.pool > 0, fdo.pool
 }
 
+func (fdo *funcOption) buildChannel() chan Item {
+	if toBeBuffered, cap := fdo.withBuffer(); toBeBuffered {
+		return make(chan Item, cap)
+	}
+	return make(chan Item)
+}
+
+func (fdo *funcOption) buildContext() context.Context {
+	if withContext, c := fdo.withContext(); withContext {
+		return c
+	}
+	return context.Background()
+}
+
 func (fdo *funcOption) apply(do *funcOption) {
 	fdo.f(do)
 }
@@ -52,24 +68,6 @@ func parseOptions(opts ...Option) Option {
 		opt.apply(o)
 	}
 	return o
-}
-
-func buildOptionValues(opts ...Option) (next chan Item, ctx context.Context, option Option) {
-	option = parseOptions(opts...)
-
-	if toBeBuffered, cap := option.withBuffer(); toBeBuffered {
-		next = make(chan Item, cap)
-	} else {
-		next = make(chan Item)
-	}
-
-	if withContext, c := option.withContext(); withContext {
-		ctx = c
-	} else {
-		ctx = context.Background()
-	}
-
-	return next, ctx, option
 }
 
 // WithBufferedChannel allows to configure the capacity of a buffered channel.
