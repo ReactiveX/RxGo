@@ -804,9 +804,76 @@ func (o *observable) Retry(count int, opts ...Option) Observable {
 }
 
 // Sample returns an Observable that emits the most recent items emitted by the source
-// Observable whenever the input Observable emits an item.
-func (o *observable) Sample(obs Observable, opts ...Option) Observable {
-	panic("implement me")
+// Iterable whenever the input Iterable emits an item.
+func (o *observable) Sample(iterable Iterable, opts ...Option) Observable {
+	option := parseOptions(opts...)
+	next := option.buildChannel()
+	ctx := option.buildContext()
+	itCh := make(chan Item)
+	obsCh := make(chan Item)
+
+	go func() {
+		defer close(obsCh)
+		observe := o.Observe()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case i, ok := <-observe:
+				if !ok {
+					return
+				}
+				obsCh <- i
+			}
+		}
+	}()
+
+	go func() {
+		defer close(itCh)
+		observe := iterable.Observe()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case i, ok := <-observe:
+				if !ok {
+					return
+				}
+				itCh <- i
+			}
+		}
+	}()
+
+	go func() {
+		defer close(next)
+		var lastEmittedItem Item
+		isItemWaitingToBeEmitted := false
+
+		for {
+			select {
+			case _, ok := <-itCh:
+				if ok {
+					if isItemWaitingToBeEmitted {
+						next <- lastEmittedItem
+						isItemWaitingToBeEmitted = false
+					}
+				} else {
+					return
+				}
+			case item, ok := <-obsCh:
+				if ok {
+					lastEmittedItem = item
+					isItemWaitingToBeEmitted = true
+				} else {
+					return
+				}
+			}
+		}
+	}()
+
+	return &observable{
+		iterable: newChannelIterable(next),
+	}
 }
 
 // Scan applies Func2 predicate to each item in the original

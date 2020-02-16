@@ -591,6 +591,11 @@ func Test_Observable_Retry_Error(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(1, 2, 1, 2, 1, 2, 1, 2), HasRaisedError(errFoo))
 }
 
+func Test_Observable_Sample(t *testing.T) {
+	obs := testObservable(1).Sample(FromEmpty())
+	Assert(context.Background(), t, obs, HasNoItem(), HasNotRaisedError())
+}
+
 func Test_Observable_Scan(t *testing.T) {
 	obs := testObservable(0, 1, 3, 5, 1, 8).Scan(func(x interface{}, y interface{}) (interface{}, error) {
 		var v1, v2 int
