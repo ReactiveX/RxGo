@@ -925,9 +925,8 @@ func (o *observable) StartWithIterable(iterable Iterable, opts ...Option) Observ
 				if i.IsError() {
 					next <- i
 					return
-				} else {
-					next <- i
 				}
+				next <- i
 			}
 		}
 		observe = o.Observe()
@@ -943,9 +942,8 @@ func (o *observable) StartWithIterable(iterable Iterable, opts ...Option) Observ
 				if i.IsError() {
 					next <- i
 					return
-				} else {
-					next <- i
 				}
+				next <- i
 			}
 		}
 	}()
@@ -957,17 +955,89 @@ func (o *observable) StartWithIterable(iterable Iterable, opts ...Option) Observ
 
 // SumFloat32 calculates the average of float32 emitted by an Observable and emits a float32.
 func (o *observable) SumFloat32(opts ...Option) Single {
-	panic("implement me")
+	var sum float32
+
+	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
+		switch i := item.Value.(type) {
+		default:
+			dst <- FromError(errors.Wrap(&IllegalInputError{},
+				fmt.Sprintf("expected type: (float32|int|int8|int16|int32|int64), got: %t", item)))
+			operator.stop()
+			return
+		case int:
+			sum += float32(i)
+		case int8:
+			sum += float32(i)
+		case int16:
+			sum += float32(i)
+		case int32:
+			sum += float32(i)
+		case int64:
+			sum += float32(i)
+		case float32:
+			sum += i
+		}
+	}, defaultErrorFuncOperator, func(ctx context.Context, dst chan<- Item) {
+		dst <- FromValue(sum)
+	}, opts...)
 }
 
 // SumFloat64 calculates the average of float64 emitted by an Observable and emits a float64.
 func (o *observable) SumFloat64(opts ...Option) Single {
-	panic("implement me")
+	var sum float64
+
+	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
+		switch i := item.Value.(type) {
+		default:
+			dst <- FromError(errors.Wrap(&IllegalInputError{},
+				fmt.Sprintf("expected type: (float32|float64|int|int8|int16|int32|int64), got: %t", item)))
+			operator.stop()
+			return
+		case int:
+			sum += float64(i)
+		case int8:
+			sum += float64(i)
+		case int16:
+			sum += float64(i)
+		case int32:
+			sum += float64(i)
+		case int64:
+			sum += float64(i)
+		case float32:
+			sum += float64(i)
+		case float64:
+			sum += i
+		}
+	}, defaultErrorFuncOperator, func(ctx context.Context, dst chan<- Item) {
+		dst <- FromValue(sum)
+	}, opts...)
 }
 
 // SumInt64 calculates the average of integers emitted by an Observable and emits an int64.
 func (o *observable) SumInt64(opts ...Option) Single {
-	panic("implement me")
+	var sum int64
+
+	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
+		switch i := item.Value.(type) {
+		default:
+			dst <- FromError(errors.Wrap(&IllegalInputError{},
+				fmt.Sprintf("expected type: (int|int8|int16|int32|int64), got: %t", item)))
+			operator.stop()
+			return
+		case int:
+			sum += int64(i)
+		case int8:
+			sum += int64(i)
+		case int16:
+			sum += int64(i)
+		case int32:
+			sum += int64(i)
+		case int64:
+			sum += i
+		}
+	}, defaultErrorFuncOperator, func(ctx context.Context, dst chan<- Item) {
+		dst <- FromValue(sum)
+	}, opts...)
 }
 
 // Take emits only the first n items emitted by an Observable.

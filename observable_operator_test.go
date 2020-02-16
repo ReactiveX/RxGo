@@ -655,6 +655,32 @@ func Test_Observable_StartWithIterable_Error2(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3, 4), HasRaisedError(errFoo))
 }
 
+func Test_Observable_SumFloat32(t *testing.T) {
+	Assert(context.Background(), t, testObservable(float32(1.0), float32(2.0), float32(3.0)).SumFloat32(),
+		HasItem(float32(6.)))
+	Assert(context.Background(), t, testObservable(float32(1.1), 2, int8(3), int16(1), int32(1), int64(1)).SumFloat32(),
+		HasItem(float32(9.1)))
+	Assert(context.Background(), t, testObservable(1.1, 2.2, 3.3).SumFloat32(), HasRaisedAnError())
+	Assert(context.Background(), t, FromEmpty().SumFloat32(), HasItem(float32(0)))
+}
+
+func Test_Observable_SumFloat64(t *testing.T) {
+	Assert(context.Background(), t, testObservable(1.1, 2.2, 3.3).SumFloat64(),
+		HasItem(6.6))
+	Assert(context.Background(), t, testObservable(float32(1.0), 2, int8(3), 4., int16(1), int32(1), int64(1)).SumFloat64(),
+		HasItem(13.))
+	Assert(context.Background(), t, testObservable("x").SumFloat64(), HasRaisedAnError())
+	Assert(context.Background(), t, FromEmpty().SumFloat64(), HasItem(float64(0)))
+}
+
+func Test_Observable_SumInt64(t *testing.T) {
+	Assert(context.Background(), t, testObservable(1, 2, 3).SumInt64(), HasItem(int64(6)))
+	Assert(context.Background(), t, testObservable(int8(1), int(2), int16(3), int32(4), int64(5)).SumInt64(),
+		HasItem(int64(15)))
+	Assert(context.Background(), t, testObservable(1.1, 2.2, 3.3).SumInt64(), HasRaisedAnError())
+	Assert(context.Background(), t, FromEmpty().SumInt64(), HasItem(int64(0)))
+}
+
 func Test_Observable_Take(t *testing.T) {
 	obs := testObservable(1, 2, 3, 4, 5).Take(3)
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3))
