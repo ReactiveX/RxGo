@@ -1,6 +1,9 @@
 package rxgo
 
-import "context"
+import (
+	"context"
+	"runtime"
+)
 
 // Option handles configurable options.
 type Option interface {
@@ -96,5 +99,12 @@ func WithEagerObservation() Option {
 func WithPool(pool int) Option {
 	return newFuncOption(func(options *funcOption) {
 		options.pool = pool
+	})
+}
+
+// WithCPUPool allows to specify an execution pool based on the number of logical CPUs.
+func WithCPUPool() Option {
+	return newFuncOption(func(options *funcOption) {
+		options.pool = runtime.NumCPU()
 	})
 }

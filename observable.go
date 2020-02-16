@@ -53,10 +53,6 @@ type observable struct {
 	iterable Iterable
 }
 
-func defaultNextFuncOperator(item Item, dst chan<- Item, _ operatorOptions) {
-	dst <- item
-}
-
 func defaultErrorFuncOperator(item Item, dst chan<- Item, operatorOpts operatorOptions) {
 	dst <- item
 	operatorOpts.stop()
