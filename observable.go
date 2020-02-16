@@ -66,7 +66,7 @@ type Observable interface {
 	ToMapWithValueSelector(keySelector, valueSelector Func, opts ...Option) Single
 	ToSlice(opts ...Option) Single
 	Unmarshal(unmarshaler Unmarshaler, factory func() interface{}, opts ...Option) Observable
-	ZipFromObservable(publisher Observable, zipper Func2, opts ...Option) Observable
+	ZipFromIterable(iterable Iterable, zipper Func2, opts ...Option) Observable
 }
 
 type observable struct {

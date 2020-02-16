@@ -1176,8 +1176,56 @@ func (o *observable) Unmarshal(unmarshaler Unmarshaler, factory func() interface
 	}, opts...)
 }
 
-// ZipFromObservable merge the emissions of multiple Observables together via a specified function
+// ZipFromIterable merges the emissions of multiple Observables together via a specified function
 // and emit single items for each combination based on the results of this function.
-func (o *observable) ZipFromObservable(publisher Observable, zipper Func2, opts ...Option) Observable {
-	panic("implement me")
+func (o *observable) ZipFromIterable(iterable Iterable, zipper Func2, opts ...Option) Observable {
+	option := parseOptions(opts...)
+	next := option.buildChannel()
+	ctx := option.buildContext()
+
+	go func() {
+		defer close(next)
+		it1 := o.Observe()
+		it2 := iterable.Observe()
+	loop:
+		for {
+			select {
+			case <-ctx.Done():
+				break loop
+			case i1, ok := <-it1:
+				if !ok {
+					break loop
+				}
+				if i1.IsError() {
+					next <- i1
+					return
+				}
+				for {
+					select {
+					case <-ctx.Done():
+						break loop
+					case i2, ok := <-it2:
+						if !ok {
+							break loop
+						}
+						if i2.IsError() {
+							next <- i2
+							return
+						}
+						v, err := zipper(i1.Value, i2.Value)
+						if err != nil {
+							next <- FromError(err)
+							return
+						}
+						next <- FromValue(v)
+						continue loop
+					}
+				}
+			}
+		}
+	}()
+
+	return &observable{
+		iterable: newChannelIterable(next),
+	}
 }

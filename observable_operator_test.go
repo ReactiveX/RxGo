@@ -143,14 +143,14 @@ func Test_Observable_BufferWithTime_IllegalInput(t *testing.T) {
 }
 
 func Test_Observable_BufferWithTime_NilTimeshift(t *testing.T) {
-	just := testObservable(1, 2, 3)
-	obs := just.BufferWithTime(WithDuration(1*time.Second), nil)
+	testObservable := testObservable(1, 2, 3)
+	obs := testObservable.BufferWithTime(WithDuration(1*time.Second), nil)
 	Assert(context.Background(), t, obs, HasSomeItems())
 }
 
 func Test_Observable_BufferWithTime_Error(t *testing.T) {
-	just := testObservable(1, 2, 3, errFoo)
-	obs := just.BufferWithTime(WithDuration(1*time.Second), nil)
+	testObservable := testObservable(1, 2, 3, errFoo)
+	obs := testObservable.BufferWithTime(WithDuration(1*time.Second), nil)
 	Assert(context.Background(), t, obs, HasItems([]interface{}{1, 2, 3}), HasRaisedError(errFoo))
 }
 
@@ -166,8 +166,8 @@ func Test_Observable_BufferWithTimeOrCount_InvalidInputs(t *testing.T) {
 }
 
 func Test_Observable_BufferWithTimeOrCount_Count(t *testing.T) {
-	just := testObservable(1, 2, 3)
-	obs := just.BufferWithTimeOrCount(WithDuration(1*time.Second), 2)
+	testObservable := testObservable(1, 2, 3)
+	obs := testObservable.BufferWithTimeOrCount(WithDuration(1*time.Second), 2)
 	Assert(context.Background(), t, obs, HasItems([]interface{}{1, 2}, []interface{}{3}))
 }
 
@@ -189,8 +189,8 @@ func Test_Observable_BufferWithTimeOrCount_MockedTime(t *testing.T) {
 }
 
 func Test_Observable_BufferWithTimeOrCount_Error(t *testing.T) {
-	just := testObservable(1, 2, 3, errFoo, 4)
-	obs := just.BufferWithTimeOrCount(WithDuration(10*time.Second), 2)
+	testObservable := testObservable(1, 2, 3, errFoo, 4)
+	obs := testObservable.BufferWithTimeOrCount(WithDuration(10*time.Second), 2)
 	Assert(context.Background(), t, obs, HasItems([]interface{}{1, 2}, []interface{}{3}),
 		HasRaisedError(errFoo))
 }
@@ -800,4 +800,55 @@ func Test_Observable_Unmarshal_Error(t *testing.T) {
 			return &testStruct{}
 		})
 	Assert(context.Background(), t, obs, HasRaisedAnError())
+}
+
+func Test_Observable_ZipFromObservable(t *testing.T) {
+	obs1 := testObservable(1, 2, 3)
+	obs2 := testObservable(10, 20, 30)
+	zipper := func(elem1 interface{}, elem2 interface{}) (interface{}, error) {
+		switch v1 := elem1.(type) {
+		case int:
+			switch v2 := elem2.(type) {
+			case int:
+				return v1 + v2, nil
+			}
+		}
+		return 0, nil
+	}
+	zip := obs1.ZipFromIterable(obs2, zipper)
+	Assert(context.Background(), t, zip, HasItems(11, 22, 33))
+}
+
+func Test_Observable_ZipFromObservable_DifferentLength1(t *testing.T) {
+	obs1 := testObservable(1, 2, 3)
+	obs2 := testObservable(10, 20)
+	zipper := func(elem1 interface{}, elem2 interface{}) (interface{}, error) {
+		switch v1 := elem1.(type) {
+		case int:
+			switch v2 := elem2.(type) {
+			case int:
+				return v1 + v2, nil
+			}
+		}
+		return 0, nil
+	}
+	zip := obs1.ZipFromIterable(obs2, zipper)
+	Assert(context.Background(), t, zip, HasItems(11, 22))
+}
+
+func Test_Observable_ZipFromObservable_DifferentLength2(t *testing.T) {
+	obs1 := testObservable(1, 2)
+	obs2 := testObservable(10, 20, 30)
+	zipper := func(elem1 interface{}, elem2 interface{}) (interface{}, error) {
+		switch v1 := elem1.(type) {
+		case int:
+			switch v2 := elem2.(type) {
+			case int:
+				return v1 + v2, nil
+			}
+		}
+		return 0, nil
+	}
+	zip := obs1.ZipFromIterable(obs2, zipper)
+	Assert(context.Background(), t, zip, HasItems(11, 22))
 }
