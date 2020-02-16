@@ -549,6 +549,49 @@ func (o *observable) FirstOrDefault(defaultValue interface{}, opts ...Option) Si
 	}, opts...)
 }
 
+func (o *observable) FlatMap(apply ItemToObservable, opts ...Option) Observable {
+	option := parseOptions(opts...)
+	next := option.buildChannel()
+	ctx := option.buildContext()
+
+	go func() {
+		defer close(next)
+		observe := o.Observe()
+	loop1:
+		for {
+			select {
+			case <-ctx.Done():
+				break loop1
+			case i, ok := <-observe:
+				if !ok {
+					break loop1
+				}
+				observe2 := apply(i).Observe()
+			loop2:
+				for {
+					select {
+					case <-ctx.Done():
+						break loop2
+					case i, ok := <-observe2:
+						if !ok {
+							break loop2
+						}
+						if i.IsError() {
+							next <- i
+							return
+						}
+						next <- i
+					}
+				}
+			}
+		}
+	}()
+
+	return &observable{
+		iterable: newChannelIterable(next),
+	}
+}
+
 // ForEach subscribes to the Observable and receives notifications for each element.
 func (o *observable) ForEach(nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc, opts ...Option) {
 	handler := func(ctx context.Context, src <-chan Item, dst chan<- Item) {

@@ -297,6 +297,33 @@ func Test_Observable_FirstOrDefault_Empty(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItem(10))
 }
 
+func Test_Observable_FlatMap(t *testing.T) {
+	obs := testObservable(1, 2, 3).FlatMap(func(i Item) Observable {
+		return testObservable(i.Value.(int)+1, i.Value.(int)*10)
+	})
+	Assert(context.Background(), t, obs, HasItems(2, 10, 3, 20, 4, 30))
+}
+
+func Test_Observable_FlatMap_Error1(t *testing.T) {
+	obs := testObservable(1, 2, 3).FlatMap(func(i Item) Observable {
+		if i.Value == 2 {
+			return testObservable(errFoo)
+		}
+		return testObservable(i.Value.(int)+1, i.Value.(int)*10)
+	})
+	Assert(context.Background(), t, obs, HasItems(2, 10), HasRaisedError(errFoo))
+}
+
+func Test_Observable_FlatMap_Error2(t *testing.T) {
+	obs := testObservable(1, errFoo, 3).FlatMap(func(i Item) Observable {
+		if i.IsError() {
+			return testObservable(0)
+		}
+		return testObservable(i.Value.(int)+1, i.Value.(int)*10)
+	})
+	Assert(context.Background(), t, obs, HasItems(2, 10, 0, 4, 30), HasNotRaisedError())
+}
+
 func Test_Observable_ForEach_Error(t *testing.T) {
 	count := 0
 	var gotErr error

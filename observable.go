@@ -31,6 +31,7 @@ type Observable interface {
 	Filter(apply Predicate, opts ...Option) Observable
 	First(opts ...Option) OptionalSingle
 	FirstOrDefault(defaultValue interface{}, opts ...Option) Single
+	FlatMap(apply ItemToObservable, opts ...Option) Observable
 	ForEach(nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc, opts ...Option)
 	IgnoreElements(opts ...Option) Observable
 	Last(opts ...Option) OptionalSingle
