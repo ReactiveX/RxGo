@@ -350,3 +350,18 @@ func Test_Start(t *testing.T) {
 	}})
 	Assert(context.Background(), t, obs, HasItemsNoParticularOrder(1, 2))
 }
+
+func Test_Timer(t *testing.T) {
+	obs := Timer(WithDuration(time.Nanosecond))
+	Assert(context.Background(), t, obs, HasSomeItems())
+}
+
+func Test_Timer_Empty(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	obs := Timer(WithDuration(time.Hour), WithContext(ctx))
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		cancel()
+	}()
+	Assert(context.Background(), t, obs, HasNoItems())
+}

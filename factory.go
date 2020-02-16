@@ -100,10 +100,10 @@ func CombineLatest(f FuncN, observables []Observable, opts ...Option) Observable
 					}
 					mutex.Lock()
 					s[i] = item.Value
-					mutex.Unlock()
 					if atomic.LoadUint32(&counter) == size {
 						next <- FromValue(f(s...))
 					}
+					mutex.Unlock()
 				}
 			}
 		}
@@ -329,6 +329,26 @@ func Start(fs []Supplier, opts ...Option) Observable {
 		close(next)
 	}()
 
+	return &observable{
+		iterable: newChannelIterable(next),
+	}
+}
+
+// Timer returns an Observable that emits an empty structure after a specified delay, and then completes.
+func Timer(d Duration, opts ...Option) Observable {
+	option := parseOptions(opts...)
+	next := option.buildChannel()
+	ctx := option.buildContext()
+
+	go func() {
+		defer close(next)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(d.duration()):
+			next <- FromValue(struct{}{})
+		}
+	}()
 	return &observable{
 		iterable: newChannelIterable(next),
 	}
