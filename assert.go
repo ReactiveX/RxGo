@@ -165,24 +165,30 @@ func AssertObservable(ctx context.Context, t *testing.T, observable Observable, 
 
 	got := make([]interface{}, 0)
 	var err error
-	done := make(chan struct{})
 
-	observable.ForEach(ctx, func(i interface{}) {
-		got = append(got, i)
-	}, func(e error) {
-		err = e
-		close(done)
-	}, func() {
-		close(done)
-	})
+	observe := observable.Observe()
+loop:
+	for {
+		select {
+		case <-ctx.Done():
+			break loop
+		case item, ok := <-observe:
+			if !ok {
+				break loop
+			}
+			if item.IsError() {
+				err = item.Err
+			} else {
+				got = append(got, item.Value)
+			}
+		}
+	}
 
 	if checkHasItems, expectedItems := ass.itemsToBeChecked(); checkHasItems {
-		<-done
 		assert.Equal(t, expectedItems, got)
 	}
 
 	if checkHasItemsNoOrder, itemsNoOrder := ass.itemsNoOrderedToBeChecked(); checkHasItemsNoOrder {
-		<-done
 		m := make(map[interface{}]interface{})
 		for _, v := range itemsNoOrder {
 			m[v] = nil
@@ -195,12 +201,10 @@ func AssertObservable(ctx context.Context, t *testing.T, observable Observable, 
 	}
 
 	if ass.noItemsToBeChecked() {
-		<-done
 		assert.Equal(t, 0, len(got))
 	}
 
 	if ass.someItemsToBeChecked() {
-		<-done
 		assert.NotEqual(t, 0, len(got))
 	}
 

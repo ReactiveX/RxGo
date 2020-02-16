@@ -314,6 +314,7 @@ func (o *observable) BufferWithCount(ctx context.Context, count, skip int) Obser
 			dst <- FromValue(buffer[:iCount])
 		}
 		dst <- item
+		iCount = 0
 		stop()
 	}, func(dst chan<- Item) {
 		if iCount != 0 {
@@ -464,7 +465,7 @@ func (o *observable) ForEach(ctx context.Context, nextFunc NextFunc, errFunc Err
 				}
 				if i.IsError() {
 					errFunc(i.Err)
-					return
+					break
 				}
 				nextFunc(i.Value)
 			}
@@ -493,15 +494,10 @@ func (o *observable) Marshal(ctx context.Context, marshaler Marshaler) Observabl
 func (o *observable) Retry(ctx context.Context, count int) Observable {
 	next := make(chan Item)
 
-	stopped := false
-	stop := func() {
-		stopped = true
-	}
-
 	go func() {
 		observe := o.Observe()
 	loop:
-		for !stopped {
+		for {
 			select {
 			case <-ctx.Done():
 				break loop
@@ -513,8 +509,7 @@ func (o *observable) Retry(ctx context.Context, count int) Observable {
 					count--
 					if count < 0 {
 						next <- i
-						stop()
-						return
+						break loop
 					}
 					observe = o.Observe()
 				} else {
