@@ -6,8 +6,8 @@ import (
 	"sync/atomic"
 )
 
-// Amb take several Observables, emit all of the items from only the first of these Observables
-// to emit an item or notification
+// Amb takes several Observables, emit all of the items from only the first of these Observables
+// to emit an item or notification.
 func Amb(observables []Observable, opts ...Option) Observable {
 	option := parseOptions(opts...)
 	ctx := option.buildContext()
@@ -59,8 +59,8 @@ func Amb(observables []Observable, opts ...Option) Observable {
 	}
 }
 
-// CombineLatest combine the latest item emitted by each Observable via a specified function
-// and emit items based on the results of this function
+// CombineLatest combines the latest item emitted by each Observable via a specified function
+// and emit items based on the results of this function.
 func CombineLatest(f FuncN, observables []Observable, opts ...Option) Observable {
 	option := parseOptions(opts...)
 	ctx := option.buildContext()
@@ -120,6 +120,39 @@ func CombineLatest(f FuncN, observables []Observable, opts ...Option) Observable
 		close(errCh)
 	}()
 
+	return &observable{
+		iterable: newChannelIterable(next),
+	}
+}
+
+// Concat emits the emissions from two or more Observables without interleaving them.
+func Concat(observables []Observable, opts ...Option) Observable {
+	option := parseOptions(opts...)
+	ctx := option.buildContext()
+	next := option.buildChannel()
+
+	go func() {
+		defer close(next)
+		for _, obs := range observables {
+			observe := obs.Observe()
+		loop:
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case item, ok := <-observe:
+					if !ok {
+						break loop
+					}
+					if item.IsError() {
+						next <- item
+						return
+					}
+					next <- item
+				}
+			}
+		}
+	}()
 	return &observable{
 		iterable: newChannelIterable(next),
 	}

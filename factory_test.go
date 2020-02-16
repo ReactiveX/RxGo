@@ -52,6 +52,34 @@ func Test_CombineLatest_Error(t *testing.T) {
 	Assert(context.Background(), t, obs, HasNoItems(), HasRaisedError(errFoo))
 }
 
+func Test_Concat_SingleObservable(t *testing.T) {
+	obs := Concat([]Observable{testObservable(1, 2, 3)})
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3))
+}
+
+func Test_Concat_TwoObservables(t *testing.T) {
+	obs := Concat([]Observable{testObservable(1, 2, 3), testObservable(4, 5, 6)})
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3, 4, 5, 6))
+}
+
+func Test_Concat_MoreThanTwoObservables(t *testing.T) {
+	obs := Concat([]Observable{testObservable(1, 2, 3), testObservable(4, 5, 6), testObservable(7, 8, 9)})
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3, 4, 5, 6, 7, 8, 9))
+}
+
+func Test_Concat_EmptyObservables(t *testing.T) {
+	obs := Concat([]Observable{Empty(), Empty(), Empty()})
+	Assert(context.Background(), t, obs, HasNoItem())
+}
+
+func Test_Concat_OneEmptyObservable(t *testing.T) {
+	obs := Concat([]Observable{Empty(), testObservable(1, 2, 3)})
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3))
+
+	obs = Concat([]Observable{testObservable(1, 2, 3), Empty()})
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3))
+}
+
 func Test_Empty(t *testing.T) {
 	obs := Empty()
 	Assert(context.Background(), t, obs, HasNoItems())
