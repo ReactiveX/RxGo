@@ -1,17 +1,15 @@
 # RxGo
 [![Join the chat at https://gitter.im/ReactiveX/RxGo](https://badges.gitter.im/ReactiveX/RxGo.svg)](https://gitter.im/ReactiveX/RxGo?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Build Status](https://travis-ci.org/ReactiveX/RxGo.svg?branch=v2)](https://travis-ci.org/ReactiveX/RxGo)
-[![Coverage Status](https://coveralls.io/repos/github/ReactiveX/RxGo/badge.svg?branch=v2)](https://coveralls.io/github/ReactiveX/RxGo?branch=v2)
+[![Build Status](https://travis-ci.org/ReactiveX/RxGo.svg?branch=master)](https://travis-ci.org/ReactiveX/RxGo)
+[![Coverage Status](https://coveralls.io/repos/github/ReactiveX/RxGo/badge.svg?branch=master)](https://coveralls.io/github/ReactiveX/RxGo?branch=master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/reactivex/rxgo)](https://goreportcard.com/report/github.com/reactivex/rxgo)
 
 Reactive Extensions for the Go Language
 
-> We started to develop RxGo version 2 (current version 1 on branch master) which is found in the `v2` branch. To interested [read here](https://github.com/ReactiveX/RxGo/issues/99#issuecomment-443281707)
-
 ## Call for Maintainers
-This project hasn't been active for a while due to myself not having enough time and not using Go on a regular basis.
-I'm welcoming anyone who's willing to help maintaining or would like to become a core developer to get in touch with me.
-I'd like to see this project continues and it'd be such a shame to let it just sinks.
+The development of RxGo v2 has started (`v2` branch). Ongoing discussions can be found in [#99](https://github.com/ReactiveX/RxGo/issues/99). 
+
+We are welcoming anyone who's willing to help us maintaining or would like to become a core developer to get in touch with us.
 
 ## Contributions
 All contributions are welcome, both in development and documentation! Be sure you check out [contributions](https://github.com/ReactiveX/RxGo/wiki/Contributions) and [roadmap](https://github.com/ReactiveX/RxGo/wiki/Roadmap).
@@ -60,6 +58,7 @@ import (
 	"github.com/reactivex/rxgo"
 	"github.com/reactivex/rxgo/observer"
 	"github.com/reactivex/rxgo/observable"
+	"github.com/reactivex/rxgo/iterable"
 	//...
 )
 ```
@@ -156,7 +155,7 @@ func main() {
 
     <-primeSequence.
             FlatMap(func(primes interface{}) observable.Observable {
-                return observable.Create(func(emitter observer.Observer) {
+                return observable.Create(func(emitter *observer.Observer) {
                     for _, prime := range primes.([]int) {
                         emitter.OnNext(prime)
                     }
