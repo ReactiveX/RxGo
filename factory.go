@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 // Amb takes several Observables, emit all of the items from only the first of these Observables
@@ -175,9 +176,11 @@ func FromChannel(next <-chan Item) Observable {
 }
 
 // FromEventSource creates a hot observable from a channel.
-func FromEventSource(ctx context.Context, next <-chan Item, strategy BackpressureStrategy) Observable {
+func FromEventSource(next <-chan Item, opts ...Option) Observable {
+	option := parseOptions(opts...)
+
 	return &observable{
-		iterable: newEventSourceIterable(ctx, next, strategy),
+		iterable: newEventSourceIterable(option.buildContext(), next, option.buildBackPressureStrategy()),
 	}
 }
 
@@ -185,6 +188,38 @@ func FromEventSource(ctx context.Context, next <-chan Item, strategy Backpressur
 func FromFuncs(f ...Scatter) Observable {
 	return &observable{
 		iterable: newFuncsIterable(f...),
+	}
+}
+
+// FromSlice creates an observable from a slice.
+func FromSlice(s []Item) Single {
+	return &single{
+		iterable: newSliceIterable(s),
+	}
+}
+
+// Interval creates an Observable emitting incremental integers infinitely between
+// each given time interval.
+func Interval(interval Duration, opts ...Option) Observable {
+	option := parseOptions(opts...)
+	next := option.buildChannel()
+
+	ctx := option.buildContext()
+	go func() {
+		i := 0
+		for {
+			select {
+			case <-time.After(interval.duration()):
+				next <- FromValue(i)
+				i++
+			case <-ctx.Done():
+				close(next)
+				return
+			}
+		}
+	}()
+	return &observable{
+		iterable: newEventSourceIterable(ctx, next, option.buildBackPressureStrategy()),
 	}
 }
 

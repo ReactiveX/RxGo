@@ -14,15 +14,17 @@ type Option interface {
 	withPool() (bool, int)
 	buildChannel() chan Item
 	buildContext() context.Context
+	buildBackPressureStrategy() BackpressureStrategy
 }
 
 type funcOption struct {
-	f                func(*funcOption)
-	toBuffer         bool
-	buffer           int
-	ctx              context.Context
-	eagerObservation bool
-	pool             int
+	f                    func(*funcOption)
+	toBuffer             bool
+	buffer               int
+	ctx                  context.Context
+	eagerObservation     bool
+	pool                 int
+	backPressureStrategy BackpressureStrategy
 }
 
 func (fdo *funcOption) withBuffer() (bool, int) {
@@ -53,6 +55,10 @@ func (fdo *funcOption) buildContext() context.Context {
 		return c
 	}
 	return context.Background()
+}
+
+func (fdo *funcOption) buildBackPressureStrategy() BackpressureStrategy {
+	return fdo.backPressureStrategy
 }
 
 func (fdo *funcOption) apply(do *funcOption) {
@@ -106,5 +112,12 @@ func WithPool(pool int) Option {
 func WithCPUPool() Option {
 	return newFuncOption(func(options *funcOption) {
 		options.pool = runtime.NumCPU()
+	})
+}
+
+// WithBackPressureStrategy sets the back pressure strategy: drop or block.
+func WithBackPressureStrategy(strategy BackpressureStrategy) Option {
+	return newFuncOption(func(options *funcOption) {
+		options.backPressureStrategy = strategy
 	})
 }

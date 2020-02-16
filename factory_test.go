@@ -254,7 +254,7 @@ func Test_FromItems_ComposedCapacity(t *testing.T) {
 func Test_FromEventSource_ObservationAfterAllSent(t *testing.T) {
 	const max = 10
 	next := make(chan Item, max)
-	obs := FromEventSource(context.Background(), next, Block)
+	obs := FromEventSource(next, WithBackPressureStrategy(Drop))
 
 	go func() {
 		for i := 0; i < max; i++ {
@@ -275,7 +275,7 @@ func Test_FromEventSource_ObservationAfterAllSent(t *testing.T) {
 func Test_FromEventSource_Drop(t *testing.T) {
 	const max = 100_000
 	next := make(chan Item, max)
-	obs := FromEventSource(context.Background(), next, Drop)
+	obs := FromEventSource(next, WithBackPressureStrategy(Drop))
 
 	go func() {
 		for i := 0; i < max; i++ {
@@ -293,4 +293,23 @@ func Test_FromEventSource_Drop(t *testing.T) {
 		}
 		return nil
 	}))
+}
+
+func Test_Observable_Interval(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	obs := Interval(WithDuration(time.Nanosecond), WithContext(ctx))
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		cancel()
+	}()
+	Assert(context.Background(), t, obs, HasSomeItems())
+}
+
+func Test_Observable_Interval_NoItem(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	obs := Interval(WithDuration(time.Nanosecond), WithContext(ctx))
+	time.Sleep(50 * time.Millisecond)
+	cancel()
+	// As Interval is built on an event source, we expect no items
+	Assert(context.Background(), t, obs, HasNoItem())
 }
