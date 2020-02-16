@@ -275,6 +275,26 @@ func Test_Observable_Filter(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(2, 4), HasNotRaisedError())
 }
 
+func Test_Observable_First_NotEmpty(t *testing.T) {
+	obs := testObservable(1, 2, 3).First()
+	Assert(context.Background(), t, obs, HasItem(1))
+}
+
+func Test_Observable_First_Empty(t *testing.T) {
+	obs := FromEmpty().First()
+	Assert(context.Background(), t, obs, HasNoItem())
+}
+
+func Test_Observable_FirstOrDefault_NotEmpty(t *testing.T) {
+	obs := testObservable(1, 2, 3).FirstOrDefault(10)
+	Assert(context.Background(), t, obs, HasItem(1))
+}
+
+func Test_Observable_FirstOrDefault_Empty(t *testing.T) {
+	obs := FromEmpty().FirstOrDefault(10)
+	Assert(context.Background(), t, obs, HasItem(10))
+}
+
 func Test_Observable_ForEach_Error(t *testing.T) {
 	count := 0
 	var gotErr error

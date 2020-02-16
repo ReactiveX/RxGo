@@ -512,11 +512,6 @@ func (o *observable) ElementAt(index uint, opts ...Option) Single {
 	}, opts...)
 }
 
-// Observe observes an observable by returning its channel
-func (o *observable) Observe(opts ...Option) <-chan Item {
-	return o.iterable.Observe(opts...)
-}
-
 // Filter emits only those items from an Observable that pass a predicate test.
 func (o *observable) Filter(apply Predicate, opts ...Option) Observable {
 	return newObservableFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
@@ -524,6 +519,30 @@ func (o *observable) Filter(apply Predicate, opts ...Option) Observable {
 			dst <- item
 		}
 	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
+}
+
+// First returns new Observable which emit only first item.
+func (o *observable) First(opts ...Option) OptionalSingle {
+	return newSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+		dst <- item
+		stop()
+	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
+}
+
+// FirstOrDefault returns new Observable which emit only first item.
+// If the observable fails to emit any items, it emits a default value.
+func (o *observable) FirstOrDefault(defaultValue interface{}, opts ...Option) Single {
+	sent := false
+
+	return newSingleFromOperator(o, func(item Item, dst chan<- Item, stop func()) {
+		dst <- item
+		sent = true
+		stop()
+	}, defaultErrorFuncOperator, func(dst chan<- Item) {
+		if !sent {
+			dst <- FromValue(defaultValue)
+		}
+	}, opts...)
 }
 
 // ForEach subscribes to the Observable and receives notifications for each element.
@@ -569,6 +588,11 @@ func (o *observable) Marshal(marshaler Marshaler, opts ...Option) Observable {
 	return o.Map(func(i interface{}) (interface{}, error) {
 		return marshaler(i)
 	}, opts...)
+}
+
+// Observe observes an observable by returning its channel
+func (o *observable) Observe(opts ...Option) <-chan Item {
+	return o.iterable.Observe(opts...)
 }
 
 // Retry retries if a source Observable sends an error, resubscribe to it in the hopes that it will complete without error.

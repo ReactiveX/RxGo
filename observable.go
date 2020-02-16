@@ -28,8 +28,9 @@ type Observable interface {
 	DistinctUntilChanged(apply Func, opts ...Option) Observable
 	ElementAt(index uint, opts ...Option) Single
 	Filter(apply Predicate, opts ...Option) Observable
+	First(opts ...Option) OptionalSingle
+	FirstOrDefault(defaultValue interface{}, opts ...Option) Single
 	ForEach(nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc, opts ...Option)
-	// TODO With pool
 	Map(apply Func, opts ...Option) Observable
 	Marshal(marshaler Marshaler, opts ...Option) Observable
 	// TODO Add backoff retry
