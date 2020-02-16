@@ -8,6 +8,7 @@ import (
 )
 
 // Observable is the basic observable interface.
+// TODO Throttling
 type Observable interface {
 	Iterable
 	All(predicate Predicate, opts ...Option) Single
@@ -49,12 +50,24 @@ type Observable interface {
 	Scan(apply Func2, opts ...Option) Observable
 	SequenceEqual(obs Observable, opts ...Option) Single
 	Send(chan<- interface{})
+	Skip(nth uint, opts ...Option) Observable
+	SkipLast(nth uint, opts ...Option) Observable
 	SkipWhile(apply Predicate, opts ...Option) Observable
+	StartWithIterable(iterable Iterable, opts ...Option) Observable
+	StartWithObservable(observable Observable, opts ...Option) Observable
+	SumFloat32(opts ...Option) Single
+	SumFloat64(opts ...Option) Single
+	SumInt64(opts ...Option) Single
 	Take(nth uint, opts ...Option) Observable
 	TakeLast(nth uint, opts ...Option) Observable
+	TakeUntil(apply Predicate, opts ...Option) Observable
+	TakeWhile(apply Predicate, opts ...Option) Observable
+	Timeout(opts ...Option) Observable
+	ToMap(keySelector Func, opts ...Option) Single
+	ToMapWithValueSelector(keySelector, valueSelector Func, opts ...Option) Single
 	ToSlice(opts ...Option) Single
-	// TODO Throttling
 	Unmarshal(unmarshaler Unmarshaler, factory func() interface{}, opts ...Option) Observable
+	ZipFromObservable(publisher Observable, zipper Func2, opts ...Option) Observable
 }
 
 type observable struct {

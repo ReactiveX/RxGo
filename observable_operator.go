@@ -729,6 +729,8 @@ func (o *observable) Reduce(apply Func2, opts ...Option) OptionalSingle {
 	}, opts...)
 }
 
+// Repeat returns an Observable that repeats the sequence of items emitted by the source Observable
+// at most count times, at a particular frequency.
 func (o *observable) Repeat(count int64, frequency Duration, opts ...Option) Observable {
 	if count != Infinite {
 		if count < 0 {
@@ -801,19 +803,38 @@ func (o *observable) Retry(count int, opts ...Option) Observable {
 	}
 }
 
+// Sample returns an Observable that emits the most recent items emitted by the source
+// ObservableSource whenever the input Observable emits an item.
 func (o *observable) Sample(obs Observable, opts ...Option) Observable {
 	panic("implement me")
 }
 
+// Scan applies Func2 predicate to each item in the original
+// Observable sequentially and emits each successive value on a new Observable.
 func (o *observable) Scan(apply Func2, opts ...Option) Observable {
 	panic("implement me")
 }
 
+// SequenceEqual emits true if an Observable and the input Observable emit the same items,
+// in the same order, with the same termination state. Otherwise, it emits false.
 func (o *observable) SequenceEqual(obs Observable, opts ...Option) Single {
 	panic("implement me")
 }
 
+// Send sends the items to a given channel
 func (o *observable) Send(chan<- interface{}) {
+	panic("implement me")
+}
+
+// Skip suppresses the first n items in the original Observable and
+// returns a new Observable with the rest items.
+func (o *observable) Skip(nth uint, opts ...Option) Observable {
+	panic("implement me")
+}
+
+// SkipLast suppresses the last n items in the original Observable and
+// returns a new Observable with the rest items.
+func (o *observable) SkipLast(nth uint, opts ...Option) Observable {
 	panic("implement me")
 }
 
@@ -831,6 +852,33 @@ func (o *observable) SkipWhile(apply Predicate, opts ...Option) Observable {
 			}
 		}
 	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
+}
+
+// StartWithIterable returns an Observable that emits the items in a specified Iterable before it begins to
+// emit items emitted by the source Observable.
+func (o *observable) StartWithIterable(iterable Iterable, opts ...Option) Observable {
+	panic("implement me")
+}
+
+// StartWithObservable returns an Observable that emits the items in a specified Observable before it begins to
+// emit items emitted by the source Observable.
+func (o *observable) StartWithObservable(observable Observable, opts ...Option) Observable {
+	panic("implement me")
+}
+
+// SumFloat32 calculates the average of float32 emitted by an Observable and emits a float32.
+func (o *observable) SumFloat32(opts ...Option) Single {
+	panic("implement me")
+}
+
+// SumFloat64 calculates the average of float64 emitted by an Observable and emits a float64.
+func (o *observable) SumFloat64(opts ...Option) Single {
+	panic("implement me")
+}
+
+// SumInt64 calculates the average of integers emitted by an Observable and emits an int64.
+func (o *observable) SumInt64(opts ...Option) Single {
+	panic("implement me")
 }
 
 // Take emits only the first n items emitted by an Observable.
@@ -872,6 +920,36 @@ func (o *observable) TakeLast(nth uint, opts ...Option) Observable {
 	}, opts...)
 }
 
+// TakeUntil returns an Observable that emits items emitted by the source Observable,
+// checks the specified predicate for each item, and then completes when the condition is satisfied.
+func (o *observable) TakeUntil(apply Predicate, opts ...Option) Observable {
+	panic("implement me")
+}
+
+// TakeWhile returns an Observable that emits items emitted by the source ObservableSource so long as each
+// item satisfied a specified condition, and then completes as soon as this condition is not satisfied.
+func (o *observable) TakeWhile(apply Predicate, opts ...Option) Observable {
+	panic("implement me")
+}
+
+// Timeout mirrors the source Observable, but issue an error notification if a particular period of time elapses without any emitted items.
+func (o *observable) Timeout(opts ...Option) Observable {
+	panic("implement me")
+}
+
+// ToMap convert the sequence of items emitted by an Observable
+// into a map keyed by a specified key function.
+func (o *observable) ToMap(keySelector Func, opts ...Option) Single {
+	panic("implement me")
+}
+
+// ToMapWithValueSelector convert the sequence of items emitted by an Observable
+// into a map keyed by a specified key function and valued by another
+// value function.
+func (o *observable) ToMapWithValueSelector(keySelector, valueSelector Func, opts ...Option) Single {
+	panic("implement me")
+}
+
 // ToSlice collects all items from an Observable and emit them as a single slice.
 func (o *observable) ToSlice(opts ...Option) Single {
 	s := make([]interface{}, 0)
@@ -892,4 +970,10 @@ func (o *observable) Unmarshal(unmarshaler Unmarshaler, factory func() interface
 		}
 		return v, nil
 	}, opts...)
+}
+
+// ZipFromObservable merge the emissions of multiple Observables together via a specified function
+// and emit single items for each combination based on the results of this function.
+func (o *observable) ZipFromObservable(publisher Observable, zipper Func2, opts ...Option) Observable {
+	panic("implement me")
 }
