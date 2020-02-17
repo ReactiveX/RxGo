@@ -48,12 +48,6 @@ type (
 
 	operatorItem func(ctx context.Context, item Item, dst chan<- Item, operator operatorOptions)
 	operatorEnd  func(ctx context.Context, dst chan<- Item)
-
-	// Item is a wrapper having either a value or an error.
-	Item struct {
-		V interface{}
-		E error
-	}
 )
 
 const (
@@ -62,18 +56,3 @@ const (
 	// Drop drops the message.
 	Drop
 )
-
-// Error checks if an item is an error.
-func (i Item) Error() bool {
-	return i.E != nil
-}
-
-// Of creates an item from a value.
-func Of(i interface{}) Item {
-	return Item{V: i}
-}
-
-// Error creates an item from an error.
-func Error(err error) Item {
-	return Item{E: err}
-}
