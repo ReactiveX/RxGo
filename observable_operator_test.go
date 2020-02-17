@@ -593,7 +593,7 @@ func Test_Observable_ReturnError(t *testing.T) {
 
 func Test_Observable_Retry(t *testing.T) {
 	i := 0
-	obs := Scatter(func(ctx context.Context, next chan<- Item, done func()) {
+	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
 		next <- FromValue(1)
 		next <- FromValue(2)
 		if i == 2 {
@@ -609,7 +609,7 @@ func Test_Observable_Retry(t *testing.T) {
 }
 
 func Test_Observable_Retry_Error(t *testing.T) {
-	obs := Scatter(func(ctx context.Context, next chan<- Item, done func()) {
+	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
 		next <- FromValue(1)
 		next <- FromValue(2)
 		next <- FromError(errFoo)

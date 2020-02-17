@@ -300,8 +300,8 @@ func Range(start, count int) Observable {
 	}
 }
 
-// Scatter creates an observable from multiple functions.
-func Scatter(f ...ScatterFunc) Observable {
+// FromFuncs creates an observable from multiple functions.
+func FromFuncs(f ...ProducerFunc) Observable {
 	return &observable{
 		iterable: newFuncsIterable(f...),
 	}

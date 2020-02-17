@@ -41,11 +41,12 @@ Let's implement our first observable:
 
 ```go
 // Create the input channel
-input := make(chan rxgo.Item)
+ch := make(chan rxgo.Item)
 // Create the data producer
-go producer(input)
+go producer(ch)
 
-product := <-rxgo.FromChannel(input).
+// Create an observable
+observable := rxgo.FromChannel(ch).
     Map(func(item interface{}) (interface{}, error) {
         if num, ok := item.(int); ok {
             return num * 2, nil
@@ -60,8 +61,10 @@ product := <-rxgo.FromChannel(input).
             return 1, nil
         }
         return acc.(int) * item.(int), nil
-    }).
-    Observe()
+    })
+
+// Observe it
+product := <-observable.Observe()
 
 fmt.Println(product)
 ```
@@ -81,17 +84,92 @@ Also, `Reduce` is a special operator as it creates an `OptionalSingle`. A `Singl
 
 Each operator from `Observable` emits items on the fly. Yet, the operators producing a `Single` or an `OptionalSingle` emit an item when it consumed all the items from the stream. In the previous example, how do we know when all the items are consumed? When the input channel is closed.
 
-## Observable Types
+## Observable Types
+
+### Hot vs Cold Observables
+
+In the Rx world, we make the distinction between hot and cold Observable. When the data is produced by the Observable itself, we call it a cold Observable. When the data is produced outside the Observable, we call it a hot Observable. Usually, when we don't want to create a producer over and over again, we favor a hot Observable.
+
+In RxGo, there is a similar concept.
+
+First, let's create a cold Observable using `FromChannel` operator:
+
+```go
+ch := make(chan rxgo.Item)
+go func() {
+    for i := 0; i < 3; i++ {
+        ch <- rxgo.FromValue(i)
+    }
+    close(ch)
+}()
+observable := rxgo.FromChannel(ch)
+
+for item := range observable.Observe() {
+    fmt.Println(item.Value)
+}
+for item := range observable.Observe() {
+    fmt.Println(item.Value)
+}
+```
+
+The result of this execution is:
+
+```
+0
+1
+2
+```
+
+It means, the first Observer did consume already all the items.
+
+On the other hand, let's create a hot Observable using `FromFuncs` operator:
+
+```go
+observable := rxgo.FromFuncs(func(_ context.Context, ch chan<- rxgo.Item, done func()) {
+    for i := 0; i < 3; i++ {
+        ch <- rxgo.FromValue(i)
+    }
+    done()
+})
+
+for item := range observable.Observe() {
+    fmt.Println(item.Value)
+}
+for item := range observable.Observe() {
+    fmt.Println(item.Value)
+}
+```
+
+The result is:
+
+```go
+0
+1
+2
+0
+1
+2
+```
+
+
+
+### Backpressure
 
 TODO (backpressure, eager/lazy, event source)
 single, optional single
 
 ## Supported Operators in RxGo
 
+## Lazy vs Eager
+
+witheager
+
+
 ### Creating Observables
 * [Empty/Never](http://reactivex.io/documentation/operators/empty-never-throw.html) — create Observables that have very precise and limited behavior
 * FromChannel — create an Observable based on a lazy channel
 * FromEventSource — create an Observable based on an eager channel
+* FromFuncs - combine scatter functions emitting items into one Observable
 * FromSlice — create an Observable from a slice
 * [Interval](http://reactivex.io/documentation/operators/interval.html) — create an Observable that emits a sequence of integers spaced by a particular time interval
 * [Just](http://reactivex.io/documentation/operators/just.html) — convert a set of objects into an Observable that emits that or those objects
@@ -125,7 +203,6 @@ single, optional single
 ### Combining Observables
 * [CombineLatest](http://reactivex.io/documentation/operators/combinelatest.html) — when an item is emitted by either of two Observables, combine the latest item emitted by each Observable via a specified function and emit items based on the results of this function
 * [Merge](http://reactivex.io/documentation/operators/merge.html) — combine multiple Observables into one by merging their emissions
-* Scatter - combine scatter functions emitting items into one Observable
 * [StartWithIterable](http://reactivex.io/documentation/operators/startwith.html) — emit a specified sequence of items before beginning to emit the items from the source Iterable
 * [ZipFromIterable](http://reactivex.io/documentation/operators/zip.html) — combine the emissions of multiple Observables together via a specified function and emit single items for each combination based on the results of this function
 

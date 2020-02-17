@@ -116,7 +116,7 @@ func Test_FromChannel_ComposedCapacity(t *testing.T) {
 }
 
 func Test_FromFuncs(t *testing.T) {
-	obs := Scatter(func(ctx context.Context, next chan<- Item, done func()) {
+	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
 		next <- FromValue(1)
 		next <- FromValue(2)
 		next <- FromValue(3)
@@ -126,7 +126,7 @@ func Test_FromFuncs(t *testing.T) {
 }
 
 func Test_FromFuncs_Multiple(t *testing.T) {
-	obs := Scatter(func(ctx context.Context, next chan<- Item, done func()) {
+	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
 		next <- FromValue(1)
 		next <- FromValue(2)
 		done()
@@ -139,7 +139,7 @@ func Test_FromFuncs_Multiple(t *testing.T) {
 }
 
 func Test_FromFuncs_Close(t *testing.T) {
-	obs := Scatter(func(ctx context.Context, next chan<- Item, done func()) {
+	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
 		next <- FromValue(1)
 		next <- FromValue(2)
 		next <- FromValue(3)
@@ -149,7 +149,7 @@ func Test_FromFuncs_Close(t *testing.T) {
 }
 
 func Test_FromFuncs_SingleDup(t *testing.T) {
-	obs := Scatter(func(ctx context.Context, next chan<- Item, done func()) {
+	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
 		next <- FromValue(1)
 		next <- FromValue(2)
 		next <- FromValue(3)
@@ -160,7 +160,7 @@ func Test_FromFuncs_SingleDup(t *testing.T) {
 }
 
 func Test_FromFuncs_ComposedDup(t *testing.T) {
-	obs := Scatter(func(ctx context.Context, next chan<- Item, done func()) {
+	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
 		next <- FromValue(1)
 		next <- FromValue(2)
 		next <- FromValue(3)
@@ -175,7 +175,7 @@ func Test_FromFuncs_ComposedDup(t *testing.T) {
 }
 
 func Test_FromFuncs_ComposedDup_EagerObservation(t *testing.T) {
-	obs := Scatter(func(ctx context.Context, next chan<- Item, done func()) {
+	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
 		next <- FromValue(1)
 		next <- FromValue(2)
 		next <- FromValue(3)
@@ -186,13 +186,13 @@ func Test_FromFuncs_ComposedDup_EagerObservation(t *testing.T) {
 		return i.(int) + 1, nil
 	})
 	Assert(context.Background(), t, obs, HasItems(3, 4, 5), HasNotRaisedError())
-	// In the case of an eager observation, we already consumed the items produced by Scatter
+	// In the case of an eager observation, we already consumed the items produced by FromFuncs
 	// So if we create another subscription, it will be empty
 	Assert(context.Background(), t, obs, HasNoItem(), HasNotRaisedError())
 }
 
 func Test_FromFuncs_Error(t *testing.T) {
-	obs := Scatter(func(ctx context.Context, next chan<- Item, done func()) {
+	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
 		next <- FromValue(1)
 		next <- FromValue(2)
 		next <- FromError(errFoo)
@@ -202,14 +202,14 @@ func Test_FromFuncs_Error(t *testing.T) {
 }
 
 func Test_FromFuncs_SimpleCapacity(t *testing.T) {
-	ch := Scatter(func(_ context.Context, _ chan<- Item, done func()) {
+	ch := FromFuncs(func(_ context.Context, _ chan<- Item, done func()) {
 		done()
 	}).Observe(WithBufferedChannel(5))
 	assert.Equal(t, 5, cap(ch))
 }
 
 func Test_FromFuncs_ComposedCapacity(t *testing.T) {
-	obs1 := Scatter(func(_ context.Context, _ chan<- Item, done func()) {
+	obs1 := FromFuncs(func(_ context.Context, _ chan<- Item, done func()) {
 		done()
 	}).Map(func(_ interface{}) (interface{}, error) {
 		return 1, nil
