@@ -87,7 +87,7 @@ observable.ForEach(func(v interface{}) {
 In this example, we passed 3 functions:
 * A `NextFunc` triggered when a value item is emitted.
 * An `ErrFunc` triggered when an error item is emitted.
-* A `DoneFunc` triggered once the Observable is closed.
+* A `CompletedFunc` triggered once the Observable is completed.
 
 `ForEach` is non-blocking. Yet, it returns a notification channel that will be closed once the Observable completes. Hence, to make the previous code blocking, we simply need to use `<-`:
 

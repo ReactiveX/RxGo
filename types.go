@@ -38,13 +38,15 @@ type (
 	Producer func(ctx context.Context, next chan<- Item, done func())
 	// Supplier defines a function that supplies a result from nothing.
 	Supplier func(ctx context.Context) Item
+	// Disposed is a notification channel indicating when an Observable is closed.
+	Disposed <-chan struct{}
 
 	// NextFunc handles a next item in a stream.
 	NextFunc func(interface{})
 	// ErrFunc handles an error in a stream.
 	ErrFunc func(error)
-	// DoneFunc handles the end of a stream.
-	DoneFunc func()
+	// CompletedFunc handles the end of a stream.
+	CompletedFunc func()
 
 	operatorItem func(ctx context.Context, item Item, dst chan<- Item, operator operatorOptions)
 	operatorEnd  func(ctx context.Context, dst chan<- Item)

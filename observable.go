@@ -27,12 +27,13 @@ type Observable interface {
 	DefaultIfEmpty(defaultValue interface{}, opts ...Option) Observable
 	Distinct(apply Func, opts ...Option) Observable
 	DistinctUntilChanged(apply Func, opts ...Option) Observable
+	DoOnNext(nextFunc NextFunc, opts ...Option) Disposed
 	ElementAt(index uint, opts ...Option) Single
 	Filter(apply Predicate, opts ...Option) Observable
 	First(opts ...Option) OptionalSingle
 	FirstOrDefault(defaultValue interface{}, opts ...Option) Single
 	FlatMap(apply ItemToObservable, opts ...Option) Observable
-	ForEach(nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc, opts ...Option) <-chan struct{}
+	ForEach(nextFunc NextFunc, errFunc ErrFunc, completedFunc CompletedFunc, opts ...Option) Disposed
 	GroupBy(length int, distribution func(Item) int, opts ...Option) Observable
 	IgnoreElements(opts ...Option) Observable
 	Last(opts ...Option) OptionalSingle
@@ -48,7 +49,7 @@ type Observable interface {
 	Reduce(apply Func2, opts ...Option) OptionalSingle
 	Repeat(count int64, frequency Duration, opts ...Option) Observable
 	Retry(count int, opts ...Option) Observable
-	Run(opts ...Option) <-chan struct{}
+	Run(opts ...Option) Disposed
 	Sample(iterable Iterable, opts ...Option) Observable
 	Scan(apply Func2, opts ...Option) Observable
 	SequenceEqual(iterable Iterable, opts ...Option) Single

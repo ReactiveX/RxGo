@@ -487,6 +487,32 @@ func (o *observable) DistinctUntilChanged(apply Func, opts ...Option) Observable
 	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
 }
 
+func (o *observable) DoOnNext(nextFunc NextFunc, opts ...Option) Disposed {
+	dispose := make(chan struct{})
+	handler := func(ctx context.Context, src <-chan Item) {
+		defer close(dispose)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case i, ok := <-src:
+				if !ok {
+					return
+				}
+				if i.Error() {
+					return
+				}
+				nextFunc(i.V)
+			}
+		}
+	}
+
+	option := parseOptions(opts...)
+	ctx := option.buildContext()
+	go handler(ctx, o.Observe())
+	return dispose
+}
+
 // ElementAt emits only item n emitted by an Observable.
 func (o *observable) ElementAt(index uint, opts ...Option) Single {
 	takeCount := 0
@@ -584,18 +610,18 @@ func (o *observable) FlatMap(apply ItemToObservable, opts ...Option) Observable 
 }
 
 // ForEach subscribes to the Observable and receives notifications for each element.
-func (o *observable) ForEach(nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc, opts ...Option) <-chan struct{} {
+func (o *observable) ForEach(nextFunc NextFunc, errFunc ErrFunc, completedFunc CompletedFunc, opts ...Option) Disposed {
 	dispose := make(chan struct{})
-	handler := func(ctx context.Context, src <-chan Item, dst chan<- Item) {
+	handler := func(ctx context.Context, src <-chan Item) {
 		defer close(dispose)
 		for {
 			select {
 			case <-ctx.Done():
-				doneFunc()
+				completedFunc()
 				return
 			case i, ok := <-src:
 				if !ok {
-					doneFunc()
+					completedFunc()
 					return
 				}
 				if i.Error() {
@@ -608,9 +634,8 @@ func (o *observable) ForEach(nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFu
 	}
 
 	option := parseOptions(opts...)
-	next := option.buildChannel()
 	ctx := option.buildContext()
-	go handler(ctx, o.Observe(), next)
+	go handler(ctx, o.Observe())
 	return dispose
 }
 
@@ -890,7 +915,7 @@ func (o *observable) Retry(count int, opts ...Option) Observable {
 }
 
 // Run creates an observer without consuming the emitted items.
-func (o *observable) Run(opts ...Option) <-chan struct{} {
+func (o *observable) Run(opts ...Option) Disposed {
 	dispose := make(chan struct{})
 	option := parseOptions(opts...)
 	ctx := option.buildContext()
