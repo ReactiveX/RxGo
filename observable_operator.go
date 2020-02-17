@@ -487,6 +487,61 @@ func (o *observable) DistinctUntilChanged(apply Func, opts ...Option) Observable
 	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
 }
 
+// DoOnCompleted registers a callback action that will be called once the Observable terminates.
+func (o *observable) DoOnCompleted(completedFunc CompletedFunc, opts ...Option) Disposed {
+	dispose := make(chan struct{})
+	handler := func(ctx context.Context, src <-chan Item) {
+		defer close(dispose)
+		defer completedFunc()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case i, ok := <-src:
+				if !ok {
+					return
+				}
+				if i.Error() {
+					return
+				}
+			}
+		}
+	}
+
+	option := parseOptions(opts...)
+	ctx := option.buildContext()
+	go handler(ctx, o.Observe())
+	return dispose
+}
+
+// DoOnError registers a callback action that will be called if the Observable terminates abnormally.
+func (o *observable) DoOnError(errFunc ErrFunc, opts ...Option) Disposed {
+	dispose := make(chan struct{})
+	handler := func(ctx context.Context, src <-chan Item) {
+		defer close(dispose)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case i, ok := <-src:
+				if !ok {
+					return
+				}
+				if i.Error() {
+					errFunc(i.E)
+					return
+				}
+			}
+		}
+	}
+
+	option := parseOptions(opts...)
+	ctx := option.buildContext()
+	go handler(ctx, o.Observe())
+	return dispose
+}
+
+// DoOnError registers a callback action that will be called on each item emitted by the Observable.
 func (o *observable) DoOnNext(nextFunc NextFunc, opts ...Option) Disposed {
 	dispose := make(chan struct{})
 	handler := func(ctx context.Context, src <-chan Item) {

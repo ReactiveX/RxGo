@@ -27,6 +27,8 @@ type Observable interface {
 	DefaultIfEmpty(defaultValue interface{}, opts ...Option) Observable
 	Distinct(apply Func, opts ...Option) Observable
 	DistinctUntilChanged(apply Func, opts ...Option) Observable
+	DoOnCompleted(completedFunc CompletedFunc, opts ...Option) Disposed
+	DoOnError(errFunc ErrFunc, opts ...Option) Disposed
 	DoOnNext(nextFunc NextFunc, opts ...Option) Disposed
 	ElementAt(index uint, opts ...Option) Single
 	Filter(apply Predicate, opts ...Option) Observable

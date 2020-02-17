@@ -258,7 +258,39 @@ func Test_Observable_DistinctUntilChanged(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(1, 2, 1, 3))
 }
 
-func Test_Observable_DoOnNext(t *testing.T) {
+func Test_Observable_DoOnCompleted_NoError(t *testing.T) {
+	called := false
+	<-testObservable(1, 2, 3).DoOnCompleted(func() {
+		called = true
+	})
+	assert.True(t, called)
+}
+
+func Test_Observable_DoOnCompleted_Error(t *testing.T) {
+	called := false
+	<-testObservable(1, errFoo, 3).DoOnCompleted(func() {
+		called = true
+	})
+	assert.True(t, called)
+}
+
+func Test_Observable_DoOnError_NoError(t *testing.T) {
+	var got error
+	<-testObservable(1, 2, 3).DoOnError(func(err error) {
+		got = err
+	})
+	assert.Nil(t, got)
+}
+
+func Test_Observable_DoOnError_Error(t *testing.T) {
+	var got error
+	<-testObservable(1, errFoo, 3).DoOnError(func(err error) {
+		got = err
+	})
+	assert.Equal(t, errFoo, got)
+}
+
+func Test_Observable_DoOnNext_NoError(t *testing.T) {
 	s := make([]interface{}, 0)
 	<-testObservable(1, 2, 3).DoOnNext(func(i interface{}) {
 		s = append(s, i)
