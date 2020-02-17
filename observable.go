@@ -47,6 +47,7 @@ type Observable interface {
 	Reduce(apply Func2, opts ...Option) OptionalSingle
 	Repeat(count int64, frequency Duration, opts ...Option) Observable
 	Retry(count int, opts ...Option) Observable
+	Run(opts ...Option) <-chan struct{}
 	Sample(iterable Iterable, opts ...Option) Observable
 	Scan(apply Func2, opts ...Option) Observable
 	SequenceEqual(iterable Iterable, opts ...Option) Single

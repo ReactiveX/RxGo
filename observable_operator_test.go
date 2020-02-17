@@ -618,6 +618,24 @@ func Test_Observable_Retry_Error(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(1, 2, 1, 2, 1, 2, 1, 2), HasRaisedError(errFoo))
 }
 
+func Test_Observable_Run(t *testing.T) {
+	s := make([]int, 0)
+	<-testObservable(1, 2, 3).Map(func(i interface{}) (interface{}, error) {
+		s = append(s, i.(int))
+		return i, nil
+	}).Run()
+	assert.Equal(t, []int{1, 2, 3}, s)
+}
+
+func Test_Observable_Run_Error(t *testing.T) {
+	s := make([]int, 0)
+	<-testObservable(1, errFoo).Map(func(i interface{}) (interface{}, error) {
+		s = append(s, i.(int))
+		return i, nil
+	}).Run()
+	assert.Equal(t, []int{1}, s)
+}
+
 func Test_Observable_Sample(t *testing.T) {
 	obs := testObservable(1).Sample(Empty())
 	Assert(context.Background(), t, obs, HasNoItem(), HasNotRaisedError())

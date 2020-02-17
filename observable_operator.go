@@ -849,6 +849,30 @@ func (o *observable) Retry(count int, opts ...Option) Observable {
 	}
 }
 
+// Run creates an observer without consuming the emitted items.
+func (o *observable) Run(opts ...Option) <-chan struct{} {
+	dispose := make(chan struct{})
+	option := parseOptions(opts...)
+	ctx := option.buildContext()
+
+	go func() {
+		defer close(dispose)
+		observe := o.Observe()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case _, ok := <-observe:
+				if !ok {
+					return
+				}
+			}
+		}
+	}()
+
+	return dispose
+}
+
 // Sample returns an Observable that emits the most recent items emitted by the source
 // Iterable whenever the input Iterable emits an item.
 func (o *observable) Sample(iterable Iterable, opts ...Option) Observable {
