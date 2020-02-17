@@ -26,7 +26,7 @@ Let's check at a concrete example with each blue box being an operator:
 ![](res/rx.png)
 
 This stream produced in the target channel two items (a yellow and a green square).
-Each operator is a transformation stage connected by channels. By default, everything is sequential. Yet, we can easily leverage modern CPU architectures by defining multiple instances of the same operator (each operator instance being a goroutine connected to a common channel).
+Each operator is a transformation stage connected by channels. By default, everything is sequential. Yet, we can easily leverage modern CPU architectures by defining multiple instances of the same operator (each operator instance being a goroutine connected to the same channel).
 
 ## Observable Types
 
