@@ -80,6 +80,27 @@ func Test_Concat_OneEmptyObservable(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3))
 }
 
+func Test_Create(t *testing.T) {
+	obs := Create([]Producer{func(ctx context.Context, next chan<- Item, done func()) {
+		next <- Of(1)
+		next <- Of(2)
+		next <- Of(3)
+		done()
+	}})
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
+}
+
+func Test_Create_SingleDup(t *testing.T) {
+	obs := Create([]Producer{func(ctx context.Context, next chan<- Item, done func()) {
+		next <- Of(1)
+		next <- Of(2)
+		next <- Of(3)
+		done()
+	}})
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
+	Assert(context.Background(), t, obs, HasNoItems(), HasNotRaisedError())
+}
+
 func Test_Defer(t *testing.T) {
 	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item, done func()) {
 		next <- Of(1)

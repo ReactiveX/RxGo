@@ -162,7 +162,15 @@ func Concat(observables []Observable, opts ...Option) Observable {
 	}
 }
 
-// Defer creates an observable from multiple functions.
+// Create creates an Observable from scratch by calling observer methods programmatically.
+func Create(f []Producer, opts ...Option) Observable {
+	return &observable{
+		iterable: newCreateIterable(f, opts...),
+	}
+}
+
+// Defer does not create the Observable until the observer subscribes,
+// and creates a fresh Observable for each observer.
 func Defer(f []Producer, opts ...Option) Observable {
 	return &observable{
 		iterable: newDeferIterable(f, opts...),
