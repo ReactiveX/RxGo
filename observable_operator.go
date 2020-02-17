@@ -621,8 +621,52 @@ func (o *observable) IgnoreElements(opts ...Option) Observable {
 	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
 }
 
-func (o *observable) GroupBy(length int, distribution func(Item) int) Observable {
-	panic("implement me")
+func (o *observable) GroupBy(length int, distribution func(Item) int, opts ...Option) Observable {
+	option := parseOptions(opts...)
+	ctx := option.buildContext()
+
+	s := make([]Item, length)
+	chs := make([]chan Item, length)
+	for i := 0; i < length; i++ {
+		ch := option.buildChannel()
+		chs[i] = ch
+		s[i] = Of(&observable{
+			iterable: newChannelIterable(ch),
+		})
+	}
+
+	go func() {
+		observe := o.Observe()
+		defer func() {
+			for i := 0; i < length; i++ {
+				close(chs[i])
+			}
+		}()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case item, ok := <-observe:
+				if !ok {
+					return
+				}
+				idx := distribution(item)
+				if idx >= length {
+					err := Error(IndexOutOfBoundError{error: fmt.Sprintf("index %d, length %d", idx, length)})
+					for i := 0; i < length; i++ {
+						err.SendBlocking(chs[i])
+					}
+					return
+				}
+				item.SendBlocking(chs[idx])
+			}
+		}
+	}()
+
+	return &observable{
+		iterable: newSliceIterable(s, opts...),
+	}
 }
 
 // Last returns a new Observable which emit only last item.

@@ -376,13 +376,43 @@ func Test_Observable_IgnoreElements_Error(t *testing.T) {
 }
 
 func Test_Observable_GroupBy(t *testing.T) {
-	// const count = 3
-	// obs := Range(0, 10).GroupBy(count, func(item Item) int {
-	//	return item.V.(int) % count
-	//})
-	// slice := obs.ToSlice()
-	// if slice.
-	//	assert.Equal(t,, slice)
+	count := 3
+	max := 10
+
+	obs := Range(0, max).GroupBy(count, func(item Item) int {
+		return item.V.(int) % count
+	}, WithBufferedChannel(max))
+	s, err := obs.ToSlice()
+	if err != nil {
+		assert.FailNow(t, err.Error())
+	}
+	if len(s) != count {
+		assert.FailNow(t, "length", "got=%d, expected=%d", len(s), count)
+	}
+
+	Assert(context.Background(), t, s[0].(Observable), HasItems(0, 3, 6, 9), HasNotRaisedError())
+	Assert(context.Background(), t, s[1].(Observable), HasItems(1, 4, 7, 10), HasNotRaisedError())
+	Assert(context.Background(), t, s[2].(Observable), HasItems(2, 5, 8), HasNotRaisedError())
+}
+
+func Test_Observable_GroupBy_Error(t *testing.T) {
+	count := 3
+	max := 10
+
+	obs := Range(0, max).GroupBy(count, func(item Item) int {
+		return 4
+	}, WithBufferedChannel(max))
+	s, err := obs.ToSlice()
+	if err != nil {
+		assert.FailNow(t, err.Error())
+	}
+	if len(s) != count {
+		assert.FailNow(t, "length", "got=%d, expected=%d", len(s), count)
+	}
+
+	Assert(context.Background(), t, s[0].(Observable), HasRaisedAnError())
+	Assert(context.Background(), t, s[1].(Observable), HasRaisedAnError())
+	Assert(context.Background(), t, s[2].(Observable), HasRaisedAnError())
 }
 
 func Test_Observable_Last_NotEmpty(t *testing.T) {
