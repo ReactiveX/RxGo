@@ -194,13 +194,6 @@ func FromEventSource(next <-chan Item, opts ...Option) Observable {
 	}
 }
 
-// FromSlice creates an observable from a slice.
-func FromSlice(s []Item, opts ...Option) Single {
-	return &single{
-		iterable: newSliceIterable(s, opts...),
-	}
-}
-
 // Interval creates an Observable emitting incremental integers infinitely between
 // each given time interval.
 func Interval(interval Duration, opts ...Option) Observable {

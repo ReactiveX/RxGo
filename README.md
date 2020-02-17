@@ -268,7 +268,6 @@ In this example, we create a pool of 32 goroutines that consume items concurrent
 * FromChannel — create an Observable based on a lazy channel
 * FromEventSource — create an Observable based on an eager channel
 * Defer - combine scatter functions emitting items into one Observable
-* FromSlice — create an Observable from a slice
 * [Interval](http://reactivex.io/documentation/operators/interval.html) — create an Observable that emits a sequence of integers spaced by a particular time interval
 * [Just](http://reactivex.io/documentation/operators/just.html) — convert a set of objects into an Observable that emits that or those objects
 * JustItem — convert one object into a Single that emits this object

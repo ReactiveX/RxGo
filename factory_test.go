@@ -295,7 +295,7 @@ func Test_FromEventSource_Drop(t *testing.T) {
 	}))
 }
 
-func Test_Observable_Interval(t *testing.T) {
+func Test_Interval(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	obs := Interval(WithDuration(time.Nanosecond), WithContext(ctx))
 	go func() {
@@ -305,7 +305,7 @@ func Test_Observable_Interval(t *testing.T) {
 	Assert(context.Background(), t, obs, HasSomeItems())
 }
 
-func Test_Observable_Interval_NoItem(t *testing.T) {
+func Test_Interval_NoItem(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	obs := Interval(WithDuration(time.Nanosecond), WithContext(ctx))
 	time.Sleep(50 * time.Millisecond)
