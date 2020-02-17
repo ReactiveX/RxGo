@@ -6,8 +6,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 // Amb takes several Observables, emit all of the items from only the first of these Observables
@@ -162,6 +160,21 @@ func Concat(observables []Observable, opts ...Option) Observable {
 	}
 }
 
+// Create creates an Observable from scratch by calling observer methods programmatically.
+func Create(f []Producer, opts ...Option) Observable {
+	return &observable{
+		iterable: newCreateIterable(f, opts...),
+	}
+}
+
+// Defer does not create the Observable until the observer subscribes,
+// and creates a fresh Observable for each observer.
+func Defer(f []Producer, opts ...Option) Observable {
+	return &observable{
+		iterable: newDeferIterable(f, opts...),
+	}
+}
+
 // Empty creates an Observable with no item and terminate immediately.
 func Empty() Observable {
 	next := make(chan Item)
@@ -184,13 +197,6 @@ func FromEventSource(next <-chan Item, opts ...Option) Observable {
 
 	return &observable{
 		iterable: newEventSourceIterable(option.buildContext(), next, option.buildBackPressureStrategy()),
-	}
-}
-
-// FromSlice creates an observable from a slice.
-func FromSlice(s []Item) Single {
-	return &single{
-		iterable: newSliceIterable(s),
 	}
 }
 
@@ -220,19 +226,14 @@ func Interval(interval Duration, opts ...Option) Observable {
 }
 
 // Just creates an Observable with the provided items.
-func Just(item Item, items ...Item) Observable {
-	if len(items) > 0 {
-		items = append([]Item{item}, items...)
-	} else {
-		items = []Item{item}
-	}
+func Just(items []Item, opts ...Option) Observable {
 	return &observable{
-		iterable: newSliceIterable(items),
+		iterable: newSliceIterable(items, opts...),
 	}
 }
 
 // JustItem creates a single from one item.
-func JustItem(item Item) Single {
+func JustItem(item Item, opts ...Option) Single {
 	return &single{
 		iterable: newSliceIterable([]Item{item}),
 	}
@@ -288,22 +289,15 @@ func Never() Observable {
 }
 
 // Range creates an Observable that emits a particular range of sequential integers.
-func Range(start, count int) Observable {
+func Range(start, count int, opts ...Option) Observable {
 	if count < 0 {
-		return newObservableFromError(errors.Wrap(&IllegalInputError{}, "count must be positive"))
+		return newObservableFromError(IllegalInputError{error: "count must be positive"})
 	}
 	if start+count-1 > math.MaxInt32 {
-		return newObservableFromError(errors.Wrap(&IllegalInputError{}, "max value is bigger than math.MaxInt32"))
+		return newObservableFromError(IllegalInputError{error: "max value is bigger than math.MaxInt32"})
 	}
 	return &observable{
-		iterable: newRangeIterable(start, count),
-	}
-}
-
-// FromFuncs creates an observable from multiple functions.
-func FromFuncs(f ...ProducerFunc) Observable {
-	return &observable{
-		iterable: newFuncsIterable(f...),
+		iterable: newRangeIterable(start, count, opts...),
 	}
 }
 

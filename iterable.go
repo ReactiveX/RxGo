@@ -1,6 +1,6 @@
 package rxgo
 
-// Iterable is the interface returning an iterable channel.
+// Iterable is the basic type that can be observed.
 type Iterable interface {
-	Observe(opts ...Option) <-chan Item
+	Observe() <-chan Item
 }

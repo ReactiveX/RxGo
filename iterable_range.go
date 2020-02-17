@@ -2,17 +2,19 @@ package rxgo
 
 type rangeIterable struct {
 	start, count int
+	opts         []Option
 }
 
-func newRangeIterable(start, count int) Iterable {
+func newRangeIterable(start, count int, opts ...Option) Iterable {
 	return &rangeIterable{
 		start: start,
 		count: count,
+		opts:  opts,
 	}
 }
 
-func (i *rangeIterable) Observe(opts ...Option) <-chan Item {
-	option := parseOptions(opts...)
+func (i *rangeIterable) Observe() <-chan Item {
+	option := parseOptions(i.opts...)
 	next := option.buildChannel()
 
 	go func() {

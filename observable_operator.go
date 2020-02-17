@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"sync"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 // All determine whether all items emitted by an Observable meet some criteria.
@@ -36,8 +34,7 @@ func (o *observable) AverageFloat32(opts ...Option) Single {
 			sum += v
 			count++
 		} else {
-			dst <- Error(errors.Wrap(&IllegalInputError{},
-				fmt.Sprintf("expected type: float32, got: %t", item)))
+			dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: float32, got: %t", item)})
 			operator.stop()
 		}
 	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
@@ -59,8 +56,7 @@ func (o *observable) AverageFloat64(opts ...Option) Single {
 			sum += v
 			count++
 		} else {
-			dst <- Error(errors.Wrap(&IllegalInputError{},
-				fmt.Sprintf("expected type: float64, got: %t", item)))
+			dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: float64, got: %t", item)})
 			operator.stop()
 		}
 	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
@@ -82,8 +78,7 @@ func (o *observable) AverageInt(opts ...Option) Single {
 			sum += v
 			count++
 		} else {
-			dst <- Error(errors.Wrap(&IllegalInputError{},
-				fmt.Sprintf("expected type: int, got: %t", item)))
+			dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int, got: %t", item)})
 			operator.stop()
 		}
 	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
@@ -105,8 +100,7 @@ func (o *observable) AverageInt8(opts ...Option) Single {
 			sum += v
 			count++
 		} else {
-			dst <- Error(errors.Wrap(&IllegalInputError{},
-				fmt.Sprintf("expected type: int8, got: %t", item)))
+			dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int8, got: %t", item)})
 			operator.stop()
 		}
 	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
@@ -128,8 +122,7 @@ func (o *observable) AverageInt16(opts ...Option) Single {
 			sum += v
 			count++
 		} else {
-			dst <- Error(errors.Wrap(&IllegalInputError{},
-				fmt.Sprintf("expected type: int16, got: %t", item)))
+			dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int16, got: %t", item)})
 			operator.stop()
 		}
 	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
@@ -151,8 +144,7 @@ func (o *observable) AverageInt32(opts ...Option) Single {
 			sum += v
 			count++
 		} else {
-			dst <- Error(errors.Wrap(&IllegalInputError{},
-				fmt.Sprintf("expected type: int32, got: %t", item)))
+			dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int32, got: %t", item)})
 			operator.stop()
 		}
 	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
@@ -174,8 +166,7 @@ func (o *observable) AverageInt64(opts ...Option) Single {
 			sum += v
 			count++
 		} else {
-			dst <- Error(errors.Wrap(&IllegalInputError{},
-				fmt.Sprintf("expected type: int64, got: %t", item)))
+			dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int64, got: %t", item)})
 			operator.stop()
 		}
 	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
@@ -195,10 +186,10 @@ func (o *observable) AverageInt64(opts ...Option) Single {
 // the notification from the source Observable.
 func (o *observable) BufferWithCount(count, skip int, opts ...Option) Observable {
 	if count <= 0 {
-		return newObservableFromError(errors.Wrap(&IllegalInputError{}, "count must be positive"))
+		return newObservableFromError(IllegalInputError{error: "count must be positive"})
 	}
 	if skip <= 0 {
-		return newObservableFromError(errors.Wrap(&IllegalInputError{}, "skip must be positive"))
+		return newObservableFromError(IllegalInputError{error: "skip must be positive"})
 	}
 
 	buffer := make([]interface{}, count)
@@ -243,7 +234,7 @@ func (o *observable) BufferWithCount(count, skip int, opts ...Option) Observable
 // the current buffer and propagates the notification from the source Observable.
 func (o *observable) BufferWithTime(timespan, timeshift Duration, opts ...Option) Observable {
 	if timespan == nil || timespan.duration() == 0 {
-		return newObservableFromError(errors.Wrap(&IllegalInputError{}, "timespan must no be nil"))
+		return newObservableFromError(IllegalInputError{error: "timespan must no be nil"})
 	}
 	if timeshift == nil {
 		timeshift = WithDuration(0)
@@ -336,10 +327,10 @@ func (o *observable) BufferWithTime(timespan, timeshift Duration, opts ...Option
 
 func (o *observable) BufferWithTimeOrCount(timespan Duration, count int, opts ...Option) Observable {
 	if timespan == nil || timespan.duration() == 0 {
-		return newObservableFromError(errors.Wrap(&IllegalInputError{}, "timespan must no be nil"))
+		return newObservableFromError(IllegalInputError{error: "timespan must no be nil"})
 	}
 	if count <= 0 {
-		return newObservableFromError(errors.Wrap(&IllegalInputError{}, "count must be positive"))
+		return newObservableFromError(IllegalInputError{error: "count must be positive"})
 	}
 
 	sendCh := make(chan []interface{})
@@ -496,6 +487,87 @@ func (o *observable) DistinctUntilChanged(apply Func, opts ...Option) Observable
 	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
 }
 
+// DoOnCompleted registers a callback action that will be called once the Observable terminates.
+func (o *observable) DoOnCompleted(completedFunc CompletedFunc, opts ...Option) Disposed {
+	dispose := make(chan struct{})
+	handler := func(ctx context.Context, src <-chan Item) {
+		defer close(dispose)
+		defer completedFunc()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case i, ok := <-src:
+				if !ok {
+					return
+				}
+				if i.Error() {
+					return
+				}
+			}
+		}
+	}
+
+	option := parseOptions(opts...)
+	ctx := option.buildContext()
+	go handler(ctx, o.Observe())
+	return dispose
+}
+
+// DoOnError registers a callback action that will be called if the Observable terminates abnormally.
+func (o *observable) DoOnError(errFunc ErrFunc, opts ...Option) Disposed {
+	dispose := make(chan struct{})
+	handler := func(ctx context.Context, src <-chan Item) {
+		defer close(dispose)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case i, ok := <-src:
+				if !ok {
+					return
+				}
+				if i.Error() {
+					errFunc(i.E)
+					return
+				}
+			}
+		}
+	}
+
+	option := parseOptions(opts...)
+	ctx := option.buildContext()
+	go handler(ctx, o.Observe())
+	return dispose
+}
+
+// DoOnError registers a callback action that will be called on each item emitted by the Observable.
+func (o *observable) DoOnNext(nextFunc NextFunc, opts ...Option) Disposed {
+	dispose := make(chan struct{})
+	handler := func(ctx context.Context, src <-chan Item) {
+		defer close(dispose)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case i, ok := <-src:
+				if !ok {
+					return
+				}
+				if i.Error() {
+					return
+				}
+				nextFunc(i.V)
+			}
+		}
+	}
+
+	option := parseOptions(opts...)
+	ctx := option.buildContext()
+	go handler(ctx, o.Observe())
+	return dispose
+}
+
 // ElementAt emits only item n emitted by an Observable.
 func (o *observable) ElementAt(index uint, opts ...Option) Single {
 	takeCount := 0
@@ -593,18 +665,18 @@ func (o *observable) FlatMap(apply ItemToObservable, opts ...Option) Observable 
 }
 
 // ForEach subscribes to the Observable and receives notifications for each element.
-func (o *observable) ForEach(nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc, opts ...Option) <-chan struct{} {
+func (o *observable) ForEach(nextFunc NextFunc, errFunc ErrFunc, completedFunc CompletedFunc, opts ...Option) Disposed {
 	dispose := make(chan struct{})
-	handler := func(ctx context.Context, src <-chan Item, dst chan<- Item) {
+	handler := func(ctx context.Context, src <-chan Item) {
 		defer close(dispose)
 		for {
 			select {
 			case <-ctx.Done():
-				doneFunc()
+				completedFunc()
 				return
 			case i, ok := <-src:
 				if !ok {
-					doneFunc()
+					completedFunc()
 					return
 				}
 				if i.Error() {
@@ -617,9 +689,8 @@ func (o *observable) ForEach(nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFu
 	}
 
 	option := parseOptions(opts...)
-	next := option.buildChannel()
 	ctx := option.buildContext()
-	go handler(ctx, o.Observe(), next)
+	go handler(ctx, o.Observe())
 	return dispose
 }
 
@@ -628,6 +699,55 @@ func (o *observable) ForEach(nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFu
 func (o *observable) IgnoreElements(opts ...Option) Observable {
 	return newObservableFromOperator(o, func(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
+}
+
+// GroupBy divides an Observable into a set of Observables that each emit a different group of items from the original Observable, organized by key.
+func (o *observable) GroupBy(length int, distribution func(Item) int, opts ...Option) Observable {
+	option := parseOptions(opts...)
+	ctx := option.buildContext()
+
+	s := make([]Item, length)
+	chs := make([]chan Item, length)
+	for i := 0; i < length; i++ {
+		ch := option.buildChannel()
+		chs[i] = ch
+		s[i] = Of(&observable{
+			iterable: newChannelIterable(ch),
+		})
+	}
+
+	go func() {
+		observe := o.Observe()
+		defer func() {
+			for i := 0; i < length; i++ {
+				close(chs[i])
+			}
+		}()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case item, ok := <-observe:
+				if !ok {
+					return
+				}
+				idx := distribution(item)
+				if idx >= length {
+					err := Error(IndexOutOfBoundError{error: fmt.Sprintf("index %d, length %d", idx, length)})
+					for i := 0; i < length; i++ {
+						err.SendBlocking(chs[i])
+					}
+					return
+				}
+				item.SendBlocking(chs[idx])
+			}
+		}
+	}()
+
+	return &observable{
+		iterable: newSliceIterable(s, opts...),
+	}
 }
 
 // Last returns a new Observable which emit only last item.
@@ -727,8 +847,8 @@ func (o *observable) Min(comparator Comparator, opts ...Option) OptionalSingle {
 }
 
 // Observe observes an observable by returning its channel
-func (o *observable) Observe(opts ...Option) <-chan Item {
-	return o.iterable.Observe(opts...)
+func (o *observable) Observe() <-chan Item {
+	return o.iterable.Observe()
 }
 
 // OnErrorResumeNext instructs an Observable to pass control to another Observable rather than invoking
@@ -780,7 +900,7 @@ func (o *observable) Reduce(apply Func2, opts ...Option) OptionalSingle {
 func (o *observable) Repeat(count int64, frequency Duration, opts ...Option) Observable {
 	if count != Infinite {
 		if count < 0 {
-			return newObservableFromError(errors.Wrap(&IllegalInputError{}, "count must be positive"))
+			return newObservableFromError(IllegalInputError{error: "count must be positive"})
 		}
 	}
 	seq := make([]Item, 0)
@@ -850,7 +970,7 @@ func (o *observable) Retry(count int, opts ...Option) Observable {
 }
 
 // Run creates an observer without consuming the emitted items.
-func (o *observable) Run(opts ...Option) <-chan struct{} {
+func (o *observable) Run(opts ...Option) Disposed {
 	dispose := make(chan struct{})
 	option := parseOptions(opts...)
 	ctx := option.buildContext()
@@ -1185,8 +1305,7 @@ func (o *observable) SumFloat32(opts ...Option) Single {
 	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
 		switch i := item.V.(type) {
 		default:
-			dst <- Error(errors.Wrap(&IllegalInputError{},
-				fmt.Sprintf("expected type: (float32|int|int8|int16|int32|int64), got: %t", item)))
+			dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: (float32|int|int8|int16|int32|int64), got: %t", item)})
 			operator.stop()
 			return
 		case int:
@@ -1214,8 +1333,7 @@ func (o *observable) SumFloat64(opts ...Option) Single {
 	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
 		switch i := item.V.(type) {
 		default:
-			dst <- Error(errors.Wrap(&IllegalInputError{},
-				fmt.Sprintf("expected type: (float32|float64|int|int8|int16|int32|int64), got: %t", item)))
+			dst <- Error(&IllegalInputError{error: fmt.Sprintf("expected type: (float32|float64|int|int8|int16|int32|int64), got: %t", item)})
 			operator.stop()
 			return
 		case int:
@@ -1245,8 +1363,7 @@ func (o *observable) SumInt64(opts ...Option) Single {
 	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
 		switch i := item.V.(type) {
 		default:
-			dst <- Error(errors.Wrap(&IllegalInputError{},
-				fmt.Sprintf("expected type: (int|int8|int16|int32|int64), got: %t", item)))
+			dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: (int|int8|int16|int32|int64), got: %t", item)})
 			operator.stop()
 			return
 		case int:
@@ -1373,15 +1490,17 @@ func (o *observable) ToMapWithValueSelector(keySelector, valueSelector Func, opt
 	}, opts...)
 }
 
-// ToSlice collects all items from an Observable and emit them as a single slice.
-func (o *observable) ToSlice(opts ...Option) Single {
+// ToSlice collects all items from an Observable and emit them in a slice and an optional error.
+func (o *observable) ToSlice(opts ...Option) ([]interface{}, error) {
 	s := make([]interface{}, 0)
-
-	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
+	var err error
+	<-newObservableFromOperator(o, func(_ context.Context, item Item, _ chan<- Item, _ operatorOptions) {
 		s = append(s, item.V)
-	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
-		dst <- Of(s)
-	}, opts...)
+	}, func(_ context.Context, item Item, _ chan<- Item, operator operatorOptions) {
+		err = item.E
+		operator.stop()
+	}, defaultEndFuncOperator, opts...).Run()
+	return s, err
 }
 
 // Marshal transforms the items emitted by an Observable by applying an unmarshalling to each item.

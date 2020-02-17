@@ -3,10 +3,9 @@ package rxgo
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -259,6 +258,54 @@ func Test_Observable_DistinctUntilChanged(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(1, 2, 1, 3))
 }
 
+func Test_Observable_DoOnCompleted_NoError(t *testing.T) {
+	called := false
+	<-testObservable(1, 2, 3).DoOnCompleted(func() {
+		called = true
+	})
+	assert.True(t, called)
+}
+
+func Test_Observable_DoOnCompleted_Error(t *testing.T) {
+	called := false
+	<-testObservable(1, errFoo, 3).DoOnCompleted(func() {
+		called = true
+	})
+	assert.True(t, called)
+}
+
+func Test_Observable_DoOnError_NoError(t *testing.T) {
+	var got error
+	<-testObservable(1, 2, 3).DoOnError(func(err error) {
+		got = err
+	})
+	assert.Nil(t, got)
+}
+
+func Test_Observable_DoOnError_Error(t *testing.T) {
+	var got error
+	<-testObservable(1, errFoo, 3).DoOnError(func(err error) {
+		got = err
+	})
+	assert.Equal(t, errFoo, got)
+}
+
+func Test_Observable_DoOnNext_NoError(t *testing.T) {
+	s := make([]interface{}, 0)
+	<-testObservable(1, 2, 3).DoOnNext(func(i interface{}) {
+		s = append(s, i)
+	})
+	assert.Equal(t, []interface{}{1, 2, 3}, s)
+}
+
+func Test_Observable_DoOnNext_Error(t *testing.T) {
+	s := make([]interface{}, 0)
+	<-testObservable(1, errFoo, 3).DoOnNext(func(i interface{}) {
+		s = append(s, i)
+	})
+	assert.Equal(t, []interface{}{1}, s)
+}
+
 func Test_Observable_ElementAt(t *testing.T) {
 	obs := testObservable(0, 1, 2, 3, 4).ElementAt(2)
 	Assert(context.Background(), t, obs, HasItems(2))
@@ -374,6 +421,46 @@ func Test_Observable_IgnoreElements(t *testing.T) {
 func Test_Observable_IgnoreElements_Error(t *testing.T) {
 	obs := testObservable(1, errFoo, 3).IgnoreElements()
 	Assert(context.Background(), t, obs, HasNoItem(), HasRaisedError(errFoo))
+}
+
+func Test_Observable_GroupBy(t *testing.T) {
+	count := 3
+	max := 10
+
+	obs := Range(0, max).GroupBy(count, func(item Item) int {
+		return item.V.(int) % count
+	}, WithBufferedChannel(max))
+	s, err := obs.ToSlice()
+	if err != nil {
+		assert.FailNow(t, err.Error())
+	}
+	if len(s) != count {
+		assert.FailNow(t, "length", "got=%d, expected=%d", len(s), count)
+	}
+
+	Assert(context.Background(), t, s[0].(Observable), HasItems(0, 3, 6, 9), HasNotRaisedError())
+	Assert(context.Background(), t, s[1].(Observable), HasItems(1, 4, 7, 10), HasNotRaisedError())
+	Assert(context.Background(), t, s[2].(Observable), HasItems(2, 5, 8), HasNotRaisedError())
+}
+
+func Test_Observable_GroupBy_Error(t *testing.T) {
+	count := 3
+	max := 10
+
+	obs := Range(0, max).GroupBy(count, func(item Item) int {
+		return 4
+	}, WithBufferedChannel(max))
+	s, err := obs.ToSlice()
+	if err != nil {
+		assert.FailNow(t, err.Error())
+	}
+	if len(s) != count {
+		assert.FailNow(t, "length", "got=%d, expected=%d", len(s), count)
+	}
+
+	Assert(context.Background(), t, s[0].(Observable), HasRaisedAnError())
+	Assert(context.Background(), t, s[1].(Observable), HasRaisedAnError())
+	Assert(context.Background(), t, s[2].(Observable), HasRaisedAnError())
 }
 
 func Test_Observable_Last_NotEmpty(t *testing.T) {
@@ -593,7 +680,7 @@ func Test_Observable_ReturnError(t *testing.T) {
 
 func Test_Observable_Retry(t *testing.T) {
 	i := 0
-	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
+	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item, done func()) {
 		next <- Of(1)
 		next <- Of(2)
 		if i == 2 {
@@ -604,17 +691,17 @@ func Test_Observable_Retry(t *testing.T) {
 			next <- Error(errFoo)
 			done()
 		}
-	}).Retry(3)
+	}}).Retry(3)
 	Assert(context.Background(), t, obs, HasItems(1, 2, 1, 2, 1, 2, 3), HasNotRaisedError())
 }
 
 func Test_Observable_Retry_Error(t *testing.T) {
-	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
+	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item, done func()) {
 		next <- Of(1)
 		next <- Of(2)
 		next <- Error(errFoo)
 		done()
-	}).Retry(3)
+	}}).Retry(3)
 	Assert(context.Background(), t, obs, HasItems(1, 2, 1, 2, 1, 2, 1, 2), HasRaisedError(errFoo))
 }
 
@@ -851,13 +938,15 @@ func Test_Observable_ToMapWithValueSelector(t *testing.T) {
 }
 
 func Test_Observable_ToSlice(t *testing.T) {
-	single := testObservable(1, 2, 3).ToSlice()
-	Assert(context.Background(), t, single, HasItem([]interface{}{1, 2, 3}))
+	s, err := testObservable(1, 2, 3).ToSlice()
+	assert.Equal(t, []interface{}{1, 2, 3}, s)
+	assert.NoError(t, err)
 }
 
 func Test_Observable_ToSlice_Error(t *testing.T) {
-	single := testObservable(1, 2, errFoo, 3).ToSlice()
-	Assert(context.Background(), t, single, HasNoItem(), HasRaisedError(errFoo))
+	s, err := testObservable(1, 2, errFoo, 3).ToSlice()
+	assert.Equal(t, []interface{}{1, 2}, s)
+	assert.Equal(t, errFoo, err)
 }
 
 func Test_Observable_Unmarshal(t *testing.T) {

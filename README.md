@@ -46,7 +46,7 @@ The following documentation gives an overview of RxGo. If you need more informat
 Let's create our first Observable and consume an item:
 
 ```go
-observable := rxgo.Just(rxgo.Of("Hello, World!"))
+observable := rxgo.Just([]rxgo.Item{rxgo.Of("Hello, World!")})
 ch := observable.Observe()
 item := <-ch
 fmt.Println(item.V)
@@ -87,7 +87,7 @@ observable.ForEach(func(v interface{}) {
 In this example, we passed 3 functions:
 * A `NextFunc` triggered when a value item is emitted.
 * An `ErrFunc` triggered when an error item is emitted.
-* A `DoneFunc` triggered once the Observable is closed.
+* A `CompletedFunc` triggered once the Observable is completed.
 
 `ForEach` is non-blocking. Yet, it returns a notification channel that will be closed once the Observable completes. Hence, to make the previous code blocking, we simply need to use `<-`:
 
@@ -185,15 +185,15 @@ The result of this execution is:
 
 It means, the first Observer consumed already all the items.
 
-On the other hand, let's create a hot Observable using `FromFuncs` operator:
+On the other hand, let's create a hot Observable using `Defer` operator:
 
 ```go
-observable := rxgo.FromFuncs(func(_ context.Context, ch chan<- rxgo.Item, done func()) {
+observable := rxgo.Defer([]Producer{func(_ context.Context, ch chan<- rxgo.Item, done func()) {
     for i := 0; i < 3; i++ {
         ch <- rxgo.Of(i)
     }
     done()
-})
+}})
 
 // First Observer
 for item := range observable.Observe() {
@@ -217,7 +217,7 @@ Now, the result is:
 2
 ```
 
-In the case of a hot observable created with `FromFuncs`, the stream is reproducible. Depending on our use case, we may favour one or the other approach.
+In the case of a hot observable created with `Defer`, the stream is reproducible. Depending on our use case, we may favour one or the other approach.
 
 ### Backpressure
 
@@ -264,11 +264,11 @@ In this example, we create a pool of 32 goroutines that consume items concurrent
 ## Supported Operators in RxGo
 
 ### Creating Observables
+* [Create](http://reactivex.io/documentation/operators/create.html) - create an Observable from scratch by calling observer methods programmatically
+* [Defer](http://reactivex.io/documentation/operators/defer.html) - do not create the Observable until the observer subscribes, and create a fresh Observable for each observer
 * [Empty/Never](http://reactivex.io/documentation/operators/empty-never-throw.html) — create Observables that have very precise and limited behaviour
 * FromChannel — create an Observable based on a lazy channel
 * FromEventSource — create an Observable based on an eager channel
-* FromFuncs - combine scatter functions emitting items into one Observable
-* FromSlice — create an Observable from a slice
 * [Interval](http://reactivex.io/documentation/operators/interval.html) — create an Observable that emits a sequence of integers spaced by a particular time interval
 * [Just](http://reactivex.io/documentation/operators/just.html) — convert a set of objects into an Observable that emits that or those objects
 * JustItem — convert one object into a Single that emits this object
@@ -280,6 +280,7 @@ In this example, we create a pool of 32 goroutines that consume items concurrent
 ### Transforming Observables
 * [BufferWithCount/BufferWithTime/BufferWithTimeOrCount](http://reactivex.io/documentation/operators/buffer.html) — periodically gather items from an Observable into bundles and emit these bundles rather than emitting the items one at a time
 * [FlatMap](http://reactivex.io/documentation/operators/flatmap.html) — transform the items emitted by an Observable into Observables, then flatten the emissions from those into a single Observable
+* [GroupBy](http://reactivex.io/documentation/operators/groupby.html) — divide an Observable into a set of Observables that each emit a different group of items from the original Observable, organized by key
 * [Map](http://reactivex.io/documentation/operators/map.html) — transform the items emitted by an Observable by applying a function to each item
 * Marshal - transform the items emitted by an Observable by applying a marshalling function to each item
 * [Scan](http://reactivex.io/documentation/operators/scan.html) — apply a function to each item emitted by an Observable, sequentially, and emit each successive value
@@ -309,6 +310,7 @@ In this example, we create a pool of 32 goroutines that consume items concurrent
 * [Retry](http://reactivex.io/documentation/operators/retry.html) — if a source Observable sends an onError notification, resubscribe to it in the hopes that it will complete without error
 
 ### Observable Utility Operators
+* [Do](http://reactivex.io/documentation/operators/do.html) - register an action to take upon a variety of Observable lifecycle events
 * Run - create an Observer without consuming the emitted items
 * Send - send the Observable items in a specific channel 
 * ToMap/ToMapWithValueSelector - stores the Observable items in a map

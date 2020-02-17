@@ -34,26 +34,22 @@ type (
 	Marshaler func(interface{}) ([]byte, error)
 	// Unmarshaler defines an unmarshaler type ([]byte to interface).
 	Unmarshaler func([]byte, interface{}) error
-	// ProducerFunc defines a producer implementation.
-	ProducerFunc func(ctx context.Context, next chan<- Item, done func())
+	// Producer defines a producer implementation.
+	Producer func(ctx context.Context, next chan<- Item, done func())
 	// Supplier defines a function that supplies a result from nothing.
 	Supplier func(ctx context.Context) Item
+	// Disposed is a notification channel indicating when an Observable is closed.
+	Disposed <-chan struct{}
 
 	// NextFunc handles a next item in a stream.
 	NextFunc func(interface{})
 	// ErrFunc handles an error in a stream.
 	ErrFunc func(error)
-	// DoneFunc handles the end of a stream.
-	DoneFunc func()
+	// CompletedFunc handles the end of a stream.
+	CompletedFunc func()
 
 	operatorItem func(ctx context.Context, item Item, dst chan<- Item, operator operatorOptions)
 	operatorEnd  func(ctx context.Context, dst chan<- Item)
-
-	// Item is a wrapper having either a value or an error.
-	Item struct {
-		V interface{}
-		E error
-	}
 )
 
 const (
@@ -62,18 +58,3 @@ const (
 	// Drop drops the message.
 	Drop
 )
-
-// Error checks if an item is an error.
-func (i Item) Error() bool {
-	return i.E != nil
-}
-
-// Of creates an item from a value.
-func Of(i interface{}) Item {
-	return Item{V: i}
-}
-
-// Error creates an item from an error.
-func Error(err error) Item {
-	return Item{E: err}
-}

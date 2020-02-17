@@ -19,7 +19,7 @@ func newSingleFromOperator(iterable Iterable, nextFunc, errFunc operatorItem, en
 	}
 }
 
-func (s *single) Observe(opts ...Option) <-chan Item {
+func (s *single) Observe() <-chan Item {
 	return s.iterable.Observe()
 }
 
