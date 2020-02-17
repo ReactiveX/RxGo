@@ -29,6 +29,8 @@ In this example, the items are emitted in a channel, available for a consumer. T
 
 Each operator is a transformation stage. By default, everything is sequential. Yet, we can leverage modern CPU architectures by defining multiple instances of the same operator. Each operator instance being a goroutine connected to a common channel.
 
+The main philosophy of RxGo is to implement the ReactiveX concepts by leveraging the main Go primitives (channels, goroutines, etc.).
+
 ## Installation
 
 ```
@@ -151,19 +153,39 @@ The result is:
 2
 ```
 
+In the latter case, the stream observation is reproducible.
 
+### Backpressure
 
-### Backpressure
+There is another operator called `FromEventSource` that creates an Observable from a channel. The difference between `FromChannel` is that as soon as the Observable is created, it starts to emit items regardless if there is an observer. As a result, the items emitted by an observable if there is no observer are lost (with `FromChannel` they are buffered).
 
-TODO (backpressure, eager/lazy, event source)
-single, optional single
+An use case for `FromEventSource` could be for example telemetry. We might not be interested in all the data produced from the very beginning of a stream. Only the data since we started to observe it.
+
+Once we start observing an Observable created with `FromEventSource`, we can configure the backpressure strategy. By default, it is blocking (there is a guaranteed delivery for the items emitted after we observe it). We can override this strategy this way:
+
+```go
+observable := rxgo.FromEventSource(ch, rxgo.WithBackPressureStrategy(rxgo.Drop))
+```
+
+The `Drop` strategy means that if the pipeline after `FromEventSource` was not ready to consume an item, this item is dropped.
+
+By default, each channel connecting an operator is non buffered. We can override this behaviour like this:
+
+```go
+observable := rxgo.FromChannel(ch).Map(transform, rxgo.WithBufferedChannel(42))
+```
+
+### Lazy vs Eager Observation
+
+The default observation strategy is lazy. It means, the items emitted by an Observable are processed by an operator once we start observing it. We can use an eager observation strategy this way:
+
+```go
+observable := rxgo.FromChannel(ch).Map(transform, rxgo.WithEagerObservation())
+```
+
+In this case, the `Map` operator is triggered whenever an item is produced even without any observer.
 
 ## Supported Operators in RxGo
-
-## Lazy vs Eager
-
-witheager
-
 
 ### Creating Observables
 * [Empty/Never](http://reactivex.io/documentation/operators/empty-never-throw.html) — create Observables that have very precise and limited behavior
