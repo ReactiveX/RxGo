@@ -39,6 +39,8 @@ go get -u github.com/reactivex/rxgo
 
 ## Getting Started
 
+The following documentation gives an overview of RxGo. If you need more information, make sure to check the Wiki.
+
 Let's implement our first observable:
 
 ```go
@@ -164,7 +166,7 @@ An use case for `FromEventSource` could be for example telemetry. We might not b
 Once we start observing an Observable created with `FromEventSource`, we can configure the backpressure strategy. By default, it is blocking (there is a guaranteed delivery for the items emitted after we observe it). We can override this strategy this way:
 
 ```go
-observable := rxgo.FromEventSource(ch, rxgo.WithBackPressureStrategy(rxgo.Drop))
+observable := rxgo.FromEventSource(input, rxgo.WithBackPressureStrategy(rxgo.Drop))
 ```
 
 The `Drop` strategy means that if the pipeline after `FromEventSource` was not ready to consume an item, this item is dropped.
@@ -172,8 +174,10 @@ The `Drop` strategy means that if the pipeline after `FromEventSource` was not r
 By default, each channel connecting an operator is non buffered. We can override this behaviour like this:
 
 ```go
-observable := rxgo.FromChannel(ch).Map(transform, rxgo.WithBufferedChannel(42))
+observable.Map(transform, rxgo.WithBufferedChannel(42))
 ```
+
+Each operator has an `opts ...Option` parameter allowing to pass specific options.
 
 ### Lazy vs Eager Observation
 
@@ -185,6 +189,16 @@ observable := rxgo.FromChannel(ch).Map(transform, rxgo.WithEagerObservation())
 
 In this case, the `Map` operator is triggered whenever an item is produced even without any observer.
 
+### Sequential vs Parallel Operators
+
+By default, each operator is sequential. One operator being one goroutine instance. We can override it using the following option:
+
+```go
+observable.Map(transform, rxgo.WithPool(32))
+```
+
+In this example, we create a pool of 32 goroutines that consume concurrently to the same channel. If the operation is CPU-bound, we can use the `WithCPUPool()` that creates a pool based on the number of logical CPUs.
+
 ## Supported Operators in RxGo
 
 ### Creating Observables
@@ -195,7 +209,7 @@ In this case, the `Map` operator is triggered whenever an item is produced even 
 * FromSlice — create an Observable from a slice
 * [Interval](http://reactivex.io/documentation/operators/interval.html) — create an Observable that emits a sequence of integers spaced by a particular time interval
 * [Just](http://reactivex.io/documentation/operators/just.html) — convert a set of objects into an Observable that emits that or those objects
-* JustItem — convert one object into an Observable that emits this object
+* JustItem — convert one object into a Single that emits this object
 * [Range](http://reactivex.io/documentation/operators/range.html) — create an Observable that emits a range of sequential integers
 * [Repeat](http://reactivex.io/documentation/operators/repeat.html) — create an Observable that emits a particular item or sequence of items repeatedly
 * [Start](http://reactivex.io/documentation/operators/start.html) — create an Observable that emits the return value of a function
