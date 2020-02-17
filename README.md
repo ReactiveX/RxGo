@@ -223,7 +223,7 @@ In the case of a hot observable created with `FromFuncs`, the stream is reproduc
 
 There is another operator called `FromEventSource` that creates an Observable from a channel. The difference between `FromChannel` operator is that as soon as the Observable is created, it starts to emit items regardless if there is an Observer or not. Hence, the items emitted by an Observable without Observer(s) are lost (whilst they are buffered with `FromChannel` operator).
 
-An use case for `FromEventSource` could be for example telemetry. We might not be interested in all the data produced from the very beginning of a stream. Only the data since we started to observe it.
+An use case with `FromEventSource` operator is for example telemetry. We may not be interested in all the data produced from the very beginning of a stream. Only the data since we started to observe it.
 
 Once we start observing an Observable created with `FromEventSource`, we can configure the backpressure strategy. By default, it is blocking (there is a guaranteed delivery for the items emitted after we observe it). We can override this strategy this way:
 
@@ -233,25 +233,25 @@ observable := rxgo.FromEventSource(input, rxgo.WithBackPressureStrategy(rxgo.Dro
 
 The `Drop` strategy means that if the pipeline after `FromEventSource` was not ready to consume an item, this item is dropped.
 
-By default, each channel connecting an operator is non buffered. We can override this behaviour like this:
+By default, a channel connecting operators is non-buffered. We can override this behaviour like this:
 
 ```go
 observable.Map(transform, rxgo.WithBufferedChannel(42))
 ```
 
-Each operator has an `opts ...Option` parameter allowing to pass specific options.
+Each operator has an `opts ...Option` parameter allowing to pass such options.
 
 ### Lazy vs Eager Observation
 
-The default observation strategy is lazy. It means, the items emitted by an Observable are processed by an operator once we start observing it. We can use an eager observation strategy this way:
+The default observation strategy is lazy. It means, the items emitted by an Observable are processed by an operator once we start observing it. We can change this behaviour this way:
 
 ```go
 observable := rxgo.FromChannel(ch).Map(transform, rxgo.WithEagerObservation())
 ```
 
-In this case, the `Map` operator is triggered whenever an item is produced even without any observer.
+In this case, the `Map` operator is triggered whenever an item is produced even without any Observer.
 
-### Sequential vs Parallel Operators
+### Sequential vs Parallel Operators
 
 By default, each operator is sequential. One operator being one goroutine instance. We can override it using the following option:
 
@@ -259,7 +259,7 @@ By default, each operator is sequential. One operator being one goroutine instan
 observable.Map(transform, rxgo.WithPool(32))
 ```
 
-In this example, we create a pool of 32 goroutines that consume concurrently to the same channel. If the operation is CPU-bound, we can use the `WithCPUPool()` that creates a pool based on the number of logical CPUs.
+In this example, we create a pool of 32 goroutines that consume items concurrently from the same channel. If the operation is CPU-bound, we can use the `WithCPUPool()` option that creates a pool based on the number of logical CPUs.
 
 ## Supported Operators in RxGo
 
@@ -334,4 +334,4 @@ In this example, we create a pool of 32 goroutines that consume concurrently to 
 
 ## Contributions
 
-All contributions are welcome, both in development and documentation! Be sure you check out [contributions](https://github.com/ReactiveX/RxGo/wiki/Contributions) and [roadmap](https://github.com/ReactiveX/RxGo/wiki/Roadmap).
+All contributions are very welcome! Be sure you check out the [Contributions](https://github.com/ReactiveX/RxGo/wiki/Contributions) and [Roadmap](https://github.com/ReactiveX/RxGo/wiki/Roadmap) pages first.
