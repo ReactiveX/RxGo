@@ -30,7 +30,7 @@ func Amb(observables []Observable, opts ...Option) Observable {
 			}
 			once.Do(func() {
 				defer close(next)
-				if item.IsError() {
+				if item.Error() {
 					next <- item
 					return
 				}
@@ -43,7 +43,7 @@ func Amb(observables []Observable, opts ...Option) Observable {
 						if !ok {
 							return
 						}
-						if item.IsError() {
+						if item.Error() {
 							next <- item
 							return
 						}
@@ -90,7 +90,7 @@ func CombineLatest(f FuncN, observables []Observable, opts ...Option) Observable
 					if !ok {
 						return
 					}
-					if item.IsError() {
+					if item.Error() {
 						next <- item
 						errCh <- struct{}{}
 						return
@@ -99,9 +99,9 @@ func CombineLatest(f FuncN, observables []Observable, opts ...Option) Observable
 						atomic.AddUint32(&counter, 1)
 					}
 					mutex.Lock()
-					s[i] = item.Value
+					s[i] = item.V
 					if atomic.LoadUint32(&counter) == size {
-						next <- FromValue(f(s...))
+						next <- Of(f(s...))
 					}
 					mutex.Unlock()
 				}
@@ -148,7 +148,7 @@ func Concat(observables []Observable, opts ...Option) Observable {
 					if !ok {
 						break loop
 					}
-					if item.IsError() {
+					if item.Error() {
 						next <- item
 						return
 					}
@@ -206,7 +206,7 @@ func Interval(interval Duration, opts ...Option) Observable {
 		for {
 			select {
 			case <-time.After(interval.duration()):
-				next <- FromValue(i)
+				next <- Of(i)
 				i++
 			case <-ctx.Done():
 				close(next)
@@ -256,7 +256,7 @@ func Merge(observables []Observable, opts ...Option) Observable {
 				if !ok {
 					return
 				}
-				if item.IsError() {
+				if item.Error() {
 					next <- item
 					return
 				}
@@ -346,7 +346,7 @@ func Timer(d Duration, opts ...Option) Observable {
 		case <-ctx.Done():
 			return
 		case <-time.After(d.duration()):
-			next <- FromValue(struct{}{})
+			next <- Of(struct{}{})
 		}
 	}()
 	return &observable{

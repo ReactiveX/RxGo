@@ -197,10 +197,10 @@ loop:
 			if !ok {
 				break loop
 			}
-			if item.IsError() {
-				err = item.Err
+			if item.Error() {
+				err = item.E
 			} else {
-				got = append(got, item.Value)
+				got = append(got, item.V)
 			}
 		}
 	}

@@ -39,6 +39,18 @@ go get -u github.com/reactivex/rxgo
 
 ## Getting Started
 
+### Hello World
+
+Let's implement our first observable and consume items:
+
+```go
+observable := rxgo.Just(rxgo.Of("Hello, World!"))
+ch := observable.Observe()
+fmt.Println((<-ch).Value)
+```
+
+
+
 ### First Example
 
 The following documentation gives an overview of RxGo. If you need more information, make sure to check the Wiki.
@@ -92,7 +104,7 @@ Each operator from `Observable` emits items on the fly. Yet, the operators produ
 
 As discussed, two operators are connected through a channel.
 
-An item produced by an Observable can be either a value or an error. If we want to produce an item based on a value, we have to use `rxgo.FromValue(x)`. On the other hand, if we want to produce an error we can do it using `rxgo.FromError(err)`.
+An item produced by an Observable can be either a value or an error. If we want to produce an item based on a value, we have to use `rxgo.Of(x)`. On the other hand, if we want to produce an error we can do it using `rxgo.Error(err)`.
 
 By default, an Observable is stopped once an error is produced. However, there are special operators to deal with errors (e.g. `OnError`, `Retry`, etc.)
 
@@ -110,7 +122,7 @@ First, let's create a cold Observable using `FromChannel` operator:
 ch := make(chan rxgo.Item)
 go func() {
     for i := 0; i < 3; i++ {
-        ch <- rxgo.FromValue(i)
+        ch <- rxgo.Of(i)
     }
     close(ch)
 }()
@@ -139,7 +151,7 @@ On the other hand, let's create a hot Observable using `FromFuncs` operator:
 ```go
 observable := rxgo.FromFuncs(func(_ context.Context, ch chan<- rxgo.Item, done func()) {
     for i := 0; i < 3; i++ {
-        ch <- rxgo.FromValue(i)
+        ch <- rxgo.Of(i)
     }
     done()
 })

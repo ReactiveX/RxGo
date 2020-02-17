@@ -135,7 +135,7 @@ func seq(ctx context.Context, next chan Item, iterable Iterable, nextFunc, errFu
 				if !ok {
 					break loop
 				}
-				if i.IsError() {
+				if i.Error() {
 					errFunc(ctx, i, next, operator)
 				} else {
 					nextFunc(ctx, i, next, operator)
@@ -172,7 +172,7 @@ func parallel(ctx context.Context, pool int, next chan Item, iterable Iterable, 
 						wg.Done()
 						return
 					}
-					if i.IsError() {
+					if i.Error() {
 						errFunc(ctx, i, next, operator)
 					} else {
 						nextFunc(ctx, i, next, operator)
@@ -197,7 +197,7 @@ func newObservableFromOperator(iterable Iterable, nextFunc, errFunc operatorItem
 
 func newObservableFromError(err error) Observable {
 	next := make(chan Item, 1)
-	next <- FromError(err)
+	next <- Error(err)
 	close(next)
 	return &observable{
 		iterable: newChannelIterable(next),

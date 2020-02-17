@@ -51,8 +51,8 @@ type (
 
 	// Item is a wrapper having either a value or an error.
 	Item struct {
-		Value interface{}
-		Err   error
+		V interface{}
+		E error
 	}
 )
 
@@ -63,17 +63,17 @@ const (
 	Drop
 )
 
-// IsError checks if an item is an error.
-func (i Item) IsError() bool {
-	return i.Err != nil
+// Error checks if an item is an error.
+func (i Item) Error() bool {
+	return i.E != nil
 }
 
-// FromValue creates an item from a value.
-func FromValue(i interface{}) Item {
-	return Item{Value: i}
+// Of creates an item from a value.
+func Of(i interface{}) Item {
+	return Item{V: i}
 }
 
-// FromError creates an item from an error.
-func FromError(err error) Item {
-	return Item{Err: err}
+// Error creates an item from an error.
+func Error(err error) Item {
+	return Item{E: err}
 }

@@ -25,7 +25,7 @@ func (s *single) Observe(opts ...Option) <-chan Item {
 
 func (s *single) Filter(apply Predicate, opts ...Option) OptionalSingle {
 	return newOptionalSingleFromOperator(s, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-		if apply(item.Value) {
+		if apply(item.V) {
 			dst <- item
 		}
 		operator.stop()
@@ -34,12 +34,12 @@ func (s *single) Filter(apply Predicate, opts ...Option) OptionalSingle {
 
 func (s *single) Map(apply Func, opts ...Option) Single {
 	return newSingleFromOperator(s, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-		res, err := apply(item.Value)
+		res, err := apply(item.V)
 		if err != nil {
-			dst <- FromError(err)
+			dst <- Error(err)
 			operator.stop()
 		} else {
-			dst <- FromValue(res)
+			dst <- Of(res)
 			operator.stop()
 		}
 	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)

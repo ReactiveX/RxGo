@@ -130,7 +130,7 @@ func Test_Observable_BufferWithTime_MinorMockedTime(t *testing.T) {
 
 	obs := from.BufferWithTime(timespan, timeshift)
 
-	ch <- FromValue(1)
+	ch <- Of(1)
 	close(ch)
 
 	<-obs.Observe()
@@ -181,7 +181,7 @@ func Test_Observable_BufferWithTimeOrCount_MockedTime(t *testing.T) {
 	obs := from.BufferWithTimeOrCount(timespan, 5)
 
 	time.Sleep(50 * time.Millisecond)
-	ch <- FromValue(1)
+	ch <- Of(1)
 	close(ch)
 
 	<-obs.Observe()
@@ -299,27 +299,27 @@ func Test_Observable_FirstOrDefault_Empty(t *testing.T) {
 
 func Test_Observable_FlatMap(t *testing.T) {
 	obs := testObservable(1, 2, 3).FlatMap(func(i Item) Observable {
-		return testObservable(i.Value.(int)+1, i.Value.(int)*10)
+		return testObservable(i.V.(int)+1, i.V.(int)*10)
 	})
 	Assert(context.Background(), t, obs, HasItems(2, 10, 3, 20, 4, 30))
 }
 
 func Test_Observable_FlatMap_Error1(t *testing.T) {
 	obs := testObservable(1, 2, 3).FlatMap(func(i Item) Observable {
-		if i.Value == 2 {
+		if i.V == 2 {
 			return testObservable(errFoo)
 		}
-		return testObservable(i.Value.(int)+1, i.Value.(int)*10)
+		return testObservable(i.V.(int)+1, i.V.(int)*10)
 	})
 	Assert(context.Background(), t, obs, HasItems(2, 10), HasRaisedError(errFoo))
 }
 
 func Test_Observable_FlatMap_Error2(t *testing.T) {
 	obs := testObservable(1, errFoo, 3).FlatMap(func(i Item) Observable {
-		if i.IsError() {
+		if i.Error() {
 			return testObservable(0)
 		}
-		return testObservable(i.Value.(int)+1, i.Value.(int)*10)
+		return testObservable(i.V.(int)+1, i.V.(int)*10)
 	})
 	Assert(context.Background(), t, obs, HasItems(2, 10, 0, 4, 30), HasNotRaisedError())
 }
@@ -435,7 +435,7 @@ func Test_Observable_Map_Parallel(t *testing.T) {
 	ch := make(chan Item, len)
 	go func() {
 		for i := 0; i < len; i++ {
-			ch <- FromValue(i)
+			ch <- Of(i)
 		}
 		close(ch)
 	}()
@@ -489,7 +489,7 @@ func Test_Observable_Observe(t *testing.T) {
 	got := make([]int, 0)
 	ch := testObservable(1, 2, 3).Observe()
 	for item := range ch {
-		got = append(got, item.Value.(int))
+		got = append(got, item.V.(int))
 	}
 	assert.Equal(t, []int{1, 2, 3}, got)
 }
@@ -594,14 +594,14 @@ func Test_Observable_ReturnError(t *testing.T) {
 func Test_Observable_Retry(t *testing.T) {
 	i := 0
 	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
-		next <- FromValue(1)
-		next <- FromValue(2)
+		next <- Of(1)
+		next <- Of(2)
 		if i == 2 {
-			next <- FromValue(3)
+			next <- Of(3)
 			done()
 		} else {
 			i++
-			next <- FromError(errFoo)
+			next <- Error(errFoo)
 			done()
 		}
 	}).Retry(3)
@@ -610,9 +610,9 @@ func Test_Observable_Retry(t *testing.T) {
 
 func Test_Observable_Retry_Error(t *testing.T) {
 	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
-		next <- FromValue(1)
-		next <- FromValue(2)
-		next <- FromError(errFoo)
+		next <- Of(1)
+		next <- Of(2)
+		next <- Error(errFoo)
 		done()
 	}).Retry(3)
 	Assert(context.Background(), t, obs, HasItems(1, 2, 1, 2, 1, 2, 1, 2), HasRaisedError(errFoo))
@@ -643,10 +643,10 @@ func Test_Observable_Scan(t *testing.T) {
 func Test_Observable_Send(t *testing.T) {
 	ch := make(chan Item, 10)
 	testObservable(1, 2, 3, errFoo).Send(ch)
-	assert.Equal(t, FromValue(1), <-ch)
-	assert.Equal(t, FromValue(2), <-ch)
-	assert.Equal(t, FromValue(3), <-ch)
-	assert.Equal(t, FromError(errFoo), <-ch)
+	assert.Equal(t, Of(1), <-ch)
+	assert.Equal(t, Of(2), <-ch)
+	assert.Equal(t, Of(3), <-ch)
+	assert.Equal(t, Error(errFoo), <-ch)
 }
 
 func Test_Observable_SequenceEqual_EvenSequence(t *testing.T) {

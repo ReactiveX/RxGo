@@ -88,9 +88,9 @@ func Test_Empty(t *testing.T) {
 func Test_FromChannel(t *testing.T) {
 	ch := make(chan Item)
 	go func() {
-		ch <- FromValue(1)
-		ch <- FromValue(2)
-		ch <- FromValue(3)
+		ch <- Of(1)
+		ch <- Of(2)
+		ch <- Of(3)
 		close(ch)
 	}()
 	obs := FromChannel(ch)
@@ -117,9 +117,9 @@ func Test_FromChannel_ComposedCapacity(t *testing.T) {
 
 func Test_FromFuncs(t *testing.T) {
 	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
-		next <- FromValue(1)
-		next <- FromValue(2)
-		next <- FromValue(3)
+		next <- Of(1)
+		next <- Of(2)
+		next <- Of(3)
 		done()
 	})
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
@@ -127,12 +127,12 @@ func Test_FromFuncs(t *testing.T) {
 
 func Test_FromFuncs_Multiple(t *testing.T) {
 	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
-		next <- FromValue(1)
-		next <- FromValue(2)
+		next <- Of(1)
+		next <- Of(2)
 		done()
 	}, func(ctx context.Context, next chan<- Item, done func()) {
-		next <- FromValue(10)
-		next <- FromValue(20)
+		next <- Of(10)
+		next <- Of(20)
 		done()
 	})
 	Assert(context.Background(), t, obs, HasItemsNoParticularOrder(1, 2, 10, 20), HasNotRaisedError())
@@ -140,9 +140,9 @@ func Test_FromFuncs_Multiple(t *testing.T) {
 
 func Test_FromFuncs_Close(t *testing.T) {
 	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
-		next <- FromValue(1)
-		next <- FromValue(2)
-		next <- FromValue(3)
+		next <- Of(1)
+		next <- Of(2)
+		next <- Of(3)
 		done()
 	})
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
@@ -150,9 +150,9 @@ func Test_FromFuncs_Close(t *testing.T) {
 
 func Test_FromFuncs_SingleDup(t *testing.T) {
 	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
-		next <- FromValue(1)
-		next <- FromValue(2)
-		next <- FromValue(3)
+		next <- Of(1)
+		next <- Of(2)
+		next <- Of(3)
 		done()
 	})
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
@@ -161,9 +161,9 @@ func Test_FromFuncs_SingleDup(t *testing.T) {
 
 func Test_FromFuncs_ComposedDup(t *testing.T) {
 	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
-		next <- FromValue(1)
-		next <- FromValue(2)
-		next <- FromValue(3)
+		next <- Of(1)
+		next <- Of(2)
+		next <- Of(3)
 		done()
 	}).Map(func(i interface{}) (_ interface{}, _ error) {
 		return i.(int) + 1, nil
@@ -176,9 +176,9 @@ func Test_FromFuncs_ComposedDup(t *testing.T) {
 
 func Test_FromFuncs_ComposedDup_EagerObservation(t *testing.T) {
 	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
-		next <- FromValue(1)
-		next <- FromValue(2)
-		next <- FromValue(3)
+		next <- Of(1)
+		next <- Of(2)
+		next <- Of(3)
 		done()
 	}).Map(func(i interface{}) (_ interface{}, _ error) {
 		return i.(int) + 1, nil
@@ -193,9 +193,9 @@ func Test_FromFuncs_ComposedDup_EagerObservation(t *testing.T) {
 
 func Test_FromFuncs_Error(t *testing.T) {
 	obs := FromFuncs(func(ctx context.Context, next chan<- Item, done func()) {
-		next <- FromValue(1)
-		next <- FromValue(2)
-		next <- FromError(errFoo)
+		next <- Of(1)
+		next <- Of(2)
+		next <- Error(errFoo)
 		done()
 	})
 	Assert(context.Background(), t, obs, HasItems(1, 2), HasRaisedError(errFoo))
@@ -223,24 +223,24 @@ func Test_FromFuncs_ComposedCapacity(t *testing.T) {
 }
 
 func Test_FromItem(t *testing.T) {
-	single := JustItem(FromValue(1))
+	single := JustItem(Of(1))
 	Assert(context.Background(), t, single, HasItem(1), HasNotRaisedError())
 	Assert(context.Background(), t, single, HasItem(1), HasNotRaisedError())
 }
 
 func Test_FromItems(t *testing.T) {
-	obs := Just(FromValue(1), FromValue(2), FromValue(3))
+	obs := Just(Of(1), Of(2), Of(3))
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
 }
 
 func Test_FromItems_SimpleCapacity(t *testing.T) {
-	ch := Just(FromValue(1)).Observe(WithBufferedChannel(5))
+	ch := Just(Of(1)).Observe(WithBufferedChannel(5))
 	assert.Equal(t, 5, cap(ch))
 }
 
 func Test_FromItems_ComposedCapacity(t *testing.T) {
-	obs1 := Just(FromValue(1)).Map(func(_ interface{}) (interface{}, error) {
+	obs1 := Just(Of(1)).Map(func(_ interface{}) (interface{}, error) {
 		return 1, nil
 	}, WithBufferedChannel(11))
 	assert.Equal(t, 11, cap(obs1.Observe(WithBufferedChannel(13))))
@@ -258,7 +258,7 @@ func Test_FromEventSource_ObservationAfterAllSent(t *testing.T) {
 
 	go func() {
 		for i := 0; i < max; i++ {
-			next <- FromValue(i)
+			next <- Of(i)
 		}
 		close(next)
 	}()
@@ -279,7 +279,7 @@ func Test_FromEventSource_Drop(t *testing.T) {
 
 	go func() {
 		for i := 0; i < max; i++ {
-			next <- FromValue(i)
+			next <- Of(i)
 		}
 		close(next)
 	}()
@@ -344,9 +344,9 @@ func Test_Range_MaximumExceeded(t *testing.T) {
 
 func Test_Start(t *testing.T) {
 	obs := Start([]Supplier{func(ctx context.Context) Item {
-		return FromValue(1)
+		return Of(1)
 	}, func(ctx context.Context) Item {
-		return FromValue(2)
+		return Of(2)
 	}})
 	Assert(context.Background(), t, obs, HasItemsNoParticularOrder(1, 2))
 }
