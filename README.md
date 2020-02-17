@@ -185,10 +185,10 @@ The result of this execution is:
 
 It means, the first Observer consumed already all the items.
 
-On the other hand, let's create a hot Observable using `FromFuncs` operator:
+On the other hand, let's create a hot Observable using `Defer` operator:
 
 ```go
-observable := rxgo.FromFuncs(func(_ context.Context, ch chan<- rxgo.Item, done func()) {
+observable := rxgo.Defer(func(_ context.Context, ch chan<- rxgo.Item, done func()) {
     for i := 0; i < 3; i++ {
         ch <- rxgo.Of(i)
     }
@@ -217,7 +217,7 @@ Now, the result is:
 2
 ```
 
-In the case of a hot observable created with `FromFuncs`, the stream is reproducible. Depending on our use case, we may favour one or the other approach.
+In the case of a hot observable created with `Defer`, the stream is reproducible. Depending on our use case, we may favour one or the other approach.
 
 ### Backpressure
 
@@ -267,7 +267,7 @@ In this example, we create a pool of 32 goroutines that consume items concurrent
 * [Empty/Never](http://reactivex.io/documentation/operators/empty-never-throw.html) — create Observables that have very precise and limited behaviour
 * FromChannel — create an Observable based on a lazy channel
 * FromEventSource — create an Observable based on an eager channel
-* FromFuncs - combine scatter functions emitting items into one Observable
+* Defer - combine scatter functions emitting items into one Observable
 * FromSlice — create an Observable from a slice
 * [Interval](http://reactivex.io/documentation/operators/interval.html) — create an Observable that emits a sequence of integers spaced by a particular time interval
 * [Just](http://reactivex.io/documentation/operators/just.html) — convert a set of objects into an Observable that emits that or those objects

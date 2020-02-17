@@ -162,6 +162,13 @@ func Concat(observables []Observable, opts ...Option) Observable {
 	}
 }
 
+// Defer creates an observable from multiple functions.
+func Defer(f ...ProducerFunc) Observable {
+	return &observable{
+		iterable: newFuncsIterable(f...),
+	}
+}
+
 // Empty creates an Observable with no item and terminate immediately.
 func Empty() Observable {
 	next := make(chan Item)
@@ -297,13 +304,6 @@ func Range(start, count int) Observable {
 	}
 	return &observable{
 		iterable: newRangeIterable(start, count),
-	}
-}
-
-// FromFuncs creates an observable from multiple functions.
-func FromFuncs(f ...ProducerFunc) Observable {
-	return &observable{
-		iterable: newFuncsIterable(f...),
 	}
 }
 
