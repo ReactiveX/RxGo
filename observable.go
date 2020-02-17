@@ -20,8 +20,8 @@ type Observable interface {
 	AverageInt32(opts ...Option) Single
 	AverageInt64(opts ...Option) Single
 	BufferWithCount(count, skip int, opts ...Option) Observable
-	BufferWithTimeOrCount(timespan Duration, count int, opts ...Option) Observable
 	BufferWithTime(timespan, timeshift Duration, opts ...Option) Observable
+	BufferWithTimeOrCount(timespan Duration, count int, opts ...Option) Observable
 	Contains(equal Predicate, opts ...Option) Single
 	Count(opts ...Option) Single
 	DefaultIfEmpty(defaultValue interface{}, opts ...Option) Observable
@@ -32,7 +32,7 @@ type Observable interface {
 	First(opts ...Option) OptionalSingle
 	FirstOrDefault(defaultValue interface{}, opts ...Option) Single
 	FlatMap(apply ItemToObservable, opts ...Option) Observable
-	ForEach(nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc, opts ...Option)
+	ForEach(nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc, opts ...Option) <-chan struct{}
 	IgnoreElements(opts ...Option) Observable
 	Last(opts ...Option) OptionalSingle
 	LastOrDefault(defaultValue interface{}, opts ...Option) Single
@@ -47,6 +47,7 @@ type Observable interface {
 	Reduce(apply Func2, opts ...Option) OptionalSingle
 	Repeat(count int64, frequency Duration, opts ...Option) Observable
 	Retry(count int, opts ...Option) Observable
+	Run(opts ...Option) <-chan struct{}
 	Sample(iterable Iterable, opts ...Option) Observable
 	Scan(apply Func2, opts ...Option) Observable
 	SequenceEqual(iterable Iterable, opts ...Option) Single
@@ -135,7 +136,7 @@ func seq(ctx context.Context, next chan Item, iterable Iterable, nextFunc, errFu
 				if !ok {
 					break loop
 				}
-				if i.IsError() {
+				if i.Error() {
 					errFunc(ctx, i, next, operator)
 				} else {
 					nextFunc(ctx, i, next, operator)
@@ -172,7 +173,7 @@ func parallel(ctx context.Context, pool int, next chan Item, iterable Iterable, 
 						wg.Done()
 						return
 					}
-					if i.IsError() {
+					if i.Error() {
 						errFunc(ctx, i, next, operator)
 					} else {
 						nextFunc(ctx, i, next, operator)
@@ -197,7 +198,7 @@ func newObservableFromOperator(iterable Iterable, nextFunc, errFunc operatorItem
 
 func newObservableFromError(err error) Observable {
 	next := make(chan Item, 1)
-	next <- FromError(err)
+	next <- Error(err)
 	close(next)
 	return &observable{
 		iterable: newChannelIterable(next),

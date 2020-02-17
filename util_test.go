@@ -19,9 +19,9 @@ func channelValue(items ...interface{}) chan Item {
 		for _, item := range items {
 			switch item := item.(type) {
 			default:
-				next <- FromValue(item)
+				next <- Of(item)
 			case error:
-				next <- FromError(item)
+				next <- Error(item)
 			}
 		}
 		close(next)

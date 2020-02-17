@@ -17,7 +17,7 @@ func (i *rangeIterable) Observe(opts ...Option) <-chan Item {
 
 	go func() {
 		for idx := i.start; idx <= i.start+i.count; idx++ {
-			next <- FromValue(idx)
+			next <- Of(idx)
 		}
 		close(next)
 	}()

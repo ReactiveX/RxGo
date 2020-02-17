@@ -30,7 +30,7 @@ func Amb(observables []Observable, opts ...Option) Observable {
 			}
 			once.Do(func() {
 				defer close(next)
-				if item.IsError() {
+				if item.Error() {
 					next <- item
 					return
 				}
@@ -43,7 +43,7 @@ func Amb(observables []Observable, opts ...Option) Observable {
 						if !ok {
 							return
 						}
-						if item.IsError() {
+						if item.Error() {
 							next <- item
 							return
 						}
@@ -90,7 +90,7 @@ func CombineLatest(f FuncN, observables []Observable, opts ...Option) Observable
 					if !ok {
 						return
 					}
-					if item.IsError() {
+					if item.Error() {
 						next <- item
 						errCh <- struct{}{}
 						return
@@ -99,9 +99,9 @@ func CombineLatest(f FuncN, observables []Observable, opts ...Option) Observable
 						atomic.AddUint32(&counter, 1)
 					}
 					mutex.Lock()
-					s[i] = item.Value
+					s[i] = item.V
 					if atomic.LoadUint32(&counter) == size {
-						next <- FromValue(f(s...))
+						next <- Of(f(s...))
 					}
 					mutex.Unlock()
 				}
@@ -148,7 +148,7 @@ func Concat(observables []Observable, opts ...Option) Observable {
 					if !ok {
 						break loop
 					}
-					if item.IsError() {
+					if item.Error() {
 						next <- item
 						return
 					}
@@ -187,13 +187,6 @@ func FromEventSource(next <-chan Item, opts ...Option) Observable {
 	}
 }
 
-// FromFuncs creates an observable from multiple functions.
-func FromFuncs(f ...Scatter) Observable {
-	return &observable{
-		iterable: newFuncsIterable(f...),
-	}
-}
-
 // FromSlice creates an observable from a slice.
 func FromSlice(s []Item) Single {
 	return &single{
@@ -213,7 +206,7 @@ func Interval(interval Duration, opts ...Option) Observable {
 		for {
 			select {
 			case <-time.After(interval.duration()):
-				next <- FromValue(i)
+				next <- Of(i)
 				i++
 			case <-ctx.Done():
 				close(next)
@@ -263,7 +256,7 @@ func Merge(observables []Observable, opts ...Option) Observable {
 				if !ok {
 					return
 				}
-				if item.IsError() {
+				if item.Error() {
 					next <- item
 					return
 				}
@@ -307,6 +300,13 @@ func Range(start, count int) Observable {
 	}
 }
 
+// FromFuncs creates an observable from multiple functions.
+func FromFuncs(f ...ProducerFunc) Observable {
+	return &observable{
+		iterable: newFuncsIterable(f...),
+	}
+}
+
 // Start creates an Observable from one or more directive-like Supplier
 // and emits the result of each operation asynchronously on a new Observable.
 func Start(fs []Supplier, opts ...Option) Observable {
@@ -346,7 +346,7 @@ func Timer(d Duration, opts ...Option) Observable {
 		case <-ctx.Done():
 			return
 		case <-time.After(d.duration()):
-			next <- FromValue(struct{}{})
+			next <- Of(struct{}{})
 		}
 	}()
 	return &observable{
