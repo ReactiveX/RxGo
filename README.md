@@ -6,17 +6,17 @@
 
 Reactive Extensions for the Go Language
 
-## Getting Started
+## ReactiveX
 
 [ReactiveX](http://reactivex.io/), or Rx for short, is an API for programming with observable streams. This is the official ReactiveX API for the Go language.
 
-**ReactiveX** is a new, alternative way of asynchronous programming to callbacks, promises and deferred. It is about processing streams of events or items, with events being any occurrences or changes within the system. A stream of events is called an [observable](http://reactivex.io/documentation/contract.html).
+ReactiveX is a new, alternative way of asynchronous programming to callbacks, promises and deferred. It is about processing streams of events or items, with events being any occurrences or changes within the system. A stream of events is called an [observable](http://reactivex.io/documentation/contract.html).
 
 An operator is basically a function that defines an observable, how and when it should emit data. The list of operators covered is available [here](README.md#supported-operators-in-rxgo).
 
 ## RxGo
 
-The **RxGo** implementation is based on the [pipelines](https://blog.golang.org/pipelines) concept. In a nutshell, a pipeline is a series of stages connected by channels, where each stage is a group of goroutines running the same function.
+The RxGo implementation is based on the [pipelines](https://blog.golang.org/pipelines) concept. In a nutshell, a pipeline is a series of stages connected by channels, where each stage is a group of goroutines running the same function.
 
 Let's see at a concrete example with each pink box being an operator:
 * We create a static observable based on a fixed list of items using `Just`.
@@ -38,6 +38,8 @@ go get -u github.com/reactivex/rxgo
 ```
 
 ## Getting Started
+
+### First Example
 
 The following documentation gives an overview of RxGo. If you need more information, make sure to check the Wiki.
 
@@ -82,11 +84,17 @@ We created an Observable using `FromChannel` operator. This is basically a wrapp
 
 In the end, `Observe` returns the output channel. We consume the output using the standard `<-` operator and we print the value.
 
-An Observable is lazy by default. It means, the operators are executed only once an observer is created using `Observe`.
-
 Also, `Reduce` is a special operator as it creates an `OptionalSingle`. A `Single` produces exactly one item (e.g. `Count`, `FirstOrDefault`, etc.). An `OptionalSingle` produces zero or one item.
 
 Each operator from `Observable` emits items on the fly. Yet, the operators producing a `Single` or an `OptionalSingle` emit an item when it consumed all the items from the stream. In the previous example, how do we know when all the items are consumed? When the input channel is closed.
+
+### Observable Anatomy
+
+As discussed, two operators are connected through a channel.
+
+An item produced by an Observable can be either a value or an error. If we want to produce an item based on a value, we have to use `rxgo.FromValue(x)`. On the other hand, if we want to produce an error we can do it using `rxgo.FromError(err)`.
+
+By default, an Observable is stopped once an error is produced. However, there are special operators to deal with errors (e.g. `OnError`, `Retry`, etc.)
 
 ## Observable Types
 
