@@ -621,6 +621,7 @@ func (o *observable) IgnoreElements(opts ...Option) Observable {
 	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
 }
 
+// GroupBy divides an Observable into a set of Observables that each emit a different group of items from the original Observable, organized by key.
 func (o *observable) GroupBy(length int, distribution func(Item) int, opts ...Option) Observable {
 	option := parseOptions(opts...)
 	ctx := option.buildContext()
