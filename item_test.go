@@ -2,8 +2,9 @@ package rxgo
 
 import (
 	"context"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_Item_SendBlocking(t *testing.T) {

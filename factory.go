@@ -6,8 +6,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 // Amb takes several Observables, emit all of the items from only the first of these Observables
@@ -293,10 +291,10 @@ func Never() Observable {
 // Range creates an Observable that emits a particular range of sequential integers.
 func Range(start, count int, opts ...Option) Observable {
 	if count < 0 {
-		return newObservableFromError(errors.Wrap(&IllegalInputError{}, "count must be positive"))
+		return newObservableFromError(IllegalInputError{error: "count must be positive"})
 	}
 	if start+count-1 > math.MaxInt32 {
-		return newObservableFromError(errors.Wrap(&IllegalInputError{}, "max value is bigger than math.MaxInt32"))
+		return newObservableFromError(IllegalInputError{error: "max value is bigger than math.MaxInt32"})
 	}
 	return &observable{
 		iterable: newRangeIterable(start, count, opts...),

@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"sync"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 // All determine whether all items emitted by an Observable meet some criteria.
@@ -36,8 +34,7 @@ func (o *observable) AverageFloat32(opts ...Option) Single {
 			sum += v
 			count++
 		} else {
-			dst <- Error(errors.Wrap(&IllegalInputError{},
-				fmt.Sprintf("expected type: float32, got: %t", item)))
+			dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: float32, got: %t", item)})
 			operator.stop()
 		}
 	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
@@ -59,8 +56,7 @@ func (o *observable) AverageFloat64(opts ...Option) Single {
 			sum += v
 			count++
 		} else {
-			dst <- Error(errors.Wrap(&IllegalInputError{},
-				fmt.Sprintf("expected type: float64, got: %t", item)))
+			dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: float64, got: %t", item)})
 			operator.stop()
 		}
 	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
@@ -82,8 +78,7 @@ func (o *observable) AverageInt(opts ...Option) Single {
 			sum += v
 			count++
 		} else {
-			dst <- Error(errors.Wrap(&IllegalInputError{},
-				fmt.Sprintf("expected type: int, got: %t", item)))
+			dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int, got: %t", item)})
 			operator.stop()
 		}
 	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
@@ -105,8 +100,7 @@ func (o *observable) AverageInt8(opts ...Option) Single {
 			sum += v
 			count++
 		} else {
-			dst <- Error(errors.Wrap(&IllegalInputError{},
-				fmt.Sprintf("expected type: int8, got: %t", item)))
+			dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int8, got: %t", item)})
 			operator.stop()
 		}
 	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
@@ -128,8 +122,7 @@ func (o *observable) AverageInt16(opts ...Option) Single {
 			sum += v
 			count++
 		} else {
-			dst <- Error(errors.Wrap(&IllegalInputError{},
-				fmt.Sprintf("expected type: int16, got: %t", item)))
+			dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int16, got: %t", item)})
 			operator.stop()
 		}
 	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
@@ -151,8 +144,7 @@ func (o *observable) AverageInt32(opts ...Option) Single {
 			sum += v
 			count++
 		} else {
-			dst <- Error(errors.Wrap(&IllegalInputError{},
-				fmt.Sprintf("expected type: int32, got: %t", item)))
+			dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int32, got: %t", item)})
 			operator.stop()
 		}
 	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
@@ -174,8 +166,7 @@ func (o *observable) AverageInt64(opts ...Option) Single {
 			sum += v
 			count++
 		} else {
-			dst <- Error(errors.Wrap(&IllegalInputError{},
-				fmt.Sprintf("expected type: int64, got: %t", item)))
+			dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int64, got: %t", item)})
 			operator.stop()
 		}
 	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
@@ -195,10 +186,10 @@ func (o *observable) AverageInt64(opts ...Option) Single {
 // the notification from the source Observable.
 func (o *observable) BufferWithCount(count, skip int, opts ...Option) Observable {
 	if count <= 0 {
-		return newObservableFromError(errors.Wrap(&IllegalInputError{}, "count must be positive"))
+		return newObservableFromError(IllegalInputError{error: "count must be positive"})
 	}
 	if skip <= 0 {
-		return newObservableFromError(errors.Wrap(&IllegalInputError{}, "skip must be positive"))
+		return newObservableFromError(IllegalInputError{error: "skip must be positive"})
 	}
 
 	buffer := make([]interface{}, count)
@@ -243,7 +234,7 @@ func (o *observable) BufferWithCount(count, skip int, opts ...Option) Observable
 // the current buffer and propagates the notification from the source Observable.
 func (o *observable) BufferWithTime(timespan, timeshift Duration, opts ...Option) Observable {
 	if timespan == nil || timespan.duration() == 0 {
-		return newObservableFromError(errors.Wrap(&IllegalInputError{}, "timespan must no be nil"))
+		return newObservableFromError(IllegalInputError{error: "timespan must no be nil"})
 	}
 	if timeshift == nil {
 		timeshift = WithDuration(0)
@@ -336,10 +327,10 @@ func (o *observable) BufferWithTime(timespan, timeshift Duration, opts ...Option
 
 func (o *observable) BufferWithTimeOrCount(timespan Duration, count int, opts ...Option) Observable {
 	if timespan == nil || timespan.duration() == 0 {
-		return newObservableFromError(errors.Wrap(&IllegalInputError{}, "timespan must no be nil"))
+		return newObservableFromError(IllegalInputError{error: "timespan must no be nil"})
 	}
 	if count <= 0 {
-		return newObservableFromError(errors.Wrap(&IllegalInputError{}, "count must be positive"))
+		return newObservableFromError(IllegalInputError{error: "count must be positive"})
 	}
 
 	sendCh := make(chan []interface{})
@@ -630,6 +621,10 @@ func (o *observable) IgnoreElements(opts ...Option) Observable {
 	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
 }
 
+func (o *observable) GroupBy(length int, distribution func(Item) int) Observable {
+	panic("implement me")
+}
+
 // Last returns a new Observable which emit only last item.
 func (o *observable) Last(opts ...Option) OptionalSingle {
 	var last Item
@@ -780,7 +775,7 @@ func (o *observable) Reduce(apply Func2, opts ...Option) OptionalSingle {
 func (o *observable) Repeat(count int64, frequency Duration, opts ...Option) Observable {
 	if count != Infinite {
 		if count < 0 {
-			return newObservableFromError(errors.Wrap(&IllegalInputError{}, "count must be positive"))
+			return newObservableFromError(IllegalInputError{error: "count must be positive"})
 		}
 	}
 	seq := make([]Item, 0)
@@ -1185,8 +1180,7 @@ func (o *observable) SumFloat32(opts ...Option) Single {
 	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
 		switch i := item.V.(type) {
 		default:
-			dst <- Error(errors.Wrap(&IllegalInputError{},
-				fmt.Sprintf("expected type: (float32|int|int8|int16|int32|int64), got: %t", item)))
+			dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: (float32|int|int8|int16|int32|int64), got: %t", item)})
 			operator.stop()
 			return
 		case int:
@@ -1214,8 +1208,7 @@ func (o *observable) SumFloat64(opts ...Option) Single {
 	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
 		switch i := item.V.(type) {
 		default:
-			dst <- Error(errors.Wrap(&IllegalInputError{},
-				fmt.Sprintf("expected type: (float32|float64|int|int8|int16|int32|int64), got: %t", item)))
+			dst <- Error(&IllegalInputError{error: fmt.Sprintf("expected type: (float32|float64|int|int8|int16|int32|int64), got: %t", item)})
 			operator.stop()
 			return
 		case int:
@@ -1245,8 +1238,7 @@ func (o *observable) SumInt64(opts ...Option) Single {
 	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
 		switch i := item.V.(type) {
 		default:
-			dst <- Error(errors.Wrap(&IllegalInputError{},
-				fmt.Sprintf("expected type: (int|int8|int16|int32|int64), got: %t", item)))
+			dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: (int|int8|int16|int32|int64), got: %t", item)})
 			operator.stop()
 			return
 		case int:

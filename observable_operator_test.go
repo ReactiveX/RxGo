@@ -3,10 +3,9 @@ package rxgo
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -374,6 +373,9 @@ func Test_Observable_IgnoreElements(t *testing.T) {
 func Test_Observable_IgnoreElements_Error(t *testing.T) {
 	obs := testObservable(1, errFoo, 3).IgnoreElements()
 	Assert(context.Background(), t, obs, HasNoItem(), HasRaisedError(errFoo))
+}
+
+func Test_Observable_GroupBy(t *testing.T) {
 }
 
 func Test_Observable_Last_NotEmpty(t *testing.T) {
