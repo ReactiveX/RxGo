@@ -32,7 +32,7 @@ type Observable interface {
 	First(opts ...Option) OptionalSingle
 	FirstOrDefault(defaultValue interface{}, opts ...Option) Single
 	FlatMap(apply ItemToObservable, opts ...Option) Observable
-	ForEach(nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc, opts ...Option)
+	ForEach(nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc, opts ...Option) <-chan struct{}
 	IgnoreElements(opts ...Option) Observable
 	Last(opts ...Option) OptionalSingle
 	LastOrDefault(defaultValue interface{}, opts ...Option) Single

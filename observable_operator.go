@@ -593,8 +593,10 @@ func (o *observable) FlatMap(apply ItemToObservable, opts ...Option) Observable 
 }
 
 // ForEach subscribes to the Observable and receives notifications for each element.
-func (o *observable) ForEach(nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc, opts ...Option) {
+func (o *observable) ForEach(nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFunc, opts ...Option) <-chan struct{} {
+	dispose := make(chan struct{})
 	handler := func(ctx context.Context, src <-chan Item, dst chan<- Item) {
+		defer close(dispose)
 		for {
 			select {
 			case <-ctx.Done():
@@ -618,6 +620,7 @@ func (o *observable) ForEach(nextFunc NextFunc, errFunc ErrFunc, doneFunc DoneFu
 	next := option.buildChannel()
 	ctx := option.buildContext()
 	go handler(ctx, o.Observe(), next)
+	return dispose
 }
 
 // IgnoreElements ignores all items emitted by the source ObservableSource and only calls onComplete
