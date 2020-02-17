@@ -376,6 +376,13 @@ func Test_Observable_IgnoreElements_Error(t *testing.T) {
 }
 
 func Test_Observable_GroupBy(t *testing.T) {
+	// const count = 3
+	// obs := Range(0, 10).GroupBy(count, func(item Item) int {
+	//	return item.V.(int) % count
+	//})
+	// slice := obs.ToSlice()
+	// if slice.
+	//	assert.Equal(t,, slice)
 }
 
 func Test_Observable_Last_NotEmpty(t *testing.T) {
@@ -853,13 +860,15 @@ func Test_Observable_ToMapWithValueSelector(t *testing.T) {
 }
 
 func Test_Observable_ToSlice(t *testing.T) {
-	single := testObservable(1, 2, 3).ToSlice()
-	Assert(context.Background(), t, single, HasItem([]interface{}{1, 2, 3}))
+	s, err := testObservable(1, 2, 3).ToSlice()
+	assert.Equal(t, []interface{}{1, 2, 3}, s)
+	assert.NoError(t, err)
 }
 
 func Test_Observable_ToSlice_Error(t *testing.T) {
-	single := testObservable(1, 2, errFoo, 3).ToSlice()
-	Assert(context.Background(), t, single, HasNoItem(), HasRaisedError(errFoo))
+	s, err := testObservable(1, 2, errFoo, 3).ToSlice()
+	assert.Equal(t, []interface{}{1, 2}, s)
+	assert.Equal(t, errFoo, err)
 }
 
 func Test_Observable_Unmarshal(t *testing.T) {

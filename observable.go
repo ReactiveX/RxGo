@@ -66,7 +66,7 @@ type Observable interface {
 	TakeWhile(apply Predicate, opts ...Option) Observable
 	ToMap(keySelector Func, opts ...Option) Single
 	ToMapWithValueSelector(keySelector, valueSelector Func, opts ...Option) Single
-	ToSlice(opts ...Option) Single
+	ToSlice(opts ...Option) ([]interface{}, error)
 	Unmarshal(unmarshaler Unmarshaler, factory func() interface{}, opts ...Option) Observable
 	ZipFromIterable(iterable Iterable, zipper Func2, opts ...Option) Observable
 }

@@ -1365,15 +1365,17 @@ func (o *observable) ToMapWithValueSelector(keySelector, valueSelector Func, opt
 	}, opts...)
 }
 
-// ToSlice collects all items from an Observable and emit them as a single slice.
-func (o *observable) ToSlice(opts ...Option) Single {
+// ToSlice collects all items from an Observable and emit them in a slice and an optional error.
+func (o *observable) ToSlice(opts ...Option) ([]interface{}, error) {
 	s := make([]interface{}, 0)
-
-	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
+	var err error
+	<-newObservableFromOperator(o, func(_ context.Context, item Item, _ chan<- Item, _ operatorOptions) {
 		s = append(s, item.V)
-	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
-		dst <- Of(s)
-	}, opts...)
+	}, func(_ context.Context, item Item, _ chan<- Item, operator operatorOptions) {
+		err = item.E
+		operator.stop()
+	}, defaultEndFuncOperator, opts...).Run()
+	return s, err
 }
 
 // Marshal transforms the items emitted by an Observable by applying an unmarshalling to each item.
