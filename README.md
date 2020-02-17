@@ -8,28 +8,28 @@ Reactive Extensions for the Go Language
 
 ## ReactiveX
 
-[ReactiveX](http://reactivex.io/), or Rx for short, is an API for programming with observable streams. This is the official ReactiveX API for the Go language.
+[ReactiveX](http://reactivex.io/), or Rx for short, is an API for programming with Observable streams. This is the official ReactiveX API for the Go language.
 
-ReactiveX is a new, alternative way of asynchronous programming to callbacks, promises and deferred. It is about processing streams of events or items, with events being any occurrences or changes within the system. A stream of events is called an [observable](http://reactivex.io/documentation/contract.html).
+ReactiveX is a new, alternative way of asynchronous programming to callbacks, promises and deferred. It is about processing streams of events or items, with events being any occurrences or changes within the system. A stream of events is called an [Observable](http://reactivex.io/documentation/contract.html).
 
-An operator is basically a function that defines an observable, how and when it should emit data. The list of operators covered is available [here](README.md#supported-operators-in-rxgo).
+An operator is basically a function that defines an Observable, how and when it should emit data. The list of operators covered is available [here](README.md#supported-operators-in-rxgo).
 
 ## RxGo
 
 The RxGo implementation is based on the [pipelines](https://blog.golang.org/pipelines) concept. In a nutshell, a pipeline is a series of stages connected by channels, where each stage is a group of goroutines running the same function.
 
-Let's see at a concrete example with each pink box being an operator:
-* We create a static observable based on a fixed list of items using `Just`.
-* We define a transformation function using `Map` (a circle into a square).
-* We filter each yellow square using `Filter`.
-
 ![](res/rx.png)
 
-In this example, the items are emitted in a channel, available for a consumer. There many ways to consume or to produce data using RxGo. Publishing the results in a channel is only one of them.
+Let's see at a concrete example with each box being an operator:
+* We create a static Observable based on a fixed list of items using `Just` operator.
+* We define a transformation function (convert a circle into a square) using `Map` operator.
+* We filter each yellow square using `Filter` operator.
+
+In this example, the final items are sent in a channel, available to a consumer. There are many ways to consume or to produce data using RxGo. Publishing the results in a channel is only one of them.
 
 Each operator is a transformation stage. By default, everything is sequential. Yet, we can leverage modern CPU architectures by defining multiple instances of the same operator. Each operator instance being a goroutine connected to a common channel.
 
-The main philosophy of RxGo is to implement the ReactiveX concepts by leveraging the main Go primitives (channels, goroutines, etc.).
+The philosophy of RxGo is to implement the ReactiveX concepts and leverage the main Go primitives (channels, goroutines, etc.) so that the integration between the two worlds is as smooth as possible.
 
 ## Installation
 
@@ -39,11 +39,11 @@ go get -u github.com/reactivex/rxgo
 
 ## Getting Started
 
-The following documentation gives an overview of RxGo. If you need more information, make sure to check the Wiki.
+The following documentation gives an overview of RxGo. If you need more information, please check at the Wiki.
 
 ### Hello World
 
-Let's implement our first observable and consume an item:
+Let's create our first Observable and consume an item:
 
 ```go
 observable := rxgo.Just(rxgo.Of("Hello, World!"))
@@ -54,9 +54,11 @@ fmt.Println(item.V)
 
 The `Just` operator creates an Observable from a static list of items. `Of(value)` creates an item from a given value. If we want to create an item from an error, we have to use `Error(err)`. This is a difference with the v1 that was accepting directly a value or an error without having to wrap it. What's the rationale for this change? It is to prepare RxGo for the generics feature coming (hopefully) in Go 2.
 
-Once the Observable is created, we can observe it using `Observe()`. By default, an Observable is lazy in the sense that it emits items only once a subscription is made. `Observe()` also returns a `<-chan rxgo.Item`.
+Once the Observable is created, we can observe it using `Observe()`. By default, an Observable is lazy in the sense that it emits items only once a subscription is made. `Observe()` returns a `<-chan rxgo.Item`.
 
-We consume items from this channel and print the value of the item using `item.V`. Bear in mind that an item is either a value or an error. We may want to check the type first this way:
+We consumed an item from this channel and printed its value of the item using `item.V`. 
+
+An item is a wrapper on top of a value or an error. We may want to check the type first like this:
 
 ```go
 item := <-ch
@@ -66,7 +68,7 @@ if item.Error() {
 fmt.Println(item.V)
 ``` 
 
-`item.Error()` returns a boolean to indicate whether an item contains an error. Then, we use either `item.V` to get the value or `item.E` to get the error.
+`item.Error()` returns a boolean indicating whether an item contains an error. Then, we use either `item.E` to get the error or `item.V` to get the value.
 
 By default, an Observable is stopped once an error is produced. However, there are special operators to deal with errors (e.g. `OnError`, `Retry`, etc.)
 
@@ -95,7 +97,7 @@ In this example, we passed 3 functions:
 
 ### Dive In
 
-Let's implement a more relevant example. We will create an observable from a channel and implement three operators (`Map`, `Filter` and `Reduce`):
+Let's implement a more complete example. We will create an Observable from a channel and implement three operators (`Map`, `Filter` and `Reduce`):
 
 ```go
 // Create the input channel
@@ -103,7 +105,7 @@ ch := make(chan rxgo.Item)
 // Create the data producer
 go producer(ch)
 
-// Create an observable
+// Create an Observable
 observable := rxgo.FromChannel(ch).
     Map(func(item interface{}) (interface{}, error) {
         if num, ok := item.(int); ok {
@@ -127,28 +129,30 @@ product := <-observable.Observe()
 fmt.Println(product)
 ```
 
-We started by defining a `chan rxgo.Item` acting as an input channel. We also created a `producer` goroutine that will be in charge to produce the Observable inputs.
+We started by defining a `chan rxgo.Item` that will act as an input channel. We also created a `producer` goroutine that will be in charge to produce the inputs for our Observable.
 
-The Observable was created using `FromChannel` operator. This is basically a, operator wrapper on top of an existing channel. Then, we implemented 3 operators:
-* `Map` that doubles each input.
-* `Filter` that filters items equals to 4.
-* `Reduce` that performs a reduction based on the product of each items.
+The Observable was created using `FromChannel` operator. This is basically a wrapper on top of an existing channel. Then, we implemented 3 operators:
+* `Map` to double each input.
+* `Filter` to filter items equals to 4.
+* `Reduce` to perform a reduction based on the product of each items.
 
 In the end, `Observe` returns the output channel. We consume the output using the standard `<-` operator and we print the value.
 
-Also, `Reduce` is a special operator as it creates an `OptionalSingle`. A `Single` produces exactly one item (e.g. `Count`, `FirstOrDefault`, etc.). An `OptionalSingle` produces zero or one item.
+In this example, the Observable does produce zero or one item. This is what we would expect from a basic `Reduce` operator. 
 
-Each operator from `Observable` emits items on the fly. Yet, the operators producing a `Single` or an `OptionalSingle` emit an item when it consumed all the items from the stream. In the previous example, how do we know when all the items are consumed? When the input channel is closed.
+An Observable that produce exactly one item is a Single (e.g. `Count`, `FirstOrDefault`, etc.). An Observable that produce zero or one item is called an OptionalSingle (e.g. `Reduce`, `Max`, etc.).
+
+The operators producing a Single or OptionalSingle emit an item (or no item in the case of an OptionalSingle) when the stream is closed. In this example, the action that triggers the closure of the stream is when the `input` channel will be closed (most likely by the producer).
 
 ## Observable Types
 
 ### Hot vs Cold Observables
 
-In the Rx world, we make the distinction between hot and cold Observable. When the data is produced by the Observable itself, we call it a cold Observable. When the data is produced outside the Observable, we call it a hot Observable. Usually, when we don't want to create a producer over and over again, we favor a hot Observable.
+In the Rx world, there is a distinction between hot and cold Observable. When the data is produced by the Observable itself, it is a cold Observable. When the data is produced outside the Observable, it is a hot Observable. Usually, when we don't want to create a producer over and over again, we favor a hot Observable.
 
 In RxGo, there is a similar concept.
 
-First, let's create a cold Observable using `FromChannel` operator:
+First, let's create a cold Observable using `FromChannel` operator and see the implications:
 
 ```go
 ch := make(chan rxgo.Item)
@@ -160,9 +164,12 @@ go func() {
 }()
 observable := rxgo.FromChannel(ch)
 
+// First Observer
 for item := range observable.Observe() {
     fmt.Println(item.V)
 }
+
+// Second Observer
 for item := range observable.Observe() {
     fmt.Println(item.V)
 }
@@ -176,7 +183,7 @@ The result of this execution is:
 2
 ```
 
-It means, the first Observer did consume already all the items.
+It means, the first Observer consumed already all the items.
 
 On the other hand, let's create a hot Observable using `FromFuncs` operator:
 
@@ -188,15 +195,18 @@ observable := rxgo.FromFuncs(func(_ context.Context, ch chan<- rxgo.Item, done f
     done()
 })
 
+// First Observer
 for item := range observable.Observe() {
     fmt.Println(item.V)
 }
+
+// Second Observer
 for item := range observable.Observe() {
     fmt.Println(item.V)
 }
 ```
 
-The result is:
+Now, the result is:
 
 ```go
 0
@@ -207,11 +217,11 @@ The result is:
 2
 ```
 
-In the latter case, the stream observation is reproducible.
+In the case of a hot observable created with `FromFuncs`, the stream is reproducible. Depending on our use case, we may favour one or the other approach.
 
 ### Backpressure
 
-There is another operator called `FromEventSource` that creates an Observable from a channel. The difference between `FromChannel` is that as soon as the Observable is created, it starts to emit items regardless if there is an observer. As a result, the items emitted by an observable if there is no observer are lost (with `FromChannel` they are buffered).
+There is another operator called `FromEventSource` that creates an Observable from a channel. The difference between `FromChannel` operator is that as soon as the Observable is created, it starts to emit items regardless if there is an Observer or not. Hence, the items emitted by an Observable without Observer(s) are lost (whilst they are buffered with `FromChannel` operator).
 
 An use case for `FromEventSource` could be for example telemetry. We might not be interested in all the data produced from the very beginning of a stream. Only the data since we started to observe it.
 
