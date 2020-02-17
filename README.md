@@ -12,25 +12,79 @@ Reactive Extensions for the Go Language
 
 **ReactiveX** is a new, alternative way of asynchronous programming to callbacks, promises and deferred. It is about processing streams of events or items, with events being any occurrences or changes within the system. A stream of events is called an [observable](http://reactivex.io/documentation/contract.html).
 
-An operator is basically a function that defines an observable, how and when it should emit data. The list of operators covered is available [here](README.md#operators).
+An operator is basically a function that defines an observable, how and when it should emit data. The list of operators covered is available [here](README.md#supported-operators-in-rxgo).
 
 ## RxGo
 
-The **RxGo** implementation is based on the idea of [pipelines](https://blog.golang.org/pipelines). In a nutshell, a pipeline is a series of stages connected by channels, where each stage is a group of goroutines running the same function.
+The **RxGo** implementation is based on the [pipelines](https://blog.golang.org/pipelines) concept. In a nutshell, a pipeline is a series of stages connected by channels, where each stage is a group of goroutines running the same function.
 
-Let's check at a concrete example with each blue box being an operator:
-* We create a static observable based on a fixed list of items using the `Just` operator.
-* We define a transformation function using the `Map` operator (a circle into a square).
-* We filter each red square using the `Filter` operator.
+Let's see at a concrete example with each pink box being an operator:
+* We create a static observable based on a fixed list of items using `Just`.
+* We define a transformation function using `Map` (a circle into a square).
+* We filter each yellow square using `Filter`.
 
 ![](res/rx.png)
 
-This stream produced in the target channel two items (a yellow and a green square).
-Each operator is a transformation stage connected by channels. By default, everything is sequential. Yet, we can easily leverage modern CPU architectures by defining multiple instances of the same operator (each operator instance being a goroutine connected to the same channel).
+In this example, the items are emitted in a channel, available for a consumer. There many ways to consume or to produce data using RxGo. Publishing the results in a channel is only one of them.
+
+Each operator is a transformation stage. By default, everything is sequential. Yet, we can leverage modern CPU architectures by defining multiple instances of the same operator. Each operator instance being a goroutine connected to a common channel.
+
+## Installation
+
+```
+go get -u github.com/reactivex/rxgo
+```
+
+## Getting Started
+
+Let's implement our first observable:
+
+```go
+// Create the input channel
+input := make(chan rxgo.Item)
+// Create the data producer
+go producer(input)
+
+product := <-rxgo.FromChannel(input).
+    Map(func(item interface{}) (interface{}, error) {
+        if num, ok := item.(int); ok {
+            return num * 2, nil
+        }
+        return nil, errors.New("input error")
+    }).
+    Filter(func(item interface{}) bool {
+        return item != 4
+    }).
+    Reduce(func(acc interface{}, item interface{}) (interface{}, error) {
+        if acc == nil {
+            return 1, nil
+        }
+        return acc.(int) * item.(int), nil
+    }).
+    Observe()
+
+fmt.Println(product)
+```
+
+In this example, we started by defining a `chan rxgo.Item` acting as an input channel. We also created another goroutine `producer` that will be in charge to produce the stream items.
+
+We created an Observable using `FromChannel` operator. This is basically a wrapper on top of an existing channel. Then, we created 3 operators:
+* `Map` that doubles each input.
+* `Filter` that filters items equals to 4.
+* `Reduce` that creates the product of each items.
+
+In the end, `Observe` returns the output channel. We consume the output using the standard `<-` operator and we print the value.
+
+An Observable is lazy by default. It means, the operators are executed only once an observer is created using `Observe`.
+
+Also, `Reduce` is a special operator as it creates an `OptionalSingle`. A `Single` produces exactly one item (e.g. `Count`, `FirstOrDefault`, etc.). An `OptionalSingle` produces zero or one item.
+
+Each operator from `Observable` emits items on the fly. Yet, the operators producing a `Single` or an `OptionalSingle` emit an item when it consumed all the items from the stream. In the previous example, how do we know when all the items are consumed? When the input channel is closed.
 
 ## Observable Types
 
-TODO
+TODO (backpressure, eager/lazy, event source)
+single, optional single
 
 ## Supported Operators in RxGo
 
@@ -102,12 +156,6 @@ TODO
 * [Min](http://reactivex.io/documentation/operators/min.html) — determine, and emit, the minimum-valued item emitted by an Observable
 * [Reduce](http://reactivex.io/documentation/operators/reduce.html) — apply a function to each item emitted by an Observable, sequentially, and emit the final value
 * [SumFloat32/SumFloat64/SumInt64](http://reactivex.io/documentation/operators/sum.html) — calculate the sum of numbers emitted by an Observable and emit this sum
-
-### Backpressure Operators
-TODO
-
-### Connectable Observable Operators
-
 
 ## Contributions
 
