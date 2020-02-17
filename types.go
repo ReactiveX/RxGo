@@ -34,8 +34,8 @@ type (
 	Marshaler func(interface{}) ([]byte, error)
 	// Unmarshaler defines an unmarshaler type ([]byte to interface).
 	Unmarshaler func([]byte, interface{}) error
-	// ProducerFunc defines a producer implementation.
-	ProducerFunc func(ctx context.Context, next chan<- Item, done func())
+	// Producer defines a producer implementation.
+	Producer func(ctx context.Context, next chan<- Item, done func())
 	// Supplier defines a function that supplies a result from nothing.
 	Supplier func(ctx context.Context) Item
 

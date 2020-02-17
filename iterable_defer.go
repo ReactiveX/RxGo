@@ -4,16 +4,20 @@ import (
 	"sync"
 )
 
-type funcsIterable struct {
-	f []ProducerFunc
+type deferIterable struct {
+	f    []Producer
+	opts []Option
 }
 
-func newFuncsIterable(f ...ProducerFunc) Iterable {
-	return &funcsIterable{f: f}
+func newDeferIterable(f []Producer, opts ...Option) Iterable {
+	return &deferIterable{
+		f:    f,
+		opts: opts,
+	}
 }
 
-func (i *funcsIterable) Observe(opts ...Option) <-chan Item {
-	option := parseOptions(opts...)
+func (i *deferIterable) Observe() <-chan Item {
+	option := parseOptions(i.opts...)
 	next := option.buildChannel()
 	ctx := option.buildContext()
 

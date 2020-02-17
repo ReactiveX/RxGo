@@ -593,7 +593,7 @@ func Test_Observable_ReturnError(t *testing.T) {
 
 func Test_Observable_Retry(t *testing.T) {
 	i := 0
-	obs := Defer(func(ctx context.Context, next chan<- Item, done func()) {
+	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item, done func()) {
 		next <- Of(1)
 		next <- Of(2)
 		if i == 2 {
@@ -604,17 +604,17 @@ func Test_Observable_Retry(t *testing.T) {
 			next <- Error(errFoo)
 			done()
 		}
-	}).Retry(3)
+	}}).Retry(3)
 	Assert(context.Background(), t, obs, HasItems(1, 2, 1, 2, 1, 2, 3), HasNotRaisedError())
 }
 
 func Test_Observable_Retry_Error(t *testing.T) {
-	obs := Defer(func(ctx context.Context, next chan<- Item, done func()) {
+	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item, done func()) {
 		next <- Of(1)
 		next <- Of(2)
 		next <- Error(errFoo)
 		done()
-	}).Retry(3)
+	}}).Retry(3)
 	Assert(context.Background(), t, obs, HasItems(1, 2, 1, 2, 1, 2, 1, 2), HasRaisedError(errFoo))
 }
 

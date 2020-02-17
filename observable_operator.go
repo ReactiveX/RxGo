@@ -727,8 +727,8 @@ func (o *observable) Min(comparator Comparator, opts ...Option) OptionalSingle {
 }
 
 // Observe observes an observable by returning its channel
-func (o *observable) Observe(opts ...Option) <-chan Item {
-	return o.iterable.Observe(opts...)
+func (o *observable) Observe() <-chan Item {
+	return o.iterable.Observe()
 }
 
 // OnErrorResumeNext instructs an Observable to pass control to another Observable rather than invoking

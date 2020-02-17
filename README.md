@@ -46,7 +46,7 @@ The following documentation gives an overview of RxGo. If you need more informat
 Let's create our first Observable and consume an item:
 
 ```go
-observable := rxgo.Just(rxgo.Of("Hello, World!"))
+observable := rxgo.Just([]rxgo.Item{rxgo.Of("Hello, World!")})
 ch := observable.Observe()
 item := <-ch
 fmt.Println(item.V)
@@ -188,12 +188,12 @@ It means, the first Observer consumed already all the items.
 On the other hand, let's create a hot Observable using `Defer` operator:
 
 ```go
-observable := rxgo.Defer(func(_ context.Context, ch chan<- rxgo.Item, done func()) {
+observable := rxgo.Defer([]Producer{func(_ context.Context, ch chan<- rxgo.Item, done func()) {
     for i := 0; i < 3; i++ {
         ch <- rxgo.Of(i)
     }
     done()
-})
+}})
 
 // First Observer
 for item := range observable.Observe() {

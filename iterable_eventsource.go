@@ -9,11 +9,13 @@ type eventSourceIterable struct {
 	sync.RWMutex
 	observers []chan Item
 	disposed  bool
+	opts      []Option
 }
 
-func newEventSourceIterable(ctx context.Context, next <-chan Item, strategy BackpressureStrategy) Iterable {
+func newEventSourceIterable(ctx context.Context, next <-chan Item, strategy BackpressureStrategy, opts ...Option) Iterable {
 	it := &eventSourceIterable{
 		observers: make([]chan Item, 0),
+		opts:      opts,
 	}
 
 	go func() {
@@ -60,8 +62,8 @@ func (i *eventSourceIterable) closeAllObservers() {
 	i.Unlock()
 }
 
-func (i *eventSourceIterable) Observe(opts ...Option) <-chan Item {
-	option := parseOptions(opts...)
+func (i *eventSourceIterable) Observe() <-chan Item {
+	option := parseOptions(i.opts...)
 	next := option.buildChannel()
 
 	i.Lock()

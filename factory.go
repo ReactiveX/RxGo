@@ -163,9 +163,9 @@ func Concat(observables []Observable, opts ...Option) Observable {
 }
 
 // Defer creates an observable from multiple functions.
-func Defer(f ...ProducerFunc) Observable {
+func Defer(f []Producer, opts ...Option) Observable {
 	return &observable{
-		iterable: newFuncsIterable(f...),
+		iterable: newDeferIterable(f, opts...),
 	}
 }
 
@@ -195,9 +195,9 @@ func FromEventSource(next <-chan Item, opts ...Option) Observable {
 }
 
 // FromSlice creates an observable from a slice.
-func FromSlice(s []Item) Single {
+func FromSlice(s []Item, opts ...Option) Single {
 	return &single{
-		iterable: newSliceIterable(s),
+		iterable: newSliceIterable(s, opts...),
 	}
 }
 
@@ -227,19 +227,14 @@ func Interval(interval Duration, opts ...Option) Observable {
 }
 
 // Just creates an Observable with the provided items.
-func Just(item Item, items ...Item) Observable {
-	if len(items) > 0 {
-		items = append([]Item{item}, items...)
-	} else {
-		items = []Item{item}
-	}
+func Just(items []Item, opts ...Option) Observable {
 	return &observable{
-		iterable: newSliceIterable(items),
+		iterable: newSliceIterable(items, opts...),
 	}
 }
 
 // JustItem creates a single from one item.
-func JustItem(item Item) Single {
+func JustItem(item Item, opts ...Option) Single {
 	return &single{
 		iterable: newSliceIterable([]Item{item}),
 	}
@@ -295,7 +290,7 @@ func Never() Observable {
 }
 
 // Range creates an Observable that emits a particular range of sequential integers.
-func Range(start, count int) Observable {
+func Range(start, count int, opts ...Option) Observable {
 	if count < 0 {
 		return newObservableFromError(errors.Wrap(&IllegalInputError{}, "count must be positive"))
 	}
@@ -303,7 +298,7 @@ func Range(start, count int) Observable {
 		return newObservableFromError(errors.Wrap(&IllegalInputError{}, "max value is bigger than math.MaxInt32"))
 	}
 	return &observable{
-		iterable: newRangeIterable(start, count),
+		iterable: newRangeIterable(start, count, opts...),
 	}
 }
 

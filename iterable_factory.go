@@ -8,6 +8,6 @@ func newColdIterable(factory func() <-chan Item) Iterable {
 	return &factoryIterable{factory: factory}
 }
 
-func (i *factoryIterable) Observe(_ ...Option) <-chan Item {
+func (i *factoryIterable) Observe() <-chan Item {
 	return i.factory()
 }

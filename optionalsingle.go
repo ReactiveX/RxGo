@@ -16,6 +16,6 @@ type optionalSingle struct {
 	iterable Iterable
 }
 
-func (o *optionalSingle) Observe(opts ...Option) <-chan Item {
+func (o *optionalSingle) Observe() <-chan Item {
 	return o.iterable.Observe()
 }
