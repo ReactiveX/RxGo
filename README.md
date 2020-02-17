@@ -86,10 +86,10 @@ observable.ForEach(func(v interface{}) {
 
 In this example, we passed 3 functions:
 * A `NextFunc` triggered when a value item is emitted.
-* A `ErrFunc` triggered when an error item is emitted.
+* An `ErrFunc` triggered when an error item is emitted.
 * A `DoneFunc` triggered once the Observable is closed.
 
-`ForEach` is non blocking. Yet, it returns a notification channel that will be closed once the Observable completes. Hence, to make the previous code blocking, we simply need to use `<-`:
+`ForEach` is non-blocking. Yet, it returns a notification channel that will be closed once the Observable completes. Hence, to make the previous code blocking, we simply need to use `<-`:
 
 ```go
 <-observable.ForEach(...)
@@ -134,13 +134,13 @@ We started by defining a `chan rxgo.Item` that will act as an input channel. We 
 The Observable was created using `FromChannel` operator. This is basically a wrapper on top of an existing channel. Then, we implemented 3 operators:
 * `Map` to double each input.
 * `Filter` to filter items equals to 4.
-* `Reduce` to perform a reduction based on the product of each items.
+* `Reduce` to perform a reduction based on the product of each item.
 
 In the end, `Observe` returns the output channel. We consume the output using the standard `<-` operator and we print the value.
 
 In this example, the Observable does produce zero or one item. This is what we would expect from a basic `Reduce` operator. 
 
-An Observable that produce exactly one item is a Single (e.g. `Count`, `FirstOrDefault`, etc.). An Observable that produce zero or one item is called an OptionalSingle (e.g. `Reduce`, `Max`, etc.).
+An Observable that produces exactly one item is a Single (e.g. `Count`, `FirstOrDefault`, etc.). An Observable that produces zero or one item is called an OptionalSingle (e.g. `Reduce`, `Max`, etc.).
 
 The operators producing a Single or OptionalSingle emit an item (or no item in the case of an OptionalSingle) when the stream is closed. In this example, the action that triggers the closure of the stream is when the `input` channel will be closed (most likely by the producer).
 
@@ -148,7 +148,7 @@ The operators producing a Single or OptionalSingle emit an item (or no item in t
 
 ### Hot vs Cold Observables
 
-In the Rx world, there is a distinction between hot and cold Observable. When the data is produced by the Observable itself, it is a cold Observable. When the data is produced outside the Observable, it is a hot Observable. Usually, when we don't want to create a producer over and over again, we favor a hot Observable.
+In the Rx world, there is a distinction between hot and cold Observable. When the data is produced by the Observable itself, it is a cold Observable. When the data is produced outside the Observable, it is a hot Observable. Usually, when we don't want to create a producer over and over again, we favour a hot Observable.
 
 In RxGo, there is a similar concept.
 
@@ -223,7 +223,7 @@ In the case of a hot observable created with `FromFuncs`, the stream is reproduc
 
 There is another operator called `FromEventSource` that creates an Observable from a channel. The difference between `FromChannel` operator is that as soon as the Observable is created, it starts to emit items regardless if there is an Observer or not. Hence, the items emitted by an Observable without Observer(s) are lost (whilst they are buffered with `FromChannel` operator).
 
-An use case with `FromEventSource` operator is for example telemetry. We may not be interested in all the data produced from the very beginning of a stream. Only the data since we started to observe it.
+A use case with `FromEventSource` operator is for example telemetry. We may not be interested in all the data produced from the very beginning of a stream. Only the data since we started to observe it.
 
 Once we start observing an Observable created with `FromEventSource`, we can configure the backpressure strategy. By default, it is blocking (there is a guaranteed delivery for the items emitted after we observe it). We can override this strategy this way:
 
@@ -243,7 +243,7 @@ Each operator has an `opts ...Option` parameter allowing to pass such options.
 
 ### Lazy vs Eager Observation
 
-The default observation strategy is lazy. It means, the items emitted by an Observable are processed by an operator once we start observing it. We can change this behaviour this way:
+The default observation strategy is lazy. It means the items emitted by an Observable are processed by an operator once we start observing it. We can change this behaviour this way:
 
 ```go
 observable := rxgo.FromChannel(ch).Map(transform, rxgo.WithEagerObservation())
@@ -264,7 +264,7 @@ In this example, we create a pool of 32 goroutines that consume items concurrent
 ## Supported Operators in RxGo
 
 ### Creating Observables
-* [Empty/Never](http://reactivex.io/documentation/operators/empty-never-throw.html) — create Observables that have very precise and limited behavior
+* [Empty/Never](http://reactivex.io/documentation/operators/empty-never-throw.html) — create Observables that have very precise and limited behaviour
 * FromChannel — create an Observable based on a lazy channel
 * FromEventSource — create an Observable based on an eager channel
 * FromFuncs - combine scatter functions emitting items into one Observable
@@ -283,13 +283,13 @@ In this example, we create a pool of 32 goroutines that consume items concurrent
 * [Map](http://reactivex.io/documentation/operators/map.html) — transform the items emitted by an Observable by applying a function to each item
 * Marshal - transform the items emitted by an Observable by applying a marshalling function to each item
 * [Scan](http://reactivex.io/documentation/operators/scan.html) — apply a function to each item emitted by an Observable, sequentially, and emit each successive value
-* Unmarshal - transform the items emitted by an Observable by applying a unmarshalling function to each item
+* Unmarshal - transform the items emitted by an Observable by applying an unmarshalling function to each item
 
 ### Filtering Observables
 * [Distinct/DistinctUntilChanged](http://reactivex.io/documentation/operators/distinct.html) — suppress duplicate items emitted by an Observable
 * [ElementAt](http://reactivex.io/documentation/operators/elementat.html) — emit only item n emitted by an Observable
 * [Filter](http://reactivex.io/documentation/operators/filter.html) — emit only those items from an Observable that pass a predicate test
-* [First/FirstOrDefault](http://reactivex.io/documentation/operators/first.html) — emit only the first item, or the first item that meets a condition, from an Observable
+* [First/FirstOrDefault](http://reactivex.io/documentation/operators/first.html) — emit only the first item or the first item that meets a condition, from an Observable
 * [IgnoreElements](http://reactivex.io/documentation/operators/ignoreelements.html) — do not emit any items from an Observable but mirror its termination notification
 * [Last/LastOrDefault](http://reactivex.io/documentation/operators/last.html) — emit only the last item emitted by an Observable
 * [Sample](http://reactivex.io/documentation/operators/sample.html) — emit the most recent item emitted by an Observable within periodic time intervals
