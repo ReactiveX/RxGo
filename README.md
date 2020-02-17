@@ -309,7 +309,7 @@ In this example, we create a pool of 32 goroutines that consume items concurrent
 * [Retry](http://reactivex.io/documentation/operators/retry.html) — if a source Observable sends an onError notification, resubscribe to it in the hopes that it will complete without error
 
 ### Observable Utility Operators
-* Run - creates an Observer without consuming the emitted items
+* Run - create an Observer without consuming the emitted items
 * Send - send the Observable items in a specific channel 
 * ToMap/ToMapWithValueSelector - stores the Observable items in a map
 * ToSlice - stores the Observable items in a slice
