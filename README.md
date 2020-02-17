@@ -39,21 +39,35 @@ go get -u github.com/reactivex/rxgo
 
 ## Getting Started
 
+The following documentation gives an overview of RxGo. If you need more information, make sure to check the Wiki.
+
 ### Hello World
 
-Let's implement our first observable and consume items:
+Let's implement our first observable and consume an item:
 
 ```go
 observable := rxgo.Just(rxgo.Of("Hello, World!"))
 ch := observable.Observe()
-fmt.Println((<-ch).Value)
+fmt.Println((<-ch).V)
 ```
 
+The `Just` operator creates an Observable from a static list of items. `Of(value)` creates an item from a given value. If we want to create an item from an error, we have to use `Error(err)`. This is a difference with the v1 that was accepting directly a value or an error without having to wrap it. What's the rationale for this change? It is to prepare RxGo for the future generics feature coming (hopefully) in the Go 2.
 
+Once the Observable is created, we can observe it using `Observe()`. By default, an Observable is lazy in the sense that it emits items only once a subscription is made. `Observe()` also returns a `<-chan rxgo.Item`.
+
+We consume items from this channel and print the value of the item using `.V`. Bear in mind that an item is either a value or an error. We may want to check the type first this way:
+
+```go
+item := <-ch
+if item.Error() {
+    return item.E
+}
+fmt.Println(item.V)
+``` 
+
+`item.Error()` returns a boolean to indicate whether an item contains an error. Then, we using either `item.V` to get the value or `item.E` to get the error.
 
 ### First Example
-
-The following documentation gives an overview of RxGo. If you need more information, make sure to check the Wiki.
 
 Let's implement our first observable:
 
@@ -129,10 +143,10 @@ go func() {
 observable := rxgo.FromChannel(ch)
 
 for item := range observable.Observe() {
-    fmt.Println(item.Value)
+    fmt.Println(item.V)
 }
 for item := range observable.Observe() {
-    fmt.Println(item.Value)
+    fmt.Println(item.V)
 }
 ```
 
@@ -157,10 +171,10 @@ observable := rxgo.FromFuncs(func(_ context.Context, ch chan<- rxgo.Item, done f
 })
 
 for item := range observable.Observe() {
-    fmt.Println(item.Value)
+    fmt.Println(item.V)
 }
 for item := range observable.Observe() {
-    fmt.Println(item.Value)
+    fmt.Println(item.V)
 }
 ```
 
