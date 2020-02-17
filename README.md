@@ -87,15 +87,15 @@ In this example, we passed 3 functions:
 * A `ErrFunc` triggered when an error item is emitted.
 * A `DoneFunc` triggered once the Observable is closed.
 
-`ForEach` is non blocking. Yet, it returns a notification channel that will be closed once the Observable completes. Hence, to make the previous code blocking, we have to use the standard `<-` operator:
+`ForEach` is non blocking. Yet, it returns a notification channel that will be closed once the Observable completes. Hence, to make the previous code blocking, we simply need to use `<-`:
 
 ```go
 <-observable.ForEach(...)
 ```
 
-### First Example
+### Dive In
 
-Let's implement our first observable:
+Let's implement a more relevant example. We will create an observable from a channel and implement three operators (`Map`, `Filter` and `Reduce`):
 
 ```go
 // Create the input channel
@@ -127,12 +127,12 @@ product := <-observable.Observe()
 fmt.Println(product)
 ```
 
-In this example, we started by defining a `chan rxgo.Item` acting as an input channel. We also created another goroutine `producer` that will be in charge to produce the stream items.
+We started by defining a `chan rxgo.Item` acting as an input channel. We also created a `producer` goroutine that will be in charge to produce the Observable inputs.
 
-We created an Observable using `FromChannel` operator. This is basically a wrapper on top of an existing channel. Then, we created 3 operators:
+The Observable was created using `FromChannel` operator. This is basically a, operator wrapper on top of an existing channel. Then, we implemented 3 operators:
 * `Map` that doubles each input.
 * `Filter` that filters items equals to 4.
-* `Reduce` that creates the product of each items.
+* `Reduce` that performs a reduction based on the product of each items.
 
 In the end, `Observe` returns the output channel. We consume the output using the standard `<-` operator and we print the value.
 
