@@ -48,14 +48,15 @@ Let's implement our first observable and consume an item:
 ```go
 observable := rxgo.Just(rxgo.Of("Hello, World!"))
 ch := observable.Observe()
-fmt.Println((<-ch).V)
+item := <-ch
+fmt.Println(item.V)
 ```
 
-The `Just` operator creates an Observable from a static list of items. `Of(value)` creates an item from a given value. If we want to create an item from an error, we have to use `Error(err)`. This is a difference with the v1 that was accepting directly a value or an error without having to wrap it. What's the rationale for this change? It is to prepare RxGo for the future generics feature coming (hopefully) in the Go 2.
+The `Just` operator creates an Observable from a static list of items. `Of(value)` creates an item from a given value. If we want to create an item from an error, we have to use `Error(err)`. This is a difference with the v1 that was accepting directly a value or an error without having to wrap it. What's the rationale for this change? It is to prepare RxGo for the generics feature coming (hopefully) in Go 2.
 
 Once the Observable is created, we can observe it using `Observe()`. By default, an Observable is lazy in the sense that it emits items only once a subscription is made. `Observe()` also returns a `<-chan rxgo.Item`.
 
-We consume items from this channel and print the value of the item using `.V`. Bear in mind that an item is either a value or an error. We may want to check the type first this way:
+We consume items from this channel and print the value of the item using `item.V`. Bear in mind that an item is either a value or an error. We may want to check the type first this way:
 
 ```go
 item := <-ch
@@ -65,7 +66,32 @@ if item.Error() {
 fmt.Println(item.V)
 ``` 
 
-`item.Error()` returns a boolean to indicate whether an item contains an error. Then, we using either `item.V` to get the value or `item.E` to get the error.
+`item.Error()` returns a boolean to indicate whether an item contains an error. Then, we use either `item.V` to get the value or `item.E` to get the error.
+
+By default, an Observable is stopped once an error is produced. However, there are special operators to deal with errors (e.g. `OnError`, `Retry`, etc.)
+
+It is also possible to consume items using callbacks:
+
+```go
+observable.ForEach(func(v interface{}) {
+    fmt.Printf("received: %v\n", v)
+}, func(err error) {
+    fmt.Printf("error: %e\n", err)
+}, func() {
+    fmt.Println("observable is closed")
+})
+```
+
+In this example, we passed 3 functions:
+* A `NextFunc` triggered when a value item is emitted.
+* A `ErrFunc` triggered when an error item is emitted.
+* A `DoneFunc` triggered once the Observable is closed.
+
+`ForEach` is non blocking. Yet, it returns a notification channel that will be closed once the Observable completes. Hence, to make the previous code blocking, we have to use the standard `<-` operator:
+
+```go
+<-observable.ForEach(...)
+```
 
 ### First Example
 
@@ -113,14 +139,6 @@ In the end, `Observe` returns the output channel. We consume the output using th
 Also, `Reduce` is a special operator as it creates an `OptionalSingle`. A `Single` produces exactly one item (e.g. `Count`, `FirstOrDefault`, etc.). An `OptionalSingle` produces zero or one item.
 
 Each operator from `Observable` emits items on the fly. Yet, the operators producing a `Single` or an `OptionalSingle` emit an item when it consumed all the items from the stream. In the previous example, how do we know when all the items are consumed? When the input channel is closed.
-
-### Observable Anatomy
-
-As discussed, two operators are connected through a channel.
-
-An item produced by an Observable can be either a value or an error. If we want to produce an item based on a value, we have to use `rxgo.Of(x)`. On the other hand, if we want to produce an error we can do it using `rxgo.Error(err)`.
-
-By default, an Observable is stopped once an error is produced. However, there are special operators to deal with errors (e.g. `OnError`, `Retry`, etc.)
 
 ## Observable Types
 
