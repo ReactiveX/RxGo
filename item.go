@@ -1,6 +1,9 @@
 package rxgo
 
-import "context"
+import (
+	"context"
+	"reflect"
+)
 
 type (
 	// Item is a wrapper having either a value or an error.
@@ -8,6 +11,16 @@ type (
 		V interface{}
 		E error
 	}
+
+	// CloseChannelStrategy indicates a strategy on whether to close a channel.
+	CloseChannelStrategy uint32
+)
+
+const (
+	// LeaveChannelOpen indicates to leave the channel open after completion.
+	LeaveChannelOpen CloseChannelStrategy = iota
+	// CloseChannel indicates to close the channel open after completion.
+	CloseChannel
 )
 
 // Of creates an item from a value.
@@ -18,6 +31,37 @@ func Of(i interface{}) Item {
 // Error creates an item from an error.
 func Error(err error) Item {
 	return Item{E: err}
+}
+
+// SendItems is an utility function that send a list of interface{} and indicate a strategy on whether to close
+// the channel once the function completes.
+func SendItems(ch chan<- Item, strategy CloseChannelStrategy, items ...interface{}) {
+	if strategy == CloseChannel {
+		defer close(ch)
+	}
+	for _, currentItem := range items {
+		switch item := currentItem.(type) {
+		default:
+			rt := reflect.TypeOf(item)
+			switch rt.Kind() {
+			default:
+				ch <- Of(item)
+			case reflect.Slice:
+				s := reflect.ValueOf(currentItem)
+				for i := 0; i < s.Len(); i++ {
+					currentItem := s.Index(i).Interface()
+					switch item := currentItem.(type) {
+					default:
+						ch <- Of(item)
+					case error:
+						ch <- Error(item)
+					}
+				}
+			}
+		case error:
+			ch <- Error(item)
+		}
+	}
 }
 
 // Error checks if an item is an error.
