@@ -31,10 +31,10 @@ Each operator is a transformation stage. By default, everything is sequential. Y
 
 The philosophy of RxGo is to implement the ReactiveX concepts and leverage the main Go primitives (channels, goroutines, etc.) so that the integration between the two worlds is as smooth as possible.
 
-## Installation
+## Installation of RxGo v2
 
 ```
-go get -u github.com/reactivex/rxgo
+go get -u github.com/reactivex/rxgo/v2@develop
 ```
 
 ## Getting Started
