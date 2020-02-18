@@ -4,10 +4,12 @@ import (
 	"context"
 	"sync"
 
+	"github.com/cenkalti/backoff/v4"
+
 	"github.com/tevino/abool"
 )
 
-// Observable is the basic observable interface.
+// Observable is the standard Observable interface.
 // TODO Throttling
 type Observable interface {
 	Iterable
@@ -19,6 +21,7 @@ type Observable interface {
 	AverageInt16(opts ...Option) Single
 	AverageInt32(opts ...Option) Single
 	AverageInt64(opts ...Option) Single
+	BackOffRetry(backOffCfg backoff.BackOff, opts ...Option) Observable
 	BufferWithCount(count, skip int, opts ...Option) Observable
 	BufferWithTime(timespan, timeshift Duration, opts ...Option) Observable
 	BufferWithTimeOrCount(timespan Duration, count int, opts ...Option) Observable
@@ -44,7 +47,6 @@ type Observable interface {
 	Marshal(marshaler Marshaler, opts ...Option) Observable
 	Max(comparator Comparator, opts ...Option) OptionalSingle
 	Min(comparator Comparator, opts ...Option) OptionalSingle
-	// TODO Add backoff retry
 	OnErrorResumeNext(resumeSequence ErrorToObservable, opts ...Option) Observable
 	OnErrorReturn(resumeFunc ErrorFunc, opts ...Option) Observable
 	OnErrorReturnItem(resume interface{}, opts ...Option) Observable
@@ -70,7 +72,7 @@ type Observable interface {
 	TakeWhile(apply Predicate, opts ...Option) Observable
 	ToMap(keySelector Func, opts ...Option) Single
 	ToMapWithValueSelector(keySelector, valueSelector Func, opts ...Option) Single
-	ToSlice(opts ...Option) ([]interface{}, error)
+	ToSlice(initialCapacity int, opts ...Option) ([]interface{}, error)
 	Unmarshal(unmarshaler Unmarshaler, factory func() interface{}, opts ...Option) Observable
 	ZipFromIterable(iterable Iterable, zipper Func2, opts ...Option) Observable
 }

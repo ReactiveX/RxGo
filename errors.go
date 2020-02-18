@@ -9,7 +9,7 @@ func (e IllegalInputError) Error() string {
 	return "illegal input: " + e.error
 }
 
-// IndexOutOfBoundError is triggered when the observable cannot access to the specified index
+// IndexOutOfBoundError is triggered when the observable cannot access to the specified index.
 type IndexOutOfBoundError struct {
 	error string
 }

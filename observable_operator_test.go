@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cenkalti/backoff/v4"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -73,6 +75,37 @@ func Test_Observable_AverageInt64(t *testing.T) {
 	Assert(context.Background(), t, testObservable(int64(1), int64(20)).AverageInt64(), HasItem(int64(10)))
 	Assert(context.Background(), t, Empty().AverageInt64(), HasItem(0))
 	Assert(context.Background(), t, testObservable(1.1, 2.2, 3.3).AverageInt64(), HasRaisedAnError())
+}
+
+func Test_Observable_BackOffRetry(t *testing.T) {
+	i := 0
+	backOffCfg := backoff.NewExponentialBackOff()
+	backOffCfg.InitialInterval = time.Nanosecond
+	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item, done func()) {
+		next <- Of(1)
+		next <- Of(2)
+		if i == 2 {
+			next <- Of(3)
+			done()
+		} else {
+			i++
+			next <- Error(errFoo)
+			done()
+		}
+	}}).BackOffRetry(backoff.WithMaxRetries(backOffCfg, 3))
+	Assert(context.Background(), t, obs, HasItems(1, 2, 1, 2, 1, 2, 3), HasNotRaisedError())
+}
+
+func Test_Observable_BackOffRetry_Error(t *testing.T) {
+	backOffCfg := backoff.NewExponentialBackOff()
+	backOffCfg.InitialInterval = time.Nanosecond
+	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item, done func()) {
+		next <- Of(1)
+		next <- Of(2)
+		next <- Error(errFoo)
+		done()
+	}}).BackOffRetry(backoff.WithMaxRetries(backOffCfg, 3))
+	Assert(context.Background(), t, obs, HasItems(1, 2, 1, 2, 1, 2, 1, 2), HasRaisedError(errFoo))
 }
 
 func Test_Observable_BufferWithCount_CountAndSkipEqual(t *testing.T) {
@@ -430,7 +463,7 @@ func Test_Observable_GroupBy(t *testing.T) {
 	obs := Range(0, max).GroupBy(count, func(item Item) int {
 		return item.V.(int) % count
 	}, WithBufferedChannel(max))
-	s, err := obs.ToSlice()
+	s, err := obs.ToSlice(0)
 	if err != nil {
 		assert.FailNow(t, err.Error())
 	}
@@ -450,7 +483,7 @@ func Test_Observable_GroupBy_Error(t *testing.T) {
 	obs := Range(0, max).GroupBy(count, func(item Item) int {
 		return 4
 	}, WithBufferedChannel(max))
-	s, err := obs.ToSlice()
+	s, err := obs.ToSlice(0)
 	if err != nil {
 		assert.FailNow(t, err.Error())
 	}
@@ -802,6 +835,15 @@ func Test_Observable_Serialize_DifferentFrom(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(message{11}, message{12}, message{13}, message{14}, message{15}))
 }
 
+func Test_Observable_Serialize_ContextCanceled(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	obs := Never().Serialize(1, func(i interface{}) int {
+		return i.(message).id
+	}, WithContext(ctx))
+	Assert(context.Background(), t, obs, HasNoItems(), HasNotRaisedError())
+}
+
 func Test_Observable_Serialize_Empty(t *testing.T) {
 	obs := testObservable(message{3}, message{5}, message{7}, message{2}, message{4}).
 		Serialize(1, func(i interface{}) int {
@@ -974,13 +1016,14 @@ func Test_Observable_ToMapWithValueSelector(t *testing.T) {
 }
 
 func Test_Observable_ToSlice(t *testing.T) {
-	s, err := testObservable(1, 2, 3).ToSlice()
+	s, err := testObservable(1, 2, 3).ToSlice(5)
 	assert.Equal(t, []interface{}{1, 2, 3}, s)
+	assert.Equal(t, 5, cap(s))
 	assert.NoError(t, err)
 }
 
 func Test_Observable_ToSlice_Error(t *testing.T) {
-	s, err := testObservable(1, 2, errFoo, 3).ToSlice()
+	s, err := testObservable(1, 2, errFoo, 3).ToSlice(0)
 	assert.Equal(t, []interface{}{1, 2}, s)
 	assert.Equal(t, errFoo, err)
 }

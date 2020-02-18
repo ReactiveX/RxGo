@@ -307,7 +307,7 @@ In this example, we create a pool of 32 goroutines that consume items concurrent
 
 ### Error Handling Operators
 * [OnErrorResumeNext/OnErrorReturn/OnErrorReturnItem](http://reactivex.io/documentation/operators/catch.html) — recover from an onError notification by continuing the sequence without error
-* [Retry](http://reactivex.io/documentation/operators/retry.html) — if a source Observable sends an onError notification, resubscribe to it in the hopes that it will complete without error
+* [Retry/BackOffRetry](http://reactivex.io/documentation/operators/retry.html) — if a source Observable sends an onError notification, resubscribe to it in the hopes that it will complete without error
 
 ### Observable Utility Operators
 * [DoOnNext/DoOnError/DoOnCompleted](http://reactivex.io/documentation/operators/do.html) - register an action to take upon a variety of Observable lifecycle events
