@@ -18,20 +18,26 @@ func producer(ch chan Item, n int) {
 
 func Benchmark_Sequential(b *testing.B) {
 	for i := 0; i < b.N; i++ {
+		b.StopTimer()
 		ch := make(chan Item, benchChannelCap)
 		go producer(ch, benchNumberOfElements)
-		<-FromChannel(ch).Map(func(i interface{}) (interface{}, error) {
+		disposed := FromChannel(ch).Map(func(i interface{}) (interface{}, error) {
 			return i, nil
 		}).Run()
+		b.StartTimer()
+		<-disposed
 	}
 }
 
 func Benchmark_Serialize(b *testing.B) {
 	for i := 0; i < b.N; i++ {
+		b.StopTimer()
 		ch := make(chan Item, benchChannelCap)
 		go producer(ch, benchNumberOfElements)
-		<-FromChannel(ch).Map(func(i interface{}) (interface{}, error) {
+		disposed := FromChannel(ch).Map(func(i interface{}) (interface{}, error) {
 			return i, nil
 		}, WithCPUPool(), WithBufferedChannel(benchChannelCap)).Run()
+		b.StartTimer()
+		<-disposed
 	}
 }
