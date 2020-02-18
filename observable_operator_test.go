@@ -430,7 +430,7 @@ func Test_Observable_GroupBy(t *testing.T) {
 	obs := Range(0, max).GroupBy(count, func(item Item) int {
 		return item.V.(int) % count
 	}, WithBufferedChannel(max))
-	s, err := obs.ToSlice()
+	s, err := obs.ToSlice(0)
 	if err != nil {
 		assert.FailNow(t, err.Error())
 	}
@@ -450,7 +450,7 @@ func Test_Observable_GroupBy_Error(t *testing.T) {
 	obs := Range(0, max).GroupBy(count, func(item Item) int {
 		return 4
 	}, WithBufferedChannel(max))
-	s, err := obs.ToSlice()
+	s, err := obs.ToSlice(0)
 	if err != nil {
 		assert.FailNow(t, err.Error())
 	}
@@ -983,13 +983,14 @@ func Test_Observable_ToMapWithValueSelector(t *testing.T) {
 }
 
 func Test_Observable_ToSlice(t *testing.T) {
-	s, err := testObservable(1, 2, 3).ToSlice()
+	s, err := testObservable(1, 2, 3).ToSlice(5)
 	assert.Equal(t, []interface{}{1, 2, 3}, s)
+	assert.Equal(t, 5, cap(s))
 	assert.NoError(t, err)
 }
 
 func Test_Observable_ToSlice_Error(t *testing.T) {
-	s, err := testObservable(1, 2, errFoo, 3).ToSlice()
+	s, err := testObservable(1, 2, errFoo, 3).ToSlice(0)
 	assert.Equal(t, []interface{}{1, 2}, s)
 	assert.Equal(t, errFoo, err)
 }

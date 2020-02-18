@@ -7,7 +7,7 @@ import (
 	"github.com/tevino/abool"
 )
 
-// Observable is the basic observable interface.
+// Observable is the standard Observable interface.
 // TODO Throttling
 type Observable interface {
 	Iterable
@@ -70,7 +70,7 @@ type Observable interface {
 	TakeWhile(apply Predicate, opts ...Option) Observable
 	ToMap(keySelector Func, opts ...Option) Single
 	ToMapWithValueSelector(keySelector, valueSelector Func, opts ...Option) Single
-	ToSlice(opts ...Option) ([]interface{}, error)
+	ToSlice(initialCapacity int, opts ...Option) ([]interface{}, error)
 	Unmarshal(unmarshaler Unmarshaler, factory func() interface{}, opts ...Option) Observable
 	ZipFromIterable(iterable Iterable, zipper Func2, opts ...Option) Observable
 }

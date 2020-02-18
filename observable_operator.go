@@ -1579,8 +1579,8 @@ func (o *observable) ToMapWithValueSelector(keySelector, valueSelector Func, opt
 }
 
 // ToSlice collects all items from an Observable and emit them in a slice and an optional error.
-func (o *observable) ToSlice(opts ...Option) ([]interface{}, error) {
-	s := make([]interface{}, 0)
+func (o *observable) ToSlice(initialCapacity int, opts ...Option) ([]interface{}, error) {
+	s := make([]interface{}, 0, initialCapacity)
 	var err error
 	<-newObservableFromOperator(o, func(_ context.Context, item Item, _ chan<- Item, _ operatorOptions) {
 		s = append(s, item.V)
