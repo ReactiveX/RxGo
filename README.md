@@ -95,7 +95,7 @@ In this example, we passed 3 functions:
 <-observable.ForEach(...)
 ```
 
-### Dive In
+### Deep Dive
 
 Let's implement a more complete example. We will create an Observable from a channel and implement three operators (`Map`, `Filter` and `Reduce`):
 
@@ -313,6 +313,7 @@ In this example, we create a pool of 32 goroutines that consume items concurrent
 * [DoOnNext/DoOnError/DoOnCompleted](http://reactivex.io/documentation/operators/do.html) - register an action to take upon a variety of Observable lifecycle events
 * Run - create an Observer without consuming the emitted items
 * Send - send the Observable items in a specific channel
+* [Serialize](http://reactivex.io/documentation/operators/serialize.html) — force an Observable to make serialized calls and to be well-behaved
 
 ### Conditional and Boolean Operators
 * [All](http://reactivex.io/documentation/operators/all.html) — determine whether all items emitted by an Observable meet some criteria

@@ -11,7 +11,7 @@ type (
 		resetIterable func(Iterable)
 	}
 
-	// Comparator defines a func that returns:
+	// Comparator defines a func that returns an int:
 	// - 0 if two elements are equals
 	// - A negative value if the first argument is less than the second
 	// - A positive value if the first argument is greater than the second
