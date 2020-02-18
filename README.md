@@ -310,11 +310,9 @@ In this example, we create a pool of 32 goroutines that consume items concurrent
 * [Retry](http://reactivex.io/documentation/operators/retry.html) — if a source Observable sends an onError notification, resubscribe to it in the hopes that it will complete without error
 
 ### Observable Utility Operators
-* [Do](http://reactivex.io/documentation/operators/do.html) - register an action to take upon a variety of Observable lifecycle events
+* [DoOnNext/DoOnError/DoOnCompleted](http://reactivex.io/documentation/operators/do.html) - register an action to take upon a variety of Observable lifecycle events
 * Run - create an Observer without consuming the emitted items
-* Send - send the Observable items in a specific channel 
-* ToMap/ToMapWithValueSelector - stores the Observable items in a map
-* ToSlice - stores the Observable items in a slice
+* Send - send the Observable items in a specific channel
 
 ### Conditional and Boolean Operators
 * [All](http://reactivex.io/documentation/operators/all.html) — determine whether all items emitted by an Observable meet some criteria
@@ -334,6 +332,9 @@ In this example, we create a pool of 32 goroutines that consume items concurrent
 * [Min](http://reactivex.io/documentation/operators/min.html) — determine, and emit, the minimum-valued item emitted by an Observable
 * [Reduce](http://reactivex.io/documentation/operators/reduce.html) — apply a function to each item emitted by an Observable, sequentially, and emit the final value
 * [SumFloat32/SumFloat64/SumInt64](http://reactivex.io/documentation/operators/sum.html) — calculate the sum of numbers emitted by an Observable and emit this sum
+
+### Operators to Convert Observables
+* [ToMap/ToMapWithValueSelector/ToSlice](http://reactivex.io/documentation/operators/to.html) — convert an Observable into another object or data structure
 
 ## Contributions
 
