@@ -261,6 +261,10 @@ observable.Map(transform, rxgo.WithPool(32))
 
 In this example, we create a pool of 32 goroutines that consume items concurrently from the same channel. If the operation is CPU-bound, we can use the `WithCPUPool()` option that creates a pool based on the number of logical CPUs.
 
+## Documentation
+
+[https://pkg.go.dev/github.com/reactivex/rxgo/v2](https://pkg.go.dev/github.com/reactivex/rxgo/v2)
+
 ## Supported Operators in RxGo
 
 ### Creating Observables
