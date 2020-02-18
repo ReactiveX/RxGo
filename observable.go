@@ -52,7 +52,6 @@ type Observable interface {
 	OnErrorReturnItem(resume interface{}, opts ...Option) Observable
 	Reduce(apply Func2, opts ...Option) OptionalSingle
 	Repeat(count int64, frequency Duration, opts ...Option) Observable
-	// TODO Add backoff retry
 	Retry(count int, opts ...Option) Observable
 	Run(opts ...Option) Disposed
 	Sample(iterable Iterable, opts ...Option) Observable
