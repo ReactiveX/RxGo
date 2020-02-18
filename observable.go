@@ -56,6 +56,7 @@ type Observable interface {
 	Scan(apply Func2, opts ...Option) Observable
 	SequenceEqual(iterable Iterable, opts ...Option) Single
 	Send(output chan<- Item, opts ...Option)
+	Serialize(init int, identifier func(interface{}) int, comparator Comparator, opts ...Option) Observable
 	Skip(nth uint, opts ...Option) Observable
 	SkipLast(nth uint, opts ...Option) Observable
 	SkipWhile(apply Predicate, opts ...Option) Observable

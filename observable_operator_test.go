@@ -782,6 +782,20 @@ func Test_Observable_SequenceEqual_Empty(t *testing.T) {
 	Assert(context.Background(), t, result, HasItem(true))
 }
 
+type message struct {
+	id int
+}
+
+func Test_Observable_Serialize(t *testing.T) {
+	obs := testObservable(message{3}, message{5}, message{1}, message{2}, message{4}).
+		Serialize(1, func(i interface{}) int {
+			return i.(message).id
+		}, func(i interface{}, i2 interface{}) int {
+			return i.(message).id - i2.(message).id
+		})
+	Assert(context.Background(), t, obs, HasItems(message{1}, message{2}, message{3}, message{4}, message{5}))
+}
+
 func Test_Observable_Skip(t *testing.T) {
 	obs := testObservable(0, 1, 2, 3, 4, 5).Skip(3)
 	Assert(context.Background(), t, obs, HasItems(3, 4, 5))

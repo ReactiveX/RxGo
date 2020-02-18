@@ -95,7 +95,7 @@ In this example, we passed 3 functions:
 <-observable.ForEach(...)
 ```
 
-### Dive In
+### Deep Dive
 
 Let's implement a more complete example. We will create an Observable from a channel and implement three operators (`Map`, `Filter` and `Reduce`):
 

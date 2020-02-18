@@ -4,7 +4,9 @@ import (
 	"container/ring"
 	"context"
 	"fmt"
+	"github.com/emirpasic/gods/trees/binaryheap"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -1201,6 +1203,90 @@ func (o *observable) Send(output chan<- Item, opts ...Option) {
 		}
 		close(output)
 	}()
+}
+
+func (o *observable) Serialize(init int, identifier func(interface{}) int, comparator Comparator, opts ...Option) Observable {
+	option := parseOptions(opts...)
+	next := option.buildChannel()
+
+	ctx := option.buildContext()
+	mutex := sync.Mutex{}
+	minHeap := binaryheap.NewWith(func(a, b interface{}) int {
+		return a.(int) - b.(int)
+	})
+	minHeap.Push(init)
+	var counter = int32(init)
+	status := make(map[int]interface{})
+	notif := make(chan struct{})
+
+	// Scatter
+	go func() {
+		defer close(notif)
+		src := o.Observe()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case item, ok := <-src:
+				if !ok {
+					return
+				}
+				if item.Error() {
+					next <- item
+					return
+				}
+
+				id := identifier(item.V)
+				mutex.Lock()
+				if id != init {
+					minHeap.Push(id)
+				}
+				status[id] = item.V
+				mutex.Unlock()
+				notif <- struct{}{}
+			}
+		}
+	}()
+
+	// Gather
+	go func() {
+		defer close(next)
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case _, ok := <-notif:
+				if !ok {
+					return
+				}
+
+				mutex.Lock()
+				for !minHeap.Empty() {
+					v, _ := minHeap.Peek()
+					id := v.(int)
+					if atomic.LoadInt32(&counter) == int32(id) {
+						if itemValue, contains := status[id]; contains {
+							minHeap.Pop()
+							delete(status, id)
+							mutex.Unlock()
+							next <- Of(itemValue)
+							mutex.Lock()
+							atomic.AddInt32(&counter, 1)
+							continue
+						}
+					}
+					break
+				}
+				mutex.Unlock()
+			}
+		}
+	}()
+
+	return &observable{
+		iterable: newChannelIterable(next),
+	}
 }
 
 // Skip suppresses the first n items in the original Observable and
