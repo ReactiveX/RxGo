@@ -7,15 +7,17 @@ type OptionalSingle interface {
 }
 
 func newOptionalSingleFromOperator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, opts ...Option) OptionalSingle {
-	return &optionalSingle{
+	return &OptionalSingleImpl{
 		iterable: operator(iterable, nextFunc, errFunc, endFunc, opts...),
 	}
 }
 
-type optionalSingle struct {
+// OptionalSingleImpl implements OptionalSingle.
+type OptionalSingleImpl struct {
 	iterable Iterable
 }
 
-func (o *optionalSingle) Observe() <-chan Item {
+// Observe observes an OptionalSingle by returning its channel.
+func (o *OptionalSingleImpl) Observe() <-chan Item {
 	return o.iterable.Observe()
 }

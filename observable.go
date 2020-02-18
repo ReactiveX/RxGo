@@ -9,8 +9,7 @@ import (
 	"github.com/tevino/abool"
 )
 
-// Observable is the standard Observable interface.
-// TODO Throttling
+// Observable is the standard interface for Observables.
 type Observable interface {
 	Iterable
 	All(predicate Predicate, opts ...Option) Single
@@ -77,7 +76,8 @@ type Observable interface {
 	ZipFromIterable(iterable Iterable, zipper Func2, opts ...Option) Observable
 }
 
-type observable struct {
+// ObservableImpl implements Observable.
+type ObservableImpl struct {
 	iterable Iterable
 }
 
@@ -107,7 +107,7 @@ func operator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc operato
 		return newChannelIterable(next)
 	}
 
-	return &observable{
+	return &ObservableImpl{
 		iterable: newColdIterable(func() <-chan Item {
 			next := option.buildChannel()
 			ctx := option.buildContext()
@@ -198,7 +198,7 @@ func parallel(ctx context.Context, pool int, next chan Item, iterable Iterable, 
 }
 
 func newObservableFromOperator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, opts ...Option) Observable {
-	return &observable{
+	return &ObservableImpl{
 		iterable: operator(iterable, nextFunc, errFunc, endFunc, opts...),
 	}
 }
@@ -207,7 +207,7 @@ func newObservableFromError(err error) Observable {
 	next := make(chan Item, 1)
 	next <- Error(err)
 	close(next)
-	return &observable{
+	return &ObservableImpl{
 		iterable: newChannelIterable(next),
 	}
 }

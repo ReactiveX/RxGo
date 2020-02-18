@@ -14,7 +14,7 @@ import (
 )
 
 // All determine whether all items emitted by an Observable meet some criteria.
-func (o *observable) All(predicate Predicate, opts ...Option) Single {
+func (o *ObservableImpl) All(predicate Predicate, opts ...Option) Single {
 	all := true
 	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
 		if !predicate(item.V) {
@@ -30,7 +30,7 @@ func (o *observable) All(predicate Predicate, opts ...Option) Single {
 }
 
 // AverageFloat32 calculates the average of numbers emitted by an Observable and emits the average float32.
-func (o *observable) AverageFloat32(opts ...Option) Single {
+func (o *ObservableImpl) AverageFloat32(opts ...Option) Single {
 	var sum float32
 	var count float32
 
@@ -52,7 +52,7 @@ func (o *observable) AverageFloat32(opts ...Option) Single {
 }
 
 // AverageFloat64 calculates the average of numbers emitted by an Observable and emits the average float64.
-func (o *observable) AverageFloat64(opts ...Option) Single {
+func (o *ObservableImpl) AverageFloat64(opts ...Option) Single {
 	var sum float64
 	var count float64
 
@@ -74,7 +74,7 @@ func (o *observable) AverageFloat64(opts ...Option) Single {
 }
 
 // AverageInt calculates the average of numbers emitted by an Observable and emits the average int.
-func (o *observable) AverageInt(opts ...Option) Single {
+func (o *ObservableImpl) AverageInt(opts ...Option) Single {
 	var sum int
 	var count int
 
@@ -96,7 +96,7 @@ func (o *observable) AverageInt(opts ...Option) Single {
 }
 
 // AverageInt8 calculates the average of numbers emitted by an Observable and emits the≤ average int8.
-func (o *observable) AverageInt8(opts ...Option) Single {
+func (o *ObservableImpl) AverageInt8(opts ...Option) Single {
 	var sum int8
 	var count int8
 
@@ -118,7 +118,7 @@ func (o *observable) AverageInt8(opts ...Option) Single {
 }
 
 // AverageInt16 calculates the average of numbers emitted by an Observable and emits the average int16.
-func (o *observable) AverageInt16(opts ...Option) Single {
+func (o *ObservableImpl) AverageInt16(opts ...Option) Single {
 	var sum int16
 	var count int16
 
@@ -140,7 +140,7 @@ func (o *observable) AverageInt16(opts ...Option) Single {
 }
 
 // AverageInt32 calculates the average of numbers emitted by an Observable and emits the average int32.
-func (o *observable) AverageInt32(opts ...Option) Single {
+func (o *ObservableImpl) AverageInt32(opts ...Option) Single {
 	var sum int32
 	var count int32
 
@@ -162,7 +162,7 @@ func (o *observable) AverageInt32(opts ...Option) Single {
 }
 
 // AverageInt64 calculates the average of numbers emitted by an Observable and emits this average int64.
-func (o *observable) AverageInt64(opts ...Option) Single {
+func (o *ObservableImpl) AverageInt64(opts ...Option) Single {
 	var sum int64
 	var count int64
 
@@ -189,7 +189,7 @@ func (o *observable) AverageInt64(opts ...Option) Single {
 // When the source Observable completes or encounters an error,
 // the resulting Observable emits the current buffer and propagates
 // the notification from the source Observable.
-func (o *observable) BufferWithCount(count, skip int, opts ...Option) Observable {
+func (o *ObservableImpl) BufferWithCount(count, skip int, opts ...Option) Observable {
 	if count <= 0 {
 		return newObservableFromError(IllegalInputError{error: "count must be positive"})
 	}
@@ -237,7 +237,7 @@ func (o *observable) BufferWithCount(count, skip int, opts ...Option) Observable
 // timeshift argument. It emits each buffer after a fixed timespan, specified by the timespan argument.
 // When the source Observable completes or encounters an error, the resulting Observable emits
 // the current buffer and propagates the notification from the source Observable.
-func (o *observable) BufferWithTime(timespan, timeshift Duration, opts ...Option) Observable {
+func (o *ObservableImpl) BufferWithTime(timespan, timeshift Duration, opts ...Option) Observable {
 	if timespan == nil || timespan.duration() == 0 {
 		return newObservableFromError(IllegalInputError{error: "timespan must no be nil"})
 	}
@@ -325,12 +325,14 @@ func (o *observable) BufferWithTime(timespan, timeshift Duration, opts ...Option
 		mux.Unlock()
 	}()
 
-	return &observable{
+	return &ObservableImpl{
 		iterable: newChannelIterable(next),
 	}
 }
 
-func (o *observable) BufferWithTimeOrCount(timespan Duration, count int, opts ...Option) Observable {
+// BufferWithTimeOrCount returns an Observable that emits buffers of items it collects from the source
+// Observable either from a given count or at a given time interval.
+func (o *ObservableImpl) BufferWithTimeOrCount(timespan Duration, count int, opts ...Option) Observable {
 	if timespan == nil || timespan.duration() == 0 {
 		return newObservableFromError(IllegalInputError{error: "timespan must no be nil"})
 	}
@@ -408,13 +410,13 @@ func (o *observable) BufferWithTimeOrCount(timespan Duration, count int, opts ..
 		close(errCh)
 	}()
 
-	return &observable{
+	return &ObservableImpl{
 		iterable: newChannelIterable(next),
 	}
 }
 
 // Contains determines whether an Observable emits a particular item or not.
-func (o *observable) Contains(equal Predicate, opts ...Option) Single {
+func (o *ObservableImpl) Contains(equal Predicate, opts ...Option) Single {
 	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
 		if equal(item.V) {
 			dst <- Of(true)
@@ -427,7 +429,7 @@ func (o *observable) Contains(equal Predicate, opts ...Option) Single {
 }
 
 // Count counts the number of items emitted by the source Observable and emit only this value.
-func (o *observable) Count(opts ...Option) Single {
+func (o *ObservableImpl) Count(opts ...Option) Single {
 	var count int64
 	return newSingleFromOperator(o, func(_ context.Context, _ Item, dst chan<- Item, _ operatorOptions) {
 		count++
@@ -440,7 +442,7 @@ func (o *observable) Count(opts ...Option) Single {
 
 // DefaultIfEmpty returns an Observable that emits the items emitted by the source
 // Observable or a specified default item if the source Observable is empty.
-func (o *observable) DefaultIfEmpty(defaultValue interface{}, opts ...Option) Observable {
+func (o *ObservableImpl) DefaultIfEmpty(defaultValue interface{}, opts ...Option) Observable {
 	empty := true
 
 	return newObservableFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
@@ -455,7 +457,7 @@ func (o *observable) DefaultIfEmpty(defaultValue interface{}, opts ...Option) Ob
 
 // Distinct suppresses duplicate items in the original Observable and returns
 // a new Observable.
-func (o *observable) Distinct(apply Func, opts ...Option) Observable {
+func (o *ObservableImpl) Distinct(apply Func, opts ...Option) Observable {
 	keyset := make(map[interface{}]interface{})
 
 	return newObservableFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
@@ -475,7 +477,7 @@ func (o *observable) Distinct(apply Func, opts ...Option) Observable {
 
 // DistinctUntilChanged suppresses consecutive duplicate items in the original
 // Observable and returns a new Observable.
-func (o *observable) DistinctUntilChanged(apply Func, opts ...Option) Observable {
+func (o *ObservableImpl) DistinctUntilChanged(apply Func, opts ...Option) Observable {
 	var current interface{}
 
 	return newObservableFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
@@ -493,7 +495,7 @@ func (o *observable) DistinctUntilChanged(apply Func, opts ...Option) Observable
 }
 
 // DoOnCompleted registers a callback action that will be called once the Observable terminates.
-func (o *observable) DoOnCompleted(completedFunc CompletedFunc, opts ...Option) Disposed {
+func (o *ObservableImpl) DoOnCompleted(completedFunc CompletedFunc, opts ...Option) Disposed {
 	dispose := make(chan struct{})
 	handler := func(ctx context.Context, src <-chan Item) {
 		defer close(dispose)
@@ -520,7 +522,7 @@ func (o *observable) DoOnCompleted(completedFunc CompletedFunc, opts ...Option) 
 }
 
 // DoOnError registers a callback action that will be called if the Observable terminates abnormally.
-func (o *observable) DoOnError(errFunc ErrFunc, opts ...Option) Disposed {
+func (o *ObservableImpl) DoOnError(errFunc ErrFunc, opts ...Option) Disposed {
 	dispose := make(chan struct{})
 	handler := func(ctx context.Context, src <-chan Item) {
 		defer close(dispose)
@@ -546,8 +548,8 @@ func (o *observable) DoOnError(errFunc ErrFunc, opts ...Option) Disposed {
 	return dispose
 }
 
-// DoOnError registers a callback action that will be called on each item emitted by the Observable.
-func (o *observable) DoOnNext(nextFunc NextFunc, opts ...Option) Disposed {
+// DoOnNext registers a callback action that will be called on each item emitted by the Observable.
+func (o *ObservableImpl) DoOnNext(nextFunc NextFunc, opts ...Option) Disposed {
 	dispose := make(chan struct{})
 	handler := func(ctx context.Context, src <-chan Item) {
 		defer close(dispose)
@@ -574,7 +576,7 @@ func (o *observable) DoOnNext(nextFunc NextFunc, opts ...Option) Disposed {
 }
 
 // ElementAt emits only item n emitted by an Observable.
-func (o *observable) ElementAt(index uint, opts ...Option) Single {
+func (o *ObservableImpl) ElementAt(index uint, opts ...Option) Single {
 	takeCount := 0
 	sent := false
 
@@ -594,7 +596,7 @@ func (o *observable) ElementAt(index uint, opts ...Option) Single {
 }
 
 // Filter emits only those items from an Observable that pass a predicate test.
-func (o *observable) Filter(apply Predicate, opts ...Option) Observable {
+func (o *ObservableImpl) Filter(apply Predicate, opts ...Option) Observable {
 	return newObservableFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
 		if apply(item.V) {
 			dst <- item
@@ -603,7 +605,7 @@ func (o *observable) Filter(apply Predicate, opts ...Option) Observable {
 }
 
 // First returns new Observable which emit only first item.
-func (o *observable) First(opts ...Option) OptionalSingle {
+func (o *ObservableImpl) First(opts ...Option) OptionalSingle {
 	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
 		dst <- item
 		operator.stop()
@@ -612,7 +614,7 @@ func (o *observable) First(opts ...Option) OptionalSingle {
 
 // FirstOrDefault returns new Observable which emit only first item.
 // If the observable fails to emit any items, it emits a default value.
-func (o *observable) FirstOrDefault(defaultValue interface{}, opts ...Option) Single {
+func (o *ObservableImpl) FirstOrDefault(defaultValue interface{}, opts ...Option) Single {
 	sent := false
 
 	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
@@ -626,7 +628,8 @@ func (o *observable) FirstOrDefault(defaultValue interface{}, opts ...Option) Si
 	}, opts...)
 }
 
-func (o *observable) FlatMap(apply ItemToObservable, opts ...Option) Observable {
+// FlatMap transforms the items emitted by an Observable into Observables, then flatten the emissions from those into a single Observable.
+func (o *ObservableImpl) FlatMap(apply ItemToObservable, opts ...Option) Observable {
 	option := parseOptions(opts...)
 	next := option.buildChannel()
 	ctx := option.buildContext()
@@ -664,13 +667,13 @@ func (o *observable) FlatMap(apply ItemToObservable, opts ...Option) Observable 
 		}
 	}()
 
-	return &observable{
+	return &ObservableImpl{
 		iterable: newChannelIterable(next),
 	}
 }
 
 // ForEach subscribes to the Observable and receives notifications for each element.
-func (o *observable) ForEach(nextFunc NextFunc, errFunc ErrFunc, completedFunc CompletedFunc, opts ...Option) Disposed {
+func (o *ObservableImpl) ForEach(nextFunc NextFunc, errFunc ErrFunc, completedFunc CompletedFunc, opts ...Option) Disposed {
 	dispose := make(chan struct{})
 	handler := func(ctx context.Context, src <-chan Item) {
 		defer close(dispose)
@@ -701,13 +704,13 @@ func (o *observable) ForEach(nextFunc NextFunc, errFunc ErrFunc, completedFunc C
 
 // IgnoreElements ignores all items emitted by the source ObservableSource and only calls onComplete
 // or onError.
-func (o *observable) IgnoreElements(opts ...Option) Observable {
+func (o *ObservableImpl) IgnoreElements(opts ...Option) Observable {
 	return newObservableFromOperator(o, func(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
 }
 
 // GroupBy divides an Observable into a set of Observables that each emit a different group of items from the original Observable, organized by key.
-func (o *observable) GroupBy(length int, distribution func(Item) int, opts ...Option) Observable {
+func (o *ObservableImpl) GroupBy(length int, distribution func(Item) int, opts ...Option) Observable {
 	option := parseOptions(opts...)
 	ctx := option.buildContext()
 
@@ -716,7 +719,7 @@ func (o *observable) GroupBy(length int, distribution func(Item) int, opts ...Op
 	for i := 0; i < length; i++ {
 		ch := option.buildChannel()
 		chs[i] = ch
-		s[i] = Of(&observable{
+		s[i] = Of(&ObservableImpl{
 			iterable: newChannelIterable(ch),
 		})
 	}
@@ -750,13 +753,13 @@ func (o *observable) GroupBy(length int, distribution func(Item) int, opts ...Op
 		}
 	}()
 
-	return &observable{
+	return &ObservableImpl{
 		iterable: newSliceIterable(s, opts...),
 	}
 }
 
 // Last returns a new Observable which emit only last item.
-func (o *observable) Last(opts ...Option) OptionalSingle {
+func (o *ObservableImpl) Last(opts ...Option) OptionalSingle {
 	var last Item
 	empty := true
 
@@ -772,7 +775,7 @@ func (o *observable) Last(opts ...Option) OptionalSingle {
 
 // LastOrDefault returns a new Observable which emit only last item.
 // If the observable fails to emit any items, it emits a default value.
-func (o *observable) LastOrDefault(defaultValue interface{}, opts ...Option) Single {
+func (o *ObservableImpl) LastOrDefault(defaultValue interface{}, opts ...Option) Single {
 	var last Item
 	empty := true
 
@@ -789,7 +792,7 @@ func (o *observable) LastOrDefault(defaultValue interface{}, opts ...Option) Sin
 }
 
 // Map transforms the items emitted by an Observable by applying a function to each item.
-func (o *observable) Map(apply Func, opts ...Option) Observable {
+func (o *ObservableImpl) Map(apply Func, opts ...Option) Observable {
 	return newObservableFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
 		res, err := apply(item.V)
 		if err != nil {
@@ -801,14 +804,14 @@ func (o *observable) Map(apply Func, opts ...Option) Observable {
 }
 
 // Marshal transforms the items emitted by an Observable by applying a marshalling to each item.
-func (o *observable) Marshal(marshaler Marshaler, opts ...Option) Observable {
+func (o *ObservableImpl) Marshal(marshaler Marshaler, opts ...Option) Observable {
 	return o.Map(func(i interface{}) (interface{}, error) {
 		return marshaler(i)
 	}, opts...)
 }
 
 // Max determines and emits the maximum-valued item emitted by an Observable according to a comparator.
-func (o *observable) Max(comparator Comparator, opts ...Option) OptionalSingle {
+func (o *ObservableImpl) Max(comparator Comparator, opts ...Option) OptionalSingle {
 	empty := true
 	var max interface{}
 
@@ -830,7 +833,7 @@ func (o *observable) Max(comparator Comparator, opts ...Option) OptionalSingle {
 }
 
 // Min determines and emits the minimum-valued item emitted by an Observable according to a comparator.
-func (o *observable) Min(comparator Comparator, opts ...Option) OptionalSingle {
+func (o *ObservableImpl) Min(comparator Comparator, opts ...Option) OptionalSingle {
 	empty := true
 	var min interface{}
 
@@ -851,14 +854,14 @@ func (o *observable) Min(comparator Comparator, opts ...Option) OptionalSingle {
 	}, opts...)
 }
 
-// Observe observes an observable by returning its channel
-func (o *observable) Observe() <-chan Item {
+// Observe observes an Observable by returning its channel.
+func (o *ObservableImpl) Observe() <-chan Item {
 	return o.iterable.Observe()
 }
 
 // OnErrorResumeNext instructs an Observable to pass control to another Observable rather than invoking
 // onError if it encounters an error.
-func (o *observable) OnErrorResumeNext(resumeSequence ErrorToObservable, opts ...Option) Observable {
+func (o *ObservableImpl) OnErrorResumeNext(resumeSequence ErrorToObservable, opts ...Option) Observable {
 	return newObservableFromOperator(o, defaultNextFuncOperator, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
 		operator.resetIterable(resumeSequence(item.E))
 	}, defaultEndFuncOperator, opts...)
@@ -866,21 +869,21 @@ func (o *observable) OnErrorResumeNext(resumeSequence ErrorToObservable, opts ..
 
 // OnErrorReturn instructs an Observable to emit an item (returned by a specified function)
 // rather than invoking onError if it encounters an error.
-func (o *observable) OnErrorReturn(resumeFunc ErrorFunc, opts ...Option) Observable {
+func (o *ObservableImpl) OnErrorReturn(resumeFunc ErrorFunc, opts ...Option) Observable {
 	return newObservableFromOperator(o, defaultNextFuncOperator, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
 		dst <- Of(resumeFunc(item.E))
 	}, defaultEndFuncOperator, opts...)
 }
 
 // OnErrorReturnItem instructs on observale to emit an item if it encounters an error.
-func (o *observable) OnErrorReturnItem(resume interface{}, opts ...Option) Observable {
+func (o *ObservableImpl) OnErrorReturnItem(resume interface{}, opts ...Option) Observable {
 	return newObservableFromOperator(o, defaultNextFuncOperator, func(_ context.Context, _ Item, dst chan<- Item, operator operatorOptions) {
 		dst <- Of(resume)
 	}, defaultEndFuncOperator, opts...)
 }
 
 // Reduce applies a function to each item emitted by an Observable, sequentially, and emit the final value.
-func (o *observable) Reduce(apply Func2, opts ...Option) OptionalSingle {
+func (o *ObservableImpl) Reduce(apply Func2, opts ...Option) OptionalSingle {
 	var acc interface{}
 	empty := true
 
@@ -902,7 +905,7 @@ func (o *observable) Reduce(apply Func2, opts ...Option) OptionalSingle {
 
 // Repeat returns an Observable that repeats the sequence of items emitted by the source Observable
 // at most count times, at a particular frequency.
-func (o *observable) Repeat(count int64, frequency Duration, opts ...Option) Observable {
+func (o *ObservableImpl) Repeat(count int64, frequency Duration, opts ...Option) Observable {
 	if count != Infinite {
 		if count < 0 {
 			return newObservableFromError(IllegalInputError{error: "count must be positive"})
@@ -937,7 +940,8 @@ func (o *observable) Repeat(count int64, frequency Duration, opts ...Option) Obs
 	}, opts...)
 }
 
-func (o *observable) BackOffRetry(backOffCfg backoff.BackOff, opts ...Option) Observable {
+// BackOffRetry implements a backoff retry if a source Observable sends an error, resubscribe to it in the hopes that it will complete without error.
+func (o *ObservableImpl) BackOffRetry(backOffCfg backoff.BackOff, opts ...Option) Observable {
 	option := parseOptions(opts...)
 	next := option.buildChannel()
 	ctx := option.buildContext()
@@ -969,13 +973,13 @@ func (o *observable) BackOffRetry(backOffCfg backoff.BackOff, opts ...Option) Ob
 		close(next)
 	}()
 
-	return &observable{
+	return &ObservableImpl{
 		iterable: newChannelIterable(next),
 	}
 }
 
 // Retry retries if a source Observable sends an error, resubscribe to it in the hopes that it will complete without error.
-func (o *observable) Retry(count int, opts ...Option) Observable {
+func (o *ObservableImpl) Retry(count int, opts ...Option) Observable {
 	option := parseOptions(opts...)
 	next := option.buildChannel()
 	ctx := option.buildContext()
@@ -1006,13 +1010,13 @@ func (o *observable) Retry(count int, opts ...Option) Observable {
 		close(next)
 	}()
 
-	return &observable{
+	return &ObservableImpl{
 		iterable: newChannelIterable(next),
 	}
 }
 
 // Run creates an observer without consuming the emitted items.
-func (o *observable) Run(opts ...Option) Disposed {
+func (o *ObservableImpl) Run(opts ...Option) Disposed {
 	dispose := make(chan struct{})
 	option := parseOptions(opts...)
 	ctx := option.buildContext()
@@ -1037,7 +1041,7 @@ func (o *observable) Run(opts ...Option) Disposed {
 
 // Sample returns an Observable that emits the most recent items emitted by the source
 // Iterable whenever the input Iterable emits an item.
-func (o *observable) Sample(iterable Iterable, opts ...Option) Observable {
+func (o *ObservableImpl) Sample(iterable Iterable, opts ...Option) Observable {
 	option := parseOptions(opts...)
 	next := option.buildChannel()
 	ctx := option.buildContext()
@@ -1103,14 +1107,14 @@ func (o *observable) Sample(iterable Iterable, opts ...Option) Observable {
 		}
 	}()
 
-	return &observable{
+	return &ObservableImpl{
 		iterable: newChannelIterable(next),
 	}
 }
 
 // Scan applies Func2 predicate to each item in the original
 // Observable sequentially and emits each successive value on a new Observable.
-func (o *observable) Scan(apply Func2, opts ...Option) Observable {
+func (o *ObservableImpl) Scan(apply Func2, opts ...Option) Observable {
 	var current interface{}
 
 	return newObservableFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
@@ -1140,7 +1144,7 @@ func popAndCompareFirstItems(
 
 // SequenceEqual emits true if an Observable and the input Observable emit the same items,
 // in the same order, with the same termination state. Otherwise, it emits false.
-func (o *observable) SequenceEqual(iterable Iterable, opts ...Option) Single {
+func (o *ObservableImpl) SequenceEqual(iterable Iterable, opts ...Option) Single {
 	option := parseOptions(opts...)
 	next := option.buildChannel()
 	ctx := option.buildContext()
@@ -1214,13 +1218,13 @@ func (o *observable) SequenceEqual(iterable Iterable, opts ...Option) Single {
 		close(next)
 	}()
 
-	return &single{
+	return &SingleImpl{
 		iterable: newChannelIterable(next),
 	}
 }
 
 // Send sends the items to a given channel
-func (o *observable) Send(output chan<- Item, opts ...Option) {
+func (o *ObservableImpl) Send(output chan<- Item, opts ...Option) {
 	go func() {
 		option := parseOptions(opts...)
 		ctx := option.buildContext()
@@ -1246,7 +1250,7 @@ func (o *observable) Send(output chan<- Item, opts ...Option) {
 }
 
 // Serialize forces an Observable to make serialized calls and to be well-behaved.
-func (o *observable) Serialize(from int, identifier func(interface{}) int, opts ...Option) Observable {
+func (o *ObservableImpl) Serialize(from int, identifier func(interface{}) int, opts ...Option) Observable {
 	option := parseOptions(opts...)
 	next := option.buildChannel()
 
@@ -1325,14 +1329,14 @@ func (o *observable) Serialize(from int, identifier func(interface{}) int, opts 
 		}
 	}()
 
-	return &observable{
+	return &ObservableImpl{
 		iterable: newChannelIterable(next),
 	}
 }
 
 // Skip suppresses the first n items in the original Observable and
 // returns a new Observable with the rest items.
-func (o *observable) Skip(nth uint, opts ...Option) Observable {
+func (o *ObservableImpl) Skip(nth uint, opts ...Option) Observable {
 	skipCount := 0
 
 	return newObservableFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
@@ -1346,7 +1350,7 @@ func (o *observable) Skip(nth uint, opts ...Option) Observable {
 
 // SkipLast suppresses the last n items in the original Observable and
 // returns a new Observable with the rest items.
-func (o *observable) SkipLast(nth uint, opts ...Option) Observable {
+func (o *ObservableImpl) SkipLast(nth uint, opts ...Option) Observable {
 	skipCount := 0
 
 	return newObservableFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
@@ -1360,7 +1364,7 @@ func (o *observable) SkipLast(nth uint, opts ...Option) Observable {
 }
 
 // SkipWhile discard items emitted by an Observable until a specified condition becomes false.
-func (o *observable) SkipWhile(apply Predicate, opts ...Option) Observable {
+func (o *ObservableImpl) SkipWhile(apply Predicate, opts ...Option) Observable {
 	skip := true
 
 	return newObservableFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
@@ -1377,7 +1381,7 @@ func (o *observable) SkipWhile(apply Predicate, opts ...Option) Observable {
 
 // StartWithIterable returns an Observable that emits the items in a specified Iterable before it begins to
 // emit items emitted by the source Observable.
-func (o *observable) StartWithIterable(iterable Iterable, opts ...Option) Observable {
+func (o *ObservableImpl) StartWithIterable(iterable Iterable, opts ...Option) Observable {
 	option := parseOptions(opts...)
 	next := option.buildChannel()
 	ctx := option.buildContext()
@@ -1420,13 +1424,13 @@ func (o *observable) StartWithIterable(iterable Iterable, opts ...Option) Observ
 		}
 	}()
 
-	return &observable{
+	return &ObservableImpl{
 		iterable: newChannelIterable(next),
 	}
 }
 
 // SumFloat32 calculates the average of float32 emitted by an Observable and emits a float32.
-func (o *observable) SumFloat32(opts ...Option) Single {
+func (o *ObservableImpl) SumFloat32(opts ...Option) Single {
 	var sum float32
 
 	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
@@ -1454,7 +1458,7 @@ func (o *observable) SumFloat32(opts ...Option) Single {
 }
 
 // SumFloat64 calculates the average of float64 emitted by an Observable and emits a float64.
-func (o *observable) SumFloat64(opts ...Option) Single {
+func (o *ObservableImpl) SumFloat64(opts ...Option) Single {
 	var sum float64
 
 	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
@@ -1484,7 +1488,7 @@ func (o *observable) SumFloat64(opts ...Option) Single {
 }
 
 // SumInt64 calculates the average of integers emitted by an Observable and emits an int64.
-func (o *observable) SumInt64(opts ...Option) Single {
+func (o *ObservableImpl) SumInt64(opts ...Option) Single {
 	var sum int64
 
 	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
@@ -1510,7 +1514,7 @@ func (o *observable) SumInt64(opts ...Option) Single {
 }
 
 // Take emits only the first n items emitted by an Observable.
-func (o *observable) Take(nth uint, opts ...Option) Observable {
+func (o *ObservableImpl) Take(nth uint, opts ...Option) Observable {
 	takeCount := 0
 
 	return newObservableFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
@@ -1522,7 +1526,7 @@ func (o *observable) Take(nth uint, opts ...Option) Observable {
 }
 
 // TakeLast emits only the last n items emitted by an Observable.
-func (o *observable) TakeLast(nth uint, opts ...Option) Observable {
+func (o *ObservableImpl) TakeLast(nth uint, opts ...Option) Observable {
 	n := int(nth)
 	r := ring.New(n)
 	count := 0
@@ -1550,7 +1554,7 @@ func (o *observable) TakeLast(nth uint, opts ...Option) Observable {
 
 // TakeUntil returns an Observable that emits items emitted by the source Observable,
 // checks the specified predicate for each item, and then completes when the condition is satisfied.
-func (o *observable) TakeUntil(apply Predicate, opts ...Option) Observable {
+func (o *ObservableImpl) TakeUntil(apply Predicate, opts ...Option) Observable {
 	return newObservableFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
 		dst <- item
 		if apply(item.V) {
@@ -1562,7 +1566,7 @@ func (o *observable) TakeUntil(apply Predicate, opts ...Option) Observable {
 
 // TakeWhile returns an Observable that emits items emitted by the source ObservableSource so long as each
 // item satisfied a specified condition, and then completes as soon as this condition is not satisfied.
-func (o *observable) TakeWhile(apply Predicate, opts ...Option) Observable {
+func (o *ObservableImpl) TakeWhile(apply Predicate, opts ...Option) Observable {
 	return newObservableFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
 		if !apply(item.V) {
 			operator.stop()
@@ -1574,7 +1578,7 @@ func (o *observable) TakeWhile(apply Predicate, opts ...Option) Observable {
 
 // ToMap convert the sequence of items emitted by an Observable
 // into a map keyed by a specified key function.
-func (o *observable) ToMap(keySelector Func, opts ...Option) Single {
+func (o *ObservableImpl) ToMap(keySelector Func, opts ...Option) Single {
 	m := make(map[interface{}]interface{})
 
 	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
@@ -1593,7 +1597,7 @@ func (o *observable) ToMap(keySelector Func, opts ...Option) Single {
 // ToMapWithValueSelector convert the sequence of items emitted by an Observable
 // into a map keyed by a specified key function and valued by another
 // value function.
-func (o *observable) ToMapWithValueSelector(keySelector, valueSelector Func, opts ...Option) Single {
+func (o *ObservableImpl) ToMapWithValueSelector(keySelector, valueSelector Func, opts ...Option) Single {
 	m := make(map[interface{}]interface{})
 
 	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
@@ -1618,7 +1622,7 @@ func (o *observable) ToMapWithValueSelector(keySelector, valueSelector Func, opt
 }
 
 // ToSlice collects all items from an Observable and emit them in a slice and an optional error.
-func (o *observable) ToSlice(initialCapacity int, opts ...Option) ([]interface{}, error) {
+func (o *ObservableImpl) ToSlice(initialCapacity int, opts ...Option) ([]interface{}, error) {
 	s := make([]interface{}, 0, initialCapacity)
 	var err error
 	<-newObservableFromOperator(o, func(_ context.Context, item Item, _ chan<- Item, _ operatorOptions) {
@@ -1630,8 +1634,8 @@ func (o *observable) ToSlice(initialCapacity int, opts ...Option) ([]interface{}
 	return s, err
 }
 
-// Marshal transforms the items emitted by an Observable by applying an unmarshalling to each item.
-func (o *observable) Unmarshal(unmarshaler Unmarshaler, factory func() interface{}, opts ...Option) Observable {
+// Unmarshal transforms the items emitted by an Observable by applying an unmarshalling to each item.
+func (o *ObservableImpl) Unmarshal(unmarshaler Unmarshaler, factory func() interface{}, opts ...Option) Observable {
 	return o.Map(func(i interface{}) (interface{}, error) {
 		v := factory()
 		err := unmarshaler(i.([]byte), v)
@@ -1644,7 +1648,7 @@ func (o *observable) Unmarshal(unmarshaler Unmarshaler, factory func() interface
 
 // ZipFromIterable merges the emissions of multiple Observables together via a specified function
 // and emit single items for each combination based on the results of this function.
-func (o *observable) ZipFromIterable(iterable Iterable, zipper Func2, opts ...Option) Observable {
+func (o *ObservableImpl) ZipFromIterable(iterable Iterable, zipper Func2, opts ...Option) Observable {
 	option := parseOptions(opts...)
 	next := option.buildChannel()
 	ctx := option.buildContext()
@@ -1691,7 +1695,7 @@ func (o *observable) ZipFromIterable(iterable Iterable, zipper Func2, opts ...Op
 		}
 	}()
 
-	return &observable{
+	return &ObservableImpl{
 		iterable: newChannelIterable(next),
 	}
 }

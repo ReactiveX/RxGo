@@ -56,7 +56,7 @@ func Amb(observables []Observable, opts ...Option) Observable {
 		go f(o)
 	}
 
-	return &observable{
+	return &ObservableImpl{
 		iterable: newChannelIterable(next),
 	}
 }
@@ -122,7 +122,7 @@ func CombineLatest(f FuncN, observables []Observable, opts ...Option) Observable
 		close(errCh)
 	}()
 
-	return &observable{
+	return &ObservableImpl{
 		iterable: newChannelIterable(next),
 	}
 }
@@ -155,14 +155,14 @@ func Concat(observables []Observable, opts ...Option) Observable {
 			}
 		}
 	}()
-	return &observable{
+	return &ObservableImpl{
 		iterable: newChannelIterable(next),
 	}
 }
 
 // Create creates an Observable from scratch by calling observer methods programmatically.
 func Create(f []Producer, opts ...Option) Observable {
-	return &observable{
+	return &ObservableImpl{
 		iterable: newCreateIterable(f, opts...),
 	}
 }
@@ -170,7 +170,7 @@ func Create(f []Producer, opts ...Option) Observable {
 // Defer does not create the Observable until the observer subscribes,
 // and creates a fresh Observable for each observer.
 func Defer(f []Producer, opts ...Option) Observable {
-	return &observable{
+	return &ObservableImpl{
 		iterable: newDeferIterable(f, opts...),
 	}
 }
@@ -179,14 +179,14 @@ func Defer(f []Producer, opts ...Option) Observable {
 func Empty() Observable {
 	next := make(chan Item)
 	close(next)
-	return &observable{
+	return &ObservableImpl{
 		iterable: newChannelIterable(next),
 	}
 }
 
 // FromChannel creates a cold observable from a channel.
 func FromChannel(next <-chan Item) Observable {
-	return &observable{
+	return &ObservableImpl{
 		iterable: newChannelIterable(next),
 	}
 }
@@ -195,7 +195,7 @@ func FromChannel(next <-chan Item) Observable {
 func FromEventSource(next <-chan Item, opts ...Option) Observable {
 	option := parseOptions(opts...)
 
-	return &observable{
+	return &ObservableImpl{
 		iterable: newEventSourceIterable(option.buildContext(), next, option.buildBackPressureStrategy()),
 	}
 }
@@ -220,21 +220,21 @@ func Interval(interval Duration, opts ...Option) Observable {
 			}
 		}
 	}()
-	return &observable{
+	return &ObservableImpl{
 		iterable: newEventSourceIterable(ctx, next, option.buildBackPressureStrategy()),
 	}
 }
 
 // Just creates an Observable with the provided items.
 func Just(items []Item, opts ...Option) Observable {
-	return &observable{
+	return &ObservableImpl{
 		iterable: newSliceIterable(items, opts...),
 	}
 }
 
 // JustItem creates a single from one item.
 func JustItem(item Item, opts ...Option) Single {
-	return &single{
+	return &SingleImpl{
 		iterable: newSliceIterable([]Item{item}),
 	}
 }
@@ -275,7 +275,7 @@ func Merge(observables []Observable, opts ...Option) Observable {
 		wg.Wait()
 		close(next)
 	}()
-	return &observable{
+	return &ObservableImpl{
 		iterable: newChannelIterable(next),
 	}
 }
@@ -283,7 +283,7 @@ func Merge(observables []Observable, opts ...Option) Observable {
 // Never creates an Observable that emits no items and does not terminate.
 func Never() Observable {
 	next := make(chan Item)
-	return &observable{
+	return &ObservableImpl{
 		iterable: newChannelIterable(next),
 	}
 }
@@ -296,7 +296,7 @@ func Range(start, count int, opts ...Option) Observable {
 	if start+count-1 > math.MaxInt32 {
 		return newObservableFromError(IllegalInputError{error: "max value is bigger than math.MaxInt32"})
 	}
-	return &observable{
+	return &ObservableImpl{
 		iterable: newRangeIterable(start, count, opts...),
 	}
 }
@@ -323,7 +323,7 @@ func Start(fs []Supplier, opts ...Option) Observable {
 		close(next)
 	}()
 
-	return &observable{
+	return &ObservableImpl{
 		iterable: newChannelIterable(next),
 	}
 }
@@ -343,7 +343,7 @@ func Timer(d Duration, opts ...Option) Observable {
 			next <- Of(struct{}{})
 		}
 	}()
-	return &observable{
+	return &ObservableImpl{
 		iterable: newChannelIterable(next),
 	}
 }

@@ -9,21 +9,24 @@ type Single interface {
 	Map(apply Func, opts ...Option) Single
 }
 
-type single struct {
+// SingleImpl implements Single.
+type SingleImpl struct {
 	iterable Iterable
 }
 
 func newSingleFromOperator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, opts ...Option) Single {
-	return &single{
+	return &SingleImpl{
 		iterable: operator(iterable, nextFunc, errFunc, endFunc, opts...),
 	}
 }
 
-func (s *single) Observe() <-chan Item {
+// Observe observes a Single by returning its channel.
+func (s *SingleImpl) Observe() <-chan Item {
 	return s.iterable.Observe()
 }
 
-func (s *single) Filter(apply Predicate, opts ...Option) OptionalSingle {
+// Filter emits only those items from a Single that pass a predicate test.
+func (s *SingleImpl) Filter(apply Predicate, opts ...Option) OptionalSingle {
 	return newOptionalSingleFromOperator(s, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
 		if apply(item.V) {
 			dst <- item
@@ -32,7 +35,8 @@ func (s *single) Filter(apply Predicate, opts ...Option) OptionalSingle {
 	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
 }
 
-func (s *single) Map(apply Func, opts ...Option) Single {
+// Map transforms the items emitted by a Single by applying a function to each item.
+func (s *SingleImpl) Map(apply Func, opts ...Option) Single {
 	return newSingleFromOperator(s, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
 		res, err := apply(item.V)
 		if err != nil {
