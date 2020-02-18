@@ -802,6 +802,15 @@ func Test_Observable_Serialize_DifferentFrom(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(message{11}, message{12}, message{13}, message{14}, message{15}))
 }
 
+func Test_Observable_Serialize_ContextCanceled(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	obs := Never().Serialize(1, func(i interface{}) int {
+		return i.(message).id
+	}, WithContext(ctx))
+	Assert(context.Background(), t, obs, HasNoItems(), HasNotRaisedError())
+}
+
 func Test_Observable_Serialize_Empty(t *testing.T) {
 	obs := testObservable(message{3}, message{5}, message{7}, message{2}, message{4}).
 		Serialize(1, func(i interface{}) int {
