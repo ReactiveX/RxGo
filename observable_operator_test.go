@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cenkalti/backoff/v4"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -73,6 +75,37 @@ func Test_Observable_AverageInt64(t *testing.T) {
 	Assert(context.Background(), t, testObservable(int64(1), int64(20)).AverageInt64(), HasItem(int64(10)))
 	Assert(context.Background(), t, Empty().AverageInt64(), HasItem(0))
 	Assert(context.Background(), t, testObservable(1.1, 2.2, 3.3).AverageInt64(), HasRaisedAnError())
+}
+
+func Test_Observable_BackOffRetry(t *testing.T) {
+	i := 0
+	backOffCfg := backoff.NewExponentialBackOff()
+	backOffCfg.InitialInterval = time.Nanosecond
+	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item, done func()) {
+		next <- Of(1)
+		next <- Of(2)
+		if i == 2 {
+			next <- Of(3)
+			done()
+		} else {
+			i++
+			next <- Error(errFoo)
+			done()
+		}
+	}}).BackOffRetry(backoff.WithMaxRetries(backOffCfg, 3))
+	Assert(context.Background(), t, obs, HasItems(1, 2, 1, 2, 1, 2, 3), HasNotRaisedError())
+}
+
+func Test_Observable_BackOffRetry_Error(t *testing.T) {
+	backOffCfg := backoff.NewExponentialBackOff()
+	backOffCfg.InitialInterval = time.Nanosecond
+	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item, done func()) {
+		next <- Of(1)
+		next <- Of(2)
+		next <- Error(errFoo)
+		done()
+	}}).BackOffRetry(backoff.WithMaxRetries(backOffCfg, 3))
+	Assert(context.Background(), t, obs, HasItems(1, 2, 1, 2, 1, 2, 1, 2), HasRaisedError(errFoo))
 }
 
 func Test_Observable_BufferWithCount_CountAndSkipEqual(t *testing.T) {

@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/cenkalti/backoff/v4"
+
 	"github.com/emirpasic/gods/trees/binaryheap"
 )
 
@@ -933,6 +935,43 @@ func (o *observable) Repeat(count int64, frequency Duration, opts ...Option) Obs
 			count = count - 1
 		}
 	}, opts...)
+}
+
+func (o *observable) BackOffRetry(backOffCfg backoff.BackOff, opts ...Option) Observable {
+	option := parseOptions(opts...)
+	next := option.buildChannel()
+	ctx := option.buildContext()
+
+	f := func() error {
+		observe := o.Observe()
+		for {
+			select {
+			case <-ctx.Done():
+				close(next)
+				return nil
+			case i, ok := <-observe:
+				if !ok {
+					return nil
+				}
+				if i.Error() {
+					return i.E
+				}
+				next <- i
+			}
+		}
+	}
+	go func() {
+		if err := backoff.Retry(f, backOffCfg); err != nil {
+			next <- Error(err)
+			close(next)
+			return
+		}
+		close(next)
+	}()
+
+	return &observable{
+		iterable: newChannelIterable(next),
+	}
 }
 
 // Retry retries if a source Observable sends an error, resubscribe to it in the hopes that it will complete without error.
