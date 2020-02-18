@@ -4,10 +4,11 @@ import (
 	"container/ring"
 	"context"
 	"fmt"
-	"github.com/emirpasic/gods/trees/binaryheap"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/emirpasic/gods/trees/binaryheap"
 )
 
 // All determine whether all items emitted by an Observable meet some criteria.
@@ -1205,7 +1206,8 @@ func (o *observable) Send(output chan<- Item, opts ...Option) {
 	}()
 }
 
-func (o *observable) Serialize(init int, identifier func(interface{}) int, comparator Comparator, opts ...Option) Observable {
+// Serialize forces an Observable to make serialized calls and to be well-behaved.
+func (o *observable) Serialize(from int, identifier func(interface{}) int, opts ...Option) Observable {
 	option := parseOptions(opts...)
 	next := option.buildChannel()
 
@@ -1214,8 +1216,8 @@ func (o *observable) Serialize(init int, identifier func(interface{}) int, compa
 	minHeap := binaryheap.NewWith(func(a, b interface{}) int {
 		return a.(int) - b.(int)
 	})
-	minHeap.Push(init)
-	var counter = int32(init)
+	minHeap.Push(from)
+	counter := int64(from)
 	status := make(map[int]interface{})
 	notif := make(chan struct{})
 
@@ -1239,7 +1241,7 @@ func (o *observable) Serialize(init int, identifier func(interface{}) int, compa
 
 				id := identifier(item.V)
 				mutex.Lock()
-				if id != init {
+				if id != from {
 					minHeap.Push(id)
 				}
 				status[id] = item.V
@@ -1266,14 +1268,14 @@ func (o *observable) Serialize(init int, identifier func(interface{}) int, compa
 				for !minHeap.Empty() {
 					v, _ := minHeap.Peek()
 					id := v.(int)
-					if atomic.LoadInt32(&counter) == int32(id) {
+					if atomic.LoadInt64(&counter) == int64(id) {
 						if itemValue, contains := status[id]; contains {
 							minHeap.Pop()
 							delete(status, id)
 							mutex.Unlock()
 							next <- Of(itemValue)
 							mutex.Lock()
-							atomic.AddInt32(&counter, 1)
+							atomic.AddInt64(&counter, 1)
 							continue
 						}
 					}

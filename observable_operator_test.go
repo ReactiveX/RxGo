@@ -790,10 +790,32 @@ func Test_Observable_Serialize(t *testing.T) {
 	obs := testObservable(message{3}, message{5}, message{1}, message{2}, message{4}).
 		Serialize(1, func(i interface{}) int {
 			return i.(message).id
-		}, func(i interface{}, i2 interface{}) int {
-			return i.(message).id - i2.(message).id
 		})
 	Assert(context.Background(), t, obs, HasItems(message{1}, message{2}, message{3}, message{4}, message{5}))
+}
+
+func Test_Observable_Serialize_DifferentFrom(t *testing.T) {
+	obs := testObservable(message{13}, message{15}, message{11}, message{12}, message{14}).
+		Serialize(11, func(i interface{}) int {
+			return i.(message).id
+		})
+	Assert(context.Background(), t, obs, HasItems(message{11}, message{12}, message{13}, message{14}, message{15}))
+}
+
+func Test_Observable_Serialize_Empty(t *testing.T) {
+	obs := testObservable(message{3}, message{5}, message{7}, message{2}, message{4}).
+		Serialize(1, func(i interface{}) int {
+			return i.(message).id
+		})
+	Assert(context.Background(), t, obs, HasNoItems())
+}
+
+func Test_Observable_Serialize_Error(t *testing.T) {
+	obs := testObservable(message{3}, message{1}, errFoo, message{2}, message{4}).
+		Serialize(1, func(i interface{}) int {
+			return i.(message).id
+		})
+	Assert(context.Background(), t, obs, HasItems(message{1}), HasRaisedError(errFoo))
 }
 
 func Test_Observable_Skip(t *testing.T) {
