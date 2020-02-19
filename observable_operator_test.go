@@ -540,6 +540,20 @@ func Test_Observable_Map_Multiple(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(20, 30, 40), HasNotRaisedError())
 }
 
+func Test_Observable_Map_Error(t *testing.T) {
+	obs := testObservable(1, 2, 3, errFoo).Map(func(i interface{}) (interface{}, error) {
+		return i.(int) + 1, nil
+	})
+	Assert(context.Background(), t, obs, HasItems(2, 3, 4), HasRaisedError(errFoo))
+}
+
+func Test_Observable_Map_ReturnValueAndError(t *testing.T) {
+	obs := testObservable(1).Map(func(i interface{}) (interface{}, error) {
+		return 2, errFoo
+	})
+	Assert(context.Background(), t, obs, HasNoItems(), HasRaisedError(errFoo))
+}
+
 func Test_Observable_Map_Multiple_Error(t *testing.T) {
 	called := false
 	obs := testObservable(1, 2, 3).Map(func(i interface{}) (interface{}, error) {
@@ -550,13 +564,6 @@ func Test_Observable_Map_Multiple_Error(t *testing.T) {
 	})
 	Assert(context.Background(), t, obs, HasNoItems(), HasRaisedError(errFoo))
 	assert.False(t, called)
-}
-
-func Test_Observable_Map_Error(t *testing.T) {
-	obs := testObservable(1, 2, 3, errFoo).Map(func(i interface{}) (interface{}, error) {
-		return i.(int) + 1, nil
-	})
-	Assert(context.Background(), t, obs, HasItems(2, 3, 4), HasRaisedError(errFoo))
 }
 
 func Test_Observable_Map_Cancel(t *testing.T) {

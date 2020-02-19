@@ -809,6 +809,7 @@ func (o *ObservableImpl) Map(apply Func, opts ...Option) Observable {
 		if err != nil {
 			dst <- Error(err)
 			operator.stop()
+			return
 		}
 		dst <- Of(res)
 	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
