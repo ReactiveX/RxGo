@@ -5,8 +5,8 @@ import (
 )
 
 const (
-	benchChannelCap       = 1_000
-	benchNumberOfElements = 1_000_000
+	benchChannelCap       = 1000
+	benchNumberOfElements = 1000000
 )
 
 func Benchmark_Sequential(b *testing.B) {

@@ -226,9 +226,9 @@ func Interval(interval Duration, opts ...Option) Observable {
 }
 
 // Just creates an Observable with the provided items.
-func Just(items []Item, opts ...Option) Observable {
+func Just(items interface{}, opts ...Option) Observable {
 	return &ObservableImpl{
-		iterable: newSliceIterable(items, opts...),
+		iterable: newJustIterable(items, opts...),
 	}
 }
 

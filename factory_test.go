@@ -250,7 +250,7 @@ func Test_FromItem(t *testing.T) {
 }
 
 func Test_FromItems(t *testing.T) {
-	obs := Just([]Item{Of(1), Of(2), Of(3)})
+	obs := Just([]int{1, 2, 3})
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
 }
@@ -294,7 +294,7 @@ func Test_FromEventSource_ObservationAfterAllSent(t *testing.T) {
 }
 
 func Test_FromEventSource_Drop(t *testing.T) {
-	const max = 100_000
+	const max = 100000
 	next := make(chan Item, max)
 	obs := FromEventSource(next, WithBackPressureStrategy(Drop))
 
