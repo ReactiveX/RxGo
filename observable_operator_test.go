@@ -532,6 +532,18 @@ func Test_Observable_Map_Multiple(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(20, 30, 40), HasNotRaisedError())
 }
 
+func Test_Observable_Map_Multiple_Error(t *testing.T) {
+	called := false
+	obs := testObservable(1, 2, 3).Map(func(i interface{}) (interface{}, error) {
+		return nil, errFoo
+	}).Map(func(i interface{}) (interface{}, error) {
+		called = true
+		return nil, nil
+	})
+	Assert(context.Background(), t, obs, HasNoItems(), HasRaisedError(errFoo))
+	assert.False(t, called)
+}
+
 func Test_Observable_Map_Error(t *testing.T) {
 	obs := testObservable(1, 2, 3, errFoo).Map(func(i interface{}) (interface{}, error) {
 		return i.(int) + 1, nil
