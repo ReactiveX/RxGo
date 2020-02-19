@@ -595,6 +595,17 @@ func (o *ObservableImpl) ElementAt(index uint, opts ...Option) Single {
 	}, opts...)
 }
 
+// Error returns the eventual Observable error.
+// Note that Error() is blocking.
+func (o *ObservableImpl) Error() error {
+	for item := range o.iterable.Observe() {
+		if item.Error() {
+			return item.E
+		}
+	}
+	return nil
+}
+
 // Filter emits only those items from an Observable that pass a predicate test.
 func (o *ObservableImpl) Filter(apply Predicate, opts ...Option) Observable {
 	return newObservableFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {

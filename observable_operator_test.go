@@ -349,6 +349,14 @@ func Test_Observable_ElementAt_Error(t *testing.T) {
 	Assert(context.Background(), t, obs, HasNoItem(), HasRaisedAnError())
 }
 
+func Test_Observable_Error_NoError(t *testing.T) {
+	assert.NoError(t, testObservable(1, 2, 3).Error())
+}
+
+func Test_Observable_Error_Error(t *testing.T) {
+	assert.Equal(t, errFoo, testObservable(1, errFoo, 3).Error())
+}
+
 func Test_Observable_Filter(t *testing.T) {
 	obs := testObservable(1, 2, 3, 4).Filter(
 		func(i interface{}) bool {

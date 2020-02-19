@@ -33,6 +33,7 @@ type Observable interface {
 	DoOnError(errFunc ErrFunc, opts ...Option) Disposed
 	DoOnNext(nextFunc NextFunc, opts ...Option) Disposed
 	ElementAt(index uint, opts ...Option) Single
+	Error() error
 	Filter(apply Predicate, opts ...Option) Observable
 	First(opts ...Option) OptionalSingle
 	FirstOrDefault(defaultValue interface{}, opts ...Option) Single
