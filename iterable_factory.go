@@ -4,8 +4,7 @@ type factoryIterable struct {
 	factory func(opts ...Option) <-chan Item
 }
 
-// TODO Replace by create
-func newColdIterable(factory func(opts ...Option) <-chan Item) Iterable {
+func newFactoryIterable(factory func(opts ...Option) <-chan Item) Iterable {
 	return &factoryIterable{factory: factory}
 }
 

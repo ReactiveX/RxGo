@@ -233,9 +233,9 @@ func Just(items interface{}, opts ...Option) Observable {
 }
 
 // JustItem creates a single from one item.
-func JustItem(item Item, opts ...Option) Single {
+func JustItem(item interface{}, opts ...Option) Single {
 	return &SingleImpl{
-		iterable: newSliceIterable([]Item{item}),
+		iterable: newJustIterable(item, opts...),
 	}
 }
 

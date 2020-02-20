@@ -357,6 +357,31 @@ func Test_Observable_Error_Error(t *testing.T) {
 	assert.Equal(t, errFoo, testObservable(1, errFoo, 3).Error())
 }
 
+func Test_Observable_Errors_NoError(t *testing.T) {
+	assert.Equal(t, 0, len(testObservable(1, 2, 3).Errors()))
+}
+
+func Test_Observable_Errors_OneError(t *testing.T) {
+	assert.Equal(t, 1, len(testObservable(1, errFoo, 3).Errors()))
+}
+
+func Test_Observable_Errors_MultipleError(t *testing.T) {
+	assert.Equal(t, 2, len(testObservable(1, errFoo, errBar).Errors()))
+}
+
+func Test_Observable_Errors_MultipleErrorFromMap(t *testing.T) {
+	errs := testObservable(1, 2, 3, 4).Map(func(i interface{}) (interface{}, error) {
+		if i == 2 {
+			return nil, errFoo
+		}
+		if i == 3 {
+			return nil, errBar
+		}
+		return i, nil
+	}, WithErrorStrategy(OnErrorContinue)).Errors()
+	assert.Equal(t, 2, len(errs))
+}
+
 func Test_Observable_Filter(t *testing.T) {
 	obs := testObservable(1, 2, 3, 4).Filter(
 		func(i interface{}) bool {
@@ -1133,7 +1158,7 @@ func Test_Observable_Option_WithOnErrorStrategy_Single(t *testing.T) {
 				return nil, errFoo
 			}
 			return i, nil
-		}, WithErrorStrategy(ContinueOnError))
+		}, WithErrorStrategy(OnErrorContinue))
 	Assert(context.Background(), t, obs, HasItems(1, 3), HasRaisedError(errFoo))
 }
 
@@ -1150,7 +1175,7 @@ func Test_Observable_Option_WithOnErrorStrategy_Propagate(t *testing.T) {
 				return nil, errBar
 			}
 			return i, nil
-		}, WithErrorStrategy(ContinueOnError))
+		}, WithErrorStrategy(OnErrorContinue))
 	Assert(context.Background(), t, obs, HasItems(3), HasRaisedErrors(errFoo, errBar))
 }
 

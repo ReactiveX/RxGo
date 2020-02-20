@@ -124,6 +124,8 @@ func WithBackPressureStrategy(strategy BackpressureStrategy) Option {
 	})
 }
 
+// WithErrorStrategy defines how an observable should deal with error.
+// This strategy is propagated to the parent observable.
 func WithErrorStrategy(strategy OnErrorStrategy) Option {
 	return newFuncOption(func(options *funcOption) {
 		options.onErrorStrategy = strategy

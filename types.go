@@ -3,9 +3,10 @@ package rxgo
 import "context"
 
 type (
-	// BackpressureStrategy is the backpressure strategy type
+	// BackpressureStrategy is the backpressure strategy type.
 	BackpressureStrategy uint32
-	OnErrorStrategy      uint32
+	// OnErrorStrategy is the Observable error strategy.
+	OnErrorStrategy uint32
 
 	operatorOptions struct {
 		stop          func()
@@ -61,6 +62,9 @@ const (
 )
 
 const (
-	StopOnError OnErrorStrategy = iota
-	ContinueOnError
+	// OnErrorStop is the default error strategy.
+	// An operator will stop processing items on error.
+	OnErrorStop OnErrorStrategy = iota
+	// OnErrorContinue means an operator will continue processing items after an error.
+	OnErrorContinue
 )

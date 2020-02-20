@@ -339,6 +339,7 @@ In this example, we create a pool of 32 goroutines that consume items concurrent
 * [SumFloat32/SumFloat64/SumInt64](http://reactivex.io/documentation/operators/sum.html) — calculate the sum of numbers emitted by an Observable and emit this sum
 
 ### Operators to Convert Observables
+* Error/Errors - convert an observable into an eventual error or list of errors
 * [ToMap/ToMapWithValueSelector/ToSlice](http://reactivex.io/documentation/operators/to.html) — convert an Observable into another object or data structure
 
 ## Contributions

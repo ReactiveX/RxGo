@@ -34,6 +34,7 @@ type Observable interface {
 	DoOnNext(nextFunc NextFunc, opts ...Option) Disposed
 	ElementAt(index uint, opts ...Option) Single
 	Error() error
+	Errors() []error
 	Filter(apply Predicate, opts ...Option) Observable
 	First(opts ...Option) OptionalSingle
 	FirstOrDefault(defaultValue interface{}, opts ...Option) Single
@@ -109,7 +110,7 @@ func operator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc operato
 	}
 
 	return &ObservableImpl{
-		iterable: newColdIterable(func(propagatedOptions ...Option) <-chan Item {
+		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
 			mergedOptions := append(opts, propagatedOptions...)
 			option = parseOptions(mergedOptions...)
 
@@ -131,7 +132,7 @@ func seq(ctx context.Context, next chan Item, iterable Iterable, nextFunc, errFu
 		observe := iterable.Observe(opts...)
 		operator := operatorOptions{
 			stop: func() {
-				if option.getErrorStrategy() == StopOnError {
+				if option.getErrorStrategy() == OnErrorStop {
 					stopped = true
 				}
 			},
@@ -166,7 +167,7 @@ func parallel(ctx context.Context, pool int, next chan Item, iterable Iterable, 
 	observe := iterable.Observe(opts...)
 	operator := operatorOptions{
 		stop: func() {
-			if option.getErrorStrategy() == StopOnError {
+			if option.getErrorStrategy() == OnErrorStop {
 				stopped.Set()
 			}
 		},

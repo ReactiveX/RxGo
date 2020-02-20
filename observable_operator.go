@@ -596,7 +596,7 @@ func (o *ObservableImpl) ElementAt(index uint, opts ...Option) Single {
 }
 
 // Error returns the eventual Observable error.
-// Note that Error() is blocking.
+// This method is blocking.
 func (o *ObservableImpl) Error() error {
 	for item := range o.iterable.Observe() {
 		if item.Error() {
@@ -604,6 +604,18 @@ func (o *ObservableImpl) Error() error {
 		}
 	}
 	return nil
+}
+
+// Errors returns an eventual list of Observable errors.
+// This method is blocking
+func (o *ObservableImpl) Errors() []error {
+	errs := make([]error, 0)
+	for item := range o.iterable.Observe() {
+		if item.Error() {
+			errs = append(errs, item.E)
+		}
+	}
+	return errs
 }
 
 // Filter emits only those items from an Observable that pass a predicate test.

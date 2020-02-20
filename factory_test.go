@@ -223,7 +223,7 @@ func Test_FromChannel_ComposedCapacity(t *testing.T) {
 }
 
 func Test_FromItem(t *testing.T) {
-	single := JustItem(Of(1))
+	single := JustItem(1)
 	Assert(context.Background(), t, single, HasItem(1), HasNotRaisedError())
 	Assert(context.Background(), t, single, HasItem(1), HasNotRaisedError())
 }
