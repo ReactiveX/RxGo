@@ -21,8 +21,8 @@ func newSingleFromOperator(iterable Iterable, nextFunc, errFunc operatorItem, en
 }
 
 // Observe observes a Single by returning its channel.
-func (s *SingleImpl) Observe() <-chan Item {
-	return s.iterable.Observe()
+func (s *SingleImpl) Observe(opts ...Option) <-chan Item {
+	return s.iterable.Observe(opts...)
 }
 
 // Filter emits only those items from a Single that pass a predicate test.

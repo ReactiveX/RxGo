@@ -96,42 +96,47 @@ func defaultEndFuncOperator(_ context.Context, _ chan<- Item) {}
 func operator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, opts ...Option) Iterable {
 	option := parseOptions(opts...)
 
-	if option.withEagerObservation() {
+	if option.isEagerObservation() {
 		next := option.buildChannel()
 		ctx := option.buildContext()
-		if withPool, pool := option.withPool(); withPool {
-			parallel(ctx, pool, next, iterable, nextFunc, errFunc, endFunc)
+		if withPool, pool := option.getPool(); withPool {
+			parallel(ctx, pool, next, iterable, nextFunc, errFunc, endFunc, option, opts...)
 		} else {
-			seq(ctx, next, iterable, nextFunc, errFunc, endFunc)
+			seq(ctx, next, iterable, nextFunc, errFunc, endFunc, option, opts...)
 		}
 
 		return newChannelIterable(next)
 	}
 
 	return &ObservableImpl{
-		iterable: newColdIterable(func() <-chan Item {
+		iterable: newColdIterable(func(propagatedOptions ...Option) <-chan Item {
+			mergedOptions := append(opts, propagatedOptions...)
+			option = parseOptions(mergedOptions...)
+
 			next := option.buildChannel()
 			ctx := option.buildContext()
-			if withPool, pool := option.withPool(); withPool {
-				parallel(ctx, pool, next, iterable, nextFunc, errFunc, endFunc)
+			if withPool, pool := option.getPool(); withPool {
+				parallel(ctx, pool, next, iterable, nextFunc, errFunc, endFunc, option, mergedOptions...)
 			} else {
-				seq(ctx, next, iterable, nextFunc, errFunc, endFunc)
+				seq(ctx, next, iterable, nextFunc, errFunc, endFunc, option, mergedOptions...)
 			}
 			return next
 		}),
 	}
 }
 
-func seq(ctx context.Context, next chan Item, iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd) {
+func seq(ctx context.Context, next chan Item, iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, option Option, opts ...Option) {
 	go func() {
 		stopped := false
-		observe := iterable.Observe()
+		observe := iterable.Observe(opts...)
 		operator := operatorOptions{
 			stop: func() {
-				stopped = true
+				if option.getErrorStrategy() == StopOnError {
+					stopped = true
+				}
 			},
 			resetIterable: func(newIterable Iterable) {
-				observe = newIterable.Observe()
+				observe = newIterable.Observe(opts...)
 			},
 		}
 
@@ -156,12 +161,14 @@ func seq(ctx context.Context, next chan Item, iterable Iterable, nextFunc, errFu
 	}()
 }
 
-func parallel(ctx context.Context, pool int, next chan Item, iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd) {
+func parallel(ctx context.Context, pool int, next chan Item, iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, option Option, opts ...Option) {
 	stopped := abool.New()
-	observe := iterable.Observe()
+	observe := iterable.Observe(opts...)
 	operator := operatorOptions{
 		stop: func() {
-			stopped.Set()
+			if option.getErrorStrategy() == StopOnError {
+				stopped.Set()
+			}
 		},
 		// TODO Can we implement a reset strategy with a parallel implementation
 		resetIterable: func(_ Iterable) {},

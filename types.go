@@ -5,6 +5,7 @@ import "context"
 type (
 	// BackpressureStrategy is the backpressure strategy type
 	BackpressureStrategy uint32
+	OnErrorStrategy      uint32
 
 	operatorOptions struct {
 		stop          func()
@@ -57,4 +58,9 @@ const (
 	Block BackpressureStrategy = iota
 	// Drop drops the message.
 	Drop
+)
+
+const (
+	StopOnError OnErrorStrategy = iota
+	ContinueOnError
 )

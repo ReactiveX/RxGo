@@ -18,6 +18,6 @@ type OptionalSingleImpl struct {
 }
 
 // Observe observes an OptionalSingle by returning its channel.
-func (o *OptionalSingleImpl) Observe() <-chan Item {
-	return o.iterable.Observe()
+func (o *OptionalSingleImpl) Observe(opts ...Option) <-chan Item {
+	return o.iterable.Observe(opts...)
 }
