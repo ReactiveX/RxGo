@@ -828,9 +828,9 @@ func (o *ObservableImpl) Map(apply Func, opts ...Option) Observable {
 }
 
 // Marshal transforms the items emitted by an Observable by applying a marshalling to each item.
-func (o *ObservableImpl) Marshal(marshaler Marshaler, opts ...Option) Observable {
+func (o *ObservableImpl) Marshal(marshaller Marshaller, opts ...Option) Observable {
 	return o.Map(func(i interface{}) (interface{}, error) {
-		return marshaler(i)
+		return marshaller(i)
 	}, opts...)
 }
 
@@ -1659,10 +1659,10 @@ func (o *ObservableImpl) ToSlice(initialCapacity int, opts ...Option) ([]interfa
 }
 
 // Unmarshal transforms the items emitted by an Observable by applying an unmarshalling to each item.
-func (o *ObservableImpl) Unmarshal(unmarshaler Unmarshaler, factory func() interface{}, opts ...Option) Observable {
+func (o *ObservableImpl) Unmarshal(unmarshaller Unmarshaller, factory func() interface{}, opts ...Option) Observable {
 	return o.Map(func(i interface{}) (interface{}, error) {
 		v := factory()
-		err := unmarshaler(i.([]byte), v)
+		err := unmarshaller(i.([]byte), v)
 		if err != nil {
 			return nil, err
 		}

@@ -378,7 +378,7 @@ func Test_Observable_Errors_MultipleErrorFromMap(t *testing.T) {
 			return nil, errBar
 		}
 		return i, nil
-	}, WithErrorStrategy(OnErrorContinue)).Errors()
+	}, WithErrorStrategy(Continue)).Errors()
 	assert.Equal(t, 2, len(errs))
 }
 
@@ -1158,7 +1158,7 @@ func Test_Observable_Option_WithOnErrorStrategy_Single(t *testing.T) {
 				return nil, errFoo
 			}
 			return i, nil
-		}, WithErrorStrategy(OnErrorContinue))
+		}, WithErrorStrategy(Continue))
 	Assert(context.Background(), t, obs, HasItems(1, 3), HasRaisedError(errFoo))
 }
 
@@ -1175,7 +1175,7 @@ func Test_Observable_Option_WithOnErrorStrategy_Propagate(t *testing.T) {
 				return nil, errBar
 			}
 			return i, nil
-		}, WithErrorStrategy(OnErrorContinue))
+		}, WithErrorStrategy(Continue))
 	Assert(context.Background(), t, obs, HasItems(3), HasRaisedErrors(errFoo, errBar))
 }
 

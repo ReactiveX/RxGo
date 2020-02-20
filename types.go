@@ -32,10 +32,10 @@ type (
 	ErrorFunc func(error) interface{}
 	// Predicate defines a func that returns a bool from an input value.
 	Predicate func(interface{}) bool
-	// Marshaler defines a marshaler type (interface{} to []byte).
-	Marshaler func(interface{}) ([]byte, error)
-	// Unmarshaler defines an unmarshaler type ([]byte to interface).
-	Unmarshaler func([]byte, interface{}) error
+	// Marshaller defines a marshaller type (interface{} to []byte).
+	Marshaller func(interface{}) ([]byte, error)
+	// Unmarshaller defines an unmarshaller type ([]byte to interface).
+	Unmarshaller func([]byte, interface{}) error
 	// Producer defines a producer implementation.
 	Producer func(ctx context.Context, next chan<- Item, done func())
 	// Supplier defines a function that supplies a result from nothing.
@@ -62,9 +62,9 @@ const (
 )
 
 const (
-	// OnErrorStop is the default error strategy.
+	// Stop is the default error strategy.
 	// An operator will stop processing items on error.
-	OnErrorStop OnErrorStrategy = iota
-	// OnErrorContinue means an operator will continue processing items after an error.
-	OnErrorContinue
+	Stop OnErrorStrategy = iota
+	// Continue means an operator will continue processing items after an error.
+	Continue
 )

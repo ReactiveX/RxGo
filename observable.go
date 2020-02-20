@@ -45,7 +45,7 @@ type Observable interface {
 	Last(opts ...Option) OptionalSingle
 	LastOrDefault(defaultValue interface{}, opts ...Option) Single
 	Map(apply Func, opts ...Option) Observable
-	Marshal(marshaler Marshaler, opts ...Option) Observable
+	Marshal(marshaller Marshaller, opts ...Option) Observable
 	Max(comparator Comparator, opts ...Option) OptionalSingle
 	Min(comparator Comparator, opts ...Option) OptionalSingle
 	OnErrorResumeNext(resumeSequence ErrorToObservable, opts ...Option) Observable
@@ -74,7 +74,7 @@ type Observable interface {
 	ToMap(keySelector Func, opts ...Option) Single
 	ToMapWithValueSelector(keySelector, valueSelector Func, opts ...Option) Single
 	ToSlice(initialCapacity int, opts ...Option) ([]interface{}, error)
-	Unmarshal(unmarshaler Unmarshaler, factory func() interface{}, opts ...Option) Observable
+	Unmarshal(unmarshaller Unmarshaller, factory func() interface{}, opts ...Option) Observable
 	ZipFromIterable(iterable Iterable, zipper Func2, opts ...Option) Observable
 }
 
@@ -132,7 +132,7 @@ func seq(ctx context.Context, next chan Item, iterable Iterable, nextFunc, errFu
 		observe := iterable.Observe(opts...)
 		operator := operatorOptions{
 			stop: func() {
-				if option.getErrorStrategy() == OnErrorStop {
+				if option.getErrorStrategy() == Stop {
 					stopped = true
 				}
 			},
@@ -167,7 +167,7 @@ func parallel(ctx context.Context, pool int, next chan Item, iterable Iterable, 
 	observe := iterable.Observe(opts...)
 	operator := operatorOptions{
 		stop: func() {
-			if option.getErrorStrategy() == OnErrorStop {
+			if option.getErrorStrategy() == Stop {
 				stopped.Set()
 			}
 		},
