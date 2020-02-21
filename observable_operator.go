@@ -1209,7 +1209,9 @@ func (o *ObservableImpl) GroupBy(length int, distribution func(Item) int, opts .
 // Cannot be run in parallel.
 func (o *ObservableImpl) Last(opts ...Option) OptionalSingle {
 	return optionalSingle(o, func() operator {
-		return &lastOperator{}
+		return &lastOperator{
+			empty: true,
+		}
 	}, true, false, opts...)
 }
 
@@ -1505,13 +1507,16 @@ func (op *reduceOperator) next(ctx context.Context, item Item, dst chan<- Item, 
 	if err != nil {
 		dst <- Error(err)
 		operatorOptions.stop()
+		op.empty = true
 		return
 	}
 	op.acc = v
 }
 
-func (op *reduceOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+func (op *reduceOperator) err(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	dst <- item
+	operatorOptions.stop()
+	op.empty = true
 }
 
 func (op *reduceOperator) end(_ context.Context, dst chan<- Item) {

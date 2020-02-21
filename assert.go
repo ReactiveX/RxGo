@@ -109,58 +109,6 @@ func HasItems(items ...interface{}) RxAssert {
 	})
 }
 
-// HasSomeItems checks that the observable produces some items.
-func HasSomeItems() RxAssert {
-	return newAssertion(func(a *rxAssert) {
-		a.checkHasSomeItems = true
-	})
-}
-
-// HasNoItems checks that the observable has not produce any item.
-func HasNoItems() RxAssert {
-	return newAssertion(func(a *rxAssert) {
-		a.checkHasNoItems = true
-	})
-}
-
-// HasItemsNoParticularOrder checks that an observable produces the corresponding items regardless of the order.
-func HasItemsNoParticularOrder(items ...interface{}) RxAssert {
-	return newAssertion(func(a *rxAssert) {
-		a.checkHasItemsNoOrder = true
-		a.itemsNoOrder = items
-	})
-}
-
-// HasRaisedError checks that the observable has produce a specific error.
-func HasRaisedError(err error) RxAssert {
-	return newAssertion(func(a *rxAssert) {
-		a.checkHasRaisedError = true
-		a.err = err
-	})
-}
-
-// HasRaisedAnError checks that the observable has produce an error.
-func HasRaisedAnError() RxAssert {
-	return newAssertion(func(a *rxAssert) {
-		a.checkHasRaisedAnError = true
-	})
-}
-
-// HasRaisedErrors checks that the observable has produce a set of errors.
-func HasRaisedErrors(errs ...error) RxAssert {
-	return newAssertion(func(a *rxAssert) {
-		a.checkHasRaisedErrors = true
-		a.errs = errs
-	})
-}
-
-// HasNotRaisedError checks that the observable has not raised any error.
-func HasNotRaisedError() RxAssert {
-	return newAssertion(func(a *rxAssert) {
-		a.checkHasRaisedError = true
-	})
-}
-
 // HasItem checks if a single or optional single has a specific item.
 func HasItem(i interface{}) RxAssert {
 	return newAssertion(func(a *rxAssert) {
@@ -169,10 +117,55 @@ func HasItem(i interface{}) RxAssert {
 	})
 }
 
-// HasNoItem checks if a single or optional single has no item.
-func HasNoItem() RxAssert {
+// HasItemsNoOrder checks that an observable produces the corresponding items regardless of the order.
+func HasItemsNoOrder(items ...interface{}) RxAssert {
 	return newAssertion(func(a *rxAssert) {
-		a.checkHasNoItem = true
+		a.checkHasItemsNoOrder = true
+		a.itemsNoOrder = items
+	})
+}
+
+// IsNotEmpty checks that the observable produces some items.
+func IsNotEmpty() RxAssert {
+	return newAssertion(func(a *rxAssert) {
+		a.checkHasSomeItems = true
+	})
+}
+
+// IsEmpty checks that the observable has not produce any item.
+func IsEmpty() RxAssert {
+	return newAssertion(func(a *rxAssert) {
+		a.checkHasNoItems = true
+	})
+}
+
+// HasError checks that the observable has produce a specific error.
+func HasError(err error) RxAssert {
+	return newAssertion(func(a *rxAssert) {
+		a.checkHasRaisedError = true
+		a.err = err
+	})
+}
+
+// HasAnError checks that the observable has produce an error.
+func HasAnError() RxAssert {
+	return newAssertion(func(a *rxAssert) {
+		a.checkHasRaisedAnError = true
+	})
+}
+
+// HasErrors checks that the observable has produce a set of errors.
+func HasErrors(errs ...error) RxAssert {
+	return newAssertion(func(a *rxAssert) {
+		a.checkHasRaisedErrors = true
+		a.errs = errs
+	})
+}
+
+// HasNoError checks that the observable has not raised any error.
+func HasNoError() RxAssert {
+	return newAssertion(func(a *rxAssert) {
+		a.checkHasRaisedError = true
 	})
 }
 

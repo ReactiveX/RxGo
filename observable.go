@@ -81,9 +81,9 @@ type ObservableImpl struct {
 	iterable Iterable
 }
 
-func defaultErrorFuncOperator(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
+func defaultErrorFuncOperator(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	dst <- item
-	operator.stop()
+	operatorOptions.stop()
 }
 
 func newObservableFromError(err error) Observable {
