@@ -94,7 +94,7 @@ func defaultErrorFuncOperator(_ context.Context, item Item, dst chan<- Item, ope
 
 func defaultEndFuncOperator(_ context.Context, _ chan<- Item) {}
 
-func operator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, opts ...Option) Iterable {
+func createOperator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, opts ...Option) Iterable {
 	option := parseOptions(opts...)
 
 	if option.isEagerObservation() {
@@ -231,7 +231,7 @@ func runParToRemove(ctx context.Context, pool int, next chan Item, iterable Iter
 
 func newObservableFromOperator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, opts ...Option) Observable {
 	return &ObservableImpl{
-		iterable: operator(iterable, nextFunc, errFunc, endFunc, opts...),
+		iterable: createOperator(iterable, nextFunc, errFunc, endFunc, opts...),
 	}
 }
 
@@ -256,43 +256,43 @@ func newSingleFromSeqOperator(iterable Iterable, nextFunc, errFunc operatorItem,
 	}
 }
 
-func newOptionalSingleFromSeqOperator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, opts ...Option) OptionalSingle {
-	return &OptionalSingleImpl{
-		iterable: seqOperator(iterable, nextFunc, errFunc, endFunc, opts...),
-	}
-}
+// func newOptionalSingleFromSeqOperator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, opts ...Option) OptionalSingle {
+//	return &OptionalSingleImpl{
+//		iterable: seqOperator(iterable, nextFunc, errFunc, endFunc, opts...),
+//	}
+//}
 
-type Operator interface {
+type operator interface {
 	Run(ctx context.Context, pool int, next chan Item, option Option, opts ...Option)
 }
 
-func runParObservable(operator Operator, opts ...Option) Observable {
-	option := parseOptions(opts...)
-	_, pool := option.getPool()
+// func runParObservable(operator operator, opts ...Option) Observable {
+//	option := parseOptions(opts...)
+//	_, pool := option.getPool()
+//
+//	if option.isEagerObservation() {
+//		next := option.buildChannel()
+//		ctx := option.buildContext()
+//		operator.Run(ctx, pool, next, option, opts...)
+//		return &ObservableImpl{
+//			iterable: newChannelIterable(next),
+//		}
+//	}
+//
+//	return &ObservableImpl{
+//		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
+//			mergedOptions := append(opts, propagatedOptions...)
+//			option = parseOptions(mergedOptions...)
+//
+//			next := option.buildChannel()
+//			ctx := option.buildContext()
+//			operator.Run(ctx, pool, next, option, opts...)
+//			return next
+//		}),
+//	}
+//}
 
-	if option.isEagerObservation() {
-		next := option.buildChannel()
-		ctx := option.buildContext()
-		operator.Run(ctx, pool, next, option, opts...)
-		return &ObservableImpl{
-			iterable: newChannelIterable(next),
-		}
-	}
-
-	return &ObservableImpl{
-		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
-			mergedOptions := append(opts, propagatedOptions...)
-			option = parseOptions(mergedOptions...)
-
-			next := option.buildChannel()
-			ctx := option.buildContext()
-			operator.Run(ctx, pool, next, option, opts...)
-			return next
-		}),
-	}
-}
-
-func runParOptionalSingle(operator Operator, opts ...Option) OptionalSingle {
+func runParOptionalSingle(operator operator, opts ...Option) OptionalSingle {
 	option := parseOptions(opts...)
 	_, pool := option.getPool()
 
@@ -318,7 +318,7 @@ func runParOptionalSingle(operator Operator, opts ...Option) OptionalSingle {
 	}
 }
 
-func runParSingle(operator Operator, opts ...Option) Single {
+func runParSingle(operator operator, opts ...Option) Single {
 	option := parseOptions(opts...)
 	_, pool := option.getPool()
 

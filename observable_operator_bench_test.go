@@ -6,11 +6,10 @@ import (
 )
 
 const (
-	benchChannelCap             = 1000
-	benchNumberOfElementsLarge  = 1000000
-	benchNumberOfElementsMedium = 10000
-	benchNumberOfElementsSmall  = 1000
-	ioPool                      = 32
+	benchChannelCap            = 1000
+	benchNumberOfElementsLarge = 1000000
+	benchNumberOfElementsSmall = 1000
+	ioPool                     = 32
 )
 
 func Benchmark_Range_Sequential(b *testing.B) {

@@ -13,7 +13,7 @@ import (
 	"github.com/emirpasic/gods/trees/binaryheap"
 )
 
-//func (o *ObservableImpl) All(predicate Predicate, opts ...Option) Single {
+// func (o *ObservableImpl) All(predicate Predicate, opts ...Option) Single {
 //	all := true
 //	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
 //		if !predicate(item.V) {
@@ -117,6 +117,7 @@ func (op allOperator) Run(ctx context.Context, pool int, next chan Item, option 
 
 	go func() {
 		wg.Wait()
+		cancel()
 		close(gather)
 	}()
 }
@@ -1141,6 +1142,7 @@ func (op reduceOperator) Run(ctx context.Context, pool int, next chan Item, opti
 
 	go func() {
 		wg.Wait()
+		cancel()
 		close(gather)
 	}()
 }

@@ -17,7 +17,7 @@ type SingleImpl struct {
 
 func newSingleFromOperator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, opts ...Option) Single {
 	return &SingleImpl{
-		iterable: operator(iterable, nextFunc, errFunc, endFunc, opts...),
+		iterable: createOperator(iterable, nextFunc, errFunc, endFunc, opts...),
 	}
 }
 
@@ -51,14 +51,14 @@ func (s *SingleImpl) Map(apply Func, opts ...Option) Single {
 }
 
 // Run creates an observer without consuming the emitted items.
-func (o *SingleImpl) Run(opts ...Option) Disposed {
+func (s *SingleImpl) Run(opts ...Option) Disposed {
 	dispose := make(chan struct{})
 	option := parseOptions(opts...)
 	ctx := option.buildContext()
 
 	go func() {
 		defer close(dispose)
-		observe := o.Observe()
+		observe := s.Observe()
 		for {
 			select {
 			case <-ctx.Done():

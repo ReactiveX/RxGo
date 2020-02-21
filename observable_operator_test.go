@@ -676,7 +676,7 @@ func Test_Observable_Min(t *testing.T) {
 }
 
 // TODO Fix race
-//func Test_Observable_Min_Parallel(t *testing.T) {
+// func Test_Observable_Min_Parallel(t *testing.T) {
 //	obs := Range(1, 10000).Min(func(e1 interface{}, e2 interface{}) int {
 //		i1 := e1.(int)
 //		i2 := e2.(int)
@@ -1059,7 +1059,7 @@ func Test_Observable_SumInt64(t *testing.T) {
 }
 
 // TODO Fix race
-//func Test_Observable_SumInt64_Parallel(t *testing.T) {
+// func Test_Observable_SumInt64_Parallel(t *testing.T) {
 //	Assert(context.Background(), t, Range(1, 10000).SumInt64(WithPool(8)), HasItem(int64(50015001)))
 //}
 

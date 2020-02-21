@@ -9,7 +9,7 @@ type OptionalSingle interface {
 
 func newOptionalSingleFromOperator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, opts ...Option) OptionalSingle {
 	return &OptionalSingleImpl{
-		iterable: operator(iterable, nextFunc, errFunc, endFunc, opts...),
+		iterable: createOperator(iterable, nextFunc, errFunc, endFunc, opts...),
 	}
 }
 
