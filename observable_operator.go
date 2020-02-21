@@ -1355,41 +1355,50 @@ func (op *maxOperator) end(_ context.Context, dst chan<- Item) {
 	}
 }
 
-// TODO Call next?
-func (op *maxOperator) gatherNext(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	v := item.V.(*maxOperator)
-
-	op.empty = false
-
-	if op.max == nil {
-		op.max = v.max
-	} else {
-		if op.comparator(op.max, v.max) < 0 {
-			op.max = v.max
-		}
-	}
+func (op *maxOperator) gatherNext(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	op.next(ctx, Of(item.V.(*maxOperator).max), dst, operatorOptions)
 }
 
 // Min determines and emits the minimum-valued item emitted by an Observable according to a comparator.
 func (o *ObservableImpl) Min(comparator Comparator, opts ...Option) OptionalSingle {
-	empty := true
-	var min interface{}
-
-	return newObservableFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-		empty = false
-
-		if min == nil {
-			min = item.V
-		} else {
-			if comparator(min, item.V) > 0 {
-				min = item.V
-			}
+	return optionalSingle(o, func() operator {
+		return &minOperator{
+			comparator: comparator,
+			empty:      true,
 		}
-	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
-		if !empty {
-			dst <- Of(min)
+	}, false, false, opts...)
+}
+
+type minOperator struct {
+	comparator Comparator
+	empty      bool
+	max        interface{}
+}
+
+func (op *minOperator) next(_ context.Context, item Item, _ chan<- Item, _ operatorOptions) {
+	op.empty = false
+
+	if op.max == nil {
+		op.max = item.V
+	} else {
+		if op.comparator(op.max, item.V) > 0 {
+			op.max = item.V
 		}
-	}, opts...)
+	}
+}
+
+func (op *minOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+}
+
+func (op *minOperator) end(_ context.Context, dst chan<- Item) {
+	if !op.empty {
+		dst <- Of(op.max)
+	}
+}
+
+func (op *minOperator) gatherNext(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	op.next(ctx, Of(item.V.(*minOperator).max), dst, operatorOptions)
 }
 
 // Observe observes an Observable by returning its channel.
@@ -1400,134 +1409,119 @@ func (o *ObservableImpl) Observe(opts ...Option) <-chan Item {
 // OnErrorResumeNext instructs an Observable to pass control to another Observable rather than invoking
 // onError if it encounters an error.
 func (o *ObservableImpl) OnErrorResumeNext(resumeSequence ErrorToObservable, opts ...Option) Observable {
-	return newObservableFromOperator(o, defaultNextFuncOperator, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-		operator.resetIterable(resumeSequence(item.E))
-	}, defaultEndFuncOperator, opts...)
+	return observable(o, func() operator {
+		return &onErrorResumeNextOperator{resumeSequence: resumeSequence}
+	}, true, false, opts...)
+}
+
+type onErrorResumeNextOperator struct {
+	resumeSequence ErrorToObservable
+}
+
+func (op *onErrorResumeNextOperator) next(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+	dst <- item
+}
+
+func (op *onErrorResumeNextOperator) err(_ context.Context, item Item, _ chan<- Item, operatorOptions operatorOptions) {
+	operatorOptions.resetIterable(op.resumeSequence(item.E))
+}
+
+func (op *onErrorResumeNextOperator) end(_ context.Context, _ chan<- Item) {
+}
+
+func (op *onErrorResumeNextOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
 // OnErrorReturn instructs an Observable to emit an item (returned by a specified function)
 // rather than invoking onError if it encounters an error.
 func (o *ObservableImpl) OnErrorReturn(resumeFunc ErrorFunc, opts ...Option) Observable {
-	return newObservableFromOperator(o, defaultNextFuncOperator, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-		dst <- Of(resumeFunc(item.E))
-	}, defaultEndFuncOperator, opts...)
+	return observable(o, func() operator {
+		return &onErrorReturnOperator{resumeFunc: resumeFunc}
+	}, true, false, opts...)
+}
+
+type onErrorReturnOperator struct {
+	resumeFunc ErrorFunc
+}
+
+func (op *onErrorReturnOperator) next(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+	dst <- item
+}
+
+func (op *onErrorReturnOperator) err(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+	dst <- Of(op.resumeFunc(item.E))
+}
+
+func (op *onErrorReturnOperator) end(_ context.Context, _ chan<- Item) {
+}
+
+func (op *onErrorReturnOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
 // OnErrorReturnItem instructs on observale to emit an item if it encounters an error.
 func (o *ObservableImpl) OnErrorReturnItem(resume interface{}, opts ...Option) Observable {
-	return newObservableFromOperator(o, defaultNextFuncOperator, func(_ context.Context, _ Item, dst chan<- Item, operator operatorOptions) {
-		dst <- Of(resume)
-	}, defaultEndFuncOperator, opts...)
+	return observable(o, func() operator {
+		return &onErrorReturnItemOperator{resume: resume}
+	}, true, false, opts...)
+}
+
+type onErrorReturnItemOperator struct {
+	resume interface{}
+}
+
+func (op *onErrorReturnItemOperator) next(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+	dst <- item
+}
+
+func (op *onErrorReturnItemOperator) err(_ context.Context, _ Item, dst chan<- Item, _ operatorOptions) {
+	dst <- Of(op.resume)
+}
+
+func (op *onErrorReturnItemOperator) end(_ context.Context, _ chan<- Item) {
+}
+
+func (op *onErrorReturnItemOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
 // Reduce applies a function to each item emitted by an Observable, sequentially, and emit the final value.
 func (o *ObservableImpl) Reduce(apply Func2, opts ...Option) OptionalSingle {
-	option := parseOptions(opts...)
-	if parallel, _ := option.getPool(); parallel {
-		return runParOptionalSingle(reduceOperator{
-			it:    o,
+	return optionalSingle(o, func() operator {
+		return &reduceOperator{
 			apply: apply,
-		}, opts...)
-	}
-	return o.reduceSeq(apply, opts...)
-}
-
-func (o *ObservableImpl) reduceSeq(apply Func2, opts ...Option) OptionalSingle {
-	var acc interface{}
-	empty := true
-
-	return newObservableFromSeqOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-		empty = false
-		v, err := apply(acc, item.V)
-		if err != nil {
-			dst <- Error(err)
-			operator.stop()
-			return
+			empty: true,
 		}
-		acc = v
-	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
-		if !empty {
-			dst <- Of(acc)
-		}
-	}, opts...)
+	}, false, false, opts...)
 }
 
 type reduceOperator struct {
-	it    Iterable
 	apply Func2
+	acc   interface{}
+	empty bool
 }
 
-func (op reduceOperator) run(ctx context.Context, pool int, next chan Item, option Option, opts ...Option) {
-	observe := op.it.Observe(opts...)
-
-	wg := sync.WaitGroup{}
-	wg.Add(pool)
-	ctx, cancel := context.WithCancel(ctx)
-	gather := make(chan Item, 1)
-
-	for i := 0; i < pool; i++ {
-		go func() {
-			defer wg.Done()
-			var acc interface{}
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case item, ok := <-observe:
-					if !ok {
-						gather <- Of(acc)
-						return
-					}
-					if item.Error() {
-						gather <- item
-						if option.getErrorStrategy() == Stop {
-							cancel()
-							return
-						}
-						continue
-					}
-					v, err := op.apply(acc, item.V)
-					if err != nil {
-						gather <- Error(err)
-						if option.getErrorStrategy() == Stop {
-							cancel()
-							return
-						}
-						continue
-					}
-					acc = v
-				}
-			}
-		}()
+func (op *reduceOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	op.empty = false
+	v, err := op.apply(op.acc, item.V)
+	if err != nil {
+		dst <- Error(err)
+		operatorOptions.stop()
+		return
 	}
+	op.acc = v
+}
 
-	go func() {
-		var acc interface{}
-		for item := range gather {
-			if item.Error() {
-				next <- item
-				if option.getErrorStrategy() == Stop {
-					break
-				}
-				continue
-			}
-			v, err := op.apply(acc, item.V)
-			if err != nil {
-				next <- Error(err)
-				cancel()
-				return
-			}
-			acc = v
-		}
-		next <- Of(acc)
-		close(next)
-	}()
+func (op *reduceOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+}
 
-	go func() {
-		wg.Wait()
-		cancel()
-		close(gather)
-	}()
+func (op *reduceOperator) end(_ context.Context, dst chan<- Item) {
+	if !op.empty {
+		dst <- Of(op.acc)
+	}
+}
+
+func (op *reduceOperator) gatherNext(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	op.next(ctx, Of(item.V.(*reduceOperator).acc), dst, operatorOptions)
 }
 
 // Repeat returns an Observable that repeats the sequence of items emitted by the source Observable
