@@ -15,380 +15,194 @@ import (
 
 // All determine whether all items emitted by an Observable meet some criteria.
 func (o *ObservableImpl) All(predicate Predicate, opts ...Option) Single {
-	option := parseOptions(opts...)
-	if parallel, _ := option.getPool(); parallel {
-		return runParSingle(allOperator{
+	return single(o, func() operator {
+		return &allOperator{
 			predicate: predicate,
-			it:        o,
-		}, opts...)
-	}
-	return o.allSeq(predicate, opts...)
-}
-
-func (o *ObservableImpl) allSeq(predicate Predicate, opts ...Option) Single {
-	all := true
-	return newSingleFromSeqOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-		if !predicate(item.V) {
-			dst <- Of(false)
-			all = false
-			operator.stop()
-		}
-	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
-		if all {
-			dst <- Of(true)
+			all:       true,
 		}
 	}, opts...)
 }
 
 type allOperator struct {
-	it        Iterable
 	predicate Predicate
+	all       bool
 }
 
-func (op allOperator) run(ctx context.Context, pool int, next chan Item, option Option, opts ...Option) {
-	observe := op.it.Observe(opts...)
-
-	wg := sync.WaitGroup{}
-	wg.Add(pool)
-	ctx, cancel := context.WithCancel(ctx)
-	gather := make(chan Item, 1)
-
-	for i := 0; i < pool; i++ {
-		go func() {
-			all := true
-			defer wg.Done()
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case item, ok := <-observe:
-					if !ok {
-						gather <- Of(all)
-						return
-					}
-					if item.Error() {
-						gather <- item
-						if option.getErrorStrategy() == Stop {
-							cancel()
-							return
-						}
-						continue
-					}
-					if !op.predicate(item.V) {
-						gather <- Of(false)
-						cancel()
-					}
-				}
-			}
-		}()
+func (op *allOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	if !op.predicate(item.V) {
+		dst <- Of(false)
+		op.all = false
+		operatorOptions.stop()
 	}
+}
 
-	go func() {
-		defer close(next)
-		for item := range gather {
-			if item.Error() {
-				next <- item
-				if option.getErrorStrategy() == Stop {
-					break
-				}
-				continue
-			}
-			if item.V == false {
-				next <- Of(false)
-			}
-		}
-		next <- Of(true)
-	}()
+func (op *allOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+}
 
-	go func() {
-		wg.Wait()
-		cancel()
-		close(gather)
-	}()
+func (op *allOperator) seqEnd(_ context.Context, dst chan<- Item) {
+	if op.all {
+		dst <- Of(true)
+	}
+}
+
+func (op *allOperator) gatherNext(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	if item.V == false {
+		dst <- Of(false)
+		op.all = false
+		operatorOptions.stop()
+	}
+}
+
+func (op *allOperator) parLocalEnd(ctx context.Context, dst chan<- Item) {
+	op.seqEnd(ctx, dst)
 }
 
 // AverageFloat32 calculates the average of numbers emitted by an Observable and emits the average float32.
 func (o *ObservableImpl) AverageFloat32(opts ...Option) Single {
-	option := parseOptions(opts...)
-	if parallel, _ := option.getPool(); parallel {
-		return runParSingle(averageFloat32Operator{
-			it: o,
-		}, opts...)
-	}
-	return o.averageFloat32Seq(opts...)
-}
-
-func (o *ObservableImpl) averageFloat32Seq(opts ...Option) Single {
-	var sum float32
-	var count float32
-
-	return newSingleFromSeqOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-		switch v := item.V.(type) {
-		default:
-			dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: float32, got: %t", item)})
-			operator.stop()
-		case int:
-			sum += float32(v)
-			count++
-		case float32:
-			sum += v
-			count++
-		case float64:
-			sum += float32(v)
-			count++
-		}
-	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
-		if count == 0 {
-			dst <- Of(0)
-		} else {
-			dst <- Of(sum / count)
-		}
+	return single(o, func() operator {
+		return &averageFloat32Operator{}
 	}, opts...)
 }
 
 type averageFloat32Operator struct {
-	it Iterable
-}
-
-type averageFloat32Item struct {
 	sum   float32
 	count float32
 }
 
-func (op averageFloat32Operator) run(ctx context.Context, pool int, next chan Item, option Option, opts ...Option) {
-	observe := op.it.Observe(opts...)
-
-	wg := sync.WaitGroup{}
-	wg.Add(pool)
-	ctx, cancel := context.WithCancel(ctx)
-	gather := make(chan Item, 1)
-
-	for i := 0; i < pool; i++ {
-		go func() {
-			var sum float32
-			var count float32
-			defer wg.Done()
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case item, ok := <-observe:
-					if !ok {
-						gather <- Of(averageFloat32Item{
-							sum:   sum,
-							count: count,
-						})
-						return
-					}
-					if item.Error() {
-						gather <- item
-						if option.getErrorStrategy() == Stop {
-							cancel()
-							return
-						}
-						continue
-					}
-					switch v := item.V.(type) {
-					default:
-						gather <- Error(IllegalInputError{error: fmt.Sprintf("expected type: float32, got: %t", item)})
-						cancel()
-						return
-					case int:
-						sum += float32(v)
-						count++
-					case float32:
-						sum += v
-						count++
-					case float64:
-						sum += float32(v)
-						count++
-					}
-				}
-			}
-		}()
+func (op *averageFloat32Operator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	switch v := item.V.(type) {
+	default:
+		dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: float or int, got: %t", item)})
+		operatorOptions.stop()
+	case int:
+		op.sum += float32(v)
+		op.count++
+	case float32:
+		op.sum += v
+		op.count++
+	case float64:
+		op.sum += float32(v)
+		op.count++
 	}
+}
 
-	go func() {
-		var sum float32
-		var count float32
-		for item := range gather {
-			if item.Error() {
-				next <- item
-				if option.getErrorStrategy() == Stop {
-					break
-				}
-				continue
-			}
-			float32Item := item.V.(averageFloat32Item)
-			sum += float32Item.sum
-			count += float32Item.count
-		}
-		if count != 0 {
-			next <- Of(sum / count)
-		} else {
-			next <- Of(0)
-		}
-		close(next)
-	}()
+func (op *averageFloat32Operator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+}
 
-	go func() {
-		wg.Wait()
-		cancel()
-		close(gather)
-	}()
+func (op *averageFloat32Operator) seqEnd(_ context.Context, dst chan<- Item) {
+	if op.count == 0 {
+		dst <- Of(0)
+	} else {
+		dst <- Of(op.sum / op.count)
+	}
+}
+
+func (op *averageFloat32Operator) parLocalEnd(_ context.Context, dst chan<- Item) {
+	dst <- Of(op)
+}
+
+func (op *averageFloat32Operator) gatherNext(_ context.Context, item Item, _ chan<- Item, _ operatorOptions) {
+	v := item.V.(*averageFloat32Operator)
+	op.sum += v.sum
+	op.count += v.count
 }
 
 // AverageFloat64 calculates the average of numbers emitted by an Observable and emits the average float64.
 func (o *ObservableImpl) AverageFloat64(opts ...Option) Single {
-	option := parseOptions(opts...)
-	if parallel, _ := option.getPool(); parallel {
-		return runParSingle(averageFloat64Operator{
-			it: o,
-		}, opts...)
-	}
-	return o.averageFloat64Seq(opts...)
-}
-
-func (o *ObservableImpl) averageFloat64Seq(opts ...Option) Single {
-	var sum float64
-	var count float64
-
-	return newSingleFromSeqOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-		switch v := item.V.(type) {
-		default:
-			dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: float64, got: %t", item)})
-			operator.stop()
-		case int:
-			sum += float64(v)
-			count++
-		case float32:
-			sum += float64(v)
-			count++
-		case float64:
-			sum += v
-			count++
-		}
-	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
-		if count == 0 {
-			dst <- Of(0)
-		} else {
-			dst <- Of(sum / count)
-		}
+	return single(o, func() operator {
+		return &averageFloat64Operator{}
 	}, opts...)
 }
 
 type averageFloat64Operator struct {
-	it Iterable
-}
-
-type averageFloat64Item struct {
 	sum   float64
 	count float64
 }
 
-func (op averageFloat64Operator) run(ctx context.Context, pool int, next chan Item, option Option, opts ...Option) {
-	observe := op.it.Observe(opts...)
-
-	wg := sync.WaitGroup{}
-	wg.Add(pool)
-	ctx, cancel := context.WithCancel(ctx)
-	gather := make(chan Item, 1)
-
-	for i := 0; i < pool; i++ {
-		go func() {
-			var sum float64
-			var count float64
-			defer wg.Done()
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case item, ok := <-observe:
-					if !ok {
-						gather <- Of(averageFloat64Item{
-							sum:   sum,
-							count: count,
-						})
-						return
-					}
-					if item.Error() {
-						gather <- item
-						if option.getErrorStrategy() == Stop {
-							cancel()
-							return
-						}
-						continue
-					}
-					switch v := item.V.(type) {
-					default:
-						gather <- Error(IllegalInputError{error: fmt.Sprintf("expected type: float64, got: %t", item)})
-						cancel()
-						return
-					case int:
-						sum += float64(v)
-						count++
-					case float32:
-						sum += float64(v)
-						count++
-					case float64:
-						sum += v
-						count++
-					}
-				}
-			}
-		}()
+func (op *averageFloat64Operator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	switch v := item.V.(type) {
+	default:
+		dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: float or int, got: %t", item)})
+		operatorOptions.stop()
+	case int:
+		op.sum += float64(v)
+		op.count++
+	case float32:
+		op.sum += float64(v)
+		op.count++
+	case float64:
+		op.sum += v
+		op.count++
 	}
+}
 
-	go func() {
-		var sum float64
-		var count float64
-		for item := range gather {
-			if item.Error() {
-				next <- item
-				if option.getErrorStrategy() == Stop {
-					break
-				}
-				continue
-			}
-			float64Item := item.V.(averageFloat64Item)
-			sum += float64Item.sum
-			count += float64Item.count
-		}
-		if count != 0 {
-			next <- Of(sum / count)
-		} else {
-			next <- Of(0)
-		}
-		close(next)
-	}()
+func (op *averageFloat64Operator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+}
 
-	go func() {
-		wg.Wait()
-		cancel()
-		close(gather)
-	}()
+func (op *averageFloat64Operator) seqEnd(_ context.Context, dst chan<- Item) {
+	if op.count == 0 {
+		dst <- Of(0)
+	} else {
+		dst <- Of(op.sum / op.count)
+	}
+}
+
+func (op *averageFloat64Operator) parLocalEnd(_ context.Context, dst chan<- Item) {
+	dst <- Of(op)
+}
+
+func (op *averageFloat64Operator) gatherNext(_ context.Context, item Item, _ chan<- Item, _ operatorOptions) {
+	v := item.V.(*averageFloat64Operator)
+	op.sum += v.sum
+	op.count += v.count
 }
 
 // AverageInt calculates the average of numbers emitted by an Observable and emits the average int.
 func (o *ObservableImpl) AverageInt(opts ...Option) Single {
-	var sum int
-	var count int
-
-	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-		if v, ok := item.V.(int); ok {
-			sum += v
-			count++
-		} else {
-			dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int, got: %t", item)})
-			operator.stop()
-		}
-	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
-		if count == 0 {
-			dst <- Of(0)
-		} else {
-			dst <- Of(sum / count)
-		}
+	return single(o, func() operator {
+		return &averageIntOperator{}
 	}, opts...)
+}
+
+type averageIntOperator struct {
+	sum   int
+	count int
+}
+
+func (op *averageIntOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	switch v := item.V.(type) {
+	default:
+		dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int, got: %t", item)})
+		operatorOptions.stop()
+	case int:
+		op.sum += v
+		op.count++
+	}
+}
+
+func (op *averageIntOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+}
+
+func (op *averageIntOperator) seqEnd(_ context.Context, dst chan<- Item) {
+	if op.count == 0 {
+		dst <- Of(0)
+	} else {
+		dst <- Of(op.sum / op.count)
+	}
+}
+
+func (op *averageIntOperator) parLocalEnd(_ context.Context, dst chan<- Item) {
+	dst <- Of(op)
+}
+
+func (op *averageIntOperator) gatherNext(_ context.Context, item Item, _ chan<- Item, _ operatorOptions) {
+	v := item.V.(*averageIntOperator)
+	op.sum += v.sum
+	op.count += v.count
 }
 
 // AverageInt8 calculates the average of numbers emitted by an Observable and emits the≤ average int8.
@@ -776,16 +590,6 @@ func (o *ObservableImpl) Contains(equal Predicate, opts ...Option) Single {
 
 // Count counts the number of items emitted by the source Observable and emit only this value.
 func (o *ObservableImpl) Count(opts ...Option) Single {
-	option := parseOptions(opts...)
-	if parallel, _ := option.getPool(); parallel {
-		return runParSingle(countOperator{
-			it: o,
-		}, opts...)
-	}
-	return o.countSeq(opts...)
-}
-
-func (o *ObservableImpl) countSeq(opts ...Option) Single {
 	var count int64
 	return newSingleFromSeqOperator(o, func(_ context.Context, _ Item, dst chan<- Item, _ operatorOptions) {
 		count++
@@ -795,68 +599,6 @@ func (o *ObservableImpl) countSeq(opts ...Option) Single {
 	}, func(ctx context.Context, dst chan<- Item) {
 		dst <- Of(count)
 	}, opts...)
-}
-
-type countOperator struct {
-	it Iterable
-}
-
-func (op countOperator) run(ctx context.Context, pool int, next chan Item, option Option, opts ...Option) {
-	observe := op.it.Observe(opts...)
-
-	wg := sync.WaitGroup{}
-	wg.Add(pool)
-	ctx, cancel := context.WithCancel(ctx)
-	gather := make(chan Item, 1)
-
-	for i := 0; i < pool; i++ {
-		go func() {
-			var count int64
-			defer wg.Done()
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case item, ok := <-observe:
-					if !ok {
-						gather <- Of(count)
-						return
-					}
-					if item.Error() {
-						gather <- item
-						if option.getErrorStrategy() == Stop {
-							cancel()
-							return
-						}
-						continue
-					}
-					count++
-				}
-			}
-		}()
-	}
-
-	go func() {
-		defer close(next)
-		var count int64
-		for item := range gather {
-			if item.Error() {
-				next <- item
-				if option.getErrorStrategy() == Stop {
-					break
-				}
-				continue
-			}
-			count += item.V.(int64)
-		}
-		next <- Of(count)
-	}()
-
-	go func() {
-		wg.Wait()
-		cancel()
-		close(gather)
-	}()
 }
 
 // DefaultIfEmpty returns an Observable that emits the items emitted by the source

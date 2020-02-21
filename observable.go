@@ -92,6 +92,8 @@ func defaultErrorFuncOperator(_ context.Context, item Item, dst chan<- Item, ope
 	operator.stop()
 }
 
+func defaultLocalEndFuncOperator(_ context.Context, _ chan<- Item) {}
+
 func defaultEndFuncOperator(_ context.Context, _ chan<- Item) {}
 
 func createOperator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, opts ...Option) Iterable {
@@ -103,7 +105,7 @@ func createOperator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc o
 		if withPool, pool := option.getPool(); withPool {
 			runParToRemove(ctx, pool, next, iterable, nextFunc, errFunc, endFunc, option, opts...)
 		} else {
-			runSeq(ctx, next, iterable, nextFunc, errFunc, endFunc, option, opts...)
+			//runSeq(ctx, next, iterable, nextFunc, errFunc, endFunc, option, opts...)
 		}
 
 		return newChannelIterable(next)
@@ -119,70 +121,11 @@ func createOperator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc o
 			if withPool, pool := option.getPool(); withPool {
 				runParToRemove(ctx, pool, next, iterable, nextFunc, errFunc, endFunc, option, mergedOptions...)
 			} else {
-				runSeq(ctx, next, iterable, nextFunc, errFunc, endFunc, option, mergedOptions...)
+				//runSeq(ctx, next, iterable, nextFunc, errFunc, endFunc, option, mergedOptions...)
 			}
 			return next
 		}),
 	}
-}
-
-func seqOperator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, opts ...Option) Iterable {
-	option := parseOptions(opts...)
-
-	if option.isEagerObservation() {
-		next := option.buildChannel()
-		ctx := option.buildContext()
-		runSeq(ctx, next, iterable, nextFunc, errFunc, endFunc, option, opts...)
-		return newChannelIterable(next)
-	}
-
-	return &ObservableImpl{
-		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
-			mergedOptions := append(opts, propagatedOptions...)
-			option = parseOptions(mergedOptions...)
-
-			next := option.buildChannel()
-			ctx := option.buildContext()
-			runSeq(ctx, next, iterable, nextFunc, errFunc, endFunc, option, mergedOptions...)
-			return next
-		}),
-	}
-}
-
-func runSeq(ctx context.Context, next chan Item, iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, option Option, opts ...Option) {
-	go func() {
-		stopped := false
-		observe := iterable.Observe(opts...)
-		operator := operatorOptions{
-			stop: func() {
-				if option.getErrorStrategy() == Stop {
-					stopped = true
-				}
-			},
-			resetIterable: func(newIterable Iterable) {
-				observe = newIterable.Observe(opts...)
-			},
-		}
-
-	loop:
-		for !stopped {
-			select {
-			case <-ctx.Done():
-				break loop
-			case i, ok := <-observe:
-				if !ok {
-					break loop
-				}
-				if i.Error() {
-					errFunc(ctx, i, next, operator)
-				} else {
-					nextFunc(ctx, i, next, operator)
-				}
-			}
-		}
-		endFunc(ctx, next)
-		close(next)
-	}()
 }
 
 func runParToRemove(ctx context.Context, pool int, next chan Item, iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, option Option, opts ...Option) {
@@ -250,9 +193,59 @@ func newObservableFromError(err error) Observable {
 	}
 }
 
-func newSingleFromSeqOperator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, opts ...Option) Single {
+type operatorDel interface {
+	run(ctx context.Context, pool int, next chan Item, option Option, opts ...Option)
+}
+
+func runParOptionalSingle(operator operatorDel, opts ...Option) OptionalSingle {
+	option := parseOptions(opts...)
+	_, pool := option.getPool()
+
+	if option.isEagerObservation() {
+		next := option.buildChannel()
+		ctx := option.buildContext()
+		operator.run(ctx, pool, next, option, opts...)
+		return &OptionalSingleImpl{
+			iterable: newChannelIterable(next),
+		}
+	}
+
+	return &OptionalSingleImpl{
+		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
+			mergedOptions := append(opts, propagatedOptions...)
+			option = parseOptions(mergedOptions...)
+
+			next := option.buildChannel()
+			ctx := option.buildContext()
+			operator.run(ctx, pool, next, option, opts...)
+			return next
+		}),
+	}
+}
+
+func runParSingle(operator operatorDel, opts ...Option) Single {
+	option := parseOptions(opts...)
+	_, pool := option.getPool()
+
+	if option.isEagerObservation() {
+		next := option.buildChannel()
+		ctx := option.buildContext()
+		operator.run(ctx, pool, next, option, opts...)
+		return &SingleImpl{
+			iterable: newChannelIterable(next),
+		}
+	}
+
 	return &SingleImpl{
-		iterable: seqOperator(iterable, nextFunc, errFunc, endFunc, opts...),
+		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
+			mergedOptions := append(opts, propagatedOptions...)
+			option = parseOptions(mergedOptions...)
+
+			next := option.buildChannel()
+			ctx := option.buildContext()
+			operator.run(ctx, pool, next, option, opts...)
+			return next
+		}),
 	}
 }
 
@@ -262,8 +255,10 @@ func newSingleFromSeqOperator(iterable Iterable, nextFunc, errFunc operatorItem,
 //	}
 //}
 
-type operator interface {
-	run(ctx context.Context, pool int, next chan Item, option Option, opts ...Option)
+func newSingleFromSeqOperator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, opts ...Option) Single {
+	return &SingleImpl{
+		iterable: seqOperator(iterable, nextFunc, errFunc, endFunc, opts...),
+	}
 }
 
 // func runParObservable(operator operator, opts ...Option) Observable {
@@ -292,43 +287,52 @@ type operator interface {
 //	}
 //}
 
-func runParOptionalSingle(operator operator, opts ...Option) OptionalSingle {
-	option := parseOptions(opts...)
-	_, pool := option.getPool()
+func seqOperator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, opts ...Option) Iterable {
+	//option := parseOptions(opts...)
 
-	if option.isEagerObservation() {
-		next := option.buildChannel()
-		ctx := option.buildContext()
-		operator.run(ctx, pool, next, option, opts...)
-		return &OptionalSingleImpl{
-			iterable: newChannelIterable(next),
-		}
-	}
-
-	return &OptionalSingleImpl{
-		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
-			mergedOptions := append(opts, propagatedOptions...)
-			option = parseOptions(mergedOptions...)
-
-			next := option.buildChannel()
-			ctx := option.buildContext()
-			operator.run(ctx, pool, next, option, opts...)
-			return next
-		}),
-	}
+	//if option.isEagerObservation() {
+	//	next := option.buildChannel()
+	//	ctx := option.buildContext()
+	//	runSeq(ctx, next, iterable, nextFunc, errFunc, endFunc, option, opts...)
+	//	return newChannelIterable(next)
+	//}
+	//
+	//return &ObservableImpl{
+	//	iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
+	//		mergedOptions := append(opts, propagatedOptions...)
+	//		option = parseOptions(mergedOptions...)
+	//
+	//		next := option.buildChannel()
+	//		ctx := option.buildContext()
+	//		runSeq(ctx, next, iterable, nextFunc, errFunc, endFunc, option, mergedOptions...)
+	//		return next
+	//	}),
+	//}
+	return nil
 }
 
-func runParSingle(operator operator, opts ...Option) Single {
+type operator interface {
+	next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions)
+	err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions)
+	seqEnd(ctx context.Context, dst chan<- Item)
+	parLocalEnd(ctx context.Context, dst chan<- Item)
+	gatherNext(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions)
+}
+
+func single(iterable Iterable, operatorFactory func() operator, opts ...Option) Single {
 	option := parseOptions(opts...)
-	_, pool := option.getPool()
+	parallel, _ := option.getPool()
 
 	if option.isEagerObservation() {
 		next := option.buildChannel()
 		ctx := option.buildContext()
-		operator.run(ctx, pool, next, option, opts...)
-		return &SingleImpl{
-			iterable: newChannelIterable(next),
+		if parallel {
+			runPar(ctx, next, iterable, operatorFactory, option, opts...)
+		} else {
+			runSeq(ctx, next, iterable, operatorFactory, option, opts...)
 		}
+
+		return &SingleImpl{iterable: newChannelIterable(next)}
 	}
 
 	return &SingleImpl{
@@ -338,8 +342,126 @@ func runParSingle(operator operator, opts ...Option) Single {
 
 			next := option.buildChannel()
 			ctx := option.buildContext()
-			operator.run(ctx, pool, next, option, opts...)
+			if parallel {
+				runPar(ctx, next, iterable, operatorFactory, option, mergedOptions...)
+			} else {
+				runSeq(ctx, next, iterable, operatorFactory, option, mergedOptions...)
+			}
 			return next
 		}),
 	}
+}
+
+func runPar(ctx context.Context, next chan Item, iterable Iterable, operatorFactory func() operator, option Option, opts ...Option) {
+	observe := iterable.Observe(opts...)
+
+	wg := sync.WaitGroup{}
+	_, pool := option.getPool()
+	wg.Add(pool)
+	ctx, cancel := context.WithCancel(ctx)
+	gather := make(chan Item, 1)
+
+	for i := 0; i < pool; i++ {
+		go func() {
+			op := operatorFactory()
+			stopped := false
+			operator := operatorOptions{
+				stop: func() {
+					if option.getErrorStrategy() == Stop {
+						stopped = true
+					}
+				},
+				resetIterable: func(newIterable Iterable) {
+					observe = newIterable.Observe(opts...)
+				},
+			}
+			defer wg.Done()
+			for !stopped {
+				select {
+				case <-ctx.Done():
+					return
+				case item, ok := <-observe:
+					if !ok {
+						op.parLocalEnd(ctx, gather)
+						return
+					}
+					if item.Error() {
+						op.err(ctx, item, gather, operator)
+					} else {
+						op.next(ctx, item, gather, operator)
+					}
+				}
+			}
+		}()
+	}
+
+	go func() {
+		op := operatorFactory()
+		stopped := false
+		operator := operatorOptions{
+			stop: func() {
+				if option.getErrorStrategy() == Stop {
+					stopped = true
+				}
+			},
+			resetIterable: func(newIterable Iterable) {
+				observe = newIterable.Observe(opts...)
+			},
+		}
+		for item := range gather {
+			if stopped {
+				break
+			}
+			if item.Error() {
+				op.err(ctx, item, next, operator)
+			} else {
+				op.gatherNext(ctx, item, next, operator)
+			}
+		}
+		op.seqEnd(ctx, next)
+		close(next)
+	}()
+
+	go func() {
+		wg.Wait()
+		cancel()
+		close(gather)
+	}()
+}
+
+func runSeq(ctx context.Context, next chan Item, iterable Iterable, operatorFactory func() operator, option Option, opts ...Option) {
+	go func() {
+		op := operatorFactory()
+		stopped := false
+		observe := iterable.Observe(opts...)
+		operator := operatorOptions{
+			stop: func() {
+				if option.getErrorStrategy() == Stop {
+					stopped = true
+				}
+			},
+			resetIterable: func(newIterable Iterable) {
+				observe = newIterable.Observe(opts...)
+			},
+		}
+
+	loop:
+		for !stopped {
+			select {
+			case <-ctx.Done():
+				break loop
+			case i, ok := <-observe:
+				if !ok {
+					break loop
+				}
+				if i.Error() {
+					op.next(ctx, i, next, operator)
+				} else {
+					op.next(ctx, i, next, operator)
+				}
+			}
+		}
+		op.seqEnd(ctx, next)
+		close(next)
+	}()
 }
