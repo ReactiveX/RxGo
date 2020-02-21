@@ -13,10 +13,36 @@ import (
 	"github.com/emirpasic/gods/trees/binaryheap"
 )
 
+//func (o *ObservableImpl) All(predicate Predicate, opts ...Option) Single {
+//	all := true
+//	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
+//		if !predicate(item.V) {
+//			dst <- Of(false)
+//			all = false
+//			operator.stop()
+//		}
+//	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
+//		if all {
+//			dst <- Of(true)
+//		}
+//	}, opts...)
+//}
+
 // All determine whether all items emitted by an Observable meet some criteria.
 func (o *ObservableImpl) All(predicate Predicate, opts ...Option) Single {
+	option := parseOptions(opts...)
+	if parallel, _ := option.getPool(); parallel {
+		return runParSingle(allOperator{
+			predicate: predicate,
+			it:        o,
+		}, opts...)
+	}
+	return o.allSeq(predicate, opts...)
+}
+
+func (o *ObservableImpl) allSeq(predicate Predicate, opts ...Option) Single {
 	all := true
-	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
+	return newSingleFromSeqOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
 		if !predicate(item.V) {
 			dst <- Of(false)
 			all = false
@@ -27,6 +53,72 @@ func (o *ObservableImpl) All(predicate Predicate, opts ...Option) Single {
 			dst <- Of(true)
 		}
 	}, opts...)
+}
+
+type allOperator struct {
+	it        Iterable
+	predicate Predicate
+}
+
+func (op allOperator) Run(ctx context.Context, pool int, next chan Item, option Option, opts ...Option) {
+	observe := op.it.Observe(opts...)
+
+	wg := sync.WaitGroup{}
+	wg.Add(pool)
+	ctx, cancel := context.WithCancel(ctx)
+	gather := make(chan Item, 1)
+
+	for i := 0; i < pool; i++ {
+		go func() {
+			all := true
+			defer wg.Done()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case item, ok := <-observe:
+					if !ok {
+						gather <- Of(all)
+						return
+					}
+					if item.Error() {
+						gather <- item
+						if option.getErrorStrategy() == Stop {
+							cancel()
+							return
+						}
+						continue
+					}
+					if !op.predicate(item.V) {
+						gather <- Of(false)
+						cancel()
+					}
+				}
+			}
+		}()
+	}
+
+	go func() {
+		defer close(next)
+		for item := range gather {
+			if item.Error() {
+				next <- item
+				if option.getErrorStrategy() == Stop {
+					break
+				}
+				continue
+			}
+			if item.V == false {
+				next <- Of(false)
+			}
+		}
+		next <- Of(true)
+	}()
+
+	go func() {
+		wg.Wait()
+		close(gather)
+	}()
 }
 
 // AverageFloat32 calculates the average of numbers emitted by an Observable and emits the average float32.
@@ -948,7 +1040,10 @@ func (o *ObservableImpl) OnErrorReturnItem(resume interface{}, opts ...Option) O
 func (o *ObservableImpl) Reduce(apply Func2, opts ...Option) OptionalSingle {
 	option := parseOptions(opts...)
 	if parallel, _ := option.getPool(); parallel {
-		return o.reducePar(apply, opts...)
+		return runParOptionalSingle(reduceOperator{
+			it:    o,
+			apply: apply,
+		}, opts...)
 	}
 	return o.reduceSeq(apply, opts...)
 }
@@ -957,7 +1052,7 @@ func (o *ObservableImpl) reduceSeq(apply Func2, opts ...Option) OptionalSingle {
 	var acc interface{}
 	empty := true
 
-	return newObservableFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
+	return newObservableFromSeqOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
 		empty = false
 		v, err := apply(acc, item.V)
 		if err != nil {
@@ -973,34 +1068,13 @@ func (o *ObservableImpl) reduceSeq(apply Func2, opts ...Option) OptionalSingle {
 	}, opts...)
 }
 
-func (o *ObservableImpl) reducePar(apply Func2, opts ...Option) OptionalSingle {
-	option := parseOptions(opts...)
-	_, pool := option.getPool()
-
-	if option.isEagerObservation() {
-		next := option.buildChannel()
-		ctx := option.buildContext()
-		o.reduceParImpl(ctx, apply, pool, next, option)
-		return &OptionalSingleImpl{
-			iterable: newChannelIterable(next),
-		}
-	}
-
-	return &ObservableImpl{
-		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
-			mergedOptions := append(opts, propagatedOptions...)
-			option = parseOptions(mergedOptions...)
-
-			next := option.buildChannel()
-			ctx := option.buildContext()
-			o.reduceParImpl(ctx, apply, pool, next, option)
-			return next
-		}),
-	}
+type reduceOperator struct {
+	it    Iterable
+	apply Func2
 }
 
-func (o *ObservableImpl) reduceParImpl(ctx context.Context, apply Func2, pool int, next chan Item, option Option, opts ...Option) {
-	observe := o.Observe(opts...)
+func (op reduceOperator) Run(ctx context.Context, pool int, next chan Item, option Option, opts ...Option) {
+	observe := op.it.Observe(opts...)
 
 	wg := sync.WaitGroup{}
 	wg.Add(pool)
@@ -1028,7 +1102,7 @@ func (o *ObservableImpl) reduceParImpl(ctx context.Context, apply Func2, pool in
 						}
 						continue
 					}
-					v, err := apply(acc, item.V)
+					v, err := op.apply(acc, item.V)
 					if err != nil {
 						gather <- Error(err)
 						if option.getErrorStrategy() == Stop {
@@ -1053,7 +1127,7 @@ func (o *ObservableImpl) reduceParImpl(ctx context.Context, apply Func2, pool in
 				}
 				continue
 			}
-			v, err := apply(acc, item.V)
+			v, err := op.apply(acc, item.V)
 			if err != nil {
 				next <- Error(err)
 				cancel()
