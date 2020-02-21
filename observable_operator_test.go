@@ -317,50 +317,84 @@ func Test_Observable_Contain_Parallel(t *testing.T) {
 		HasItem(false))
 }
 
-//
-//func Test_Observable_Count(t *testing.T) {
-//	Assert(context.Background(), t, Range(1, 10000).Count(),
-//		HasItem(int64(10001)))
-//}
-//
-//func Test_Observable_Count_Parallel(t *testing.T) {
-//	Assert(context.Background(), t, Range(1, 10000).Count(WithCPUPool()),
-//		HasItem(int64(10001)))
-//}
-//
-//func Test_Observable_DefaultIfEmpty_Empty(t *testing.T) {
-//	obs := Empty().DefaultIfEmpty(3)
-//	Assert(context.Background(), t, obs, HasItems(3))
-//}
-//
-//func Test_Observable_DefaultIfEmpty_NotEmpty(t *testing.T) {
-//	obs := testObservable(1, 2).DefaultIfEmpty(3)
-//	Assert(context.Background(), t, obs, HasItems(1, 2))
-//}
-//
-//func Test_Observable_Distinct(t *testing.T) {
-//	obs := testObservable(1, 2, 2, 1, 3).Distinct(func(item interface{}) (interface{}, error) {
-//		return item, nil
-//	})
-//	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
-//}
-//
-//func Test_Observable_Distinct_Error(t *testing.T) {
-//	obs := testObservable(1, 2, 2, errFoo, 3).Distinct(func(item interface{}) (interface{}, error) {
-//		return item, nil
-//	})
-//	Assert(context.Background(), t, obs, HasItems(1, 2), HasRaisedError(errFoo))
-//}
-//
-//func Test_Observable_Distinct_Error2(t *testing.T) {
-//	obs := testObservable(1, 2, 2, 2, 3, 4).Distinct(func(item interface{}) (interface{}, error) {
-//		if item.(int) == 3 {
-//			return nil, errFoo
-//		}
-//		return item, nil
-//	})
-//	Assert(context.Background(), t, obs, HasItems(1, 2), HasRaisedError(errFoo))
-//}
+func Test_Observable_Count(t *testing.T) {
+	Assert(context.Background(), t, Range(1, 10000).Count(),
+		HasItem(int64(10001)))
+}
+
+func Test_Observable_Count_Parallel(t *testing.T) {
+	Assert(context.Background(), t, Range(1, 10000).Count(WithCPUPool()),
+		HasItem(int64(10001)))
+}
+
+func Test_Observable_DefaultIfEmpty_Empty(t *testing.T) {
+	obs := Empty().DefaultIfEmpty(3)
+	Assert(context.Background(), t, obs, HasItems(3))
+}
+
+func Test_Observable_DefaultIfEmpty_NotEmpty(t *testing.T) {
+	obs := testObservable(1, 2).DefaultIfEmpty(3)
+	Assert(context.Background(), t, obs, HasItems(1, 2))
+}
+
+func Test_Observable_DefaultIfEmpty_Parallel_Empty(t *testing.T) {
+	obs := Empty().DefaultIfEmpty(3, WithCPUPool())
+	Assert(context.Background(), t, obs, HasItems(3))
+}
+
+func Test_Observable_DefaultIfEmpty_Parallel_NotEmpty(t *testing.T) {
+	obs := testObservable(1, 2).DefaultIfEmpty(3, WithCPUPool())
+	Assert(context.Background(), t, obs, HasItems(1, 2))
+}
+
+func Test_Observable_Distinct(t *testing.T) {
+	obs := testObservable(1, 2, 2, 1, 3).Distinct(func(item interface{}) (interface{}, error) {
+		return item, nil
+	})
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
+}
+
+func Test_Observable_Distinct_Error(t *testing.T) {
+	obs := testObservable(1, 2, 2, errFoo, 3).Distinct(func(item interface{}) (interface{}, error) {
+		return item, nil
+	})
+	Assert(context.Background(), t, obs, HasItems(1, 2), HasRaisedError(errFoo))
+}
+
+func Test_Observable_Distinct_Error2(t *testing.T) {
+	obs := testObservable(1, 2, 2, 2, 3, 4).Distinct(func(item interface{}) (interface{}, error) {
+		if item.(int) == 3 {
+			return nil, errFoo
+		}
+		return item, nil
+	})
+	Assert(context.Background(), t, obs, HasItems(1, 2), HasRaisedError(errFoo))
+}
+
+func Test_Observable_Distinct_Parallel(t *testing.T) {
+	obs := testObservable(1, 2, 2, 1, 3).Distinct(func(item interface{}) (interface{}, error) {
+		return item, nil
+	}, WithCPUPool())
+	Assert(context.Background(), t, obs, HasItemsNoParticularOrder(1, 2, 3), HasNotRaisedError())
+}
+
+func Test_Observable_Distinct_Parallel_Error(t *testing.T) {
+	obs := testObservable(1, 2, 2, errFoo).Distinct(func(item interface{}) (interface{}, error) {
+		return item, nil
+	}, WithCPUPool())
+	Assert(context.Background(), t, obs, HasItems(1, 2), HasRaisedError(errFoo))
+}
+
+func Test_Observable_Distinct_Parallel_Error2(t *testing.T) {
+	obs := testObservable(1, 2, 2, 2, 3, 4).Distinct(func(item interface{}) (interface{}, error) {
+		if item.(int) == 3 {
+			return nil, errFoo
+		}
+		return item, nil
+	}, WithCPUPool())
+	Assert(context.Background(), t, obs, HasRaisedError(errFoo))
+}
+
 //
 //func Test_Observable_DistinctUntilChanged(t *testing.T) {
 //	obs := testObservable(1, 2, 2, 1, 3).DistinctUntilChanged(func(item interface{}) (interface{}, error) {

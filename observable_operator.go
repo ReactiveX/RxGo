@@ -456,7 +456,6 @@ func (op *bufferWithCountOperator) end(_ context.Context, dst chan<- Item) {
 }
 
 func (op *bufferWithCountOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
-	panic("not implemented")
 }
 
 // BufferWithTime returns an Observable that emits buffers of items it collects from the source
@@ -681,63 +680,113 @@ func (op *containsOperator) gatherNext(_ context.Context, item Item, dst chan<- 
 }
 
 // Count counts the number of items emitted by the source Observable and emit only this value.
-// func (o *ObservableImpl) Count(opts ...Option) Single {
-//	var count int64
-//	return newSingleFromOperator(o, func(_ context.Context, _ Item, dst chan<- Item, _ operatorOptions) {
-//		count++
-//	}, func(_ context.Context, _ Item, dst chan<- Item, operator operatorOptions) {
-//		count++
-//		dst <- Of(count)
-//		operator.stop()
-//	}, defaultEndFuncOperator, opts...)
-//}
-
-// Count counts the number of items emitted by the source Observable and emit only this value.
 func (o *ObservableImpl) Count(opts ...Option) Single {
-	var count int64
-	return newSingleFromSeqOperator(o, func(_ context.Context, _ Item, dst chan<- Item, _ operatorOptions) {
-		count++
-	}, func(_ context.Context, _ Item, dst chan<- Item, operator operatorOptions) {
-		count++
-		operator.stop()
-	}, func(ctx context.Context, dst chan<- Item) {
-		dst <- Of(count)
-	}, opts...)
+	return single(o, func() operator {
+		return &countOperator{}
+	}, true, opts...)
+}
+
+type countOperator struct {
+	count int64
+}
+
+func (op *countOperator) next(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
+	op.count++
+}
+
+func (op *countOperator) err(_ context.Context, _ Item, _ chan<- Item, operatorOptions operatorOptions) {
+	op.count++
+	operatorOptions.stop()
+}
+
+func (op *countOperator) end(_ context.Context, dst chan<- Item) {
+	dst <- Of(op.count)
+}
+
+func (op *countOperator) gatherNext(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 }
 
 // DefaultIfEmpty returns an Observable that emits the items emitted by the source
 // Observable or a specified default item if the source Observable is empty.
 func (o *ObservableImpl) DefaultIfEmpty(defaultValue interface{}, opts ...Option) Observable {
-	empty := true
-
-	return newObservableFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-		empty = false
-		dst <- item
-	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
-		if empty {
-			dst <- Of(defaultValue)
+	return observable(o, func() operator {
+		return &defaultIfEmptyOperator{
+			defaultValue: defaultValue,
+			empty:        true,
 		}
-	}, opts...)
+	}, true, opts...)
+}
+
+type defaultIfEmptyOperator struct {
+	defaultValue interface{}
+	empty        bool
+}
+
+func (op *defaultIfEmptyOperator) next(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+	op.empty = false
+	dst <- item
+}
+
+func (op *defaultIfEmptyOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+}
+
+func (op *defaultIfEmptyOperator) end(_ context.Context, dst chan<- Item) {
+	if op.empty {
+		dst <- Of(op.defaultValue)
+	}
+}
+
+func (op *defaultIfEmptyOperator) gatherNext(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 }
 
 // Distinct suppresses duplicate items in the original Observable and returns
 // a new Observable.
 func (o *ObservableImpl) Distinct(apply Func, opts ...Option) Observable {
-	keyset := make(map[interface{}]interface{})
+	return observable(o, func() operator {
+		return &distinctOperator{
+			apply:  apply,
+			keyset: make(map[interface{}]interface{}),
+		}
+	}, false, opts...)
+}
 
-	return newObservableFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-		key, err := apply(item.V)
-		if err != nil {
-			dst <- Error(err)
-			operator.stop()
-			return
-		}
-		_, ok := keyset[key]
-		if !ok {
-			dst <- item
-		}
-		keyset[key] = nil
-	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
+type distinctOperator struct {
+	apply  Func
+	keyset map[interface{}]interface{}
+}
+
+func (op *distinctOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	key, err := op.apply(item.V)
+	if err != nil {
+		dst <- Error(err)
+		operatorOptions.stop()
+		return
+	}
+	_, ok := op.keyset[key]
+	if !ok {
+		dst <- item
+	}
+	op.keyset[key] = nil
+}
+
+func (op *distinctOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+}
+
+func (op *distinctOperator) end(_ context.Context, _ chan<- Item) {
+}
+
+func (op *distinctOperator) gatherNext(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+	switch item.V.(type) {
+	case *distinctOperator:
+		return
+	}
+
+	if _, contains := op.keyset[item.V]; !contains {
+		dst <- Of(item.V)
+		op.keyset[item.V] = nil
+	}
 }
 
 // DistinctUntilChanged suppresses consecutive duplicate items in the original
