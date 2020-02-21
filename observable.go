@@ -101,9 +101,9 @@ func operator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc operato
 		next := option.buildChannel()
 		ctx := option.buildContext()
 		if withPool, pool := option.getPool(); withPool {
-			parallel(ctx, pool, next, iterable, nextFunc, errFunc, endFunc, option, opts...)
+			runParToRemove(ctx, pool, next, iterable, nextFunc, errFunc, endFunc, option, opts...)
 		} else {
-			seq(ctx, next, iterable, nextFunc, errFunc, endFunc, option, opts...)
+			runSeq(ctx, next, iterable, nextFunc, errFunc, endFunc, option, opts...)
 		}
 
 		return newChannelIterable(next)
@@ -117,16 +117,16 @@ func operator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc operato
 			next := option.buildChannel()
 			ctx := option.buildContext()
 			if withPool, pool := option.getPool(); withPool {
-				parallel(ctx, pool, next, iterable, nextFunc, errFunc, endFunc, option, mergedOptions...)
+				runParToRemove(ctx, pool, next, iterable, nextFunc, errFunc, endFunc, option, mergedOptions...)
 			} else {
-				seq(ctx, next, iterable, nextFunc, errFunc, endFunc, option, mergedOptions...)
+				runSeq(ctx, next, iterable, nextFunc, errFunc, endFunc, option, mergedOptions...)
 			}
 			return next
 		}),
 	}
 }
 
-func seq(ctx context.Context, next chan Item, iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, option Option, opts ...Option) {
+func runSeq(ctx context.Context, next chan Item, iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, option Option, opts ...Option) {
 	go func() {
 		stopped := false
 		observe := iterable.Observe(opts...)
@@ -162,7 +162,7 @@ func seq(ctx context.Context, next chan Item, iterable Iterable, nextFunc, errFu
 	}()
 }
 
-func parallel(ctx context.Context, pool int, next chan Item, iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, option Option, opts ...Option) {
+func runParToRemove(ctx context.Context, pool int, next chan Item, iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, option Option, opts ...Option) {
 	stopped := abool.New()
 	observe := iterable.Observe(opts...)
 	operator := operatorOptions{

@@ -7,6 +7,7 @@ type Single interface {
 	Iterable
 	Filter(apply Predicate, opts ...Option) OptionalSingle
 	Map(apply Func, opts ...Option) Single
+	Run(opts ...Option) Disposed
 }
 
 // SingleImpl implements Single.
@@ -47,4 +48,28 @@ func (s *SingleImpl) Map(apply Func, opts ...Option) Single {
 			operator.stop()
 		}
 	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
+}
+
+// Run creates an observer without consuming the emitted items.
+func (o *SingleImpl) Run(opts ...Option) Disposed {
+	dispose := make(chan struct{})
+	option := parseOptions(opts...)
+	ctx := option.buildContext()
+
+	go func() {
+		defer close(dispose)
+		observe := o.Observe()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case _, ok := <-observe:
+				if !ok {
+					return
+				}
+			}
+		}
+	}()
+
+	return dispose
 }

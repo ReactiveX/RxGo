@@ -183,6 +183,44 @@ func (o *ObservableImpl) AverageInt64(opts ...Option) Single {
 	}, opts...)
 }
 
+// BackOffRetry implements a backoff retry if a source Observable sends an error, resubscribe to it in the hopes that it will complete without error.
+func (o *ObservableImpl) BackOffRetry(backOffCfg backoff.BackOff, opts ...Option) Observable {
+	option := parseOptions(opts...)
+	next := option.buildChannel()
+	ctx := option.buildContext()
+
+	f := func() error {
+		observe := o.Observe()
+		for {
+			select {
+			case <-ctx.Done():
+				close(next)
+				return nil
+			case i, ok := <-observe:
+				if !ok {
+					return nil
+				}
+				if i.Error() {
+					return i.E
+				}
+				next <- i
+			}
+		}
+	}
+	go func() {
+		if err := backoff.Retry(f, backOffCfg); err != nil {
+			next <- Error(err)
+			close(next)
+			return
+		}
+		close(next)
+	}()
+
+	return &ObservableImpl{
+		iterable: newChannelIterable(next),
+	}
+}
+
 // BufferWithCount returns an Observable that emits buffers of items it collects
 // from the source Observable.
 // The resulting Observable emits buffers every skip items, each containing a slice of count items.
@@ -908,6 +946,14 @@ func (o *ObservableImpl) OnErrorReturnItem(resume interface{}, opts ...Option) O
 
 // Reduce applies a function to each item emitted by an Observable, sequentially, and emit the final value.
 func (o *ObservableImpl) Reduce(apply Func2, opts ...Option) OptionalSingle {
+	option := parseOptions(opts...)
+	if parallel, _ := option.getPool(); parallel {
+		return o.reducePar(apply, opts...)
+	}
+	return o.reduceSeq(apply, opts...)
+}
+
+func (o *ObservableImpl) reduceSeq(apply Func2, opts ...Option) OptionalSingle {
 	var acc interface{}
 	empty := true
 
@@ -925,6 +971,104 @@ func (o *ObservableImpl) Reduce(apply Func2, opts ...Option) OptionalSingle {
 			dst <- Of(acc)
 		}
 	}, opts...)
+}
+
+func (o *ObservableImpl) reducePar(apply Func2, opts ...Option) OptionalSingle {
+	option := parseOptions(opts...)
+	_, pool := option.getPool()
+
+	if option.isEagerObservation() {
+		next := option.buildChannel()
+		ctx := option.buildContext()
+		o.reduceParImpl(ctx, apply, pool, next, option)
+		return &OptionalSingleImpl{
+			iterable: newChannelIterable(next),
+		}
+	}
+
+	return &ObservableImpl{
+		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
+			mergedOptions := append(opts, propagatedOptions...)
+			option = parseOptions(mergedOptions...)
+
+			next := option.buildChannel()
+			ctx := option.buildContext()
+			o.reduceParImpl(ctx, apply, pool, next, option)
+			return next
+		}),
+	}
+}
+
+func (o *ObservableImpl) reduceParImpl(ctx context.Context, apply Func2, pool int, next chan Item, option Option, opts ...Option) {
+	observe := o.Observe(opts...)
+
+	wg := sync.WaitGroup{}
+	wg.Add(pool)
+	ctx, cancel := context.WithCancel(ctx)
+	gather := make(chan Item, 1)
+
+	for i := 0; i < pool; i++ {
+		go func() {
+			defer wg.Done()
+			var acc interface{}
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case item, ok := <-observe:
+					if !ok {
+						gather <- Of(acc)
+						return
+					}
+					if item.Error() {
+						gather <- item
+						if option.getErrorStrategy() == Stop {
+							cancel()
+							return
+						}
+						continue
+					}
+					v, err := apply(acc, item.V)
+					if err != nil {
+						gather <- Error(err)
+						if option.getErrorStrategy() == Stop {
+							cancel()
+							return
+						}
+						continue
+					}
+					acc = v
+				}
+			}
+		}()
+	}
+
+	go func() {
+		var acc interface{}
+		for item := range gather {
+			if item.Error() {
+				next <- item
+				if option.getErrorStrategy() == Stop {
+					break
+				}
+				continue
+			}
+			v, err := apply(acc, item.V)
+			if err != nil {
+				next <- Error(err)
+				cancel()
+				return
+			}
+			acc = v
+		}
+		next <- Of(acc)
+		close(next)
+	}()
+
+	go func() {
+		wg.Wait()
+		close(gather)
+	}()
 }
 
 // Repeat returns an Observable that repeats the sequence of items emitted by the source Observable
@@ -962,44 +1106,6 @@ func (o *ObservableImpl) Repeat(count int64, frequency Duration, opts ...Option)
 			count = count - 1
 		}
 	}, opts...)
-}
-
-// BackOffRetry implements a backoff retry if a source Observable sends an error, resubscribe to it in the hopes that it will complete without error.
-func (o *ObservableImpl) BackOffRetry(backOffCfg backoff.BackOff, opts ...Option) Observable {
-	option := parseOptions(opts...)
-	next := option.buildChannel()
-	ctx := option.buildContext()
-
-	f := func() error {
-		observe := o.Observe()
-		for {
-			select {
-			case <-ctx.Done():
-				close(next)
-				return nil
-			case i, ok := <-observe:
-				if !ok {
-					return nil
-				}
-				if i.Error() {
-					return i.E
-				}
-				next <- i
-			}
-		}
-	}
-	go func() {
-		if err := backoff.Retry(f, backOffCfg); err != nil {
-			next <- Error(err)
-			close(next)
-			return
-		}
-		close(next)
-	}()
-
-	return &ObservableImpl{
-		iterable: newChannelIterable(next),
-	}
 }
 
 // Retry retries if a source Observable sends an error, resubscribe to it in the hopes that it will complete without error.

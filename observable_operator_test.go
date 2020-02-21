@@ -657,6 +657,21 @@ func Test_Observable_Min(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItem(-1))
 }
 
+func Test_Observable_Min_Parallel(t *testing.T) {
+	obs := Range(1, 10000).Min(func(e1 interface{}, e2 interface{}) int {
+		i1 := e1.(int)
+		i2 := e2.(int)
+		if i1 > i2 {
+			return 1
+		} else if i1 < i2 {
+			return -1
+		} else {
+			return 0
+		}
+	}, WithPool(4))
+	Assert(context.Background(), t, obs, HasItem(-1))
+}
+
 func Test_Observable_Observe(t *testing.T) {
 	got := make([]int, 0)
 	ch := testObservable(1, 2, 3).Observe()
@@ -686,7 +701,7 @@ func Test_Observable_OnErrorReturnItem(t *testing.T) {
 }
 
 func Test_Observable_Reduce(t *testing.T) {
-	obs := testObservable(1, 2, 3, 4, 5).Reduce(func(acc interface{}, elem interface{}) (interface{}, error) {
+	obs := Range(1, 10000).Reduce(func(acc interface{}, elem interface{}) (interface{}, error) {
 		if a, ok := acc.(int); ok {
 			if b, ok := elem.(int); ok {
 				return a + b, nil
@@ -696,7 +711,55 @@ func Test_Observable_Reduce(t *testing.T) {
 		}
 		return 0, errFoo
 	})
-	Assert(context.Background(), t, obs, HasItem(15), HasNotRaisedError())
+	Assert(context.Background(), t, obs, HasItem(50015001), HasNotRaisedError())
+}
+
+func Test_Observable_Reduce_Parallel(t *testing.T) {
+	obs := Range(1, 10000).Reduce(func(acc interface{}, elem interface{}) (interface{}, error) {
+		if a, ok := acc.(int); ok {
+			if b, ok := elem.(int); ok {
+				return a + b, nil
+			}
+		} else {
+			return elem.(int), nil
+		}
+		return 0, errFoo
+	}, WithCPUPool())
+	Assert(context.Background(), t, obs, HasItem(50015001), HasNotRaisedError())
+}
+
+func Test_Observable_Reduce_Parallel_Error(t *testing.T) {
+	obs := Range(1, 10000).Reduce(func(acc interface{}, elem interface{}) (interface{}, error) {
+		if elem == 1000 {
+			return nil, errFoo
+		}
+		if a, ok := acc.(int); ok {
+			if b, ok := elem.(int); ok {
+				return a + b, nil
+			}
+		} else {
+			return elem.(int), nil
+		}
+		return 0, errFoo
+	}, WithCPUPool())
+	Assert(context.Background(), t, obs, HasRaisedError(errFoo))
+}
+
+func Test_Observable_Reduce_Parallel_WithErrorStrategy(t *testing.T) {
+	obs := Range(1, 10000).Reduce(func(acc interface{}, elem interface{}) (interface{}, error) {
+		if elem == 1 {
+			return nil, errFoo
+		}
+		if a, ok := acc.(int); ok {
+			if b, ok := elem.(int); ok {
+				return a + b, nil
+			}
+		} else {
+			return elem.(int), nil
+		}
+		return 0, errFoo
+	}, WithCPUPool(), WithErrorStrategy(Continue))
+	Assert(context.Background(), t, obs, HasItem(50015000), HasRaisedError(errFoo))
 }
 
 func Test_Observable_Reduce_Empty(t *testing.T) {
@@ -974,6 +1037,10 @@ func Test_Observable_SumInt64(t *testing.T) {
 		HasItem(int64(15)))
 	Assert(context.Background(), t, testObservable(1.1, 2.2, 3.3).SumInt64(), HasRaisedAnError())
 	Assert(context.Background(), t, Empty().SumInt64(), HasItem(int64(0)))
+}
+
+func Test_Observable_SumInt64_Parallel(t *testing.T) {
+	Assert(context.Background(), t, Range(1, 10000).SumInt64(WithPool(8)), HasItem(int64(50015001)))
 }
 
 func Test_Observable_Take(t *testing.T) {
