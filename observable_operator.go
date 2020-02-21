@@ -133,6 +133,9 @@ func (o *ObservableImpl) averageFloat32Seq(opts ...Option) Single {
 		case float32:
 			sum += v
 			count++
+		case float64:
+			sum += float32(v)
+			count++
 		}
 	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
 		if count == 0 {
@@ -196,6 +199,9 @@ func (op averageFloat32Operator) run(ctx context.Context, pool int, next chan It
 					case float32:
 						sum += v
 						count++
+					case float64:
+						sum += float32(v)
+						count++
 					}
 				}
 			}
@@ -234,16 +240,33 @@ func (op averageFloat32Operator) run(ctx context.Context, pool int, next chan It
 
 // AverageFloat64 calculates the average of numbers emitted by an Observable and emits the average float64.
 func (o *ObservableImpl) AverageFloat64(opts ...Option) Single {
+	option := parseOptions(opts...)
+	if parallel, _ := option.getPool(); parallel {
+		return runParSingle(averageFloat64Operator{
+			it: o,
+		}, opts...)
+	}
+	return o.averageFloat64Seq(opts...)
+}
+
+func (o *ObservableImpl) averageFloat64Seq(opts ...Option) Single {
 	var sum float64
 	var count float64
 
-	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-		if v, ok := item.V.(float64); ok {
-			sum += v
-			count++
-		} else {
+	return newSingleFromSeqOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
+		switch v := item.V.(type) {
+		default:
 			dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: float64, got: %t", item)})
 			operator.stop()
+		case int:
+			sum += float64(v)
+			count++
+		case float32:
+			sum += float64(v)
+			count++
+		case float64:
+			sum += v
+			count++
 		}
 	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
 		if count == 0 {
@@ -252,6 +275,98 @@ func (o *ObservableImpl) AverageFloat64(opts ...Option) Single {
 			dst <- Of(sum / count)
 		}
 	}, opts...)
+}
+
+type averageFloat64Operator struct {
+	it Iterable
+}
+
+type averageFloat64Item struct {
+	sum   float64
+	count float64
+}
+
+func (op averageFloat64Operator) run(ctx context.Context, pool int, next chan Item, option Option, opts ...Option) {
+	observe := op.it.Observe(opts...)
+
+	wg := sync.WaitGroup{}
+	wg.Add(pool)
+	ctx, cancel := context.WithCancel(ctx)
+	gather := make(chan Item, 1)
+
+	for i := 0; i < pool; i++ {
+		go func() {
+			var sum float64
+			var count float64
+			defer wg.Done()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case item, ok := <-observe:
+					if !ok {
+						gather <- Of(averageFloat64Item{
+							sum:   sum,
+							count: count,
+						})
+						return
+					}
+					if item.Error() {
+						gather <- item
+						if option.getErrorStrategy() == Stop {
+							cancel()
+							return
+						}
+						continue
+					}
+					switch v := item.V.(type) {
+					default:
+						gather <- Error(IllegalInputError{error: fmt.Sprintf("expected type: float64, got: %t", item)})
+						cancel()
+						return
+					case int:
+						sum += float64(v)
+						count++
+					case float32:
+						sum += float64(v)
+						count++
+					case float64:
+						sum += v
+						count++
+					}
+				}
+			}
+		}()
+	}
+
+	go func() {
+		var sum float64
+		var count float64
+		for item := range gather {
+			if item.Error() {
+				next <- item
+				if option.getErrorStrategy() == Stop {
+					break
+				}
+				continue
+			}
+			float64Item := item.V.(averageFloat64Item)
+			sum += float64Item.sum
+			count += float64Item.count
+		}
+		if count != 0 {
+			next <- Of(sum / count)
+		} else {
+			next <- Of(0)
+		}
+		close(next)
+	}()
+
+	go func() {
+		wg.Wait()
+		cancel()
+		close(gather)
+	}()
 }
 
 // AverageInt calculates the average of numbers emitted by an Observable and emits the average int.
