@@ -6,10 +6,11 @@ import (
 )
 
 const (
-	benchChannelCap            = 1000
-	benchNumberOfElementsLarge = 1000000
-	benchNumberOfElementsSmall = 1000
-	ioPool                     = 32
+	benchChannelCap                 = 1000
+	benchNumberOfElementsExtraLarge = 100000000
+	benchNumberOfElementsLarge      = 1000000
+	benchNumberOfElementsSmall      = 1000
+	ioPool                          = 32
 )
 
 func Benchmark_Range_Sequential(b *testing.B) {
@@ -81,7 +82,7 @@ func Benchmark_Reduce_Parallel(b *testing.B) {
 func Benchmark_Count_Sequential(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
-		obs := Range(0, benchNumberOfElementsLarge*100, WithBufferedChannel(benchChannelCap)).
+		obs := Range(0, benchNumberOfElementsExtraLarge, WithBufferedChannel(benchChannelCap)).
 			Count()
 		b.StartTimer()
 		<-obs.Run()
@@ -91,7 +92,7 @@ func Benchmark_Count_Sequential(b *testing.B) {
 func Benchmark_Count_Parallel(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
-		obs := Range(0, benchNumberOfElementsLarge*100, WithBufferedChannel(benchChannelCap)).
+		obs := Range(0, benchNumberOfElementsExtraLarge, WithBufferedChannel(benchChannelCap)).
 			Count(WithCPUPool())
 		b.StartTimer()
 		<-obs.Run()

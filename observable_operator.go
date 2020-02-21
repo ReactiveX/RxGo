@@ -648,7 +648,7 @@ func (o *ObservableImpl) Contains(equal Predicate, opts ...Option) Single {
 }
 
 // Count counts the number of items emitted by the source Observable and emit only this value.
-//func (o *ObservableImpl) Count(opts ...Option) Single {
+// func (o *ObservableImpl) Count(opts ...Option) Single {
 //	var count int64
 //	return newSingleFromOperator(o, func(_ context.Context, _ Item, dst chan<- Item, _ operatorOptions) {
 //		count++
