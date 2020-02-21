@@ -20,7 +20,7 @@ func Test_Single_Filter_False(t *testing.T) {
 }
 
 func Test_Single_Map(t *testing.T) {
-	single := JustItem(1).Map(func(i interface{}) (interface{}, error) {
+	single := JustItem(1).Map(func(_ context.Context, i interface{}) (interface{}, error) {
 		return i.(int) + 1, nil
 	})
 	Assert(context.Background(), t, single, HasItem(2), HasNotRaisedError())

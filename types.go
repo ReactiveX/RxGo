@@ -23,9 +23,9 @@ type (
 	// ErrorToObservable defines a function that transforms an observable from an error.
 	ErrorToObservable func(error) Observable
 	// Func defines a function that computes a value from an input value.
-	Func func(interface{}) (interface{}, error)
+	Func func(context.Context, interface{}) (interface{}, error)
 	// Func2 defines a function that computes a value from two input values.
-	Func2 func(interface{}, interface{}) (interface{}, error)
+	Func2 func(context.Context, interface{}, interface{}) (interface{}, error)
 	// FuncN defines a function that computes a value from N input values.
 	FuncN func(...interface{}) interface{}
 	// ErrorFunc defines a function that computes a value from an error.

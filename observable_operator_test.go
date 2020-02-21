@@ -352,21 +352,21 @@ func Test_Observable_DefaultIfEmpty_Parallel_NotEmpty(t *testing.T) {
 }
 
 func Test_Observable_Distinct(t *testing.T) {
-	obs := testObservable(1, 2, 2, 1, 3).Distinct(func(item interface{}) (interface{}, error) {
+	obs := testObservable(1, 2, 2, 1, 3).Distinct(func(_ context.Context, item interface{}) (interface{}, error) {
 		return item, nil
 	})
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
 }
 
 func Test_Observable_Distinct_Error(t *testing.T) {
-	obs := testObservable(1, 2, 2, errFoo, 3).Distinct(func(item interface{}) (interface{}, error) {
+	obs := testObservable(1, 2, 2, errFoo, 3).Distinct(func(_ context.Context, item interface{}) (interface{}, error) {
 		return item, nil
 	})
 	Assert(context.Background(), t, obs, HasItems(1, 2), HasRaisedError(errFoo))
 }
 
 func Test_Observable_Distinct_Error2(t *testing.T) {
-	obs := testObservable(1, 2, 2, 2, 3, 4).Distinct(func(item interface{}) (interface{}, error) {
+	obs := testObservable(1, 2, 2, 2, 3, 4).Distinct(func(_ context.Context, item interface{}) (interface{}, error) {
 		if item.(int) == 3 {
 			return nil, errFoo
 		}
@@ -376,21 +376,21 @@ func Test_Observable_Distinct_Error2(t *testing.T) {
 }
 
 func Test_Observable_Distinct_Parallel(t *testing.T) {
-	obs := testObservable(1, 2, 2, 1, 3).Distinct(func(item interface{}) (interface{}, error) {
+	obs := testObservable(1, 2, 2, 1, 3).Distinct(func(_ context.Context, item interface{}) (interface{}, error) {
 		return item, nil
 	}, WithCPUPool())
 	Assert(context.Background(), t, obs, HasItemsNoParticularOrder(1, 2, 3), HasNotRaisedError())
 }
 
 func Test_Observable_Distinct_Parallel_Error(t *testing.T) {
-	obs := testObservable(1, 2, 2, errFoo).Distinct(func(item interface{}) (interface{}, error) {
+	obs := testObservable(1, 2, 2, errFoo).Distinct(func(_ context.Context, item interface{}) (interface{}, error) {
 		return item, nil
 	}, WithCPUPool())
 	Assert(context.Background(), t, obs, HasRaisedError(errFoo))
 }
 
 func Test_Observable_Distinct_Parallel_Error2(t *testing.T) {
-	obs := testObservable(1, 2, 2, 2, 3, 4).Distinct(func(item interface{}) (interface{}, error) {
+	obs := testObservable(1, 2, 2, 2, 3, 4).Distinct(func(_ context.Context, item interface{}) (interface{}, error) {
 		if item.(int) == 3 {
 			return nil, errFoo
 		}
@@ -400,14 +400,14 @@ func Test_Observable_Distinct_Parallel_Error2(t *testing.T) {
 }
 
 func Test_Observable_DistinctUntilChanged(t *testing.T) {
-	obs := testObservable(1, 2, 2, 1, 3).DistinctUntilChanged(func(item interface{}) (interface{}, error) {
+	obs := testObservable(1, 2, 2, 1, 3).DistinctUntilChanged(func(_ context.Context, item interface{}) (interface{}, error) {
 		return item, nil
 	})
 	Assert(context.Background(), t, obs, HasItems(1, 2, 1, 3))
 }
 
 func Test_Observable_DistinctUntilChanged_Parallel(t *testing.T) {
-	obs := testObservable(1, 2, 2, 1, 3).DistinctUntilChanged(func(item interface{}) (interface{}, error) {
+	obs := testObservable(1, 2, 2, 1, 3).DistinctUntilChanged(func(_ context.Context, item interface{}) (interface{}, error) {
 		return item, nil
 	}, WithCPUPool())
 	Assert(context.Background(), t, obs, HasItems(1, 2, 1, 3))
@@ -497,7 +497,7 @@ func Test_Observable_Errors_MultipleError(t *testing.T) {
 }
 
 func Test_Observable_Errors_MultipleErrorFromMap(t *testing.T) {
-	errs := testObservable(1, 2, 3, 4).Map(func(i interface{}) (interface{}, error) {
+	errs := testObservable(1, 2, 3, 4).Map(func(_ context.Context, i interface{}) (interface{}, error) {
 		if i == 2 {
 			return nil, errFoo
 		}
@@ -752,30 +752,30 @@ func Test_Observable_LastOrDefault_Parallel_Empty(t *testing.T) {
 }
 
 func Test_Observable_Map_One(t *testing.T) {
-	obs := testObservable(1, 2, 3).Map(func(i interface{}) (interface{}, error) {
+	obs := testObservable(1, 2, 3).Map(func(_ context.Context, i interface{}) (interface{}, error) {
 		return i.(int) + 1, nil
 	})
 	Assert(context.Background(), t, obs, HasItems(2, 3, 4), HasNotRaisedError())
 }
 
 func Test_Observable_Map_Multiple(t *testing.T) {
-	obs := testObservable(1, 2, 3).Map(func(i interface{}) (interface{}, error) {
+	obs := testObservable(1, 2, 3).Map(func(_ context.Context, i interface{}) (interface{}, error) {
 		return i.(int) + 1, nil
-	}).Map(func(i interface{}) (interface{}, error) {
+	}).Map(func(_ context.Context, i interface{}) (interface{}, error) {
 		return i.(int) * 10, nil
 	})
 	Assert(context.Background(), t, obs, HasItems(20, 30, 40), HasNotRaisedError())
 }
 
 func Test_Observable_Map_Error(t *testing.T) {
-	obs := testObservable(1, 2, 3, errFoo).Map(func(i interface{}) (interface{}, error) {
+	obs := testObservable(1, 2, 3, errFoo).Map(func(_ context.Context, i interface{}) (interface{}, error) {
 		return i.(int) + 1, nil
 	})
 	Assert(context.Background(), t, obs, HasItems(2, 3, 4), HasRaisedError(errFoo))
 }
 
 func Test_Observable_Map_ReturnValueAndError(t *testing.T) {
-	obs := testObservable(1).Map(func(i interface{}) (interface{}, error) {
+	obs := testObservable(1).Map(func(_ context.Context, i interface{}) (interface{}, error) {
 		return 2, errFoo
 	})
 	Assert(context.Background(), t, obs, HasNoItems(), HasRaisedError(errFoo))
@@ -783,9 +783,9 @@ func Test_Observable_Map_ReturnValueAndError(t *testing.T) {
 
 func Test_Observable_Map_Multiple_Error(t *testing.T) {
 	called := false
-	obs := testObservable(1, 2, 3).Map(func(i interface{}) (interface{}, error) {
+	obs := testObservable(1, 2, 3).Map(func(_ context.Context, i interface{}) (interface{}, error) {
 		return nil, errFoo
-	}).Map(func(i interface{}) (interface{}, error) {
+	}).Map(func(_ context.Context, i interface{}) (interface{}, error) {
 		called = true
 		return nil, nil
 	})
@@ -797,7 +797,7 @@ func Test_Observable_Map_Cancel(t *testing.T) {
 	next := make(chan Item)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	obs := FromChannel(next).Map(func(i interface{}) (interface{}, error) {
+	obs := FromChannel(next).Map(func(_ context.Context, i interface{}) (interface{}, error) {
 		return i.(int) + 1, nil
 	}, WithContext(ctx))
 	cancel()
@@ -814,7 +814,7 @@ func Test_Observable_Map_Parallel(t *testing.T) {
 		close(ch)
 	}()
 
-	obs := FromChannel(ch).Map(func(i interface{}) (interface{}, error) {
+	obs := FromChannel(ch).Map(func(_ context.Context, i interface{}) (interface{}, error) {
 		return i.(int) + 1, nil
 	}, WithPool(len))
 	Assert(context.Background(), t, obs, HasItemsNoParticularOrder(1, 2, 3, 4, 5, 6, 7, 8, 9, 10), HasNotRaisedError())
@@ -929,7 +929,7 @@ func Test_Observable_OnErrorReturnItem(t *testing.T) {
 }
 
 func Test_Observable_Reduce(t *testing.T) {
-	obs := Range(1, 10000).Reduce(func(acc interface{}, elem interface{}) (interface{}, error) {
+	obs := Range(1, 10000).Reduce(func(_ context.Context, acc interface{}, elem interface{}) (interface{}, error) {
 		if a, ok := acc.(int); ok {
 			if b, ok := elem.(int); ok {
 				return a + b, nil
@@ -943,21 +943,21 @@ func Test_Observable_Reduce(t *testing.T) {
 }
 
 func Test_Observable_Reduce_Empty(t *testing.T) {
-	obs := Empty().Reduce(func(acc interface{}, elem interface{}) (interface{}, error) {
+	obs := Empty().Reduce(func(_ context.Context, acc interface{}, elem interface{}) (interface{}, error) {
 		return 0, nil
 	})
 	Assert(context.Background(), t, obs, HasNoItem(), HasNotRaisedError())
 }
 
 func Test_Observable_Reduce_Error(t *testing.T) {
-	obs := testObservable(1, 2, errFoo, 4, 5).Reduce(func(acc interface{}, elem interface{}) (interface{}, error) {
+	obs := testObservable(1, 2, errFoo, 4, 5).Reduce(func(_ context.Context, acc interface{}, elem interface{}) (interface{}, error) {
 		return 0, nil
 	})
 	Assert(context.Background(), t, obs, HasNoItem(), HasRaisedError(errFoo))
 }
 
 func Test_Observable_Reduce_ReturnError(t *testing.T) {
-	obs := testObservable(1, 2, 3).Reduce(func(acc interface{}, elem interface{}) (interface{}, error) {
+	obs := testObservable(1, 2, 3).Reduce(func(_ context.Context, acc interface{}, elem interface{}) (interface{}, error) {
 		if elem == 2 {
 			return 0, errFoo
 		}
@@ -967,7 +967,7 @@ func Test_Observable_Reduce_ReturnError(t *testing.T) {
 }
 
 func Test_Observable_Reduce_Parallel(t *testing.T) {
-	obs := Range(1, 10000).Reduce(func(acc interface{}, elem interface{}) (interface{}, error) {
+	obs := Range(1, 10000).Reduce(func(_ context.Context, acc interface{}, elem interface{}) (interface{}, error) {
 		if a, ok := acc.(int); ok {
 			if b, ok := elem.(int); ok {
 				return a + b, nil
@@ -981,7 +981,7 @@ func Test_Observable_Reduce_Parallel(t *testing.T) {
 }
 
 func Test_Observable_Reduce_Parallel_Error(t *testing.T) {
-	obs := Range(1, 10000).Reduce(func(acc interface{}, elem interface{}) (interface{}, error) {
+	obs := Range(1, 10000).Reduce(func(_ context.Context, acc interface{}, elem interface{}) (interface{}, error) {
 		if elem == 1000 {
 			return nil, errFoo
 		}
@@ -998,7 +998,7 @@ func Test_Observable_Reduce_Parallel_Error(t *testing.T) {
 }
 
 func Test_Observable_Reduce_Parallel_WithErrorStrategy(t *testing.T) {
-	obs := Range(1, 10000).Reduce(func(acc interface{}, elem interface{}) (interface{}, error) {
+	obs := Range(1, 10000).Reduce(func(_ context.Context, acc interface{}, elem interface{}) (interface{}, error) {
 		if elem == 1 {
 			return nil, errFoo
 		}
@@ -1083,7 +1083,7 @@ func Test_Observable_Retry_Error(t *testing.T) {
 
 func Test_Observable_Run(t *testing.T) {
 	s := make([]int, 0)
-	<-testObservable(1, 2, 3).Map(func(i interface{}) (interface{}, error) {
+	<-testObservable(1, 2, 3).Map(func(_ context.Context, i interface{}) (interface{}, error) {
 		s = append(s, i.(int))
 		return i, nil
 	}).Run()
@@ -1092,7 +1092,7 @@ func Test_Observable_Run(t *testing.T) {
 
 func Test_Observable_Run_Error(t *testing.T) {
 	s := make([]int, 0)
-	<-testObservable(1, errFoo).Map(func(i interface{}) (interface{}, error) {
+	<-testObservable(1, errFoo).Map(func(_ context.Context, i interface{}) (interface{}, error) {
 		s = append(s, i.(int))
 		return i, nil
 	}).Run()
@@ -1105,7 +1105,7 @@ func Test_Observable_Sample(t *testing.T) {
 }
 
 func Test_Observable_Scan(t *testing.T) {
-	obs := testObservable(1, 2, 3, 4, 5).Scan(func(x interface{}, y interface{}) (interface{}, error) {
+	obs := testObservable(1, 2, 3, 4, 5).Scan(func(_ context.Context, x interface{}, y interface{}) (interface{}, error) {
 		if x == nil {
 			return y, nil
 		}
@@ -1115,7 +1115,7 @@ func Test_Observable_Scan(t *testing.T) {
 }
 
 func Test_Observable_Scan_Parallel(t *testing.T) {
-	obs := testObservable(1, 2, 3, 4, 5).Scan(func(x interface{}, y interface{}) (interface{}, error) {
+	obs := testObservable(1, 2, 3, 4, 5).Scan(func(_ context.Context, x interface{}, y interface{}) (interface{}, error) {
 		if x == nil {
 			return y, nil
 		}
@@ -1355,7 +1355,7 @@ func Test_Observable_TakeWhile(t *testing.T) {
 }
 
 func Test_Observable_ToMap(t *testing.T) {
-	obs := testObservable(3, 4, 5, true, false).ToMap(func(i interface{}) (interface{}, error) {
+	obs := testObservable(3, 4, 5, true, false).ToMap(func(_ context.Context, i interface{}) (interface{}, error) {
 		switch v := i.(type) {
 		case int:
 			return v, nil
@@ -1378,7 +1378,7 @@ func Test_Observable_ToMap(t *testing.T) {
 }
 
 func Test_Observable_ToMapWithValueSelector(t *testing.T) {
-	keySelector := func(i interface{}) (interface{}, error) {
+	keySelector := func(_ context.Context, i interface{}) (interface{}, error) {
 		switch v := i.(type) {
 		case int:
 			return v, nil
@@ -1391,7 +1391,7 @@ func Test_Observable_ToMapWithValueSelector(t *testing.T) {
 			return i, nil
 		}
 	}
-	valueSelector := func(i interface{}) (interface{}, error) {
+	valueSelector := func(_ context.Context, i interface{}) (interface{}, error) {
 		switch v := i.(type) {
 		case int:
 			return v * 10, nil
@@ -1467,7 +1467,7 @@ func Test_Observable_Unmarshal_Parallel_Error(t *testing.T) {
 func Test_Observable_ZipFromObservable(t *testing.T) {
 	obs1 := testObservable(1, 2, 3)
 	obs2 := testObservable(10, 20, 30)
-	zipper := func(elem1 interface{}, elem2 interface{}) (interface{}, error) {
+	zipper := func(_ context.Context, elem1 interface{}, elem2 interface{}) (interface{}, error) {
 		switch v1 := elem1.(type) {
 		case int:
 			switch v2 := elem2.(type) {
@@ -1484,7 +1484,7 @@ func Test_Observable_ZipFromObservable(t *testing.T) {
 func Test_Observable_ZipFromObservable_DifferentLength1(t *testing.T) {
 	obs1 := testObservable(1, 2, 3)
 	obs2 := testObservable(10, 20)
-	zipper := func(elem1 interface{}, elem2 interface{}) (interface{}, error) {
+	zipper := func(_ context.Context, elem1 interface{}, elem2 interface{}) (interface{}, error) {
 		switch v1 := elem1.(type) {
 		case int:
 			switch v2 := elem2.(type) {
@@ -1501,7 +1501,7 @@ func Test_Observable_ZipFromObservable_DifferentLength1(t *testing.T) {
 func Test_Observable_ZipFromObservable_DifferentLength2(t *testing.T) {
 	obs1 := testObservable(1, 2)
 	obs2 := testObservable(10, 20, 30)
-	zipper := func(elem1 interface{}, elem2 interface{}) (interface{}, error) {
+	zipper := func(_ context.Context, elem1 interface{}, elem2 interface{}) (interface{}, error) {
 		switch v1 := elem1.(type) {
 		case int:
 			switch v2 := elem2.(type) {
@@ -1517,7 +1517,7 @@ func Test_Observable_ZipFromObservable_DifferentLength2(t *testing.T) {
 
 func Test_Observable_Option_WithOnErrorStrategy_Single(t *testing.T) {
 	obs := testObservable(1, 2, 3).
-		Map(func(i interface{}) (interface{}, error) {
+		Map(func(_ context.Context, i interface{}) (interface{}, error) {
 			if i == 2 {
 				return nil, errFoo
 			}
@@ -1528,13 +1528,13 @@ func Test_Observable_Option_WithOnErrorStrategy_Single(t *testing.T) {
 
 func Test_Observable_Option_WithOnErrorStrategy_Propagate(t *testing.T) {
 	obs := testObservable(1, 2, 3).
-		Map(func(i interface{}) (interface{}, error) {
+		Map(func(_ context.Context, i interface{}) (interface{}, error) {
 			if i == 1 {
 				return nil, errFoo
 			}
 			return i, nil
 		}).
-		Map(func(i interface{}) (interface{}, error) {
+		Map(func(_ context.Context, i interface{}) (interface{}, error) {
 			if i == 2 {
 				return nil, errBar
 			}
@@ -1549,13 +1549,23 @@ func Test_Observable_Option_SimpleCapacity(t *testing.T) {
 }
 
 func Test_Observable_Option_ComposedCapacity(t *testing.T) {
-	obs1 := Just(1).Map(func(_ interface{}) (interface{}, error) {
+	obs1 := Just(1).Map(func(_ context.Context, _ interface{}) (interface{}, error) {
 		return 1, nil
 	}, WithBufferedChannel(11))
-	obs2 := obs1.Map(func(_ interface{}) (interface{}, error) {
+	obs2 := obs1.Map(func(_ context.Context, _ interface{}) (interface{}, error) {
 		return 1, nil
 	}, WithBufferedChannel(12))
 
 	assert.Equal(t, 11, cap(obs1.Observe()))
 	assert.Equal(t, 12, cap(obs2.Observe()))
+}
+
+func Test_Observable_Option_ContextPropagation(t *testing.T) {
+	expectedCtx := context.Background()
+	var gotCtx context.Context
+	<-Just(1).Map(func(ctx context.Context, i interface{}) (interface{}, error) {
+		gotCtx = ctx
+		return i, nil
+	}, WithContext(expectedCtx)).Run()
+	assert.Equal(t, expectedCtx, gotCtx)
 }

@@ -757,8 +757,8 @@ type distinctOperator struct {
 	keyset map[interface{}]interface{}
 }
 
-func (op *distinctOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	key, err := op.apply(item.V)
+func (op *distinctOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	key, err := op.apply(ctx, item.V)
 	if err != nil {
 		dst <- Error(err)
 		operatorOptions.stop()
@@ -806,8 +806,8 @@ type distinctUntilChangedOperator struct {
 	current interface{}
 }
 
-func (op *distinctUntilChangedOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	key, err := op.apply(item.V)
+func (op *distinctUntilChangedOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	key, err := op.apply(ctx, item.V)
 	if err != nil {
 		dst <- Error(err)
 		operatorOptions.stop()
@@ -1285,9 +1285,8 @@ type mapOperator struct {
 	apply Func
 }
 
-// TODO pass context in map?
-func (op *mapOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	res, err := op.apply(item.V)
+func (op *mapOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	res, err := op.apply(ctx, item.V)
 	if err != nil {
 		dst <- Error(err)
 		operatorOptions.stop()
@@ -1313,7 +1312,7 @@ func (op *mapOperator) gatherNext(_ context.Context, item Item, dst chan<- Item,
 
 // Marshal transforms the items emitted by an Observable by applying a marshalling to each item.
 func (o *ObservableImpl) Marshal(marshaller Marshaller, opts ...Option) Observable {
-	return o.Map(func(i interface{}) (interface{}, error) {
+	return o.Map(func(_ context.Context, i interface{}) (interface{}, error) {
 		return marshaller(i)
 	}, opts...)
 }
@@ -1500,9 +1499,9 @@ type reduceOperator struct {
 	empty bool
 }
 
-func (op *reduceOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *reduceOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	op.empty = false
-	v, err := op.apply(op.acc, item.V)
+	v, err := op.apply(ctx, op.acc, item.V)
 	if err != nil {
 		dst <- Error(err)
 		operatorOptions.stop()
@@ -1735,8 +1734,8 @@ type scanOperator struct {
 	current interface{}
 }
 
-func (op *scanOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	v, err := op.apply(op.current, item.V)
+func (op *scanOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	v, err := op.apply(ctx, op.current, item.V)
 	if err != nil {
 		dst <- Error(err)
 		operatorOptions.stop()
@@ -2119,7 +2118,7 @@ func (o *ObservableImpl) StartWithIterable(iterable Iterable, opts ...Option) Ob
 
 // SumFloat32 calculates the average of float32 emitted by an Observable and emits a float32.
 func (o *ObservableImpl) SumFloat32(opts ...Option) OptionalSingle {
-	return o.Reduce(func(acc interface{}, elem interface{}) (interface{}, error) {
+	return o.Reduce(func(_ context.Context, acc interface{}, elem interface{}) (interface{}, error) {
 		if acc == nil {
 			acc = float32(0)
 		}
@@ -2145,7 +2144,7 @@ func (o *ObservableImpl) SumFloat32(opts ...Option) OptionalSingle {
 
 // SumFloat64 calculates the average of float64 emitted by an Observable and emits a float64.
 func (o *ObservableImpl) SumFloat64(opts ...Option) OptionalSingle {
-	return o.Reduce(func(acc interface{}, elem interface{}) (interface{}, error) {
+	return o.Reduce(func(_ context.Context, acc interface{}, elem interface{}) (interface{}, error) {
 		if acc == nil {
 			acc = float64(0)
 		}
@@ -2173,7 +2172,7 @@ func (o *ObservableImpl) SumFloat64(opts ...Option) OptionalSingle {
 
 // SumInt64 calculates the average of integers emitted by an Observable and emits an int64.
 func (o *ObservableImpl) SumInt64(opts ...Option) OptionalSingle {
-	return o.Reduce(func(acc interface{}, elem interface{}) (interface{}, error) {
+	return o.Reduce(func(_ context.Context, acc interface{}, elem interface{}) (interface{}, error) {
 		if acc == nil {
 			acc = int64(0)
 		}
@@ -2357,8 +2356,8 @@ type toMapOperator struct {
 	m           map[interface{}]interface{}
 }
 
-func (op *toMapOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	k, err := op.keySelector(item.V)
+func (op *toMapOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	k, err := op.keySelector(ctx, item.V)
 	if err != nil {
 		dst <- Error(err)
 		operatorOptions.stop()
@@ -2397,15 +2396,15 @@ type toMapWithValueSelector struct {
 	m                          map[interface{}]interface{}
 }
 
-func (op *toMapWithValueSelector) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	k, err := op.keySelector(item.V)
+func (op *toMapWithValueSelector) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	k, err := op.keySelector(ctx, item.V)
 	if err != nil {
 		dst <- Error(err)
 		operatorOptions.stop()
 		return
 	}
 
-	v, err := op.valueSelector(item.V)
+	v, err := op.valueSelector(ctx, item.V)
 	if err != nil {
 		dst <- Error(err)
 		operatorOptions.stop()
@@ -2461,7 +2460,7 @@ func (op *toSliceOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, 
 
 // Unmarshal transforms the items emitted by an Observable by applying an unmarshalling to each item.
 func (o *ObservableImpl) Unmarshal(unmarshaller Unmarshaller, factory func() interface{}, opts ...Option) Observable {
-	return o.Map(func(i interface{}) (interface{}, error) {
+	return o.Map(func(_ context.Context, i interface{}) (interface{}, error) {
 		v := factory()
 		err := unmarshaller(i.([]byte), v)
 		if err != nil {
@@ -2507,7 +2506,7 @@ func (o *ObservableImpl) ZipFromIterable(iterable Iterable, zipper Func2, opts .
 							next <- i2
 							return
 						}
-						v, err := zipper(i1.V, i2.V)
+						v, err := zipper(ctx, i1.V, i2.V)
 						if err != nil {
 							next <- Error(err)
 							return

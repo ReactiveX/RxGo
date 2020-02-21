@@ -58,8 +58,8 @@ type mapOperatorSingle struct {
 	apply Func
 }
 
-func (op *mapOperatorSingle) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	res, err := op.apply(item.V)
+func (op *mapOperatorSingle) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	res, err := op.apply(ctx, item.V)
 	if err != nil {
 		dst <- Error(err)
 		operatorOptions.stop()

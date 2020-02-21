@@ -1,6 +1,7 @@
 package rxgo
 
 import (
+	"context"
 	"testing"
 	"time"
 )
@@ -16,7 +17,7 @@ func Benchmark_Range_Sequential(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
 		obs := Range(0, benchNumberOfElementsLarge, WithBufferedChannel(benchChannelCap)).
-			Map(func(i interface{}) (interface{}, error) {
+			Map(func(_ context.Context, i interface{}) (interface{}, error) {
 				return i, nil
 			})
 		b.StartTimer()
@@ -28,7 +29,7 @@ func Benchmark_Range_Serialize(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
 		obs := Range(0, benchNumberOfElementsLarge, WithBufferedChannel(benchChannelCap)).
-			Map(func(i interface{}) (interface{}, error) {
+			Map(func(_ context.Context, i interface{}) (interface{}, error) {
 				return i, nil
 			}, WithCPUPool(), WithBufferedChannel(benchChannelCap))
 		b.StartTimer()
@@ -40,7 +41,7 @@ func Benchmark_Reduce_Sequential(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
 		obs := Range(0, benchNumberOfElementsSmall, WithBufferedChannel(benchChannelCap)).
-			Reduce(func(acc interface{}, elem interface{}) (interface{}, error) {
+			Reduce(func(_ context.Context, acc interface{}, elem interface{}) (interface{}, error) {
 				// Simulate a blocking IO call
 				time.Sleep(5 * time.Millisecond)
 				if a, ok := acc.(int); ok {
@@ -61,7 +62,7 @@ func Benchmark_Reduce_Parallel(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
 		obs := Range(0, benchNumberOfElementsSmall, WithBufferedChannel(benchChannelCap)).
-			Reduce(func(acc interface{}, elem interface{}) (interface{}, error) {
+			Reduce(func(_ context.Context, acc interface{}, elem interface{}) (interface{}, error) {
 				// Simulate a blocking IO call
 				time.Sleep(5 * time.Millisecond)
 				if a, ok := acc.(int); ok {
@@ -82,7 +83,7 @@ func Benchmark_Map_Sequential(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
 		obs := Range(0, benchNumberOfElementsSmall, WithBufferedChannel(benchChannelCap)).
-			Map(func(i interface{}) (interface{}, error) {
+			Map(func(_ context.Context, i interface{}) (interface{}, error) {
 				// Simulate a blocking IO call
 				time.Sleep(5 * time.Millisecond)
 				return i, nil
@@ -96,7 +97,7 @@ func Benchmark_Map_Parallel(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
 		obs := Range(0, benchNumberOfElementsSmall, WithBufferedChannel(benchChannelCap)).
-			Map(func(i interface{}) (interface{}, error) {
+			Map(func(_ context.Context, i interface{}) (interface{}, error) {
 				// Simulate a blocking IO call
 				time.Sleep(5 * time.Millisecond)
 				return i, nil
