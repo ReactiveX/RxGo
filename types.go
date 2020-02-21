@@ -49,9 +49,6 @@ type (
 	ErrFunc func(error)
 	// CompletedFunc handles the end of a stream.
 	CompletedFunc func()
-
-	operatorItem func(ctx context.Context, item Item, dst chan<- Item, operator operatorOptions)
-	operatorEnd  func(ctx context.Context, dst chan<- Item)
 )
 
 const (

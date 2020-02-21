@@ -7,12 +7,6 @@ type OptionalSingle interface {
 	// TODO Map
 }
 
-func newOptionalSingleFromOperator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, opts ...Option) OptionalSingle {
-	return &OptionalSingleImpl{
-		iterable: createOperator(iterable, nextFunc, errFunc, endFunc, opts...),
-	}
-}
-
 // OptionalSingleImpl implements OptionalSingle.
 type OptionalSingleImpl struct {
 	iterable Iterable
