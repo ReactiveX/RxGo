@@ -644,15 +644,40 @@ func (o *ObservableImpl) BufferWithTimeOrCount(timespan Duration, count int, opt
 
 // Contains determines whether an Observable emits a particular item or not.
 func (o *ObservableImpl) Contains(equal Predicate, opts ...Option) Single {
-	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-		if equal(item.V) {
-			dst <- Of(true)
-			operator.stop()
-			return
+	return single(o, func() operator {
+		return &containsOperator{
+			equal:    equal,
+			contains: false,
 		}
-	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
-		dst <- Of(false)
-	}, opts...)
+	}, false, opts...)
+}
+
+type containsOperator struct {
+	equal    Predicate
+	contains bool
+}
+
+func (op *containsOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	if op.equal(item.V) {
+		dst <- Of(true)
+		operatorOptions.stop()
+		op.contains = true
+	}
+}
+
+func (op *containsOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+}
+
+func (op *containsOperator) end(_ context.Context, dst chan<- Item) {
+	dst <- Of(false)
+}
+
+func (op *containsOperator) gatherNext(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	if item.V == true {
+		dst <- Of(true)
+		operatorOptions.stop()
+	}
 }
 
 // Count counts the number of items emitted by the source Observable and emit only this value.

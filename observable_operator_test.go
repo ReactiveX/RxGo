@@ -281,24 +281,42 @@ func Test_Observable_BufferWithTimeOrCount_Error(t *testing.T) {
 		HasRaisedError(errFoo))
 }
 
-//
-//func Test_Observable_Contain(t *testing.T) {
-//	predicate := func(i interface{}) bool {
-//		switch i := i.(type) {
-//		case int:
-//			return i == 2
-//		default:
-//			return false
-//		}
-//	}
-//
-//	Assert(context.Background(), t,
-//		testObservable(1, 2, 3).Contains(predicate),
-//		HasItem(true))
-//	Assert(context.Background(), t,
-//		testObservable(1, 5, 3).Contains(predicate),
-//		HasItem(false))
-//}
+func Test_Observable_Contain(t *testing.T) {
+	predicate := func(i interface{}) bool {
+		switch i := i.(type) {
+		case int:
+			return i == 2
+		default:
+			return false
+		}
+	}
+
+	Assert(context.Background(), t,
+		testObservable(1, 2, 3).Contains(predicate),
+		HasItem(true))
+	Assert(context.Background(), t,
+		testObservable(1, 5, 3).Contains(predicate),
+		HasItem(false))
+}
+
+func Test_Observable_Contain_Parallel(t *testing.T) {
+	predicate := func(i interface{}) bool {
+		switch i := i.(type) {
+		case int:
+			return i == 2
+		default:
+			return false
+		}
+	}
+
+	Assert(context.Background(), t,
+		testObservable(1, 2, 3).Contains(predicate, WithCPUPool()),
+		HasItem(true))
+	Assert(context.Background(), t,
+		testObservable(1, 5, 3).Contains(predicate, WithCPUPool()),
+		HasItem(false))
+}
+
 //
 //func Test_Observable_Count(t *testing.T) {
 //	Assert(context.Background(), t, Range(1, 10000).Count(),
