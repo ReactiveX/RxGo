@@ -196,7 +196,7 @@ func FromEventSource(next <-chan Item, opts ...Option) Observable {
 	option := parseOptions(opts...)
 
 	return &ObservableImpl{
-		iterable: newEventSourceIterable(option.buildContext(), next, option.buildBackPressureStrategy()),
+		iterable: newEventSourceIterable(option.buildContext(), next, option.getBackPressureStrategy()),
 	}
 }
 
@@ -221,7 +221,7 @@ func Interval(interval Duration, opts ...Option) Observable {
 		}
 	}()
 	return &ObservableImpl{
-		iterable: newEventSourceIterable(ctx, next, option.buildBackPressureStrategy()),
+		iterable: newEventSourceIterable(ctx, next, option.getBackPressureStrategy()),
 	}
 }
 
@@ -233,9 +233,9 @@ func Just(items interface{}, opts ...Option) Observable {
 }
 
 // JustItem creates a single from one item.
-func JustItem(item Item, opts ...Option) Single {
+func JustItem(item interface{}, opts ...Option) Single {
 	return &SingleImpl{
-		iterable: newSliceIterable([]Item{item}),
+		iterable: newJustIterable(item, opts...),
 	}
 }
 

@@ -3,8 +3,10 @@ package rxgo
 import "context"
 
 type (
-	// BackpressureStrategy is the backpressure strategy type
+	// BackpressureStrategy is the backpressure strategy type.
 	BackpressureStrategy uint32
+	// OnErrorStrategy is the Observable error strategy.
+	OnErrorStrategy uint32
 
 	operatorOptions struct {
 		stop          func()
@@ -30,10 +32,10 @@ type (
 	ErrorFunc func(error) interface{}
 	// Predicate defines a func that returns a bool from an input value.
 	Predicate func(interface{}) bool
-	// Marshaler defines a marshaler type (interface{} to []byte).
-	Marshaler func(interface{}) ([]byte, error)
-	// Unmarshaler defines an unmarshaler type ([]byte to interface).
-	Unmarshaler func([]byte, interface{}) error
+	// Marshaller defines a marshaller type (interface{} to []byte).
+	Marshaller func(interface{}) ([]byte, error)
+	// Unmarshaller defines an unmarshaller type ([]byte to interface).
+	Unmarshaller func([]byte, interface{}) error
 	// Producer defines a producer implementation.
 	Producer func(ctx context.Context, next chan<- Item, done func())
 	// Supplier defines a function that supplies a result from nothing.
@@ -47,9 +49,6 @@ type (
 	ErrFunc func(error)
 	// CompletedFunc handles the end of a stream.
 	CompletedFunc func()
-
-	operatorItem func(ctx context.Context, item Item, dst chan<- Item, operator operatorOptions)
-	operatorEnd  func(ctx context.Context, dst chan<- Item)
 )
 
 const (
@@ -57,4 +56,12 @@ const (
 	Block BackpressureStrategy = iota
 	// Drop drops the message.
 	Drop
+)
+
+const (
+	// Stop is the default error strategy.
+	// An operator will stop processing items on error.
+	Stop OnErrorStrategy = iota
+	// Continue means an operator will continue processing items after an error.
+	Continue
 )

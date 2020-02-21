@@ -187,27 +187,6 @@ func Test_Defer_Error(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(1, 2), HasRaisedError(errFoo))
 }
 
-func Test_Defer_SimpleCapacity(t *testing.T) {
-	ch := Defer([]Producer{func(_ context.Context, _ chan<- Item, done func()) {
-		done()
-	}}, WithBufferedChannel(5)).Observe()
-	assert.Equal(t, 5, cap(ch))
-}
-
-func Test_Defer_ComposedCapacity(t *testing.T) {
-	obs1 := Defer([]Producer{func(_ context.Context, _ chan<- Item, done func()) {
-		done()
-	}}).Map(func(_ interface{}) (interface{}, error) {
-		return 1, nil
-	}, WithBufferedChannel(11))
-	assert.Equal(t, 11, cap(obs1.Observe()))
-
-	obs2 := obs1.Map(func(_ interface{}) (interface{}, error) {
-		return 1, nil
-	}, WithBufferedChannel(12))
-	assert.Equal(t, 12, cap(obs2.Observe()))
-}
-
 func Test_Empty(t *testing.T) {
 	obs := Empty()
 	Assert(context.Background(), t, obs, HasNoItems())
@@ -244,7 +223,7 @@ func Test_FromChannel_ComposedCapacity(t *testing.T) {
 }
 
 func Test_FromItem(t *testing.T) {
-	single := JustItem(Of(1))
+	single := JustItem(1)
 	Assert(context.Background(), t, single, HasItem(1), HasNotRaisedError())
 	Assert(context.Background(), t, single, HasItem(1), HasNotRaisedError())
 }

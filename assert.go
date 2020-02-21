@@ -18,6 +18,7 @@ type RxAssert interface {
 	noItemsToBeChecked() bool
 	someItemsToBeChecked() bool
 	raisedErrorToBeChecked() (bool, error)
+	raisedErrorsToBeChecked() (bool, []error)
 	raisedAnErrorToBeChecked() (bool, error)
 	notRaisedErrorToBeChecked() bool
 	itemToBeChecked() (bool, interface{})
@@ -34,7 +35,9 @@ type rxAssert struct {
 	checkHasItemsNoOrder    bool
 	itemsNoOrder            []interface{}
 	checkHasRaisedError     bool
-	error                   error
+	err                     error
+	checkHasRaisedErrors    bool
+	errs                    []error
 	checkHasRaisedAnError   bool
 	checkHasNotRaisedError  bool
 	checkHasItem            bool
@@ -65,11 +68,15 @@ func (ass *rxAssert) someItemsToBeChecked() bool {
 }
 
 func (ass *rxAssert) raisedErrorToBeChecked() (bool, error) {
-	return ass.checkHasRaisedError, ass.error
+	return ass.checkHasRaisedError, ass.err
+}
+
+func (ass *rxAssert) raisedErrorsToBeChecked() (bool, []error) {
+	return ass.checkHasRaisedErrors, ass.errs
 }
 
 func (ass *rxAssert) raisedAnErrorToBeChecked() (bool, error) {
-	return ass.checkHasRaisedAnError, ass.error
+	return ass.checkHasRaisedAnError, ass.err
 }
 
 func (ass *rxAssert) notRaisedErrorToBeChecked() bool {
@@ -128,7 +135,7 @@ func HasItemsNoParticularOrder(items ...interface{}) RxAssert {
 func HasRaisedError(err error) RxAssert {
 	return newAssertion(func(a *rxAssert) {
 		a.checkHasRaisedError = true
-		a.error = err
+		a.err = err
 	})
 }
 
@@ -136,6 +143,14 @@ func HasRaisedError(err error) RxAssert {
 func HasRaisedAnError() RxAssert {
 	return newAssertion(func(a *rxAssert) {
 		a.checkHasRaisedAnError = true
+	})
+}
+
+// HasRaisedErrors checks that the observable has produce a set of errors.
+func HasRaisedErrors(errs ...error) RxAssert {
+	return newAssertion(func(a *rxAssert) {
+		a.checkHasRaisedErrors = true
+		a.errs = errs
 	})
 }
 
@@ -185,7 +200,7 @@ func Assert(ctx context.Context, t *testing.T, iterable Iterable, assertions ...
 	ass := parseAssertions(assertions...)
 
 	got := make([]interface{}, 0)
-	var err error
+	errs := make([]error, 0)
 
 	observe := iterable.Observe()
 loop:
@@ -198,7 +213,7 @@ loop:
 				break loop
 			}
 			if item.Error() {
-				err = item.E
+				errs = append(errs, item.E)
 			} else {
 				got = append(got, item.V)
 			}
@@ -237,12 +252,19 @@ loop:
 		assert.NotEqual(t, 0, len(got))
 	}
 	if checkHasRaisedError, expectedError := ass.raisedErrorToBeChecked(); checkHasRaisedError {
-		assert.Equal(t, expectedError, err)
+		if expectedError == nil {
+			assert.Equal(t, 0, len(errs))
+		} else {
+			assert.Equal(t, expectedError, errs[0])
+		}
+	}
+	if checkHasRaisedErrors, expectedErrors := ass.raisedErrorsToBeChecked(); checkHasRaisedErrors {
+		assert.Equal(t, expectedErrors, errs)
 	}
 	if checkHasRaisedAnError, expectedError := ass.raisedAnErrorToBeChecked(); checkHasRaisedAnError {
 		assert.Nil(t, expectedError)
 	}
 	if ass.notRaisedErrorToBeChecked() {
-		assert.Nil(t, err)
+		assert.Equal(t, 0, len(errs))
 	}
 }

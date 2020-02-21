@@ -62,8 +62,8 @@ func (i *eventSourceIterable) closeAllObservers() {
 	i.Unlock()
 }
 
-func (i *eventSourceIterable) Observe() <-chan Item {
-	option := parseOptions(i.opts...)
+func (i *eventSourceIterable) Observe(opts ...Option) <-chan Item {
+	option := parseOptions(append(i.opts, opts...)...)
 	next := option.buildChannel()
 
 	i.Lock()

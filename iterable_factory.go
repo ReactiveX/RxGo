@@ -1,13 +1,13 @@
 package rxgo
 
 type factoryIterable struct {
-	factory func() <-chan Item
+	factory func(opts ...Option) <-chan Item
 }
 
-func newColdIterable(factory func() <-chan Item) Iterable {
+func newFactoryIterable(factory func(opts ...Option) <-chan Item) Iterable {
 	return &factoryIterable{factory: factory}
 }
 
-func (i *factoryIterable) Observe() <-chan Item {
-	return i.factory()
+func (i *factoryIterable) Observe(opts ...Option) <-chan Item {
+	return i.factory(opts...)
 }

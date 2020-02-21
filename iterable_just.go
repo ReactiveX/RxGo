@@ -12,8 +12,8 @@ func newJustIterable(items interface{}, opts ...Option) Iterable {
 	}
 }
 
-func (i *justIterable) Observe() <-chan Item {
-	option := parseOptions(i.opts...)
+func (i *justIterable) Observe(opts ...Option) <-chan Item {
+	option := parseOptions(append(i.opts, opts...)...)
 	next := option.buildChannel()
 
 	go SendItems(next, CloseChannel, i.items)

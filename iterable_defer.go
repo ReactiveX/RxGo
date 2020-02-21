@@ -16,8 +16,8 @@ func newDeferIterable(f []Producer, opts ...Option) Iterable {
 	}
 }
 
-func (i *deferIterable) Observe() <-chan Item {
-	option := parseOptions(i.opts...)
+func (i *deferIterable) Observe(opts ...Option) <-chan Item {
+	option := parseOptions(append(i.opts, opts...)...)
 	next := option.buildChannel()
 	ctx := option.buildContext()
 

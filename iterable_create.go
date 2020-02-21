@@ -33,6 +33,6 @@ func newCreateIterable(fs []Producer, opts ...Option) Iterable {
 	}
 }
 
-func (i *createIterable) Observe() <-chan Item {
+func (i *createIterable) Observe(_ ...Option) <-chan Item {
 	return i.next
 }
