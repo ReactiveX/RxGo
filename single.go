@@ -6,6 +6,7 @@ import "context"
 type Single interface {
 	Iterable
 	Filter(apply Predicate, opts ...Option) OptionalSingle
+	Get(opts ...Option) (Item, error)
 	Map(apply Func, opts ...Option) Single
 	Run(opts ...Option) Disposed
 }
@@ -15,39 +16,31 @@ type SingleImpl struct {
 	iterable Iterable
 }
 
-// Observe observes a Single by returning its channel.
-func (s *SingleImpl) Observe(opts ...Option) <-chan Item {
-	return s.iterable.Observe(opts...)
-}
-
 // Filter emits only those items from an Observable that pass a predicate test.
 func (s *SingleImpl) Filter(apply Predicate, opts ...Option) OptionalSingle {
-	return single(s, func() operator {
+	return optionalSingle(s, func() operator {
 		return &filterOperatorSingle{apply: apply}
-	}, false, true, opts...)
+	}, true, true, opts...)
 }
 
-type filterOperatorSingle struct {
-	apply Predicate
-}
+// Get returns the item. The error returned is if the context has been cancelled.
+// This method is blocking.
+func (s *SingleImpl) Get(opts ...Option) (Item, error) {
+	option := parseOptions(opts...)
+	ctx := option.buildContext()
 
-func (op *filterOperatorSingle) next(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
-	if op.apply(item.V) {
-		dst <- item
+	observe := s.Observe()
+	for {
+		select {
+		case <-ctx.Done():
+			return Item{}, ctx.Err()
+		case v := <-observe:
+			return v, nil
+		}
 	}
 }
 
-func (op *filterOperatorSingle) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
-}
-
-func (op *filterOperatorSingle) end(_ context.Context, _ chan<- Item) {
-}
-
-func (op *filterOperatorSingle) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
-}
-
-// Map transforms the items emitted by an Observable by applying a function to each item.
+// Map transforms the items emitted by a Single by applying a function to each item.
 func (s *SingleImpl) Map(apply Func, opts ...Option) Single {
 	return single(s, func() operator {
 		return &mapOperatorSingle{apply: apply}
@@ -81,6 +74,31 @@ func (op *mapOperatorSingle) gatherNext(_ context.Context, item Item, dst chan<-
 		return
 	}
 	dst <- item
+}
+
+// Observe observes a Single by returning its channel.
+func (s *SingleImpl) Observe(opts ...Option) <-chan Item {
+	return s.iterable.Observe(opts...)
+}
+
+type filterOperatorSingle struct {
+	apply Predicate
+}
+
+func (op *filterOperatorSingle) next(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+	if op.apply(item.V) {
+		dst <- item
+	}
+}
+
+func (op *filterOperatorSingle) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+}
+
+func (op *filterOperatorSingle) end(_ context.Context, _ chan<- Item) {
+}
+
+func (op *filterOperatorSingle) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
 // Run creates an observer without consuming the emitted items.

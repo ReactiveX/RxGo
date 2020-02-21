@@ -311,7 +311,7 @@ func Test_Interval(t *testing.T) {
 func Test_Interval_NoItem(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	obs := Interval(WithDuration(time.Nanosecond), WithContext(ctx))
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(150 * time.Millisecond)
 	cancel()
 	// As Interval is built on an event source, we expect no items
 	Assert(context.Background(), t, obs, IsEmpty())

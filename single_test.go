@@ -3,7 +3,33 @@ package rxgo
 import (
 	"context"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
+
+func Test_Single_Get_Item(t *testing.T) {
+	var s Single = &SingleImpl{iterable: Just(1)}
+	get, err := s.Get()
+	assert.NoError(t, err)
+	assert.Equal(t, 1, get.V)
+}
+
+func Test_Single_Get_Error(t *testing.T) {
+	var s Single = &SingleImpl{iterable: Just(errFoo)}
+	get, err := s.Get()
+	assert.NoError(t, err)
+	assert.Equal(t, errFoo, get.E)
+}
+
+func Test_Single_Get_ContextCanceled(t *testing.T) {
+	ch := make(chan Item)
+	defer close(ch)
+	ctx, cancel := context.WithCancel(context.Background())
+	var s Single = &SingleImpl{iterable: FromChannel(ch)}
+	cancel()
+	_, err := s.Get(WithContext(ctx))
+	assert.Equal(t, ctx.Err(), err)
+}
 
 func Test_Single_Filter_True(t *testing.T) {
 	os := JustItem(1).Filter(func(i interface{}) bool {
