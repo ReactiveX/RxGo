@@ -581,14 +581,14 @@ func (o *ObservableImpl) BufferWithTimeOrCount(timespan Duration, count int, opt
 			select {
 			case currentBuffer := <-sendCh:
 				next <- Of(currentBuffer)
-			case error := <-errCh:
+			case err := <-errCh:
 				bufferMutex.Lock()
 				if len(buffer) > 0 {
 					next <- Of(buffer)
 				}
 				bufferMutex.Unlock()
-				if error != nil {
-					next <- Error(error)
+				if err != nil {
+					next <- Error(err)
 				}
 				close(next)
 				return
@@ -704,7 +704,7 @@ func (op *countOperator) end(_ context.Context, dst chan<- Item) {
 	dst <- Of(op.count)
 }
 
-func (op *countOperator) gatherNext(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *countOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
 // DefaultIfEmpty returns an Observable that emits the items emitted by the source
@@ -738,7 +738,7 @@ func (op *defaultIfEmptyOperator) end(_ context.Context, dst chan<- Item) {
 	}
 }
 
-func (op *defaultIfEmptyOperator) gatherNext(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *defaultIfEmptyOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
 // Distinct suppresses duplicate items in the original Observable and returns
@@ -952,7 +952,7 @@ func (op *elementAtOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item
 // Error returns the eventual Observable error.
 // This method is blocking.
 func (o *ObservableImpl) Error(opts ...Option) error {
-	for item := range o.iterable.Observe() {
+	for item := range o.iterable.Observe(opts...) {
 		if item.Error() {
 			return item.E
 		}
@@ -964,7 +964,7 @@ func (o *ObservableImpl) Error(opts ...Option) error {
 // This method is blocking
 func (o *ObservableImpl) Errors(opts ...Option) []error {
 	errs := make([]error, 0)
-	for item := range o.iterable.Observe() {
+	for item := range o.iterable.Observe(opts...) {
 		if item.Error() {
 			errs = append(errs, item.E)
 		}
@@ -1459,7 +1459,7 @@ func (op *onErrorReturnOperator) end(_ context.Context, _ chan<- Item) {
 func (op *onErrorReturnOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
-// OnErrorReturnItem instructs on observale to emit an item if it encounters an error.
+// OnErrorReturnItem instructs on Observable to emit an item if it encounters an error.
 func (o *ObservableImpl) OnErrorReturnItem(resume interface{}, opts ...Option) Observable {
 	return observable(o, func() operator {
 		return &onErrorReturnItemOperator{resume: resume}
@@ -2210,7 +2210,7 @@ type takeOperator struct {
 	takeCount int
 }
 
-func (op *takeOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *takeOperator) next(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
 	if op.takeCount < int(op.nth) {
 		op.takeCount++
 		dst <- item
@@ -2221,10 +2221,10 @@ func (op *takeOperator) err(ctx context.Context, item Item, dst chan<- Item, ope
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *takeOperator) end(ctx context.Context, dst chan<- Item) {
+func (op *takeOperator) end(_ context.Context, _ chan<- Item) {
 }
 
-func (op *takeOperator) gatherNext(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *takeOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
 // TakeLast emits only the last n items emitted by an Observable.
@@ -2271,7 +2271,7 @@ func (op *takeLast) end(_ context.Context, dst chan<- Item) {
 	}
 }
 
-func (op *takeLast) gatherNext(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *takeLast) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
 // TakeUntil returns an Observable that emits items emitted by the source Observable,
@@ -2289,7 +2289,7 @@ type takeUntilOperator struct {
 	apply Predicate
 }
 
-func (op *takeUntilOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *takeUntilOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	dst <- item
 	if op.apply(item.V) {
 		operatorOptions.stop()
@@ -2357,7 +2357,7 @@ type toMapOperator struct {
 	m           map[interface{}]interface{}
 }
 
-func (op *toMapOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *toMapOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	k, err := op.keySelector(item.V)
 	if err != nil {
 		dst <- Error(err)
@@ -2371,7 +2371,7 @@ func (op *toMapOperator) err(ctx context.Context, item Item, dst chan<- Item, op
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *toMapOperator) end(ctx context.Context, dst chan<- Item) {
+func (op *toMapOperator) end(_ context.Context, dst chan<- Item) {
 	dst <- Of(op.m)
 }
 
