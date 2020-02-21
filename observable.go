@@ -33,8 +33,8 @@ type Observable interface {
 	DoOnError(errFunc ErrFunc, opts ...Option) Disposed
 	DoOnNext(nextFunc NextFunc, opts ...Option) Disposed
 	ElementAt(index uint, opts ...Option) Single
-	Error() error
-	Errors() []error
+	Error(opts ...Option) error
+	Errors(opts ...Option) []error
 	Filter(apply Predicate, opts ...Option) Observable
 	First(opts ...Option) OptionalSingle
 	FirstOrDefault(defaultValue interface{}, opts ...Option) Single
@@ -319,7 +319,7 @@ type operator interface {
 	gatherNext(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions)
 }
 
-func single(iterable Iterable, operatorFactory func() operator, forceSeq bool, opts ...Option) Single {
+func single(iterable Iterable, operatorFactory func() operator, forceSeq, bypassGather bool, opts ...Option) Single {
 	option := parseOptions(opts...)
 	parallel, _ := option.getPool()
 
@@ -329,7 +329,7 @@ func single(iterable Iterable, operatorFactory func() operator, forceSeq bool, o
 		if forceSeq || !parallel {
 			runSeq(ctx, next, iterable, operatorFactory, option, opts...)
 		} else {
-			runPar(ctx, next, iterable, operatorFactory, option, opts...)
+			runPar(ctx, next, iterable, operatorFactory, bypassGather, option, opts...)
 		}
 		return &SingleImpl{iterable: newChannelIterable(next)}
 	}
@@ -344,14 +344,14 @@ func single(iterable Iterable, operatorFactory func() operator, forceSeq bool, o
 			if forceSeq || !parallel {
 				runSeq(ctx, next, iterable, operatorFactory, option, mergedOptions...)
 			} else {
-				runPar(ctx, next, iterable, operatorFactory, option, mergedOptions...)
+				runPar(ctx, next, iterable, operatorFactory, bypassGather, option, mergedOptions...)
 			}
 			return next
 		}),
 	}
 }
 
-func observable(iterable Iterable, operatorFactory func() operator, forceSeq bool, opts ...Option) Observable {
+func observable(iterable Iterable, operatorFactory func() operator, forceSeq, bypassGather bool, opts ...Option) Observable {
 	option := parseOptions(opts...)
 	parallel, _ := option.getPool()
 
@@ -361,7 +361,7 @@ func observable(iterable Iterable, operatorFactory func() operator, forceSeq boo
 		if forceSeq || !parallel {
 			runSeq(ctx, next, iterable, operatorFactory, option, opts...)
 		} else {
-			runPar(ctx, next, iterable, operatorFactory, option, opts...)
+			runPar(ctx, next, iterable, operatorFactory, bypassGather, option, opts...)
 		}
 		return &ObservableImpl{iterable: newChannelIterable(next)}
 	}
@@ -376,14 +376,14 @@ func observable(iterable Iterable, operatorFactory func() operator, forceSeq boo
 			if forceSeq || !parallel {
 				runSeq(ctx, next, iterable, operatorFactory, option, mergedOptions...)
 			} else {
-				runPar(ctx, next, iterable, operatorFactory, option, mergedOptions...)
+				runPar(ctx, next, iterable, operatorFactory, bypassGather, option, mergedOptions...)
 			}
 			return next
 		}),
 	}
 }
 
-func optionalSingle(iterable Iterable, operatorFactory func() operator, forceSeq bool, opts ...Option) OptionalSingle {
+func optionalSingle(iterable Iterable, operatorFactory func() operator, forceSeq, bypassGather bool, opts ...Option) OptionalSingle {
 	option := parseOptions(opts...)
 	parallel, _ := option.getPool()
 
@@ -393,7 +393,7 @@ func optionalSingle(iterable Iterable, operatorFactory func() operator, forceSeq
 		if forceSeq || !parallel {
 			runSeq(ctx, next, iterable, operatorFactory, option, opts...)
 		} else {
-			runPar(ctx, next, iterable, operatorFactory, option, opts...)
+			runPar(ctx, next, iterable, operatorFactory, bypassGather, option, opts...)
 		}
 		return &OptionalSingleImpl{iterable: newChannelIterable(next)}
 	}
@@ -408,21 +408,54 @@ func optionalSingle(iterable Iterable, operatorFactory func() operator, forceSeq
 			if forceSeq || !parallel {
 				runSeq(ctx, next, iterable, operatorFactory, option, mergedOptions...)
 			} else {
-				runPar(ctx, next, iterable, operatorFactory, option, mergedOptions...)
+				runPar(ctx, next, iterable, operatorFactory, bypassGather, option, mergedOptions...)
 			}
 			return next
 		}),
 	}
 }
 
-func runPar(ctx context.Context, next chan Item, iterable Iterable, operatorFactory func() operator, option Option, opts ...Option) {
+func runPar(ctx context.Context, next chan Item, iterable Iterable, operatorFactory func() operator, bypassGather bool, option Option, opts ...Option) {
 	observe := iterable.Observe(opts...)
 
 	wg := sync.WaitGroup{}
 	_, pool := option.getPool()
 	wg.Add(pool)
 	ctx, cancel := context.WithCancel(ctx)
-	gather := make(chan Item, 1)
+
+	var gather chan Item
+	if bypassGather {
+		gather = next
+	} else {
+		gather = make(chan Item, 1)
+
+		go func() {
+			op := operatorFactory()
+			stopped := false
+			operator := operatorOptions{
+				stop: func() {
+					if option.getErrorStrategy() == Stop {
+						stopped = true
+					}
+				},
+				resetIterable: func(newIterable Iterable) {
+					observe = newIterable.Observe(opts...)
+				},
+			}
+			for item := range gather {
+				if stopped {
+					break
+				}
+				if item.Error() {
+					op.err(ctx, item, next, operator)
+				} else {
+					op.gatherNext(ctx, item, next, operator)
+				}
+			}
+			op.end(ctx, next)
+			close(next)
+		}()
+	}
 
 	for i := 0; i < pool; i++ {
 		go func() {
@@ -445,7 +478,9 @@ func runPar(ctx context.Context, next chan Item, iterable Iterable, operatorFact
 					return
 				case item, ok := <-observe:
 					if !ok {
-						gather <- Of(op)
+						if !bypassGather {
+							gather <- Of(op)
+						}
 						return
 					}
 					if item.Error() {
@@ -457,33 +492,6 @@ func runPar(ctx context.Context, next chan Item, iterable Iterable, operatorFact
 			}
 		}()
 	}
-
-	go func() {
-		op := operatorFactory()
-		stopped := false
-		operator := operatorOptions{
-			stop: func() {
-				if option.getErrorStrategy() == Stop {
-					stopped = true
-				}
-			},
-			resetIterable: func(newIterable Iterable) {
-				observe = newIterable.Observe(opts...)
-			},
-		}
-		for item := range gather {
-			if stopped {
-				break
-			}
-			if item.Error() {
-				op.err(ctx, item, next, operator)
-			} else {
-				op.gatherNext(ctx, item, next, operator)
-			}
-		}
-		op.end(ctx, next)
-		close(next)
-	}()
 
 	go func() {
 		wg.Wait()

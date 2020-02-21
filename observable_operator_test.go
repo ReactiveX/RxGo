@@ -2,7 +2,9 @@ package rxgo
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/cenkalti/backoff/v4"
+	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 )
@@ -382,7 +384,7 @@ func Test_Observable_Distinct_Parallel_Error(t *testing.T) {
 	obs := testObservable(1, 2, 2, errFoo).Distinct(func(item interface{}) (interface{}, error) {
 		return item, nil
 	}, WithCPUPool())
-	Assert(context.Background(), t, obs, HasItems(1, 2), HasRaisedError(errFoo))
+	Assert(context.Background(), t, obs, HasItemsNoParticularOrder(1, 2), HasRaisedError(errFoo))
 }
 
 func Test_Observable_Distinct_Parallel_Error2(t *testing.T) {
@@ -395,364 +397,477 @@ func Test_Observable_Distinct_Parallel_Error2(t *testing.T) {
 	Assert(context.Background(), t, obs, HasRaisedError(errFoo))
 }
 
-//
-//func Test_Observable_DistinctUntilChanged(t *testing.T) {
-//	obs := testObservable(1, 2, 2, 1, 3).DistinctUntilChanged(func(item interface{}) (interface{}, error) {
-//		return item, nil
-//	})
-//	Assert(context.Background(), t, obs, HasItems(1, 2, 1, 3))
-//}
-//
-//func Test_Observable_DoOnCompleted_NoError(t *testing.T) {
-//	called := false
-//	<-testObservable(1, 2, 3).DoOnCompleted(func() {
-//		called = true
-//	})
-//	assert.True(t, called)
-//}
-//
-//func Test_Observable_DoOnCompleted_Error(t *testing.T) {
-//	called := false
-//	<-testObservable(1, errFoo, 3).DoOnCompleted(func() {
-//		called = true
-//	})
-//	assert.True(t, called)
-//}
-//
-//func Test_Observable_DoOnError_NoError(t *testing.T) {
-//	var got error
-//	<-testObservable(1, 2, 3).DoOnError(func(err error) {
-//		got = err
-//	})
-//	assert.Nil(t, got)
-//}
-//
-//func Test_Observable_DoOnError_Error(t *testing.T) {
-//	var got error
-//	<-testObservable(1, errFoo, 3).DoOnError(func(err error) {
-//		got = err
-//	})
-//	assert.Equal(t, errFoo, got)
-//}
-//
-//func Test_Observable_DoOnNext_NoError(t *testing.T) {
-//	s := make([]interface{}, 0)
-//	<-testObservable(1, 2, 3).DoOnNext(func(i interface{}) {
-//		s = append(s, i)
-//	})
-//	assert.Equal(t, []interface{}{1, 2, 3}, s)
-//}
-//
-//func Test_Observable_DoOnNext_Error(t *testing.T) {
-//	s := make([]interface{}, 0)
-//	<-testObservable(1, errFoo, 3).DoOnNext(func(i interface{}) {
-//		s = append(s, i)
-//	})
-//	assert.Equal(t, []interface{}{1}, s)
-//}
-//
-//func Test_Observable_ElementAt(t *testing.T) {
-//	obs := testObservable(0, 1, 2, 3, 4).ElementAt(2)
-//	Assert(context.Background(), t, obs, HasItems(2))
-//}
-//
-//func Test_Observable_ElementAt_Error(t *testing.T) {
-//	obs := testObservable(0, 1, 2, 3, 4).ElementAt(10)
-//	Assert(context.Background(), t, obs, HasNoItem(), HasRaisedAnError())
-//}
-//
-//func Test_Observable_Error_NoError(t *testing.T) {
-//	assert.NoError(t, testObservable(1, 2, 3).Error())
-//}
-//
-//func Test_Observable_Error_Error(t *testing.T) {
-//	assert.Equal(t, errFoo, testObservable(1, errFoo, 3).Error())
-//}
-//
-//func Test_Observable_Errors_NoError(t *testing.T) {
-//	assert.Equal(t, 0, len(testObservable(1, 2, 3).Errors()))
-//}
-//
-//func Test_Observable_Errors_OneError(t *testing.T) {
-//	assert.Equal(t, 1, len(testObservable(1, errFoo, 3).Errors()))
-//}
-//
-//func Test_Observable_Errors_MultipleError(t *testing.T) {
-//	assert.Equal(t, 2, len(testObservable(1, errFoo, errBar).Errors()))
-//}
-//
-//func Test_Observable_Errors_MultipleErrorFromMap(t *testing.T) {
-//	errs := testObservable(1, 2, 3, 4).Map(func(i interface{}) (interface{}, error) {
-//		if i == 2 {
-//			return nil, errFoo
-//		}
-//		if i == 3 {
-//			return nil, errBar
-//		}
-//		return i, nil
-//	}, WithErrorStrategy(Continue)).Errors()
-//	assert.Equal(t, 2, len(errs))
-//}
-//
-//func Test_Observable_Filter(t *testing.T) {
-//	obs := testObservable(1, 2, 3, 4).Filter(
-//		func(i interface{}) bool {
-//			return i.(int)%2 == 0
-//		})
-//	Assert(context.Background(), t, obs, HasItems(2, 4), HasNotRaisedError())
-//}
-//
-//func Test_Observable_First_NotEmpty(t *testing.T) {
-//	obs := testObservable(1, 2, 3).First()
-//	Assert(context.Background(), t, obs, HasItem(1))
-//}
-//
-//func Test_Observable_First_Empty(t *testing.T) {
-//	obs := Empty().First()
-//	Assert(context.Background(), t, obs, HasNoItem())
-//}
-//
-//func Test_Observable_FirstOrDefault_NotEmpty(t *testing.T) {
-//	obs := testObservable(1, 2, 3).FirstOrDefault(10)
-//	Assert(context.Background(), t, obs, HasItem(1))
-//}
-//
-//func Test_Observable_FirstOrDefault_Empty(t *testing.T) {
-//	obs := Empty().FirstOrDefault(10)
-//	Assert(context.Background(), t, obs, HasItem(10))
-//}
-//
-//func Test_Observable_FlatMap(t *testing.T) {
-//	obs := testObservable(1, 2, 3).FlatMap(func(i Item) Observable {
-//		return testObservable(i.V.(int)+1, i.V.(int)*10)
-//	})
-//	Assert(context.Background(), t, obs, HasItems(2, 10, 3, 20, 4, 30))
-//}
-//
-//func Test_Observable_FlatMap_Error1(t *testing.T) {
-//	obs := testObservable(1, 2, 3).FlatMap(func(i Item) Observable {
-//		if i.V == 2 {
-//			return testObservable(errFoo)
-//		}
-//		return testObservable(i.V.(int)+1, i.V.(int)*10)
-//	})
-//	Assert(context.Background(), t, obs, HasItems(2, 10), HasRaisedError(errFoo))
-//}
-//
-//func Test_Observable_FlatMap_Error2(t *testing.T) {
-//	obs := testObservable(1, errFoo, 3).FlatMap(func(i Item) Observable {
-//		if i.Error() {
-//			return testObservable(0)
-//		}
-//		return testObservable(i.V.(int)+1, i.V.(int)*10)
-//	})
-//	Assert(context.Background(), t, obs, HasItems(2, 10, 0, 4, 30), HasNotRaisedError())
-//}
-//
-//func Test_Observable_ForEach_Error(t *testing.T) {
-//	count := 0
-//	var gotErr error
-//	done := make(chan struct{})
-//
-//	obs := testObservable(1, 2, 3, errFoo)
-//	obs.ForEach(func(i interface{}) {
-//		count += i.(int)
-//	}, func(err error) {
-//		gotErr = err
-//		done <- struct{}{}
-//	}, func() {
-//		done <- struct{}{}
-//	})
-//
-//	// We avoid using the assertion API on purpose
-//	<-done
-//	assert.Equal(t, 6, count)
-//	assert.Equal(t, errFoo, gotErr)
-//}
-//
-//func Test_Observable_ForEach_Done(t *testing.T) {
-//	count := 0
-//	var gotErr error
-//	done := make(chan struct{})
-//
-//	obs := testObservable(1, 2, 3)
-//	obs.ForEach(func(i interface{}) {
-//		count += i.(int)
-//	}, func(err error) {
-//		gotErr = err
-//		done <- struct{}{}
-//	}, func() {
-//		done <- struct{}{}
-//	})
-//
-//	// We avoid using the assertion API on purpose
-//	<-done
-//	assert.Equal(t, 6, count)
-//	assert.Nil(t, gotErr)
-//}
-//
-//func Test_Observable_IgnoreElements(t *testing.T) {
-//	obs := testObservable(1, 2, 3).IgnoreElements()
-//	Assert(context.Background(), t, obs, HasNoItem())
-//}
-//
-//func Test_Observable_IgnoreElements_Error(t *testing.T) {
-//	obs := testObservable(1, errFoo, 3).IgnoreElements()
-//	Assert(context.Background(), t, obs, HasNoItem(), HasRaisedError(errFoo))
-//}
-//
-//func Test_Observable_GroupBy(t *testing.T) {
-//	count := 3
-//	max := 10
-//
-//	obs := Range(0, max).GroupBy(count, func(item Item) int {
-//		return item.V.(int) % count
-//	}, WithBufferedChannel(max))
-//	s, err := obs.ToSlice(0)
-//	if err != nil {
-//		assert.FailNow(t, err.Error())
-//	}
-//	if len(s) != count {
-//		assert.FailNow(t, "length", "got=%d, expected=%d", len(s), count)
-//	}
-//
-//	Assert(context.Background(), t, s[0].(Observable), HasItems(0, 3, 6, 9), HasNotRaisedError())
-//	Assert(context.Background(), t, s[1].(Observable), HasItems(1, 4, 7, 10), HasNotRaisedError())
-//	Assert(context.Background(), t, s[2].(Observable), HasItems(2, 5, 8), HasNotRaisedError())
-//}
-//
-//func Test_Observable_GroupBy_Error(t *testing.T) {
-//	count := 3
-//	max := 10
-//
-//	obs := Range(0, max).GroupBy(count, func(item Item) int {
-//		return 4
-//	}, WithBufferedChannel(max))
-//	s, err := obs.ToSlice(0)
-//	if err != nil {
-//		assert.FailNow(t, err.Error())
-//	}
-//	if len(s) != count {
-//		assert.FailNow(t, "length", "got=%d, expected=%d", len(s), count)
-//	}
-//
-//	Assert(context.Background(), t, s[0].(Observable), HasRaisedAnError())
-//	Assert(context.Background(), t, s[1].(Observable), HasRaisedAnError())
-//	Assert(context.Background(), t, s[2].(Observable), HasRaisedAnError())
-//}
-//
-//func Test_Observable_Last_NotEmpty(t *testing.T) {
-//	obs := testObservable(1, 2, 3).Last()
-//	Assert(context.Background(), t, obs, HasItem(3))
-//}
-//
-//func Test_Observable_Last_Empty(t *testing.T) {
-//	obs := Empty().Last()
-//	Assert(context.Background(), t, obs, HasNoItem())
-//}
-//
-//func Test_Observable_LastOrDefault_NotEmpty(t *testing.T) {
-//	obs := testObservable(1, 2, 3).LastOrDefault(10)
-//	Assert(context.Background(), t, obs, HasItem(3))
-//}
-//
-//func Test_Observable_LastOrDefault_Empty(t *testing.T) {
-//	obs := Empty().LastOrDefault(10)
-//	Assert(context.Background(), t, obs, HasItem(10))
-//}
-//
-//func Test_Observable_Map_One(t *testing.T) {
-//	obs := testObservable(1, 2, 3).Map(func(i interface{}) (interface{}, error) {
-//		return i.(int) + 1, nil
-//	})
-//	Assert(context.Background(), t, obs, HasItems(2, 3, 4), HasNotRaisedError())
-//}
-//
-//func Test_Observable_Map_Multiple(t *testing.T) {
-//	obs := testObservable(1, 2, 3).Map(func(i interface{}) (interface{}, error) {
-//		return i.(int) + 1, nil
-//	}).Map(func(i interface{}) (interface{}, error) {
-//		return i.(int) * 10, nil
-//	})
-//	Assert(context.Background(), t, obs, HasItems(20, 30, 40), HasNotRaisedError())
-//}
-//
-//func Test_Observable_Map_Error(t *testing.T) {
-//	obs := testObservable(1, 2, 3, errFoo).Map(func(i interface{}) (interface{}, error) {
-//		return i.(int) + 1, nil
-//	})
-//	Assert(context.Background(), t, obs, HasItems(2, 3, 4), HasRaisedError(errFoo))
-//}
-//
-//func Test_Observable_Map_ReturnValueAndError(t *testing.T) {
-//	obs := testObservable(1).Map(func(i interface{}) (interface{}, error) {
-//		return 2, errFoo
-//	})
-//	Assert(context.Background(), t, obs, HasNoItems(), HasRaisedError(errFoo))
-//}
-//
-//func Test_Observable_Map_Multiple_Error(t *testing.T) {
-//	called := false
-//	obs := testObservable(1, 2, 3).Map(func(i interface{}) (interface{}, error) {
-//		return nil, errFoo
-//	}).Map(func(i interface{}) (interface{}, error) {
-//		called = true
-//		return nil, nil
-//	})
-//	Assert(context.Background(), t, obs, HasNoItems(), HasRaisedError(errFoo))
-//	assert.False(t, called)
-//}
-//
-//func Test_Observable_Map_Cancel(t *testing.T) {
-//	next := make(chan Item)
-//
-//	ctx, cancel := context.WithCancel(context.Background())
-//	obs := FromChannel(next).Map(func(i interface{}) (interface{}, error) {
-//		return i.(int) + 1, nil
-//	}, WithContext(ctx))
-//	cancel()
-//	Assert(context.Background(), t, obs, HasNoItems(), HasNotRaisedError())
-//}
-//
-//func Test_Observable_Map_Parallel(t *testing.T) {
-//	const len = 10
-//	ch := make(chan Item, len)
-//	go func() {
-//		for i := 0; i < len; i++ {
-//			ch <- Of(i)
-//		}
-//		close(ch)
-//	}()
-//
-//	obs := FromChannel(ch).Map(func(i interface{}) (interface{}, error) {
-//		return i.(int) + 1, nil
-//	}, WithPool(len))
-//	Assert(context.Background(), t, obs, HasItemsNoParticularOrder(1, 2, 3, 4, 5, 6, 7, 8, 9, 10), HasNotRaisedError())
-//}
-//
-//func Test_Observable_Marshal(t *testing.T) {
-//	obs := testObservable(testStruct{
-//		ID: 1,
-//	}, testStruct{
-//		ID: 2,
-//	}).Marshal(json.Marshal)
-//	Assert(context.Background(), t, obs, HasItems([]byte(`{"id":1}`), []byte(`{"id":2}`)))
-//}
-//
-//func Test_Observable_Max(t *testing.T) {
-//	obs := testObservable(1, 5, 2, -1, 3).Max(func(e1 interface{}, e2 interface{}) int {
-//		i1 := e1.(int)
-//		i2 := e2.(int)
-//		if i1 > i2 {
-//			return 1
-//		} else if i1 < i2 {
-//			return -1
-//		} else {
-//			return 0
-//		}
-//	})
-//	Assert(context.Background(), t, obs, HasItem(5))
-//}
+func Test_Observable_DistinctUntilChanged(t *testing.T) {
+	obs := testObservable(1, 2, 2, 1, 3).DistinctUntilChanged(func(item interface{}) (interface{}, error) {
+		return item, nil
+	})
+	Assert(context.Background(), t, obs, HasItems(1, 2, 1, 3))
+}
+
+func Test_Observable_DistinctUntilChanged_Parallel(t *testing.T) {
+	obs := testObservable(1, 2, 2, 1, 3).DistinctUntilChanged(func(item interface{}) (interface{}, error) {
+		return item, nil
+	}, WithCPUPool())
+	Assert(context.Background(), t, obs, HasItems(1, 2, 1, 3))
+}
+
+func Test_Observable_DoOnCompleted_NoError(t *testing.T) {
+	called := false
+	<-testObservable(1, 2, 3).DoOnCompleted(func() {
+		called = true
+	})
+	assert.True(t, called)
+}
+
+func Test_Observable_DoOnCompleted_Error(t *testing.T) {
+	called := false
+	<-testObservable(1, errFoo, 3).DoOnCompleted(func() {
+		called = true
+	})
+	assert.True(t, called)
+}
+
+func Test_Observable_DoOnError_NoError(t *testing.T) {
+	var got error
+	<-testObservable(1, 2, 3).DoOnError(func(err error) {
+		got = err
+	})
+	assert.Nil(t, got)
+}
+
+func Test_Observable_DoOnError_Error(t *testing.T) {
+	var got error
+	<-testObservable(1, errFoo, 3).DoOnError(func(err error) {
+		got = err
+	})
+	assert.Equal(t, errFoo, got)
+}
+
+func Test_Observable_DoOnNext_NoError(t *testing.T) {
+	s := make([]interface{}, 0)
+	<-testObservable(1, 2, 3).DoOnNext(func(i interface{}) {
+		s = append(s, i)
+	})
+	assert.Equal(t, []interface{}{1, 2, 3}, s)
+}
+
+func Test_Observable_DoOnNext_Error(t *testing.T) {
+	s := make([]interface{}, 0)
+	<-testObservable(1, errFoo, 3).DoOnNext(func(i interface{}) {
+		s = append(s, i)
+	})
+	assert.Equal(t, []interface{}{1}, s)
+}
+
+func Test_Observable_ElementAt(t *testing.T) {
+	obs := Range(0, 10000).ElementAt(10000)
+	Assert(context.Background(), t, obs, HasItems(10000))
+}
+
+func Test_Observable_ElementAt_Parallel(t *testing.T) {
+	obs := Range(0, 10000).ElementAt(10000, WithCPUPool())
+	Assert(context.Background(), t, obs, HasItems(10000))
+}
+
+func Test_Observable_ElementAt_Error(t *testing.T) {
+	obs := testObservable(0, 1, 2, 3, 4).ElementAt(10)
+	Assert(context.Background(), t, obs, HasNoItem(), HasRaisedAnError())
+}
+
+func Test_Observable_Error_NoError(t *testing.T) {
+	assert.NoError(t, testObservable(1, 2, 3).Error())
+}
+
+func Test_Observable_Error_Error(t *testing.T) {
+	assert.Equal(t, errFoo, testObservable(1, errFoo, 3).Error())
+}
+
+func Test_Observable_Errors_NoError(t *testing.T) {
+	assert.Equal(t, 0, len(testObservable(1, 2, 3).Errors()))
+}
+
+func Test_Observable_Errors_OneError(t *testing.T) {
+	assert.Equal(t, 1, len(testObservable(1, errFoo, 3).Errors()))
+}
+
+func Test_Observable_Errors_MultipleError(t *testing.T) {
+	assert.Equal(t, 2, len(testObservable(1, errFoo, errBar).Errors()))
+}
+
+func Test_Observable_Errors_MultipleErrorFromMap(t *testing.T) {
+	errs := testObservable(1, 2, 3, 4).Map(func(i interface{}) (interface{}, error) {
+		if i == 2 {
+			return nil, errFoo
+		}
+		if i == 3 {
+			return nil, errBar
+		}
+		return i, nil
+	}, WithErrorStrategy(Continue)).Errors()
+	assert.Equal(t, 2, len(errs))
+}
+
+func Test_Observable_Filter(t *testing.T) {
+	obs := testObservable(1, 2, 3, 4).Filter(
+		func(i interface{}) bool {
+			return i.(int)%2 == 0
+		})
+	Assert(context.Background(), t, obs, HasItems(2, 4), HasNotRaisedError())
+}
+
+func Test_Observable_Filter_Parallel(t *testing.T) {
+	obs := testObservable(1, 2, 3, 4).Filter(
+		func(i interface{}) bool {
+			return i.(int)%2 == 0
+		}, WithCPUPool())
+	Assert(context.Background(), t, obs, HasItemsNoParticularOrder(2, 4), HasNotRaisedError())
+}
+
+func Test_Observable_First_NotEmpty(t *testing.T) {
+	obs := testObservable(1, 2, 3).First()
+	Assert(context.Background(), t, obs, HasItem(1))
+}
+
+func Test_Observable_First_Empty(t *testing.T) {
+	obs := Empty().First()
+	Assert(context.Background(), t, obs, HasNoItem())
+}
+
+func Test_Observable_First_Parallel_NotEmpty(t *testing.T) {
+	obs := testObservable(1, 2, 3).First(WithCPUPool())
+	Assert(context.Background(), t, obs, HasItem(1))
+}
+
+func Test_Observable_First_Parallel_Empty(t *testing.T) {
+	obs := Empty().First(WithCPUPool())
+	Assert(context.Background(), t, obs, HasNoItem())
+}
+
+func Test_Observable_FirstOrDefault_NotEmpty(t *testing.T) {
+	obs := testObservable(1, 2, 3).FirstOrDefault(10)
+	Assert(context.Background(), t, obs, HasItem(1))
+}
+
+func Test_Observable_FirstOrDefault_Empty(t *testing.T) {
+	obs := Empty().FirstOrDefault(10)
+	Assert(context.Background(), t, obs, HasItem(10))
+}
+
+func Test_Observable_FirstOrDefault_Parallel_NotEmpty(t *testing.T) {
+	obs := testObservable(1, 2, 3).FirstOrDefault(10, WithCPUPool())
+	Assert(context.Background(), t, obs, HasItem(1))
+}
+
+func Test_Observable_FirstOrDefault_Parallel_Empty(t *testing.T) {
+	obs := Empty().FirstOrDefault(10, WithCPUPool())
+	Assert(context.Background(), t, obs, HasItem(10))
+}
+
+func Test_Observable_FlatMap(t *testing.T) {
+	obs := testObservable(1, 2, 3).FlatMap(func(i Item) Observable {
+		return testObservable(i.V.(int)+1, i.V.(int)*10)
+	})
+	Assert(context.Background(), t, obs, HasItems(2, 10, 3, 20, 4, 30))
+}
+
+func Test_Observable_FlatMap_Error1(t *testing.T) {
+	obs := testObservable(1, 2, 3).FlatMap(func(i Item) Observable {
+		if i.V == 2 {
+			return testObservable(errFoo)
+		}
+		return testObservable(i.V.(int)+1, i.V.(int)*10)
+	})
+	Assert(context.Background(), t, obs, HasItems(2, 10), HasRaisedError(errFoo))
+}
+
+func Test_Observable_FlatMap_Error2(t *testing.T) {
+	obs := testObservable(1, errFoo, 3).FlatMap(func(i Item) Observable {
+		if i.Error() {
+			return testObservable(0)
+		}
+		return testObservable(i.V.(int)+1, i.V.(int)*10)
+	})
+	Assert(context.Background(), t, obs, HasItems(2, 10, 0, 4, 30), HasNotRaisedError())
+}
+
+func Test_Observable_FlatMap_Parallel(t *testing.T) {
+	obs := testObservable(1, 2, 3).FlatMap(func(i Item) Observable {
+		return testObservable(i.V.(int)+1, i.V.(int)*10)
+	}, WithCPUPool())
+	Assert(context.Background(), t, obs, HasItemsNoParticularOrder(2, 10, 3, 20, 4, 30))
+}
+
+func Test_Observable_FlatMap_Parallel_Error1(t *testing.T) {
+	obs := testObservable(1, 2, 3).FlatMap(func(i Item) Observable {
+		if i.V == 2 {
+			return testObservable(errFoo)
+		}
+		return testObservable(i.V.(int)+1, i.V.(int)*10)
+	})
+	Assert(context.Background(), t, obs, HasRaisedError(errFoo))
+}
+
+func Test_Observable_ForEach_Error(t *testing.T) {
+	count := 0
+	var gotErr error
+	done := make(chan struct{})
+
+	obs := testObservable(1, 2, 3, errFoo)
+	obs.ForEach(func(i interface{}) {
+		count += i.(int)
+	}, func(err error) {
+		gotErr = err
+		done <- struct{}{}
+	}, func() {
+		done <- struct{}{}
+	})
+
+	// We avoid using the assertion API on purpose
+	<-done
+	assert.Equal(t, 6, count)
+	assert.Equal(t, errFoo, gotErr)
+}
+
+func Test_Observable_ForEach_Done(t *testing.T) {
+	count := 0
+	var gotErr error
+	done := make(chan struct{})
+
+	obs := testObservable(1, 2, 3)
+	obs.ForEach(func(i interface{}) {
+		count += i.(int)
+	}, func(err error) {
+		gotErr = err
+		done <- struct{}{}
+	}, func() {
+		done <- struct{}{}
+	})
+
+	// We avoid using the assertion API on purpose
+	<-done
+	assert.Equal(t, 6, count)
+	assert.Nil(t, gotErr)
+}
+
+func Test_Observable_IgnoreElements(t *testing.T) {
+	obs := testObservable(1, 2, 3).IgnoreElements()
+	Assert(context.Background(), t, obs, HasNoItem())
+}
+
+func Test_Observable_IgnoreElements_Error(t *testing.T) {
+	obs := testObservable(1, errFoo, 3).IgnoreElements()
+	Assert(context.Background(), t, obs, HasNoItem(), HasRaisedError(errFoo))
+}
+
+func Test_Observable_IgnoreElements_Parallel(t *testing.T) {
+	obs := testObservable(1, 2, 3).IgnoreElements(WithCPUPool())
+	Assert(context.Background(), t, obs, HasNoItem())
+}
+
+func Test_Observable_IgnoreElements_Parallel_Error(t *testing.T) {
+	obs := testObservable(1, errFoo, 3).IgnoreElements(WithCPUPool())
+	Assert(context.Background(), t, obs, HasNoItem(), HasRaisedError(errFoo))
+}
+
+func Test_Observable_GroupBy(t *testing.T) {
+	count := 3
+	max := 10
+
+	obs := Range(0, max).GroupBy(count, func(item Item) int {
+		return item.V.(int) % count
+	}, WithBufferedChannel(max))
+	s, err := obs.ToSlice(0)
+	if err != nil {
+		assert.FailNow(t, err.Error())
+	}
+	if len(s) != count {
+		assert.FailNow(t, "length", "got=%d, expected=%d", len(s), count)
+	}
+
+	Assert(context.Background(), t, s[0].(Observable), HasItems(0, 3, 6, 9), HasNotRaisedError())
+	Assert(context.Background(), t, s[1].(Observable), HasItems(1, 4, 7, 10), HasNotRaisedError())
+	Assert(context.Background(), t, s[2].(Observable), HasItems(2, 5, 8), HasNotRaisedError())
+}
+
+func Test_Observable_GroupBy_Error(t *testing.T) {
+	count := 3
+	max := 10
+
+	obs := Range(0, max).GroupBy(count, func(item Item) int {
+		return 4
+	}, WithBufferedChannel(max))
+	s, err := obs.ToSlice(0)
+	if err != nil {
+		assert.FailNow(t, err.Error())
+	}
+	if len(s) != count {
+		assert.FailNow(t, "length", "got=%d, expected=%d", len(s), count)
+	}
+
+	Assert(context.Background(), t, s[0].(Observable), HasRaisedAnError())
+	Assert(context.Background(), t, s[1].(Observable), HasRaisedAnError())
+	Assert(context.Background(), t, s[2].(Observable), HasRaisedAnError())
+}
+
+func Test_Observable_Last_NotEmpty(t *testing.T) {
+	obs := testObservable(1, 2, 3).Last()
+	Assert(context.Background(), t, obs, HasItem(3))
+}
+
+func Test_Observable_Last_Empty(t *testing.T) {
+	obs := Empty().Last()
+	Assert(context.Background(), t, obs, HasNoItem())
+}
+
+func Test_Observable_Last_Parallel_NotEmpty(t *testing.T) {
+	obs := testObservable(1, 2, 3).Last(WithCPUPool())
+	Assert(context.Background(), t, obs, HasItem(3))
+}
+
+func Test_Observable_Last_Parallel_Empty(t *testing.T) {
+	obs := Empty().Last(WithCPUPool())
+	Assert(context.Background(), t, obs, HasNoItem())
+}
+
+func Test_Observable_LastOrDefault_NotEmpty(t *testing.T) {
+	obs := testObservable(1, 2, 3).LastOrDefault(10)
+	Assert(context.Background(), t, obs, HasItem(3))
+}
+
+func Test_Observable_LastOrDefault_Empty(t *testing.T) {
+	obs := Empty().LastOrDefault(10)
+	Assert(context.Background(), t, obs, HasItem(10))
+}
+
+func Test_Observable_LastOrDefault_Parallel_NotEmpty(t *testing.T) {
+	obs := testObservable(1, 2, 3).LastOrDefault(10, WithCPUPool())
+	Assert(context.Background(), t, obs, HasItem(3))
+}
+
+func Test_Observable_LastOrDefault_Parallel_Empty(t *testing.T) {
+	obs := Empty().LastOrDefault(10, WithCPUPool())
+	Assert(context.Background(), t, obs, HasItem(10))
+}
+
+func Test_Observable_Map_One(t *testing.T) {
+	obs := testObservable(1, 2, 3).Map(func(i interface{}) (interface{}, error) {
+		return i.(int) + 1, nil
+	})
+	Assert(context.Background(), t, obs, HasItems(2, 3, 4), HasNotRaisedError())
+}
+
+func Test_Observable_Map_Multiple(t *testing.T) {
+	obs := testObservable(1, 2, 3).Map(func(i interface{}) (interface{}, error) {
+		return i.(int) + 1, nil
+	}).Map(func(i interface{}) (interface{}, error) {
+		return i.(int) * 10, nil
+	})
+	Assert(context.Background(), t, obs, HasItems(20, 30, 40), HasNotRaisedError())
+}
+
+func Test_Observable_Map_Error(t *testing.T) {
+	obs := testObservable(1, 2, 3, errFoo).Map(func(i interface{}) (interface{}, error) {
+		return i.(int) + 1, nil
+	})
+	Assert(context.Background(), t, obs, HasItems(2, 3, 4), HasRaisedError(errFoo))
+}
+
+func Test_Observable_Map_ReturnValueAndError(t *testing.T) {
+	obs := testObservable(1).Map(func(i interface{}) (interface{}, error) {
+		return 2, errFoo
+	})
+	Assert(context.Background(), t, obs, HasNoItems(), HasRaisedError(errFoo))
+}
+
+func Test_Observable_Map_Multiple_Error(t *testing.T) {
+	called := false
+	obs := testObservable(1, 2, 3).Map(func(i interface{}) (interface{}, error) {
+		return nil, errFoo
+	}).Map(func(i interface{}) (interface{}, error) {
+		called = true
+		return nil, nil
+	})
+	Assert(context.Background(), t, obs, HasNoItems(), HasRaisedError(errFoo))
+	assert.False(t, called)
+}
+
+func Test_Observable_Map_Cancel(t *testing.T) {
+	next := make(chan Item)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	obs := FromChannel(next).Map(func(i interface{}) (interface{}, error) {
+		return i.(int) + 1, nil
+	}, WithContext(ctx))
+	cancel()
+	Assert(context.Background(), t, obs, HasNoItems(), HasNotRaisedError())
+}
+
+func Test_Observable_Map_Parallel(t *testing.T) {
+	const len = 10
+	ch := make(chan Item, len)
+	go func() {
+		for i := 0; i < len; i++ {
+			ch <- Of(i)
+		}
+		close(ch)
+	}()
+
+	obs := FromChannel(ch).Map(func(i interface{}) (interface{}, error) {
+		return i.(int) + 1, nil
+	}, WithPool(len))
+	Assert(context.Background(), t, obs, HasItemsNoParticularOrder(1, 2, 3, 4, 5, 6, 7, 8, 9, 10), HasNotRaisedError())
+}
+
+func Test_Observable_Marshal(t *testing.T) {
+	obs := testObservable(testStruct{
+		ID: 1,
+	}, testStruct{
+		ID: 2,
+	}).Marshal(json.Marshal)
+	Assert(context.Background(), t, obs, HasItems([]byte(`{"id":1}`), []byte(`{"id":2}`)))
+}
+
+func Test_Observable_Marshal_Parallel(t *testing.T) {
+	obs := testObservable(testStruct{
+		ID: 1,
+	}, testStruct{
+		ID: 2,
+	}).Marshal(json.Marshal,
+		// We cannot use HasItemsNoParticularOrder function with a []byte
+		WithPool(1))
+	Assert(context.Background(), t, obs, HasItems([]byte(`{"id":1}`), []byte(`{"id":2}`)))
+}
+
+func Test_Observable_Max(t *testing.T) {
+	obs := Range(0, 10000).Max(func(e1 interface{}, e2 interface{}) int {
+		i1 := e1.(int)
+		i2 := e2.(int)
+		if i1 > i2 {
+			return 1
+		} else if i1 < i2 {
+			return -1
+		} else {
+			return 0
+		}
+	})
+	Assert(context.Background(), t, obs, HasItem(10000))
+}
+
+func Test_Observable_Max_Parallel(t *testing.T) {
+	obs := Range(0, 10000).Max(func(e1 interface{}, e2 interface{}) int {
+		i1 := e1.(int)
+		i2 := e2.(int)
+		if i1 > i2 {
+			return 1
+		} else if i1 < i2 {
+			return -1
+		} else {
+			return 0
+		}
+	}, WithCPUPool())
+	Assert(context.Background(), t, obs, HasItem(10000))
+}
+
 //
 //func Test_Observable_Min(t *testing.T) {
 //	obs := testObservable(1, 5, 2, -1, 3).Min(func(e1 interface{}, e2 interface{}) int {
@@ -1248,38 +1363,59 @@ func Test_Observable_Distinct_Parallel_Error2(t *testing.T) {
 //	}))
 //}
 //
-//func Test_Observable_ToSlice(t *testing.T) {
-//	s, err := testObservable(1, 2, 3).ToSlice(5)
-//	assert.Equal(t, []interface{}{1, 2, 3}, s)
-//	assert.Equal(t, 5, cap(s))
-//	assert.NoError(t, err)
-//}
-//
-//func Test_Observable_ToSlice_Error(t *testing.T) {
-//	s, err := testObservable(1, 2, errFoo, 3).ToSlice(0)
-//	assert.Equal(t, []interface{}{1, 2}, s)
-//	assert.Equal(t, errFoo, err)
-//}
-//
-//func Test_Observable_Unmarshal(t *testing.T) {
-//	obs := testObservable([]byte(`{"id":1}`), []byte(`{"id":2}`)).Unmarshal(json.Unmarshal,
-//		func() interface{} {
-//			return &testStruct{}
-//		})
-//	Assert(context.Background(), t, obs, HasItems(&testStruct{
-//		ID: 1,
-//	}, &testStruct{
-//		ID: 2,
-//	}))
-//}
-//
-//func Test_Observable_Unmarshal_Error(t *testing.T) {
-//	obs := testObservable([]byte(`{"id":1`), []byte(`{"id":2}`)).Unmarshal(json.Unmarshal,
-//		func() interface{} {
-//			return &testStruct{}
-//		})
-//	Assert(context.Background(), t, obs, HasRaisedAnError())
-//}
+func Test_Observable_ToSlice(t *testing.T) {
+	s, err := testObservable(1, 2, 3).ToSlice(5)
+	assert.Equal(t, []interface{}{1, 2, 3}, s)
+	assert.Equal(t, 5, cap(s))
+	assert.NoError(t, err)
+}
+
+func Test_Observable_ToSlice_Error(t *testing.T) {
+	s, err := testObservable(1, 2, errFoo, 3).ToSlice(0)
+	assert.Equal(t, []interface{}{1, 2}, s)
+	assert.Equal(t, errFoo, err)
+}
+
+func Test_Observable_Unmarshal(t *testing.T) {
+	obs := testObservable([]byte(`{"id":1}`), []byte(`{"id":2}`)).Unmarshal(json.Unmarshal,
+		func() interface{} {
+			return &testStruct{}
+		})
+	Assert(context.Background(), t, obs, HasItems(&testStruct{
+		ID: 1,
+	}, &testStruct{
+		ID: 2,
+	}))
+}
+
+func Test_Observable_Unmarshal_Error(t *testing.T) {
+	obs := testObservable([]byte(`{"id":1`), []byte(`{"id":2}`)).Unmarshal(json.Unmarshal,
+		func() interface{} {
+			return &testStruct{}
+		})
+	Assert(context.Background(), t, obs, HasRaisedAnError())
+}
+
+func Test_Observable_Unmarshal_Parallel(t *testing.T) {
+	obs := testObservable([]byte(`{"id":1}`), []byte(`{"id":2}`)).Unmarshal(json.Unmarshal,
+		func() interface{} {
+			return &testStruct{}
+		}, WithPool(1))
+	Assert(context.Background(), t, obs, HasItems(&testStruct{
+		ID: 1,
+	}, &testStruct{
+		ID: 2,
+	}))
+}
+
+func Test_Observable_Unmarshal_Parallel_Error(t *testing.T) {
+	obs := testObservable([]byte(`{"id":1`), []byte(`{"id":2}`)).Unmarshal(json.Unmarshal,
+		func() interface{} {
+			return &testStruct{}
+		}, WithCPUPool())
+	Assert(context.Background(), t, obs, HasRaisedAnError())
+}
+
 //
 //func Test_Observable_ZipFromObservable(t *testing.T) {
 //	obs1 := testObservable(1, 2, 3)

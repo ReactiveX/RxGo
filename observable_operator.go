@@ -20,7 +20,7 @@ func (o *ObservableImpl) All(predicate Predicate, opts ...Option) Single {
 			predicate: predicate,
 			all:       true,
 		}
-	}, false, opts...)
+	}, false, false, opts...)
 }
 
 type allOperator struct {
@@ -58,7 +58,7 @@ func (op *allOperator) gatherNext(_ context.Context, item Item, dst chan<- Item,
 func (o *ObservableImpl) AverageFloat32(opts ...Option) Single {
 	return single(o, func() operator {
 		return &averageFloat32Operator{}
-	}, false, opts...)
+	}, false, false, opts...)
 }
 
 type averageFloat32Operator struct {
@@ -105,7 +105,7 @@ func (op *averageFloat32Operator) gatherNext(_ context.Context, item Item, _ cha
 func (o *ObservableImpl) AverageFloat64(opts ...Option) Single {
 	return single(o, func() operator {
 		return &averageFloat64Operator{}
-	}, false, opts...)
+	}, false, false, opts...)
 }
 
 type averageFloat64Operator struct {
@@ -152,7 +152,7 @@ func (op *averageFloat64Operator) gatherNext(_ context.Context, item Item, _ cha
 func (o *ObservableImpl) AverageInt(opts ...Option) Single {
 	return single(o, func() operator {
 		return &averageIntOperator{}
-	}, false, opts...)
+	}, false, false, opts...)
 }
 
 type averageIntOperator struct {
@@ -193,7 +193,7 @@ func (op *averageIntOperator) gatherNext(_ context.Context, item Item, _ chan<- 
 func (o *ObservableImpl) AverageInt8(opts ...Option) Single {
 	return single(o, func() operator {
 		return &averageInt8Operator{}
-	}, false, opts...)
+	}, false, false, opts...)
 }
 
 type averageInt8Operator struct {
@@ -234,7 +234,7 @@ func (op *averageInt8Operator) gatherNext(_ context.Context, item Item, _ chan<-
 func (o *ObservableImpl) AverageInt16(opts ...Option) Single {
 	return single(o, func() operator {
 		return &averageInt16Operator{}
-	}, false, opts...)
+	}, false, false, opts...)
 }
 
 type averageInt16Operator struct {
@@ -275,7 +275,7 @@ func (op *averageInt16Operator) gatherNext(_ context.Context, item Item, _ chan<
 func (o *ObservableImpl) AverageInt32(opts ...Option) Single {
 	return single(o, func() operator {
 		return &averageInt32Operator{}
-	}, false, opts...)
+	}, false, false, opts...)
 }
 
 type averageInt32Operator struct {
@@ -316,7 +316,7 @@ func (op *averageInt32Operator) gatherNext(_ context.Context, item Item, _ chan<
 func (o *ObservableImpl) AverageInt64(opts ...Option) Single {
 	return single(o, func() operator {
 		return &averageInt64Operator{}
-	}, false, opts...)
+	}, false, false, opts...)
 }
 
 type averageInt64Operator struct {
@@ -411,7 +411,7 @@ func (o *ObservableImpl) BufferWithCount(count, skip int, opts ...Option) Observ
 			skip:   skip,
 			buffer: make([]interface{}, count),
 		}
-	}, true, opts...)
+	}, true, false, opts...)
 }
 
 type bufferWithCountOperator struct {
@@ -648,7 +648,7 @@ func (o *ObservableImpl) Contains(equal Predicate, opts ...Option) Single {
 			equal:    equal,
 			contains: false,
 		}
-	}, false, opts...)
+	}, false, false, opts...)
 }
 
 type containsOperator struct {
@@ -683,7 +683,7 @@ func (op *containsOperator) gatherNext(_ context.Context, item Item, dst chan<- 
 func (o *ObservableImpl) Count(opts ...Option) Single {
 	return single(o, func() operator {
 		return &countOperator{}
-	}, true, opts...)
+	}, true, false, opts...)
 }
 
 type countOperator struct {
@@ -714,7 +714,7 @@ func (o *ObservableImpl) DefaultIfEmpty(defaultValue interface{}, opts ...Option
 			defaultValue: defaultValue,
 			empty:        true,
 		}
-	}, true, opts...)
+	}, true, false, opts...)
 }
 
 type defaultIfEmptyOperator struct {
@@ -748,7 +748,7 @@ func (o *ObservableImpl) Distinct(apply Func, opts ...Option) Observable {
 			apply:  apply,
 			keyset: make(map[interface{}]interface{}),
 		}
-	}, false, opts...)
+	}, false, false, opts...)
 }
 
 type distinctOperator struct {
@@ -791,21 +791,41 @@ func (op *distinctOperator) gatherNext(_ context.Context, item Item, dst chan<- 
 
 // DistinctUntilChanged suppresses consecutive duplicate items in the original
 // Observable and returns a new Observable.
+// Cannot be run in parallel.
 func (o *ObservableImpl) DistinctUntilChanged(apply Func, opts ...Option) Observable {
-	var current interface{}
+	return observable(o, func() operator {
+		return &distinctUntilChangedOperator{
+			apply: apply,
+		}
+	}, true, false, opts...)
+}
 
-	return newObservableFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-		key, err := apply(item.V)
-		if err != nil {
-			dst <- Error(err)
-			operator.stop()
-			return
-		}
-		if current != key {
-			dst <- item
-			current = key
-		}
-	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
+type distinctUntilChangedOperator struct {
+	apply   Func
+	current interface{}
+}
+
+func (op *distinctUntilChangedOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	key, err := op.apply(item.V)
+	if err != nil {
+		dst <- Error(err)
+		operatorOptions.stop()
+		return
+	}
+	if op.current != key {
+		dst <- item
+		op.current = key
+	}
+}
+
+func (op *distinctUntilChangedOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+}
+
+func (op *distinctUntilChangedOperator) end(_ context.Context, _ chan<- Item) {
+}
+
+func (op *distinctUntilChangedOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
 // DoOnCompleted registers a callback action that will be called once the Observable terminates.
@@ -890,28 +910,47 @@ func (o *ObservableImpl) DoOnNext(nextFunc NextFunc, opts ...Option) Disposed {
 }
 
 // ElementAt emits only item n emitted by an Observable.
+// Cannot be run in parallel.
 func (o *ObservableImpl) ElementAt(index uint, opts ...Option) Single {
-	takeCount := 0
-	sent := false
+	return single(o, func() operator {
+		return &elementAtOperator{
+			index: index,
+		}
+	}, true, false, opts...)
+}
 
-	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-		if takeCount == int(index) {
-			dst <- item
-			sent = true
-			operator.stop()
-			return
-		}
-		takeCount++
-	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
-		if !sent {
-			dst <- Error(&IllegalInputError{})
-		}
-	}, opts...)
+type elementAtOperator struct {
+	index     uint
+	takeCount int
+	sent      bool
+}
+
+func (op *elementAtOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	if op.takeCount == int(op.index) {
+		dst <- item
+		op.sent = true
+		operatorOptions.stop()
+		return
+	}
+	op.takeCount++
+}
+
+func (op *elementAtOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+}
+
+func (op *elementAtOperator) end(_ context.Context, dst chan<- Item) {
+	if !op.sent {
+		dst <- Error(&IllegalInputError{})
+	}
+}
+
+func (op *elementAtOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
 // Error returns the eventual Observable error.
 // This method is blocking.
-func (o *ObservableImpl) Error() error {
+func (o *ObservableImpl) Error(opts ...Option) error {
 	for item := range o.iterable.Observe() {
 		if item.Error() {
 			return item.E
@@ -922,7 +961,7 @@ func (o *ObservableImpl) Error() error {
 
 // Errors returns an eventual list of Observable errors.
 // This method is blocking
-func (o *ObservableImpl) Errors() []error {
+func (o *ObservableImpl) Errors(opts ...Option) []error {
 	errs := make([]error, 0)
 	for item := range o.iterable.Observe() {
 		if item.Error() {
@@ -934,35 +973,89 @@ func (o *ObservableImpl) Errors() []error {
 
 // Filter emits only those items from an Observable that pass a predicate test.
 func (o *ObservableImpl) Filter(apply Predicate, opts ...Option) Observable {
-	return newObservableFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-		if apply(item.V) {
-			dst <- item
-		}
-	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
+	return observable(o, func() operator {
+		return &filterOperator{apply: apply}
+	}, false, true, opts...)
+}
+
+type filterOperator struct {
+	apply Predicate
+}
+
+func (op *filterOperator) next(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+	if op.apply(item.V) {
+		dst <- item
+	}
+}
+
+func (op *filterOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+}
+
+func (op *filterOperator) end(_ context.Context, _ chan<- Item) {
+}
+
+func (op *filterOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
 // First returns new Observable which emit only first item.
+// Cannot be run in parallel.
 func (o *ObservableImpl) First(opts ...Option) OptionalSingle {
-	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-		dst <- item
-		operator.stop()
-	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
+	return optionalSingle(o, func() operator {
+		return &firstOperator{}
+	}, true, false, opts...)
+}
+
+type firstOperator struct{}
+
+func (op *firstOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	dst <- item
+	operatorOptions.stop()
+}
+
+func (op *firstOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+}
+
+func (op *firstOperator) end(_ context.Context, _ chan<- Item) {
+}
+
+func (op *firstOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
 // FirstOrDefault returns new Observable which emit only first item.
 // If the observable fails to emit any items, it emits a default value.
+// Cannot be run in parallel.
 func (o *ObservableImpl) FirstOrDefault(defaultValue interface{}, opts ...Option) Single {
-	sent := false
-
-	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-		dst <- item
-		sent = true
-		operator.stop()
-	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
-		if !sent {
-			dst <- Of(defaultValue)
+	return single(o, func() operator {
+		return &firstOrDefaultOperator{
+			defaultValue: defaultValue,
 		}
-	}, opts...)
+	}, true, false, opts...)
+}
+
+type firstOrDefaultOperator struct {
+	defaultValue interface{}
+	sent         bool
+}
+
+func (op *firstOrDefaultOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	dst <- item
+	op.sent = true
+	operatorOptions.stop()
+}
+
+func (op *firstOrDefaultOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+}
+
+func (op *firstOrDefaultOperator) end(_ context.Context, dst chan<- Item) {
+	if !op.sent {
+		dst <- Of(op.defaultValue)
+	}
+}
+
+func (op *firstOrDefaultOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
 // FlatMap transforms the items emitted by an Observable into Observables, then flatten the emissions from those into a single Observable.
@@ -1039,11 +1132,27 @@ func (o *ObservableImpl) ForEach(nextFunc NextFunc, errFunc ErrFunc, completedFu
 	return dispose
 }
 
-// IgnoreElements ignores all items emitted by the source ObservableSource and only calls onComplete
-// or onError.
+// IgnoreElements ignores all items emitted by the source ObservableSource except for the errors.
+// Cannot be run in parallel.
 func (o *ObservableImpl) IgnoreElements(opts ...Option) Observable {
-	return newObservableFromOperator(o, func(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
-	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
+	return observable(o, func() operator {
+		return &ignoreElementsOperator{}
+	}, true, false, opts...)
+}
+
+type ignoreElementsOperator struct{}
+
+func (op *ignoreElementsOperator) next(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
+}
+
+func (op *ignoreElementsOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+}
+
+func (op *ignoreElementsOperator) end(_ context.Context, _ chan<- Item) {
+}
+
+func (op *ignoreElementsOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
 // GroupBy divides an Observable into a set of Observables that each emit a different group of items from the original Observable, organized by key.
@@ -1096,49 +1205,109 @@ func (o *ObservableImpl) GroupBy(length int, distribution func(Item) int, opts .
 }
 
 // Last returns a new Observable which emit only last item.
+// Cannot be run in parallel.
 func (o *ObservableImpl) Last(opts ...Option) OptionalSingle {
-	var last Item
-	empty := true
+	return optionalSingle(o, func() operator {
+		return &lastOperator{}
+	}, true, false, opts...)
+}
 
-	return newOptionalSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-		last = item
-		empty = false
-	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
-		if !empty {
-			dst <- last
-		}
-	}, opts...)
+type lastOperator struct {
+	last  Item
+	empty bool
+}
+
+func (op *lastOperator) next(_ context.Context, item Item, _ chan<- Item, _ operatorOptions) {
+	op.last = item
+	op.empty = false
+}
+
+func (op *lastOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+}
+
+func (op *lastOperator) end(_ context.Context, dst chan<- Item) {
+	if !op.empty {
+		dst <- op.last
+	}
+}
+
+func (op *lastOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
 // LastOrDefault returns a new Observable which emit only last item.
 // If the observable fails to emit any items, it emits a default value.
+// Cannot be run in parallel.
 func (o *ObservableImpl) LastOrDefault(defaultValue interface{}, opts ...Option) Single {
-	var last Item
-	empty := true
-
-	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-		last = item
-		empty = false
-	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
-		if !empty {
-			dst <- last
-		} else {
-			dst <- Of(defaultValue)
+	return single(o, func() operator {
+		return &lastOrDefaultOperator{
+			defaultValue: defaultValue,
+			empty:        true,
 		}
-	}, opts...)
+	}, true, false, opts...)
+}
+
+type lastOrDefaultOperator struct {
+	defaultValue interface{}
+	last         Item
+	empty        bool
+}
+
+func (op *lastOrDefaultOperator) next(_ context.Context, item Item, _ chan<- Item, _ operatorOptions) {
+	op.last = item
+	op.empty = false
+}
+
+func (op *lastOrDefaultOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+}
+
+func (op *lastOrDefaultOperator) end(_ context.Context, dst chan<- Item) {
+	if !op.empty {
+		dst <- op.last
+	} else {
+		dst <- Of(op.defaultValue)
+	}
+}
+
+func (op *lastOrDefaultOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
 // Map transforms the items emitted by an Observable by applying a function to each item.
 func (o *ObservableImpl) Map(apply Func, opts ...Option) Observable {
-	return newObservableFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-		res, err := apply(item.V)
-		if err != nil {
-			dst <- Error(err)
-			operator.stop()
-			return
-		}
-		dst <- Of(res)
-	}, defaultErrorFuncOperator, defaultEndFuncOperator, opts...)
+	return observable(o, func() operator {
+		return &mapOperator{apply: apply}
+	}, false, true, opts...)
+}
+
+type mapOperator struct {
+	apply Func
+}
+
+// TODO pass context in map?
+func (op *mapOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	res, err := op.apply(item.V)
+	if err != nil {
+		dst <- Error(err)
+		operatorOptions.stop()
+		return
+	}
+	dst <- Of(res)
+}
+
+func (op *mapOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+}
+
+func (op *mapOperator) end(_ context.Context, _ chan<- Item) {
+}
+
+func (op *mapOperator) gatherNext(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+	switch item.V.(type) {
+	case *mapOperator:
+		return
+	}
+	dst <- item
 }
 
 // Marshal transforms the items emitted by an Observable by applying a marshalling to each item.
@@ -1150,24 +1319,55 @@ func (o *ObservableImpl) Marshal(marshaller Marshaller, opts ...Option) Observab
 
 // Max determines and emits the maximum-valued item emitted by an Observable according to a comparator.
 func (o *ObservableImpl) Max(comparator Comparator, opts ...Option) OptionalSingle {
-	empty := true
-	var max interface{}
-
-	return newObservableFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-		empty = false
-
-		if max == nil {
-			max = item.V
-		} else {
-			if comparator(max, item.V) < 0 {
-				max = item.V
-			}
+	return optionalSingle(o, func() operator {
+		return &maxOperator{
+			comparator: comparator,
+			empty:      true,
 		}
-	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
-		if !empty {
-			dst <- Of(max)
+	}, false, false, opts...)
+}
+
+type maxOperator struct {
+	comparator Comparator
+	empty      bool
+	max        interface{}
+}
+
+func (op *maxOperator) next(_ context.Context, item Item, _ chan<- Item, _ operatorOptions) {
+	op.empty = false
+
+	if op.max == nil {
+		op.max = item.V
+	} else {
+		if op.comparator(op.max, item.V) < 0 {
+			op.max = item.V
 		}
-	}, opts...)
+	}
+}
+
+func (op *maxOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+}
+
+func (op *maxOperator) end(_ context.Context, dst chan<- Item) {
+	if !op.empty {
+		dst <- Of(op.max)
+	}
+}
+
+// TODO Call next?
+func (op *maxOperator) gatherNext(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	v := item.V.(*maxOperator)
+
+	op.empty = false
+
+	if op.max == nil {
+		op.max = v.max
+	} else {
+		if op.comparator(op.max, v.max) < 0 {
+			op.max = v.max
+		}
+	}
 }
 
 // Min determines and emits the minimum-valued item emitted by an Observable according to a comparator.
@@ -2011,16 +2211,35 @@ func (o *ObservableImpl) ToMapWithValueSelector(keySelector, valueSelector Func,
 }
 
 // ToSlice collects all items from an Observable and emit them in a slice and an optional error.
+// Cannot be run in parallel.
 func (o *ObservableImpl) ToSlice(initialCapacity int, opts ...Option) ([]interface{}, error) {
-	s := make([]interface{}, 0, initialCapacity)
-	var err error
-	<-newObservableFromOperator(o, func(_ context.Context, item Item, _ chan<- Item, _ operatorOptions) {
-		s = append(s, item.V)
-	}, func(_ context.Context, item Item, _ chan<- Item, operator operatorOptions) {
-		err = item.E
-		operator.stop()
-	}, defaultEndFuncOperator, opts...).Run()
-	return s, err
+	op := &toSliceOperator{
+		s: make([]interface{}, 0, initialCapacity),
+	}
+	<-observable(o, func() operator {
+		return op
+	}, true, false, opts...).Run()
+	return op.s, op.observableErr
+}
+
+type toSliceOperator struct {
+	s             []interface{}
+	observableErr error
+}
+
+func (op *toSliceOperator) next(_ context.Context, item Item, _ chan<- Item, _ operatorOptions) {
+	op.s = append(op.s, item.V)
+}
+
+func (op *toSliceOperator) err(_ context.Context, item Item, _ chan<- Item, operatorOptions operatorOptions) {
+	op.observableErr = item.E
+	operatorOptions.stop()
+}
+
+func (op *toSliceOperator) end(_ context.Context, _ chan<- Item) {
+}
+
+func (op *toSliceOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
 // Unmarshal transforms the items emitted by an Observable by applying an unmarshalling to each item.
