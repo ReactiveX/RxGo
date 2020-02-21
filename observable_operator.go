@@ -13,21 +13,6 @@ import (
 	"github.com/emirpasic/gods/trees/binaryheap"
 )
 
-// func (o *ObservableImpl) All(predicate Predicate, opts ...Option) Single {
-//	all := true
-//	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-//		if !predicate(item.V) {
-//			dst <- Of(false)
-//			all = false
-//			operator.stop()
-//		}
-//	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
-//		if all {
-//			dst <- Of(true)
-//		}
-//	}, opts...)
-//}
-
 // All determine whether all items emitted by an Observable meet some criteria.
 func (o *ObservableImpl) All(predicate Predicate, opts ...Option) Single {
 	option := parseOptions(opts...)
@@ -663,15 +648,100 @@ func (o *ObservableImpl) Contains(equal Predicate, opts ...Option) Single {
 }
 
 // Count counts the number of items emitted by the source Observable and emit only this value.
+//func (o *ObservableImpl) Count(opts ...Option) Single {
+//	var count int64
+//	return newSingleFromOperator(o, func(_ context.Context, _ Item, dst chan<- Item, _ operatorOptions) {
+//		count++
+//	}, func(_ context.Context, _ Item, dst chan<- Item, operator operatorOptions) {
+//		count++
+//		dst <- Of(count)
+//		operator.stop()
+//	}, defaultEndFuncOperator, opts...)
+//}
+
+// Count counts the number of items emitted by the source Observable and emit only this value.
 func (o *ObservableImpl) Count(opts ...Option) Single {
+	option := parseOptions(opts...)
+	if parallel, _ := option.getPool(); parallel {
+		return runParSingle(countOperator{
+			it: o,
+		}, opts...)
+	}
+	return o.countSeq(opts...)
+}
+
+func (o *ObservableImpl) countSeq(opts ...Option) Single {
 	var count int64
-	return newSingleFromOperator(o, func(_ context.Context, _ Item, dst chan<- Item, _ operatorOptions) {
+	return newSingleFromSeqOperator(o, func(_ context.Context, _ Item, dst chan<- Item, _ operatorOptions) {
 		count++
 	}, func(_ context.Context, _ Item, dst chan<- Item, operator operatorOptions) {
 		count++
-		dst <- Of(count)
 		operator.stop()
-	}, defaultEndFuncOperator, opts...)
+	}, func(ctx context.Context, dst chan<- Item) {
+		dst <- Of(count)
+	}, opts...)
+}
+
+type countOperator struct {
+	it Iterable
+}
+
+func (op countOperator) run(ctx context.Context, pool int, next chan Item, option Option, opts ...Option) {
+	observe := op.it.Observe(opts...)
+
+	wg := sync.WaitGroup{}
+	wg.Add(pool)
+	ctx, cancel := context.WithCancel(ctx)
+	gather := make(chan Item, 1)
+
+	for i := 0; i < pool; i++ {
+		go func() {
+			var count int64
+			defer wg.Done()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case item, ok := <-observe:
+					if !ok {
+						gather <- Of(count)
+						return
+					}
+					if item.Error() {
+						gather <- item
+						if option.getErrorStrategy() == Stop {
+							cancel()
+							return
+						}
+						continue
+					}
+					count++
+				}
+			}
+		}()
+	}
+
+	go func() {
+		defer close(next)
+		var count int64
+		for item := range gather {
+			if item.Error() {
+				next <- item
+				if option.getErrorStrategy() == Stop {
+					break
+				}
+				continue
+			}
+			count += item.V.(int64)
+		}
+		next <- Of(count)
+	}()
+
+	go func() {
+		wg.Wait()
+		cancel()
+		close(gather)
+	}()
 }
 
 // DefaultIfEmpty returns an Observable that emits the items emitted by the source

@@ -283,8 +283,13 @@ func Test_Observable_Contain(t *testing.T) {
 }
 
 func Test_Observable_Count(t *testing.T) {
-	single := testObservable(1, 2, 3, "foo", "bar", errFoo).Count()
-	Assert(context.Background(), t, single, HasItem(int64(6)))
+	Assert(context.Background(), t, Range(1, 10000).Count(),
+		HasItem(int64(10001)))
+}
+
+func Test_Observable_Count_Parallel(t *testing.T) {
+	Assert(context.Background(), t, Range(1, 10000).Count(WithCPUPool()),
+		HasItem(int64(10001)))
 }
 
 func Test_Observable_DefaultIfEmpty_Empty(t *testing.T) {
