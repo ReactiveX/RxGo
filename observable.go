@@ -97,35 +97,36 @@ func defaultLocalEndFuncOperator(_ context.Context, _ chan<- Item) {}
 func defaultEndFuncOperator(_ context.Context, _ chan<- Item) {}
 
 func createOperator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, opts ...Option) Iterable {
-	option := parseOptions(opts...)
-
-	if option.isEagerObservation() {
-		next := option.buildChannel()
-		ctx := option.buildContext()
-		if withPool, pool := option.getPool(); withPool {
-			runParToRemove(ctx, pool, next, iterable, nextFunc, errFunc, endFunc, option, opts...)
-		} else {
-			//runSeq(ctx, next, iterable, nextFunc, errFunc, endFunc, option, opts...)
-		}
-
-		return newChannelIterable(next)
-	}
-
-	return &ObservableImpl{
-		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
-			mergedOptions := append(opts, propagatedOptions...)
-			option = parseOptions(mergedOptions...)
-
-			next := option.buildChannel()
-			ctx := option.buildContext()
-			if withPool, pool := option.getPool(); withPool {
-				runParToRemove(ctx, pool, next, iterable, nextFunc, errFunc, endFunc, option, mergedOptions...)
-			} else {
-				//runSeq(ctx, next, iterable, nextFunc, errFunc, endFunc, option, mergedOptions...)
-			}
-			return next
-		}),
-	}
+	//option := parseOptions(opts...)
+	//
+	//if option.isEagerObservation() {
+	//	next := option.buildChannel()
+	//	ctx := option.buildContext()
+	//	if withPool, pool := option.getPool(); withPool {
+	//		runParToRemove(ctx, pool, next, iterable, nextFunc, errFunc, endFunc, option, opts...)
+	//	} else {
+	//		runSeq(ctx, next, iterable, nextFunc, errFunc, endFunc, option, opts...)
+	//	}
+	//
+	//	return newChannelIterable(next)
+	//}
+	//
+	//return &ObservableImpl{
+	//	iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
+	//		mergedOptions := append(opts, propagatedOptions...)
+	//		option = parseOptions(mergedOptions...)
+	//
+	//		next := option.buildChannel()
+	//		ctx := option.buildContext()
+	//		if withPool, pool := option.getPool(); withPool {
+	//			runParToRemove(ctx, pool, next, iterable, nextFunc, errFunc, endFunc, option, mergedOptions...)
+	//		} else {
+	//			//runSeq(ctx, next, iterable, nextFunc, errFunc, endFunc, option, mergedOptions...)
+	//		}
+	//		return next
+	//	}),
+	//}
+	return nil
 }
 
 func runParToRemove(ctx context.Context, pool int, next chan Item, iterable Iterable, nextFunc, errFunc operatorItem, endFunc operatorEnd, option Option, opts ...Option) {
@@ -314,24 +315,22 @@ func seqOperator(iterable Iterable, nextFunc, errFunc operatorItem, endFunc oper
 type operator interface {
 	next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions)
 	err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions)
-	seqEnd(ctx context.Context, dst chan<- Item)
-	parLocalEnd(ctx context.Context, dst chan<- Item)
+	end(ctx context.Context, dst chan<- Item)
 	gatherNext(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions)
 }
 
-func single(iterable Iterable, operatorFactory func() operator, opts ...Option) Single {
+func single(iterable Iterable, operatorFactory func() operator, forceSeq bool, opts ...Option) Single {
 	option := parseOptions(opts...)
 	parallel, _ := option.getPool()
 
 	if option.isEagerObservation() {
 		next := option.buildChannel()
 		ctx := option.buildContext()
-		if parallel {
-			runPar(ctx, next, iterable, operatorFactory, option, opts...)
-		} else {
+		if forceSeq || !parallel {
 			runSeq(ctx, next, iterable, operatorFactory, option, opts...)
+		} else {
+			runPar(ctx, next, iterable, operatorFactory, option, opts...)
 		}
-
 		return &SingleImpl{iterable: newChannelIterable(next)}
 	}
 
@@ -342,10 +341,74 @@ func single(iterable Iterable, operatorFactory func() operator, opts ...Option) 
 
 			next := option.buildChannel()
 			ctx := option.buildContext()
-			if parallel {
-				runPar(ctx, next, iterable, operatorFactory, option, mergedOptions...)
-			} else {
+			if forceSeq || !parallel {
 				runSeq(ctx, next, iterable, operatorFactory, option, mergedOptions...)
+			} else {
+				runPar(ctx, next, iterable, operatorFactory, option, mergedOptions...)
+			}
+			return next
+		}),
+	}
+}
+
+func observable(iterable Iterable, operatorFactory func() operator, forceSeq bool, opts ...Option) Observable {
+	option := parseOptions(opts...)
+	parallel, _ := option.getPool()
+
+	if option.isEagerObservation() {
+		next := option.buildChannel()
+		ctx := option.buildContext()
+		if forceSeq || !parallel {
+			runSeq(ctx, next, iterable, operatorFactory, option, opts...)
+		} else {
+			runPar(ctx, next, iterable, operatorFactory, option, opts...)
+		}
+		return &ObservableImpl{iterable: newChannelIterable(next)}
+	}
+
+	return &ObservableImpl{
+		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
+			mergedOptions := append(opts, propagatedOptions...)
+			option = parseOptions(mergedOptions...)
+
+			next := option.buildChannel()
+			ctx := option.buildContext()
+			if forceSeq || !parallel {
+				runSeq(ctx, next, iterable, operatorFactory, option, mergedOptions...)
+			} else {
+				runPar(ctx, next, iterable, operatorFactory, option, mergedOptions...)
+			}
+			return next
+		}),
+	}
+}
+
+func optionalSingle(iterable Iterable, operatorFactory func() operator, forceSeq bool, opts ...Option) OptionalSingle {
+	option := parseOptions(opts...)
+	parallel, _ := option.getPool()
+
+	if option.isEagerObservation() {
+		next := option.buildChannel()
+		ctx := option.buildContext()
+		if forceSeq || !parallel {
+			runSeq(ctx, next, iterable, operatorFactory, option, opts...)
+		} else {
+			runPar(ctx, next, iterable, operatorFactory, option, opts...)
+		}
+		return &OptionalSingleImpl{iterable: newChannelIterable(next)}
+	}
+
+	return &OptionalSingleImpl{
+		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
+			mergedOptions := append(opts, propagatedOptions...)
+			option = parseOptions(mergedOptions...)
+
+			next := option.buildChannel()
+			ctx := option.buildContext()
+			if forceSeq || !parallel {
+				runSeq(ctx, next, iterable, operatorFactory, option, mergedOptions...)
+			} else {
+				runPar(ctx, next, iterable, operatorFactory, option, mergedOptions...)
 			}
 			return next
 		}),
@@ -382,7 +445,7 @@ func runPar(ctx context.Context, next chan Item, iterable Iterable, operatorFact
 					return
 				case item, ok := <-observe:
 					if !ok {
-						op.parLocalEnd(ctx, gather)
+						gather <- Of(op)
 						return
 					}
 					if item.Error() {
@@ -418,7 +481,7 @@ func runPar(ctx context.Context, next chan Item, iterable Iterable, operatorFact
 				op.gatherNext(ctx, item, next, operator)
 			}
 		}
-		op.seqEnd(ctx, next)
+		op.end(ctx, next)
 		close(next)
 	}()
 
@@ -455,13 +518,13 @@ func runSeq(ctx context.Context, next chan Item, iterable Iterable, operatorFact
 					break loop
 				}
 				if i.Error() {
-					op.next(ctx, i, next, operator)
+					op.err(ctx, i, next, operator)
 				} else {
 					op.next(ctx, i, next, operator)
 				}
 			}
 		}
-		op.seqEnd(ctx, next)
+		op.end(ctx, next)
 		close(next)
 	}()
 }

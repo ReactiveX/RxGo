@@ -20,7 +20,7 @@ func (o *ObservableImpl) All(predicate Predicate, opts ...Option) Single {
 			predicate: predicate,
 			all:       true,
 		}
-	}, opts...)
+	}, false, opts...)
 }
 
 type allOperator struct {
@@ -40,7 +40,7 @@ func (op *allOperator) err(ctx context.Context, item Item, dst chan<- Item, oper
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *allOperator) seqEnd(_ context.Context, dst chan<- Item) {
+func (op *allOperator) end(_ context.Context, dst chan<- Item) {
 	if op.all {
 		dst <- Of(true)
 	}
@@ -54,15 +54,11 @@ func (op *allOperator) gatherNext(_ context.Context, item Item, dst chan<- Item,
 	}
 }
 
-func (op *allOperator) parLocalEnd(ctx context.Context, dst chan<- Item) {
-	op.seqEnd(ctx, dst)
-}
-
 // AverageFloat32 calculates the average of numbers emitted by an Observable and emits the average float32.
 func (o *ObservableImpl) AverageFloat32(opts ...Option) Single {
 	return single(o, func() operator {
 		return &averageFloat32Operator{}
-	}, opts...)
+	}, false, opts...)
 }
 
 type averageFloat32Operator struct {
@@ -91,16 +87,12 @@ func (op *averageFloat32Operator) err(ctx context.Context, item Item, dst chan<-
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *averageFloat32Operator) seqEnd(_ context.Context, dst chan<- Item) {
+func (op *averageFloat32Operator) end(_ context.Context, dst chan<- Item) {
 	if op.count == 0 {
 		dst <- Of(0)
 	} else {
 		dst <- Of(op.sum / op.count)
 	}
-}
-
-func (op *averageFloat32Operator) parLocalEnd(_ context.Context, dst chan<- Item) {
-	dst <- Of(op)
 }
 
 func (op *averageFloat32Operator) gatherNext(_ context.Context, item Item, _ chan<- Item, _ operatorOptions) {
@@ -113,7 +105,7 @@ func (op *averageFloat32Operator) gatherNext(_ context.Context, item Item, _ cha
 func (o *ObservableImpl) AverageFloat64(opts ...Option) Single {
 	return single(o, func() operator {
 		return &averageFloat64Operator{}
-	}, opts...)
+	}, false, opts...)
 }
 
 type averageFloat64Operator struct {
@@ -142,16 +134,12 @@ func (op *averageFloat64Operator) err(ctx context.Context, item Item, dst chan<-
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *averageFloat64Operator) seqEnd(_ context.Context, dst chan<- Item) {
+func (op *averageFloat64Operator) end(_ context.Context, dst chan<- Item) {
 	if op.count == 0 {
 		dst <- Of(0)
 	} else {
 		dst <- Of(op.sum / op.count)
 	}
-}
-
-func (op *averageFloat64Operator) parLocalEnd(_ context.Context, dst chan<- Item) {
-	dst <- Of(op)
 }
 
 func (op *averageFloat64Operator) gatherNext(_ context.Context, item Item, _ chan<- Item, _ operatorOptions) {
@@ -164,7 +152,7 @@ func (op *averageFloat64Operator) gatherNext(_ context.Context, item Item, _ cha
 func (o *ObservableImpl) AverageInt(opts ...Option) Single {
 	return single(o, func() operator {
 		return &averageIntOperator{}
-	}, opts...)
+	}, false, opts...)
 }
 
 type averageIntOperator struct {
@@ -187,16 +175,12 @@ func (op *averageIntOperator) err(ctx context.Context, item Item, dst chan<- Ite
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *averageIntOperator) seqEnd(_ context.Context, dst chan<- Item) {
+func (op *averageIntOperator) end(_ context.Context, dst chan<- Item) {
 	if op.count == 0 {
 		dst <- Of(0)
 	} else {
 		dst <- Of(op.sum / op.count)
 	}
-}
-
-func (op *averageIntOperator) parLocalEnd(_ context.Context, dst chan<- Item) {
-	dst <- Of(op)
 }
 
 func (op *averageIntOperator) gatherNext(_ context.Context, item Item, _ chan<- Item, _ operatorOptions) {
@@ -207,90 +191,166 @@ func (op *averageIntOperator) gatherNext(_ context.Context, item Item, _ chan<- 
 
 // AverageInt8 calculates the average of numbers emitted by an Observable and emits the≤ average int8.
 func (o *ObservableImpl) AverageInt8(opts ...Option) Single {
-	var sum int8
-	var count int8
+	return single(o, func() operator {
+		return &averageInt8Operator{}
+	}, false, opts...)
+}
 
-	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-		if v, ok := item.V.(int8); ok {
-			sum += v
-			count++
-		} else {
-			dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int8, got: %t", item)})
-			operator.stop()
-		}
-	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
-		if count == 0 {
-			dst <- Of(0)
-		} else {
-			dst <- Of(sum / count)
-		}
-	}, opts...)
+type averageInt8Operator struct {
+	sum   int8
+	count int8
+}
+
+func (op *averageInt8Operator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	switch v := item.V.(type) {
+	default:
+		dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int8, got: %t", item)})
+		operatorOptions.stop()
+	case int8:
+		op.sum += v
+		op.count++
+	}
+}
+
+func (op *averageInt8Operator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+}
+
+func (op *averageInt8Operator) end(_ context.Context, dst chan<- Item) {
+	if op.count == 0 {
+		dst <- Of(0)
+	} else {
+		dst <- Of(op.sum / op.count)
+	}
+}
+
+func (op *averageInt8Operator) gatherNext(_ context.Context, item Item, _ chan<- Item, _ operatorOptions) {
+	v := item.V.(*averageInt8Operator)
+	op.sum += v.sum
+	op.count += v.count
 }
 
 // AverageInt16 calculates the average of numbers emitted by an Observable and emits the average int16.
 func (o *ObservableImpl) AverageInt16(opts ...Option) Single {
-	var sum int16
-	var count int16
+	return single(o, func() operator {
+		return &averageInt16Operator{}
+	}, false, opts...)
+}
 
-	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-		if v, ok := item.V.(int16); ok {
-			sum += v
-			count++
-		} else {
-			dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int16, got: %t", item)})
-			operator.stop()
-		}
-	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
-		if count == 0 {
-			dst <- Of(0)
-		} else {
-			dst <- Of(sum / count)
-		}
-	}, opts...)
+type averageInt16Operator struct {
+	sum   int16
+	count int16
+}
+
+func (op *averageInt16Operator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	switch v := item.V.(type) {
+	default:
+		dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int16, got: %t", item)})
+		operatorOptions.stop()
+	case int16:
+		op.sum += v
+		op.count++
+	}
+}
+
+func (op *averageInt16Operator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+}
+
+func (op *averageInt16Operator) end(_ context.Context, dst chan<- Item) {
+	if op.count == 0 {
+		dst <- Of(0)
+	} else {
+		dst <- Of(op.sum / op.count)
+	}
+}
+
+func (op *averageInt16Operator) gatherNext(_ context.Context, item Item, _ chan<- Item, _ operatorOptions) {
+	v := item.V.(*averageInt16Operator)
+	op.sum += v.sum
+	op.count += v.count
 }
 
 // AverageInt32 calculates the average of numbers emitted by an Observable and emits the average int32.
 func (o *ObservableImpl) AverageInt32(opts ...Option) Single {
-	var sum int32
-	var count int32
+	return single(o, func() operator {
+		return &averageInt32Operator{}
+	}, false, opts...)
+}
 
-	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-		if v, ok := item.V.(int32); ok {
-			sum += v
-			count++
-		} else {
-			dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int32, got: %t", item)})
-			operator.stop()
-		}
-	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
-		if count == 0 {
-			dst <- Of(0)
-		} else {
-			dst <- Of(sum / count)
-		}
-	}, opts...)
+type averageInt32Operator struct {
+	sum   int32
+	count int32
+}
+
+func (op *averageInt32Operator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	switch v := item.V.(type) {
+	default:
+		dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int32, got: %t", item)})
+		operatorOptions.stop()
+	case int32:
+		op.sum += v
+		op.count++
+	}
+}
+
+func (op *averageInt32Operator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+}
+
+func (op *averageInt32Operator) end(_ context.Context, dst chan<- Item) {
+	if op.count == 0 {
+		dst <- Of(0)
+	} else {
+		dst <- Of(op.sum / op.count)
+	}
+}
+
+func (op *averageInt32Operator) gatherNext(_ context.Context, item Item, _ chan<- Item, _ operatorOptions) {
+	v := item.V.(*averageInt32Operator)
+	op.sum += v.sum
+	op.count += v.count
 }
 
 // AverageInt64 calculates the average of numbers emitted by an Observable and emits this average int64.
 func (o *ObservableImpl) AverageInt64(opts ...Option) Single {
-	var sum int64
-	var count int64
+	return single(o, func() operator {
+		return &averageInt64Operator{}
+	}, false, opts...)
+}
 
-	return newSingleFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-		if v, ok := item.V.(int64); ok {
-			sum += v
-			count++
-		} else {
-			dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int64, got: %t", item)})
-			operator.stop()
-		}
-	}, defaultErrorFuncOperator, func(_ context.Context, dst chan<- Item) {
-		if count == 0 {
-			dst <- Of(0)
-		} else {
-			dst <- Of(sum / count)
-		}
-	}, opts...)
+type averageInt64Operator struct {
+	sum   int64
+	count int64
+}
+
+func (op *averageInt64Operator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	switch v := item.V.(type) {
+	default:
+		dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int64, got: %t", item)})
+		operatorOptions.stop()
+	case int64:
+		op.sum += v
+		op.count++
+	}
+}
+
+func (op *averageInt64Operator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+}
+
+func (op *averageInt64Operator) end(_ context.Context, dst chan<- Item) {
+	if op.count == 0 {
+		dst <- Of(0)
+	} else {
+		dst <- Of(op.sum / op.count)
+	}
+}
+
+func (op *averageInt64Operator) gatherNext(_ context.Context, item Item, _ chan<- Item, _ operatorOptions) {
+	v := item.V.(*averageInt64Operator)
+	op.sum += v.sum
+	op.count += v.count
 }
 
 // BackOffRetry implements a backoff retry if a source Observable sends an error, resubscribe to it in the hopes that it will complete without error.
@@ -345,39 +405,58 @@ func (o *ObservableImpl) BufferWithCount(count, skip int, opts ...Option) Observ
 		return newObservableFromError(IllegalInputError{error: "skip must be positive"})
 	}
 
-	buffer := make([]interface{}, count)
-	iCount := 0
-	iSkip := 0
+	return observable(o, func() operator {
+		return &bufferWithCountOperator{
+			count:  count,
+			skip:   skip,
+			buffer: make([]interface{}, count),
+		}
+	}, true, opts...)
+}
 
-	return newObservableFromOperator(o, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-		if iCount >= count {
-			// Skip
-			iSkip++
-		} else {
-			// Add to buffer
-			buffer[iCount] = item.V
-			iCount++
-			iSkip++
-		}
-		if iSkip == skip {
-			// Send current buffer
-			dst <- Of(buffer)
-			buffer = make([]interface{}, count)
-			iCount = 0
-			iSkip = 0
-		}
-	}, func(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
-		if iCount != 0 {
-			dst <- Of(buffer[:iCount])
-		}
-		dst <- item
-		iCount = 0
-		operator.stop()
-	}, func(_ context.Context, dst chan<- Item) {
-		if iCount != 0 {
-			dst <- Of(buffer[:iCount])
-		}
-	}, opts...)
+type bufferWithCountOperator struct {
+	count, skip int
+	buffer      []interface{}
+	iCount      int
+	iSkip       int
+}
+
+func (op *bufferWithCountOperator) next(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+	if op.iCount >= op.count {
+		// Skip
+		op.iSkip++
+	} else {
+		// Add to buffer
+		op.buffer[op.iCount] = item.V
+		op.iCount++
+		op.iSkip++
+	}
+	if op.iSkip == op.skip {
+		// Send current buffer
+		dst <- Of(op.buffer)
+		op.buffer = make([]interface{}, op.count)
+		op.iCount = 0
+		op.iSkip = 0
+	}
+}
+
+func (op *bufferWithCountOperator) err(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	if op.iCount != 0 {
+		dst <- Of(op.buffer[:op.iCount])
+	}
+	dst <- item
+	op.iCount = 0
+	operatorOptions.stop()
+}
+
+func (op *bufferWithCountOperator) end(_ context.Context, dst chan<- Item) {
+	if op.iCount != 0 {
+		dst <- Of(op.buffer[:op.iCount])
+	}
+}
+
+func (op *bufferWithCountOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
+	panic("not implemented")
 }
 
 // BufferWithTime returns an Observable that emits buffers of items it collects from the source
