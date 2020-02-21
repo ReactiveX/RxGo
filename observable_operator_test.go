@@ -47,10 +47,29 @@ func Test_Observable_All_Parallel_Error(t *testing.T) {
 }
 
 func Test_Observable_AverageFloat32(t *testing.T) {
-	Assert(context.Background(), t, testObservable(float32(1), float32(2), float32(3)).AverageFloat32(), HasItem(float32(2)))
 	Assert(context.Background(), t, testObservable(float32(1), float32(20)).AverageFloat32(), HasItem(float32(10.5)))
+}
+
+func Test_Observable_AverageFloat32_Empty(t *testing.T) {
 	Assert(context.Background(), t, Empty().AverageFloat32(), HasItem(0))
+}
+
+func Test_Observable_AverageFloat32_Error(t *testing.T) {
 	Assert(context.Background(), t, testObservable("x").AverageFloat32(), HasRaisedAnError())
+}
+
+func Test_Observable_AverageFloat32_Parallel(t *testing.T) {
+	Assert(context.Background(), t, testObservable(float32(1), float32(20)).AverageFloat32(), HasItem(float32(10.5)))
+}
+
+func Test_Observable_AverageFloat32_Parallel_Empty(t *testing.T) {
+	Assert(context.Background(), t, Empty().AverageFloat32(WithCPUPool()),
+		HasItem(0))
+}
+
+func Test_Observable_AverageFloat32_Parallel_Error(t *testing.T) {
+	Assert(context.Background(), t, testObservable("x").AverageFloat32(WithCPUPool()),
+		HasRaisedAnError())
 }
 
 func Test_Observable_AverageFloat64(t *testing.T) {

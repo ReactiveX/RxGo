@@ -263,7 +263,7 @@ func newSingleFromSeqOperator(iterable Iterable, nextFunc, errFunc operatorItem,
 //}
 
 type operator interface {
-	Run(ctx context.Context, pool int, next chan Item, option Option, opts ...Option)
+	run(ctx context.Context, pool int, next chan Item, option Option, opts ...Option)
 }
 
 // func runParObservable(operator operator, opts ...Option) Observable {
@@ -299,7 +299,7 @@ func runParOptionalSingle(operator operator, opts ...Option) OptionalSingle {
 	if option.isEagerObservation() {
 		next := option.buildChannel()
 		ctx := option.buildContext()
-		operator.Run(ctx, pool, next, option, opts...)
+		operator.run(ctx, pool, next, option, opts...)
 		return &OptionalSingleImpl{
 			iterable: newChannelIterable(next),
 		}
@@ -312,7 +312,7 @@ func runParOptionalSingle(operator operator, opts ...Option) OptionalSingle {
 
 			next := option.buildChannel()
 			ctx := option.buildContext()
-			operator.Run(ctx, pool, next, option, opts...)
+			operator.run(ctx, pool, next, option, opts...)
 			return next
 		}),
 	}
@@ -325,7 +325,7 @@ func runParSingle(operator operator, opts ...Option) Single {
 	if option.isEagerObservation() {
 		next := option.buildChannel()
 		ctx := option.buildContext()
-		operator.Run(ctx, pool, next, option, opts...)
+		operator.run(ctx, pool, next, option, opts...)
 		return &SingleImpl{
 			iterable: newChannelIterable(next),
 		}
@@ -338,7 +338,7 @@ func runParSingle(operator operator, opts ...Option) Single {
 
 			next := option.buildChannel()
 			ctx := option.buildContext()
-			operator.Run(ctx, pool, next, option, opts...)
+			operator.run(ctx, pool, next, option, opts...)
 			return next
 		}),
 	}
