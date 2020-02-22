@@ -245,6 +245,7 @@ func Merge(observables []Observable, opts ...Option) Observable {
 	ctx := option.buildContext()
 	next := option.buildChannel()
 	wg := sync.WaitGroup{}
+	wg.Add(len(observables))
 
 	f := func(o Observable) {
 		defer wg.Done()
@@ -266,10 +267,11 @@ func Merge(observables []Observable, opts ...Option) Observable {
 		}
 	}
 
-	for _, o := range observables {
-		wg.Add(1)
-		go f(o)
-	}
+	go func() {
+		for _, o := range observables {
+			f(o)
+		}
+	}()
 
 	go func() {
 		wg.Wait()
