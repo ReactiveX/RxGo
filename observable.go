@@ -19,7 +19,7 @@ type Observable interface {
 	AverageInt32(opts ...Option) Single
 	AverageInt64(opts ...Option) Single
 	BackOffRetry(backOffCfg backoff.BackOff, opts ...Option) Observable
-	BufferWithCount(count, skip int, opts ...Option) Observable
+	BufferWithCount(count int, opts ...Option) Observable
 	BufferWithTime(timespan, timeshift Duration, opts ...Option) Observable
 	BufferWithTimeOrCount(timespan Duration, count int, opts ...Option) Observable
 	Contains(equal Predicate, opts ...Option) Single

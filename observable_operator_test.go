@@ -166,31 +166,23 @@ func Test_Observable_BackOffRetry_Error(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(1, 2, 1, 2, 1, 2, 1, 2), HasError(errFoo))
 }
 
-func Test_Observable_BufferWithCount_CountAndSkipEqual(t *testing.T) {
-	obs := testObservable(1, 2, 3, 4, 5, 6).BufferWithCount(3, 3)
+func Test_Observable_BufferWithCount(t *testing.T) {
+	obs := testObservable(1, 2, 3, 4, 5, 6).BufferWithCount(3)
 	Assert(context.Background(), t, obs, HasItems([]interface{}{1, 2, 3}, []interface{}{4, 5, 6}))
 }
 
-func Test_Observable_BufferWithCount_CountAndSkipNotEqual(t *testing.T) {
-	obs := testObservable(1, 2, 3, 4, 5, 6).BufferWithCount(2, 3)
-	Assert(context.Background(), t, obs, HasItems([]interface{}{1, 2}, []interface{}{4, 5}))
-}
-
 func Test_Observable_BufferWithCount_IncompleteLastItem(t *testing.T) {
-	obs := testObservable(1, 2, 3, 4).BufferWithCount(2, 3)
-	Assert(context.Background(), t, obs, HasItems([]interface{}{1, 2}, []interface{}{4}))
+	obs := testObservable(1, 2, 3, 4).BufferWithCount(3)
+	Assert(context.Background(), t, obs, HasItems([]interface{}{1, 2, 3}, []interface{}{4}))
 }
 
 func Test_Observable_BufferWithCount_Error(t *testing.T) {
-	obs := testObservable(1, 2, 3, 4, errFoo).BufferWithCount(3, 3)
+	obs := testObservable(1, 2, 3, 4, errFoo).BufferWithCount(3)
 	Assert(context.Background(), t, obs, HasItems([]interface{}{1, 2, 3}, []interface{}{4}), HasError(errFoo))
 }
 
-func Test_Observable_BufferWithCount_InvalidInputs(t *testing.T) {
-	obs := testObservable(1, 2, 3, 4).BufferWithCount(0, 5)
-	Assert(context.Background(), t, obs, HasAnError())
-
-	obs = testObservable(1, 2, 3, 4).BufferWithCount(5, 0)
+func Test_Observable_BufferWithCount_InputError(t *testing.T) {
+	obs := testObservable(1, 2, 3, 4).BufferWithCount(0)
 	Assert(context.Background(), t, obs, HasAnError())
 }
 

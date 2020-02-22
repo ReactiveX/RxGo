@@ -398,56 +398,37 @@ func (o *ObservableImpl) BackOffRetry(backOffCfg backoff.BackOff, opts ...Option
 // When the source Observable completes or encounters an error,
 // the resulting Observable emits the current buffer and propagates
 // the notification from the source Observable.
-func (o *ObservableImpl) BufferWithCount(count, skip int, opts ...Option) Observable {
+func (o *ObservableImpl) BufferWithCount(count int, opts ...Option) Observable {
 	if count <= 0 {
 		return Thrown(IllegalInputError{error: "count must be positive"})
-	}
-	if skip <= 0 {
-		return Thrown(IllegalInputError{error: "skip must be positive"})
 	}
 
 	return observable(o, func() operator {
 		return &bufferWithCountOperator{
 			count:  count,
-			skip:   skip,
 			buffer: make([]interface{}, count),
 		}
 	}, true, false, opts...)
 }
 
 type bufferWithCountOperator struct {
-	count, skip int
-	buffer      []interface{}
-	iCount      int
-	iSkip       int
+	count  int
+	iCount int
+	buffer []interface{}
 }
 
 func (op *bufferWithCountOperator) next(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
-	if op.iCount >= op.count {
-		// Skip
-		op.iSkip++
-	} else {
-		// Add to buffer
-		op.buffer[op.iCount] = item.V
-		op.iCount++
-		op.iSkip++
-	}
-	if op.iSkip == op.skip {
-		// Send current buffer
+	op.buffer[op.iCount] = item.V
+	op.iCount++
+	if op.iCount == op.count {
 		dst <- Of(op.buffer)
-		op.buffer = make([]interface{}, op.count)
 		op.iCount = 0
-		op.iSkip = 0
+		op.buffer = make([]interface{}, op.count)
 	}
 }
 
-func (op *bufferWithCountOperator) err(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	if op.iCount != 0 {
-		dst <- Of(op.buffer[:op.iCount])
-	}
-	dst <- item
-	op.iCount = 0
-	operatorOptions.stop()
+func (op *bufferWithCountOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
 func (op *bufferWithCountOperator) end(_ context.Context, dst chan<- Item) {
@@ -2517,7 +2498,7 @@ func (o *ObservableImpl) WindowWithCount(count int, opts ...Option) Observable {
 
 type windowWithCountOperator struct {
 	count          int
-	currentIndex   int
+	iCount         int
 	currentChannel chan Item
 	option         Option
 }
@@ -2535,8 +2516,8 @@ func (op *windowWithCountOperator) pre(ctx context.Context, dst chan<- Item) {
 }
 
 func (op *windowWithCountOperator) post(ctx context.Context, dst chan<- Item) {
-	if op.currentIndex == op.count {
-		op.currentIndex = 0
+	if op.iCount == op.count {
+		op.iCount = 0
 		close(op.currentChannel)
 		ch := op.option.buildChannel()
 		op.currentChannel = ch
@@ -2551,14 +2532,14 @@ func (op *windowWithCountOperator) post(ctx context.Context, dst chan<- Item) {
 func (op *windowWithCountOperator) next(ctx context.Context, item Item, dst chan<- Item, _ operatorOptions) {
 	op.pre(ctx, dst)
 	op.currentChannel <- item
-	op.currentIndex++
+	op.iCount++
 	op.post(ctx, dst)
 }
 
 func (op *windowWithCountOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	op.pre(ctx, dst)
 	op.currentChannel <- item
-	op.currentIndex++
+	op.iCount++
 	op.post(ctx, dst)
 	operatorOptions.stop()
 }
