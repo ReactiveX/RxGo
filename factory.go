@@ -339,7 +339,7 @@ func Thrown(err error) Observable {
 // Timer returns an Observable that emits an empty structure after a specified delay, and then completes.
 func Timer(d Duration, opts ...Option) Observable {
 	option := parseOptions(opts...)
-	next := option.buildChannel()
+	next := make(chan Item, 1)
 	ctx := option.buildContext()
 
 	go func() {
