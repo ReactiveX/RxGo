@@ -2499,6 +2499,79 @@ func (o *ObservableImpl) Unmarshal(unmarshaller Unmarshaller, factory func() int
 	}, opts...)
 }
 
+// WindowWithCount periodically subdivides items from an Observable into Observable windows of a given size and emit these windows
+// rather than emitting the items one at a time.
+func (o *ObservableImpl) WindowWithCount(count int, opts ...Option) Observable {
+	if count < 0 {
+		return Thrown(IllegalInputError{error: "count must be positive or nil"})
+	}
+
+	option := parseOptions(opts...)
+	return observable(o, func() operator {
+		return &windowWithCountOperator{
+			count:  count,
+			option: option,
+		}
+	}, true, false, opts...)
+}
+
+type windowWithCountOperator struct {
+	count          int
+	currentIndex   int
+	currentChannel chan Item
+	option         Option
+}
+
+func (op *windowWithCountOperator) pre(ctx context.Context, dst chan<- Item) {
+	if op.currentChannel == nil {
+		ch := op.option.buildChannel()
+		op.currentChannel = ch
+		select {
+		case <-ctx.Done():
+			return
+		case dst <- Of(FromChannel(ch)):
+		}
+	}
+}
+
+func (op *windowWithCountOperator) post(ctx context.Context, dst chan<- Item) {
+	if op.currentIndex == op.count {
+		op.currentIndex = 0
+		close(op.currentChannel)
+		ch := op.option.buildChannel()
+		op.currentChannel = ch
+		select {
+		case <-ctx.Done():
+			return
+		case dst <- Of(FromChannel(ch)):
+		}
+	}
+}
+
+func (op *windowWithCountOperator) next(ctx context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+	op.pre(ctx, dst)
+	op.currentChannel <- item
+	op.currentIndex++
+	op.post(ctx, dst)
+}
+
+func (op *windowWithCountOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	op.pre(ctx, dst)
+	op.currentChannel <- item
+	op.currentIndex++
+	op.post(ctx, dst)
+	operatorOptions.stop()
+}
+
+func (op *windowWithCountOperator) end(_ context.Context, _ chan<- Item) {
+	if op.currentChannel != nil {
+		close(op.currentChannel)
+	}
+}
+
+func (op *windowWithCountOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
+}
+
 // ZipFromIterable merges the emissions of multiple Observables together via a specified function
 // and emit single items for each combination based on the results of this function.
 func (o *ObservableImpl) ZipFromIterable(iterable Iterable, zipper Func2, opts ...Option) Observable {

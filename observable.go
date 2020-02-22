@@ -73,6 +73,7 @@ type Observable interface {
 	ToMapWithValueSelector(keySelector, valueSelector Func, opts ...Option) Single
 	ToSlice(initialCapacity int, opts ...Option) ([]interface{}, error)
 	Unmarshal(unmarshaller Unmarshaller, factory func() interface{}, opts ...Option) Observable
+	WindowWithCount(count int, opts ...Option) Observable
 	ZipFromIterable(iterable Iterable, zipper Func2, opts ...Option) Observable
 }
 

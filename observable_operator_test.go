@@ -1464,6 +1464,29 @@ func Test_Observable_Unmarshal_Parallel_Error(t *testing.T) {
 	Assert(context.Background(), t, obs, HasAnError())
 }
 
+func Test_Observable_WindowWithCount(t *testing.T) {
+	observe := testObservable(1, 2, 3, 4, 5).WindowWithCount(2).Observe()
+	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(1, 2))
+	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(3, 4))
+	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(5))
+}
+
+func Test_Observable_WindowWithCount_ZeroCount(t *testing.T) {
+	observe := testObservable(1, 2, 3, 4, 5).WindowWithCount(0).Observe()
+	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(1, 2, 3, 4, 5))
+}
+
+func Test_Observable_WindowWithCount_ObservableError(t *testing.T) {
+	observe := testObservable(1, 2, errFoo, 4, 5).WindowWithCount(2).Observe()
+	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(1, 2))
+	Assert(context.Background(), t, (<-observe).V.(Observable), IsEmpty(), HasError(errFoo))
+}
+
+func Test_Observable_WindowWithCount_InputError(t *testing.T) {
+	obs := Empty().WindowWithCount(-1)
+	Assert(context.Background(), t, obs, HasAnError())
+}
+
 func Test_Observable_ZipFromObservable(t *testing.T) {
 	obs1 := testObservable(1, 2, 3)
 	obs2 := testObservable(10, 20, 30)
