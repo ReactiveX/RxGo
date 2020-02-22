@@ -310,19 +310,15 @@ func Start(fs []Supplier, opts ...Option) Observable {
 	next := option.buildChannel()
 	ctx := option.buildContext()
 
-	var wg sync.WaitGroup
-	for _, f := range fs {
-		f := f
-		wg.Add(1)
-		go func() {
-			next <- f(ctx)
-			wg.Done()
-		}()
-	}
-
 	go func() {
-		wg.Wait()
-		close(next)
+		defer close(next)
+		for _, f := range fs {
+			select {
+			case <-ctx.Done():
+				return
+			case next <- f(ctx):
+			}
+		}
 	}()
 
 	return &ObservableImpl{
