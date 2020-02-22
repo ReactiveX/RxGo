@@ -270,7 +270,7 @@ In this example, we create a pool of 32 goroutines that consume items concurrent
 ### Creating Observables
 * [Create](http://reactivex.io/documentation/operators/create.html) - create an Observable from scratch by calling observer methods programmatically
 * [Defer](http://reactivex.io/documentation/operators/defer.html) - do not create the Observable until the observer subscribes, and create a fresh Observable for each observer
-* [Empty/Never](http://reactivex.io/documentation/operators/empty-never-throw.html) — create Observables that have very precise and limited behaviour
+* [Empty/Never/Thrown](http://reactivex.io/documentation/operators/empty-never-throw.html) — create Observables that have very precise and limited behaviour
 * FromChannel — create an Observable based on a lazy channel
 * FromEventSource — create an Observable based on an eager channel
 * [Interval](http://reactivex.io/documentation/operators/interval.html) — create an Observable that emits a sequence of integers spaced by a particular time interval

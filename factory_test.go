@@ -354,6 +354,11 @@ func Test_Start(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItemsNoOrder(1, 2))
 }
 
+func Test_Thrown(t *testing.T) {
+	obs := Thrown(errFoo)
+	Assert(context.Background(), t, obs, HasError(errFoo))
+}
+
 func Test_Timer(t *testing.T) {
 	obs := Timer(WithDuration(time.Nanosecond))
 	Assert(context.Background(), t, obs, IsNotEmpty())

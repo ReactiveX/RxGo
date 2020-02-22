@@ -293,10 +293,10 @@ func Never() Observable {
 // Range creates an Observable that emits a particular range of sequential integers.
 func Range(start, count int, opts ...Option) Observable {
 	if count < 0 {
-		return newObservableFromError(IllegalInputError{error: "count must be positive"})
+		return Thrown(IllegalInputError{error: "count must be positive"})
 	}
 	if start+count-1 > math.MaxInt32 {
-		return newObservableFromError(IllegalInputError{error: "max value is bigger than math.MaxInt32"})
+		return Thrown(IllegalInputError{error: "max value is bigger than math.MaxInt32"})
 	}
 	return &ObservableImpl{
 		iterable: newRangeIterable(start, count, opts...),
@@ -325,6 +325,16 @@ func Start(fs []Supplier, opts ...Option) Observable {
 		close(next)
 	}()
 
+	return &ObservableImpl{
+		iterable: newChannelIterable(next),
+	}
+}
+
+// Thrown creates an Observable that emits no items and terminates with an error.
+func Thrown(err error) Observable {
+	next := make(chan Item, 1)
+	next <- Error(err)
+	close(next)
 	return &ObservableImpl{
 		iterable: newChannelIterable(next),
 	}

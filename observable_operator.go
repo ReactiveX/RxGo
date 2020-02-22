@@ -400,10 +400,10 @@ func (o *ObservableImpl) BackOffRetry(backOffCfg backoff.BackOff, opts ...Option
 // the notification from the source Observable.
 func (o *ObservableImpl) BufferWithCount(count, skip int, opts ...Option) Observable {
 	if count <= 0 {
-		return newObservableFromError(IllegalInputError{error: "count must be positive"})
+		return Thrown(IllegalInputError{error: "count must be positive"})
 	}
 	if skip <= 0 {
-		return newObservableFromError(IllegalInputError{error: "skip must be positive"})
+		return Thrown(IllegalInputError{error: "skip must be positive"})
 	}
 
 	return observable(o, func() operator {
@@ -466,7 +466,7 @@ func (op *bufferWithCountOperator) gatherNext(_ context.Context, _ Item, _ chan<
 // the current buffer and propagates the notification from the source Observable.
 func (o *ObservableImpl) BufferWithTime(timespan, timeshift Duration, opts ...Option) Observable {
 	if timespan == nil || timespan.duration() == 0 {
-		return newObservableFromError(IllegalInputError{error: "timespan must no be nil"})
+		return Thrown(IllegalInputError{error: "timespan must no be nil"})
 	}
 	if timeshift == nil {
 		timeshift = WithDuration(0)
@@ -561,10 +561,10 @@ func (o *ObservableImpl) BufferWithTime(timespan, timeshift Duration, opts ...Op
 // Observable either from a given count or at a given time interval.
 func (o *ObservableImpl) BufferWithTimeOrCount(timespan Duration, count int, opts ...Option) Observable {
 	if timespan == nil || timespan.duration() == 0 {
-		return newObservableFromError(IllegalInputError{error: "timespan must no be nil"})
+		return Thrown(IllegalInputError{error: "timespan must no be nil"})
 	}
 	if count <= 0 {
-		return newObservableFromError(IllegalInputError{error: "count must be positive"})
+		return Thrown(IllegalInputError{error: "count must be positive"})
 	}
 
 	sendCh := make(chan []interface{})
@@ -1535,7 +1535,7 @@ func (op *reduceOperator) gatherNext(ctx context.Context, item Item, dst chan<- 
 func (o *ObservableImpl) Repeat(count int64, frequency Duration, opts ...Option) Observable {
 	if count != Infinite {
 		if count < 0 {
-			return newObservableFromError(IllegalInputError{error: "count must be positive"})
+			return Thrown(IllegalInputError{error: "count must be positive"})
 		}
 	}
 

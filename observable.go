@@ -86,15 +86,6 @@ func defaultErrorFuncOperator(_ context.Context, item Item, dst chan<- Item, ope
 	operatorOptions.stop()
 }
 
-func newObservableFromError(err error) Observable {
-	next := make(chan Item, 1)
-	next <- Error(err)
-	close(next)
-	return &ObservableImpl{
-		iterable: newChannelIterable(next),
-	}
-}
-
 type operator interface {
 	next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions)
 	err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions)
