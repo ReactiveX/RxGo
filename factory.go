@@ -227,6 +227,8 @@ func Interval(interval Duration, opts ...Option) Observable {
 
 // Just creates an Observable with the provided items.
 func Just(items interface{}, opts ...Option) Observable {
+	// TODO WithErrorStrategy?
+	// TODO WithObservationStrategy?
 	return &ObservableImpl{
 		iterable: newJustIterable(items, opts...),
 	}

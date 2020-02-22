@@ -171,7 +171,7 @@ func Test_Defer_ComposedDup_EagerObservation(t *testing.T) {
 		done()
 	}}).Map(func(_ context.Context, i interface{}) (_ interface{}, _ error) {
 		return i.(int) + 1, nil
-	}, WithEagerObservation()).Map(func(_ context.Context, i interface{}) (_ interface{}, _ error) {
+	}, WithObservationStrategy(Eager)).Map(func(_ context.Context, i interface{}) (_ interface{}, _ error) {
 		return i.(int) + 1, nil
 	})
 	Assert(context.Background(), t, obs, HasItems(3, 4, 5), HasNoError())
