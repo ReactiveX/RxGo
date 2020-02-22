@@ -13,7 +13,7 @@ import (
 	"github.com/emirpasic/gods/trees/binaryheap"
 )
 
-// All determine whether all items emitted by an Observable meet some criteria.
+// All determines whether all items emitted by an Observable meet some criteria.
 func (o *ObservableImpl) All(predicate Predicate, opts ...Option) Single {
 	return single(o, func() operator {
 		return &allOperator{
@@ -660,8 +660,8 @@ type containsOperator struct {
 func (op *containsOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	if op.equal(item.V) {
 		dst <- Of(true)
-		operatorOptions.stop()
 		op.contains = true
+		operatorOptions.stop()
 	}
 }
 
@@ -670,13 +670,16 @@ func (op *containsOperator) err(ctx context.Context, item Item, dst chan<- Item,
 }
 
 func (op *containsOperator) end(_ context.Context, dst chan<- Item) {
-	dst <- Of(false)
+	if !op.contains {
+		dst <- Of(false)
+	}
 }
 
 func (op *containsOperator) gatherNext(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	if item.V == true {
 		dst <- Of(true)
 		operatorOptions.stop()
+		op.contains = true
 	}
 }
 
@@ -790,8 +793,7 @@ func (op *distinctOperator) gatherNext(_ context.Context, item Item, dst chan<- 
 	}
 }
 
-// DistinctUntilChanged suppresses consecutive duplicate items in the original
-// Observable and returns a new Observable.
+// DistinctUntilChanged suppresses consecutive duplicate items in the original Observable.
 // Cannot be run in parallel.
 func (o *ObservableImpl) DistinctUntilChanged(apply Func, opts ...Option) Observable {
 	return observable(o, func() operator {
@@ -952,24 +954,46 @@ func (op *elementAtOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item
 // Error returns the eventual Observable error.
 // This method is blocking.
 func (o *ObservableImpl) Error(opts ...Option) error {
-	for item := range o.iterable.Observe(opts...) {
-		if item.Error() {
-			return item.E
+	option := parseOptions(opts...)
+	ctx := option.buildContext()
+	observe := o.iterable.Observe(opts...)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case item, ok := <-observe:
+			if !ok {
+				return nil
+			}
+			if item.Error() {
+				return item.E
+			}
 		}
 	}
-	return nil
 }
 
 // Errors returns an eventual list of Observable errors.
 // This method is blocking
 func (o *ObservableImpl) Errors(opts ...Option) []error {
+	option := parseOptions(opts...)
+	ctx := option.buildContext()
+	observe := o.iterable.Observe(opts...)
 	errs := make([]error, 0)
-	for item := range o.iterable.Observe(opts...) {
-		if item.Error() {
-			errs = append(errs, item.E)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return []error{ctx.Err()}
+		case item, ok := <-observe:
+			if !ok {
+				return errs
+			}
+			if item.Error() {
+				errs = append(errs, item.E)
+			}
 		}
 	}
-	return errs
 }
 
 // Filter emits only those items from an Observable that pass a predicate test.
