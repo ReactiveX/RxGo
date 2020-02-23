@@ -18,7 +18,7 @@ An operator is basically a function that defines an Observable, how and when it 
 
 The RxGo implementation is based on the [pipelines](https://blog.golang.org/pipelines) concept. In a nutshell, a pipeline is a series of stages connected by channels, where each stage is a group of goroutines running the same function.
 
-![](res/rx.png)
+![](doc/rx.png)
 
 Let's see at a concrete example with each box being an operator:
 * We create a static Observable based on a fixed list of items using `Just` operator.

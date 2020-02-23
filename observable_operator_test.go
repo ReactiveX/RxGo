@@ -1022,7 +1022,7 @@ func Test_Observable_Run_Error(t *testing.T) {
 	assert.Equal(t, []int{1}, s)
 }
 
-func Test_Observable_Sample(t *testing.T) {
+func Test_Observable_Sample_Empty(t *testing.T) {
 	obs := testObservable(1).Sample(Empty())
 	Assert(context.Background(), t, obs, IsEmpty(), HasNoError())
 }

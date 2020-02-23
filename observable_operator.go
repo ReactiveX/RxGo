@@ -1578,7 +1578,7 @@ func (o *ObservableImpl) Retry(count int, opts ...Option) Observable {
 	}
 }
 
-// Run creates an observer without consuming the emitted items.
+// Run creates an Observer without consuming the emitted items.
 func (o *ObservableImpl) Run(opts ...Option) Disposed {
 	dispose := make(chan struct{})
 	option := parseOptions(opts...)
