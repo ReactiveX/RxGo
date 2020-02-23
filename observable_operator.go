@@ -450,7 +450,6 @@ func (o *ObservableImpl) BufferWithTime(timespan Duration, opts ...Option) Obser
 		return Thrown(IllegalInputError{error: "timespan must no be nil"})
 	}
 
-	// TODO Handle eager observation
 	return &ObservableImpl{
 		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
 			mergedOptions := append(opts, propagatedOptions...)
