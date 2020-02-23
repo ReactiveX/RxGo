@@ -177,13 +177,13 @@ Calculate the average of numbers emitted by an Observable and emits this average
 
 ### Instances
 
-* AverageFloat32
-* AverageFloat64
-* AverageInt
-* AverageInt8
-* AverageInt16
-* AverageInt32
-* AverageInt64
+* `AverageFloat32`
+* `AverageFloat64`
+* `AverageInt`
+* `AverageInt8`
+* `AverageInt16`
+* `AverageInt32`
+* `AverageInt64`
 
 ### Example
 
@@ -936,9 +936,9 @@ Register an action to take upon a variety of Observable lifecycle events.
 
 ### Instances
 
-* DoOnNext
-* DoOnError
-* DoOnCompleted
+* `DoOnNext`
+* `DoOnError`
+* `DoOnCompleted`
 
 Each one returns a `<-chan struct{}` that closes once the Observable terminates.
 
@@ -2525,6 +2525,58 @@ https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 #### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
+
+## Sum Operator
+
+### Overview
+
+Calculate the sum of numbers emitted by an Observable and emit this sum.
+
+![](http://reactivex.io/documentation/operators/images/sum.f.png)
+
+### Instances
+
+* `SumFloat32`
+* `SumFloat64`
+* `SumInt64`
+
+### Example
+
+```go
+observable := rxgo.Just([]interface{}{1, 2, 3, 4}).SumInt64()
+```
+
+* Output:
+
+```
+10
+```
+
+### Options
+
+#### WithBufferedChannel
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
+
+#### WithContext
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
+
+#### WithObservationStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
+
+#### WithErrorStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
+
+#### WithPool
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withpool
+
+#### WithCPUPool
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withcpupool
 
 ## Thrown Operator
 
