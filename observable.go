@@ -74,6 +74,7 @@ type Observable interface {
 	ToSlice(initialCapacity int, opts ...Option) ([]interface{}, error)
 	Unmarshal(unmarshaller Unmarshaller, factory func() interface{}, opts ...Option) Observable
 	WindowWithCount(count int, opts ...Option) Observable
+	WindowWithTime(timespan Duration, opts ...Option) Observable
 	ZipFromIterable(iterable Iterable, zipper Func2, opts ...Option) Observable
 }
 

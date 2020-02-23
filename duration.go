@@ -18,6 +18,25 @@ type duration struct {
 	d time.Duration
 }
 
+type testDuration struct {
+	fs []func()
+}
+
+func (d *testDuration) append(fs ...func()) {
+	if d.fs == nil {
+		d.fs = make([]func(), 0)
+	}
+	for _, f := range fs {
+		d.fs = append(d.fs, f)
+	}
+}
+
+func (d *testDuration) duration() time.Duration {
+	d.fs[0]()
+	d.fs = d.fs[1:]
+	return 0
+}
+
 type mockDuration struct {
 	mock.Mock
 }

@@ -2553,6 +2553,66 @@ func (op *windowWithCountOperator) end(_ context.Context, _ chan<- Item) {
 func (op *windowWithCountOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
+func (o *ObservableImpl) WindowWithTime(timespan Duration, opts ...Option) Observable {
+	//option := parseOptions(opts...)
+
+	// TODO Handle eager observation
+	return &ObservableImpl{
+		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
+			mergedOptions := append(opts, propagatedOptions...)
+			option := parseOptions(mergedOptions...)
+			next := option.buildChannel()
+			ctx := option.buildContext()
+
+			go func() {
+				defer close(next)
+				observe := o.Observe(mergedOptions...)
+				ch := option.buildChannel()
+				empty := true
+				select {
+				case <-ctx.Done():
+					return
+				case next <- Of(FromChannel(ch)):
+				}
+
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					case item, ok := <-observe:
+						if !ok {
+							close(ch)
+							return
+						}
+						if item.Error() {
+							ch <- item
+							close(ch)
+							return
+						} else {
+							ch <- item
+							empty = false
+						}
+					case <-time.After(timespan.duration()):
+						if empty {
+							continue
+						}
+						close(ch)
+						ch = option.buildChannel()
+						empty = true
+						select {
+						case <-ctx.Done():
+							return
+						case next <- Of(FromChannel(ch)):
+						}
+					}
+				}
+			}()
+
+			return next
+		}),
+	}
+}
+
 // ZipFromIterable merges the emissions of multiple Observables together via a specified function
 // and emit single items for each combination based on the results of this function.
 func (o *ObservableImpl) ZipFromIterable(iterable Iterable, zipper Func2, opts ...Option) Observable {
