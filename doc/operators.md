@@ -1,6 +1,12 @@
-# Operator Options
+# Operators
 
-## WithBufferedChannel
+## Index
+
+TODO
+
+## Operator Options
+
+### WithBufferedChannel
 
 Configure the capacity of the output channel.
 
@@ -8,7 +14,7 @@ Configure the capacity of the output channel.
 rxgo.WithBufferedChannel(1) // Create a buffered channel with a 1 capacity
 ```
 
-## WithContext
+### WithContext
 
 Allows passing a context. The Observable will listen to its done signal to close itself.
 
@@ -16,7 +22,7 @@ Allows passing a context. The Observable will listen to its done signal to close
 rxgo.WithContext(ctx)
 ```
 
-## WithObservationStrategy
+### WithObservationStrategy
 
 * Lazy (default): consume when an Observer starts to subscribe.
 
@@ -30,7 +36,7 @@ rxgo.WithObservation(rxgo.Lazy)
 rxgo.WithObservation(rxgo.Eager)
 ```
 
-## WithErrorStrategy
+### WithErrorStrategy
 
 * Stop (default): stop processing if the Observable produces an error.
 
@@ -46,7 +52,7 @@ rxgo.WithErrorStrategy(rxgo.Continue)
 
 This strategy is propagated to the parent(s) Observable(s).
 
-## WithPool
+### WithPool
 
 Convert the operator in a parallel operator and specify the number of concurrent goroutines.
 
@@ -54,7 +60,7 @@ Convert the operator in a parallel operator and specify the number of concurrent
 rxgo.WithPool(8) // Creates a pool of 8 goroutines
 ```
 
-## WithCPUPool
+### WithCPUPool
 
 Convert the operator in a parallel operator and specify the number of concurrent goroutines as `runtime.NumCPU()`.
 
@@ -62,15 +68,15 @@ Convert the operator in a parallel operator and specify the number of concurrent
 rxgo.WithCPUPool()
 ```
 
-# All Operator
+## All Operator
 
-## Overview
+### Overview
 
 Determine whether all items emitted by an Observable meet some criteria.
 
 ![](http://reactivex.io/documentation/operators/images/all.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Just([]interface{}{1, 2, 3, 4}).
@@ -86,41 +92,41 @@ observable := rxgo.Just([]interface{}{1, 2, 3, 4}).
 true
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-### WithPool
+#### WithPool
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withpool
 
-### WithCPUPool
+#### WithCPUPool
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcpupool
 
-# Amb Operator
+## Amb Operator
 
-## Overview
+### Overview
 
 Given two or more source Observables, emit all of the items from only the first of these Observables to emit an item.
 
 ![](http://reactivex.io/documentation/operators/images/amb.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Amb([]rxgo.Observable{
@@ -143,33 +149,33 @@ or
 6
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-# Average Operator
+## Average Operator
 
-## Overview
+### Overview
 
 Calculate the average of numbers emitted by an Observable and emits this average.
 
 ![](http://reactivex.io/documentation/operators/images/average.png)
 
-## Instances
+### Instances
 
 * AverageFloat32
 * AverageFloat64
@@ -179,7 +185,7 @@ Calculate the average of numbers emitted by an Observable and emits this average
 * AverageInt32
 * AverageInt64
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Just([]interface{}{1, 2, 3, 4}).AverageInt()
@@ -191,35 +197,35 @@ observable := rxgo.Just([]interface{}{1, 2, 3, 4}).AverageInt()
 2
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-### WithPool
+#### WithPool
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withpool
 
-### WithCPUPool
+#### WithCPUPool
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcpupool
 
-# BackOffRetry Operator
+## BackOffRetry Operator
 
-## Overview
+### Overview
 
 Implements a backoff retry if a source Observable sends an error, resubscribe to it in the hopes that it will complete without error.
 
@@ -227,7 +233,7 @@ The backoff configuration relies on [github.com/cenkalti/backoff/v4](github.com/
 
 ![](http://reactivex.io/documentation/operators/images/retry.png)
 
-## Example
+### Example
 
 ```go
 // Backoff retry configuration
@@ -254,33 +260,33 @@ observable := rxgo.Defer([]rxgo.Producer{func(ctx context.Context, next chan<- r
 foo
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-# BufferWithCount Operator
+## BufferWithCount Operator
 
-## Overview
+### Overview
 
 BufferWithCount returns an Observable that emits buffers of items it collects from the source Observable.
 
 ![](http://reactivex.io/documentation/operators/images/Buffer.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Just([]interface{}{1, 2, 3, 4}).BufferWithCount(3)
@@ -293,27 +299,27 @@ observable := rxgo.Just([]interface{}{1, 2, 3, 4}).BufferWithCount(3)
 4
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-# BufferWithTime Operator
+## BufferWithTime Operator
 
-## Overview
+### Overview
 
 BufferWithTime returns an Observable that emits buffers of items it collects from the source Observable. 
 
@@ -322,7 +328,7 @@ timeshift argument. It emits each buffer after a fixed timespan, specified by th
 
 When the source Observable completes or encounters an error, the resulting Observable emits the current buffer and propagates the notification from the source Observable.
 
-## Example
+### Example
 
 ```go
 // Create the producer
@@ -348,31 +354,31 @@ observable := rxgo.FromChannel(ch).
 ...
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-# BufferWithTimeOrCount Operator
+## BufferWithTimeOrCount Operator
 
-## Overview
+### Overview
 
 BufferWithTimeOrCount returns an Observable that emits buffers of items it collects from the source Observable either from a given count or at a given time interval.
 
-## Example
+### Example
 
 ```go
 // Create the producer
@@ -398,39 +404,39 @@ observable := rxgo.FromChannel(ch).
 ...
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-# Catch Operator
+## Catch Operator
 
-## Overview
+### Overview
 
 Recover from an error by continuing the sequence without error.
 
-## Instances
+### Instances
 
 * `OnErrorResumeNext`: instructs an Observable to pass control to another Observable rather than invoking onError if it encounters an error.
 * `OnErrorReturn`: instructs an Observable to emit an item (returned by a specified function) rather than invoking onError if it encounters an error.
 * `OnErrorReturnItem`: instructs on Observable to emit an item if it encounters an error.
 
-## Example
+### Example
 
-### OnErrorResumeNext
+#### OnErrorResumeNext
 
 ```go
 observable := rxgo.Just([]interface{}{1, 2, errors.New("foo")}).
@@ -448,7 +454,7 @@ observable := rxgo.Just([]interface{}{1, 2, errors.New("foo")}).
 4
 ```
 
-### OnErrorReturn
+#### OnErrorReturn
 
 ```go
 observable := rxgo.Just([]interface{}{1, errors.New("2"), 3, errors.New("4"), 5}).
@@ -467,7 +473,7 @@ observable := rxgo.Just([]interface{}{1, errors.New("2"), 3, errors.New("4"), 5}
 5
 ```
 
-### OnErrorReturnItem
+#### OnErrorReturnItem
 
 ```go
 observable := rxgo.Just([]interface{}{1, errors.New("2"), 3, errors.New("4"), 5}).
@@ -484,33 +490,33 @@ foo
 5
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-# CombineLatest Operator
+## CombineLatest Operator
 
-## Overview
+### Overview
 
 When an item is emitted by either of two Observables, combine the latest item emitted by each Observable via a specified function and emit items based on the results of this function.
 
 ![](http://reactivex.io/documentation/operators/images/combineLatest.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.CombineLatest(func(i ...interface{}) interface{} {
@@ -535,33 +541,33 @@ observable := rxgo.CombineLatest(func(i ...interface{}) interface{} {
 13
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-# Concat Operator
+## Concat Operator
 
-## Overview
+### Overview
 
 Emit the emissions from two or more Observables without interleaving them.
 
 ![](http://reactivex.io/documentation/operators/images/concat.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Concat([]rxgo.Observable{
@@ -581,33 +587,33 @@ observable := rxgo.Concat([]rxgo.Observable{
 6
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-# Contains Operator
+## Contains Operator
 
-## Overview
+### Overview
 
 Determine whether an Observable emits a particular item or not.
 
 ![](http://reactivex.io/documentation/operators/images/contains.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Just([]interface{}{1, 2, 3}).Contains(func(i interface{}) bool {
@@ -621,41 +627,41 @@ observable := rxgo.Just([]interface{}{1, 2, 3}).Contains(func(i interface{}) boo
 true
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithPool
+#### WithPool
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withpool
 
-### WithCPUPool
+#### WithCPUPool
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcpupool
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-# Count Operator
+## Count Operator
 
-## Overview
+### Overview
 
 Count the number of items emitted by the source Observable and emit only this value.
 
 ![](http://reactivex.io/documentation/operators/images/Count.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Just([]interface{}{1, 2, 3}).Count()
@@ -667,33 +673,33 @@ observable := rxgo.Just([]interface{}{1, 2, 3}).Count()
 3
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-# Create Operator
+## Create Operator
 
-## Overview
+### Overview
 
 Create an Observable from scratch by calling observer methods programmatically.
 
 ![](http://reactivex.io/documentation/operators/images/create.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Create([]rxgo.Producer{func(ctx context.Context, next chan<- rxgo.Item, done func()) {
@@ -718,33 +724,33 @@ There are two ways to close the Observable:
 
 Yet, as we can pass multiple producers, using the `done()` function is the recommended approach.
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-# DefaultIfEmpty Operator
+## DefaultIfEmpty Operator
 
-## Overview
+### Overview
 
 Emit items from the source Observable, or a default item if the source Observable emits nothing.
 
 ![](http://reactivex.io/documentation/operators/images/defaultIfEmpty.c.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Empty().DefaultIfEmpty(1)
@@ -756,33 +762,33 @@ observable := rxgo.Empty().DefaultIfEmpty(1)
 1
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-# Defer Operator
+## Defer Operator
 
-## Overview
+### Overview
 
 do not create the Observable until the observer subscribes, and create a fresh Observable for each observer.
 
 ![](http://reactivex.io/documentation/operators/images/defer.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Defer([]rxgo.Producer{func(ctx context.Context, next chan<- rxgo.Item, done func()) {
@@ -807,33 +813,33 @@ There are two ways to close the Observable:
 
 Yet, as we can pass multiple producers, using the `done()` function is the recommended approach.
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-# Distinct Operator
+## Distinct Operator
 
-## Overview
+### Overview
 
 Suppress duplicate items emitted by an Observable.
 
 ![](http://reactivex.io/documentation/operators/images/distinct.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Just([]interface{}{1, 2, 2, 3, 4, 4, 5}).
@@ -852,39 +858,39 @@ observable := rxgo.Just([]interface{}{1, 2, 2, 3, 4, 4, 5}).
 5
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-### WithPool
+#### WithPool
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withpool
 
-### WithCPUPool
+#### WithCPUPool
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcpupool
 
-# DistinctUntilChanged Operator
+## DistinctUntilChanged Operator
 
-## Overview
+### Overview
 
 Suppress consecutive duplicate items in the original Observable.
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Just([]interface{}{1, 2, 2, 1, 1, 3}).
@@ -902,33 +908,33 @@ observable := rxgo.Just([]interface{}{1, 2, 2, 1, 1, 3}).
 3
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-# Do Operator
+## Do Operator
 
-## Overview
+### Overview
 
 Register an action to take upon a variety of Observable lifecycle events.
 
 ![](http://reactivex.io/documentation/operators/images/do.c.png)
 
-## Instances
+### Instances
 
 * DoOnNext
 * DoOnError
@@ -936,9 +942,9 @@ Register an action to take upon a variety of Observable lifecycle events.
 
 Each one returns a `<-chan struct{}` that closes once the Observable terminates.
 
-## Example
+### Example
 
-### DoOnNext
+#### DoOnNext
 
 ```go
 <-rxgo.Just([]interface{}{1, 2, 3}).
@@ -955,7 +961,7 @@ Each one returns a `<-chan struct{}` that closes once the Observable terminates.
 3
 ```
 
-### DoOnError
+#### DoOnError
 
 ```go
 <-rxgo.Just([]interface{}{1, 2, errors.New("foo")}).
@@ -970,7 +976,7 @@ Each one returns a `<-chan struct{}` that closes once the Observable terminates.
 foo
 ```
 
-### DoOnCompleted
+#### DoOnCompleted
 
 ```go
 <-rxgo.Just([]interface{}{1, 2, 3}).
@@ -985,21 +991,21 @@ foo
 done
 ```
 
-## Options
+### Options
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-# ElementAt Operator
+## ElementAt Operator
 
-## Overview
+### Overview
 
 Emit only item n emitted by an Observable.
 
 ![](http://reactivex.io/documentation/operators/images/elementAt.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Just([]interface{}{0, 1, 2, 3, 4}).ElementAt(2)
@@ -1011,33 +1017,33 @@ observable := rxgo.Just([]interface{}{0, 1, 2, 3, 4}).ElementAt(2)
 2
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-# Empty Operator
+## Empty Operator
 
-## Overview
+### Overview
 
 Create an Observable that emits no items but terminates normally.
 
 ![](http://reactivex.io/documentation/operators/images/empty.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Empty()
@@ -1048,15 +1054,15 @@ observable := rxgo.Empty()
 ```
 ```
 
-# Error Operator
+## Error Operator
 
-## Overview
+### Overview
 
 Return the eventual Observable error. 
 
 This method is blocking.
 
-## Example
+### Example
 
 ```go
 err := rxgo.Just([]interface{}{1, 2, errors.New("foo")}).Error()
@@ -1069,21 +1075,21 @@ fmt.Println(err)
 foo
 ```
 
-## Options
+### Options
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-# Errors Operator
+## Errors Operator
 
-## Overview
+### Overview
 
 Return the eventual Observable errors.
 
 This method is blocking.
 
-## Example
+### Example
 
 ```go
 errs := rxgo.Just([]interface{}{
@@ -1100,21 +1106,21 @@ fmt.Println(errs)
 [foo bar baz]
 ```
 
-## Options
+### Options
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-# Filter Operator
+## Filter Operator
 
-## Overview
+### Overview
 
 Emit only those items from an Observable that pass a predicate test.
 
 ![](http://reactivex.io/documentation/operators/images/filter.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Just([]interface{}{1, 2, 3}).
@@ -1130,41 +1136,41 @@ observable := rxgo.Just([]interface{}{1, 2, 3}).
 3
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-### WithPool
+#### WithPool
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withpool
 
-### WithCPUPool
+#### WithCPUPool
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcpupool
 
-# First Operator
+## First Operator
 
-## Overview
+### Overview
 
 Emit only the first item emitted by an Observable.
 
 ![](http://reactivex.io/documentation/operators/images/first.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Just([]interface{}{1, 2, 3}).First()
@@ -1176,29 +1182,29 @@ observable := rxgo.Just([]interface{}{1, 2, 3}).First()
 true
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-# FirstOrDefault Operator
+## FirstOrDefault Operator
 
-## Overview
+### Overview
 
 Similar to `First`, but we pass a default item that will be emitted if the source Observable fails to emit any items.
 
 ![](http://reactivex.io/documentation/operators/images/firstOrDefault.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Empty().FirstOrDefault(1)
@@ -1210,29 +1216,29 @@ observable := rxgo.Empty().FirstOrDefault(1)
 1
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-# FlatMap Operator
+## FlatMap Operator
 
-## Overview
+### Overview
 
 Transform the items emitted by an Observable into Observables, then flatten the emissions from those into a single Observable.
 
 ![](http://reactivex.io/documentation/operators/images/flatMap.c.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Just([]interface{}{1, 2, 3}).FlatMap(func(i rxgo.Item) rxgo.Observable {
@@ -1254,41 +1260,41 @@ observable := rxgo.Just([]interface{}{1, 2, 3}).FlatMap(func(i rxgo.Item) rxgo.O
 300
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-### WithPool
+#### WithPool
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withpool
 
-### WithCPUPool
+#### WithCPUPool
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcpupool
 
-# ForEach Operator
+## ForEach Operator
 
-## Overview
+### Overview
 
 Subscribe to an Observable and register `OnNext`, `OnError` and `OnCompleted` actions.
 
 It returns a `<-chan struct{}` that closes once the Observable terminates.
 
-## Example
+### Example
 
 ```go
 <-rxgo.Just([]interface{}{1, errors.New("foo")}).
@@ -1310,19 +1316,19 @@ error: foo
 done
 ```
 
-## Options
+### Options
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-# FromChannel Operator
+## FromChannel Operator
 
-## Overview
+### Overview
 
 Create a cold observable from a channel.
 
-## Example
+### Example
 
 ```go
 ch := make(chan rxgo.Item)
@@ -1331,13 +1337,13 @@ observable := rxgo.FromChannel(ch)
 
 The items are buffered in the channel until an Observer subscribes.
 
-# FromEventSource Operator
+## FromEventSource Operator
 
-## Overview
+### Overview
 
 Create a hot observable from a channel.
 
-## Example
+### Example
 
 ```go
 ch := make(chan rxgo.Item)
@@ -1346,9 +1352,9 @@ observable := rxgo.FromEventSource(ch)
 
 The items are consumed as soon as the observable is created. An Observer will see only the items since the moment he subscribed to the Observable.
 
-## Options
+### Options
 
-### WithBackPressureStrategy
+#### WithBackPressureStrategy
 
 * Block (default): block until the Observer is ready to consume the next item.
 
@@ -1362,31 +1368,31 @@ rxgo.FromEventSource(ch, rxgo.WithBackPressureStrategy(rxgo.Block))
 rxgo.FromEventSource(ch, rxgo.WithBackPressureStrategy(rxgo.Drop))
 ```
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-# GroupBy Operator
+## GroupBy Operator
 
-## Overview
+### Overview
 
 Divide an Observable into a set of Observables that each emit a different group of items from the original Observable, organized by key.
 
 ![](http://reactivex.io/documentation/operators/images/groupBy.c.png)
 
-## Example
+### Example
 
 ```go
 count := 3
@@ -1422,33 +1428,33 @@ item: 5
 item: 8
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-# IgnoreElements Operator
+## IgnoreElements Operator
 
-## Overview
+### Overview
 
 Do not emit any items from an Observable but mirror its termination notification.
 
 ![](http://reactivex.io/documentation/operators/images/ignoreElements.c.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Just([]interface{}{1, 2, errors.New("foo")}).
@@ -1461,33 +1467,33 @@ observable := rxgo.Just([]interface{}{1, 2, errors.New("foo")}).
 foo
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-# Interval Operator
+## Interval Operator
 
-## Overview
+### Overview
 
 Create an Observable that emits a sequence of integers spaced by a particular time interval.
 
 ![](http://reactivex.io/documentation/operators/images/interval.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Interval(rxgo.WithDuration(5 * time.Second))
@@ -1503,27 +1509,27 @@ observable := rxgo.Interval(rxgo.WithDuration(5 * time.Second))
 ...
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-# Just Operator
+## Just Operator
 
-## Overview
+### Overview
 
 Convert an object or a set of objects into an Observable that emits that or those objects.
 
 ![](http://reactivex.io/documentation/operators/images/just.png)
 
-## Examples
+### Examples
 
-### Single Item
+#### Single Item
 
 ```go
 observable := rxgo.Just(1)
@@ -1535,7 +1541,7 @@ observable := rxgo.Just(1)
 1
 ```
 
-### Multiple Items
+#### Multiple Items
 
 ```go
 observable := rxgo.Just([]interface{}{1, 2, 3})
@@ -1549,19 +1555,19 @@ observable := rxgo.Just([]interface{}{1, 2, 3})
 3
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-# JustItem Operator
+## JustItem Operator
 
-## Overview
+### Overview
 
 Convert an object into a Single that emits that object.
 
-## Examples
+### Examples
 
 ```go
 observable := rxgo.Just(1)
@@ -1573,21 +1579,21 @@ observable := rxgo.Just(1)
 1
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-# Last Operator
+## Last Operator
 
-## Overview
+### Overview
 
 Emit only the last item emitted by an Observable.
 
 ![](http://reactivex.io/documentation/operators/images/last.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Just([]interface{}{1, 2, 3}).Last()
@@ -1599,33 +1605,33 @@ observable := rxgo.Just([]interface{}{1, 2, 3}).Last()
 3
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-# LastOrDefault Operator
+## LastOrDefault Operator
 
-## Overview
+### Overview
 
 Similar to `Last`, but you pass it a default item that it can emit if the source Observable fails to emit any items.
 
 ![](http://reactivex.io/documentation/operators/images/lastOrDefault.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Empty().LastOrDefault(1)
@@ -1637,33 +1643,33 @@ observable := rxgo.Empty().LastOrDefault(1)
 1
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-# Map Operator
+## Map Operator
 
-## Overview
+### Overview
 
 Transform the items emitted by an Observable by applying a function to each item.
 
 ![](http://reactivex.io/documentation/operators/images/map.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Just([]interface{}{1, 2, 3}).
@@ -1680,39 +1686,39 @@ observable := rxgo.Just([]interface{}{1, 2, 3}).
 30
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-### WithPool
+#### WithPool
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withpool
 
-### WithCPUPool
+#### WithCPUPool
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcpupool
 
-# Marshal Operator
+## Marshal Operator
 
-## Overview
+### Overview
 
 Transform the items emitted by an Observable by applying a marshaller function (`func(interface{}) ([]byte, error)`) to each item.
 
-## Example
+### Example
 
 ```go
 type customer struct {
@@ -1736,41 +1742,41 @@ observable := rxgo.Just([]customer{
 {"id":2}
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-### WithPool
+#### WithPool
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withpool
 
-### WithCPUPool
+#### WithCPUPool
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcpupool
 
-# Max Operator
+## Max Operator
 
-## Overview
+### Overview
 
 Determine, and emit, the maximum-valued item emitted by an Observable.
 
 ![](http://reactivex.io/documentation/operators/images/max.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Just([]interface{}{2, 5, 1, 6, 3, 4}).
@@ -1785,41 +1791,41 @@ observable := rxgo.Just([]interface{}{2, 5, 1, 6, 3, 4}).
 6
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-### WithPool
+#### WithPool
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withpool
 
-### WithCPUPool
+#### WithCPUPool
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcpupool
 
-# Merge Operator
+## Merge Operator
 
-## Overview
+### Overview
 
 Combine multiple Observables into one by merging their emissions.
 
 ![](http://reactivex.io/documentation/operators/images/merge.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Merge([]rxgo.Observable{
@@ -1837,33 +1843,33 @@ observable := rxgo.Merge([]rxgo.Observable{
 4
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-# Min Operator
+## Min Operator
 
-## Overview
+### Overview
 
 Determine, and emit, the minimum-valued item emitted by an Observable.
 
 ![](http://reactivex.io/documentation/operators/images/min.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Just([]interface{}{2, 5, 1, 6, 3, 4}).
@@ -1878,41 +1884,41 @@ observable := rxgo.Just([]interface{}{2, 5, 1, 6, 3, 4}).
 1
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-### WithPool
+#### WithPool
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withpool
 
-### WithCPUPool
+#### WithCPUPool
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcpupool
 
-# Never Operator
+## Never Operator
 
-## Overview
+### Overview
 
 Create an Observable that emits no items and does not terminate.
 
 ![](http://reactivex.io/documentation/operators/images/never.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Never()
@@ -1923,15 +1929,15 @@ observable := rxgo.Never()
 ```
 ```
 
-# Range Operator
+## Range Operator
 
-## Overview
+### Overview
 
 Create an Observable that emits a range of sequential integers.
 
 ![](http://reactivex.io/documentation/operators/images/range.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Range(0, 3)
@@ -1946,25 +1952,25 @@ observable := rxgo.Range(0, 3)
 3
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-# Reduce Operator
+## Reduce Operator
 
-## Overview
+### Overview
 
 Apply a function to each item emitted by an Observable, sequentially, and emit the final value.
 
 ![](http://reactivex.io/documentation/operators/images/reduce.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Just([]interface{}{1, 2, 3}).
@@ -1982,41 +1988,41 @@ observable := rxgo.Just([]interface{}{1, 2, 3}).
 6
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-### WithPool
+#### WithPool
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withpool
 
-### WithCPUPool
+#### WithCPUPool
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcpupool
 
-# Repeat Operator
+## Repeat Operator
 
-## Overview
+### Overview
 
 Create an Observable that emits a particular item multiple times at a particular frequency.
 
 ![](http://reactivex.io/documentation/operators/images/repeat.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Just([]interface{}{1, 2, 3}).
@@ -2041,33 +2047,33 @@ observable := rxgo.Just([]interface{}{1, 2, 3}).
 ...
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-# Retry Operator
+## Retry Operator
 
-## Overview
+### Overview
 
 Implements a retry if a source Observable sends an error, resubscribe to it in the hopes that it will complete without error.
 
 ![](http://reactivex.io/documentation/operators/images/retry.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Just([]interface{}{1, 2, errors.New("foo")}).Retry(2)
@@ -2085,77 +2091,77 @@ observable := rxgo.Just([]interface{}{1, 2, errors.New("foo")}).Retry(2)
 foo
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-# Run Operator
+## Run Operator
 
-## Overview
+### Overview
 
 Create an Observer without consuming the emitted items.
 
 It returns a `<-chan struct{}` that closes once the Observable terminates.
 
-## Example
+### Example
 
 ```go
 <-rxgo.Just([]interface{}{1, 2, errors.New("foo")}).Run()
 ```
 
-## Options
+### Options
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-# Sample Operator
+## Sample Operator
 
-## Overview
+### Overview
 
 Emit the most recent item emitted by an Observable within periodic time intervals.
 
 ![](http://reactivex.io/documentation/operators/images/sample.png)
 
-## Example
+### Example
 
 ```go
 sampledObservable := observable1.Sample(observable2)
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-# Start Operator
+## Start Operator
 
-## Overview
+### Overview
 
 Create an Observable that emits the return value of a function.
 
 ![](http://reactivex.io/documentation/operators/images/start.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Start([]rxgo.Supplier{func(ctx context.Context) rxgo.Item {
@@ -2172,33 +2178,33 @@ observable := rxgo.Start([]rxgo.Supplier{func(ctx context.Context) rxgo.Item {
 2
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-# Thrown Operator
+## Thrown Operator
 
-## Overview
+### Overview
 
 Create an Observable that emits no items and terminates with an error.
 
 ![](http://reactivex.io/documentation/operators/images/throw.c.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Thrown(errors.New("foo"))
@@ -2210,15 +2216,15 @@ observable := rxgo.Thrown(errors.New("foo"))
 foo
 ```
 
-# Timer Operator
+## Timer Operator
 
-## Overview
+### Overview
 
 Create an Observable that emits a single item after a given delay.
 
 ![](http://reactivex.io/documentation/operators/images/timer.png)
 
-## Example
+### Example
 
 ```go
 observable := rxgo.Timer(rxgo.WithDuration(5 * time.Second))
@@ -2230,19 +2236,19 @@ observable := rxgo.Timer(rxgo.WithDuration(5 * time.Second))
 {} // After 5 seconds
 ```
 
-## Options
+### Options
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-# Unmarshal Operator
+## Unmarshal Operator
 
-## Overview
+### Overview
 
 Transform the items emitted by an Observable by applying an unmarshaller function (`func([]byte, interface{}) error`) to each item. It takes a factory function that initializes the target structure.
 
-## Example
+### Example
 
 ```go
 type customer struct {
@@ -2265,28 +2271,28 @@ observable := rxgo.Just([][]byte{
 &{ID:2}
 ```
 
-## Options
+### Options
 
-### WithBufferedChannel
+#### WithBufferedChannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
-### WithContext
+#### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
-### WithObservationStrategy
+#### WithObservationStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
-### WithErrorStrategy
+#### WithErrorStrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-### WithPool
+#### WithPool
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withpool
 
-### WithCPUPool
+#### WithCPUPool
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcpupool
