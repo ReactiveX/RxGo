@@ -339,7 +339,7 @@ In this example, we create a pool of 32 goroutines that consume items concurrent
 
 ### Operators to Convert Observables
 * [Error](doc/error.md)/[Errors](doc/errors.md) - convert an observable into an eventual error or list of errors
-* [ToMap/ToMapWithValueSelector/ToSlice](http://reactivex.io/documentation/operators/to.html) — convert an Observable into another object or data structure
+* [ToMap](doc/tomap.md)/[ToMapWithValueSelector](doc/tomapwithvalueselector.md)/[ToSlice](doc/toslice.md) — convert an Observable into another object or data structure
 
 ## Contributions
 
