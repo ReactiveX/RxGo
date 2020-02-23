@@ -445,96 +445,60 @@ func (op *bufferWithCountOperator) gatherNext(_ context.Context, _ Item, _ chan<
 // timeshift argument. It emits each buffer after a fixed timespan, specified by the timespan argument.
 // When the source Observable completes or encounters an error, the resulting Observable emits
 // the current buffer and propagates the notification from the source Observable.
-func (o *ObservableImpl) BufferWithTime(timespan, timeshift Duration, opts ...Option) Observable {
-	if timespan == nil || timespan.duration() == 0 {
+func (o *ObservableImpl) BufferWithTime(timespan Duration, opts ...Option) Observable {
+	if timespan == nil {
 		return Thrown(IllegalInputError{error: "timespan must no be nil"})
 	}
-	if timeshift == nil {
-		timeshift = WithDuration(0)
-	}
 
-	var mux sync.Mutex
-	var listenMutex sync.Mutex
-	buffer := make([]interface{}, 0)
-	stop := false
-	listen := true
-
-	option := parseOptions(opts...)
-	next := option.buildChannel()
-	ctx := option.buildContext()
-
-	stopped := false
-
-	// First goroutine in charge to check the timespan
-	go func() {
-		for {
-			time.Sleep(timespan.duration())
-			mux.Lock()
-			if !stop {
-				next <- Of(buffer)
-				buffer = make([]interface{}, 0)
-				mux.Unlock()
-
-				if timeshift.duration() != 0 {
-					listenMutex.Lock()
-					listen = false
-					listenMutex.Unlock()
-					time.Sleep(timeshift.duration())
-					listenMutex.Lock()
-					listen = true
-					listenMutex.Unlock()
-				}
-			} else {
-				mux.Unlock()
-				return
-			}
-		}
-	}()
-
-	go func() {
-		observe := o.Observe()
-	loop:
-		for !stopped {
-			select {
-			case <-ctx.Done():
-				break loop
-			case i, ok := <-observe:
-				if !ok {
-					break loop
-				}
-				if i.Error() {
-					mux.Lock()
-					if len(buffer) > 0 {
-						next <- Of(buffer)
-					}
-					next <- i
-					close(next)
-					stop = true
-					mux.Unlock()
-					return
-				}
-				listenMutex.Lock()
-				l := listen
-				listenMutex.Unlock()
-
-				mux.Lock()
-				if l {
-					buffer = append(buffer, i.V)
-				}
-				mux.Unlock()
-			}
-		}
-		mux.Lock()
-		if len(buffer) > 0 {
-			next <- Of(buffer)
-		}
-		close(next)
-		stop = true
-		mux.Unlock()
-	}()
-
+	// TODO Handle eager observation
 	return &ObservableImpl{
-		iterable: newChannelIterable(next),
+		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
+			mergedOptions := append(opts, propagatedOptions...)
+			option := parseOptions(mergedOptions...)
+			next := option.buildChannel()
+			ctx := option.buildContext()
+
+			go func() {
+				defer close(next)
+				observe := o.Observe(mergedOptions...)
+				buffer := make([]interface{}, 0)
+
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					case item, ok := <-observe:
+						if !ok {
+							if len(buffer) != 0 {
+								select {
+								case <-ctx.Done():
+									return
+								case next <- Of(buffer):
+								}
+							}
+							return
+						}
+						if item.Error() {
+							next <- item
+							return
+						} else {
+							buffer = append(buffer, item.V)
+						}
+					case <-time.After(timespan.duration()):
+						if len(buffer) != 0 {
+							select {
+							case <-ctx.Done():
+								return
+							case next <- Of(buffer):
+							}
+							buffer = make([]interface{}, 0)
+						}
+					}
+				}
+			}()
+
+			return next
+		}),
 	}
 }
 
@@ -2554,6 +2518,10 @@ func (op *windowWithCountOperator) gatherNext(_ context.Context, _ Item, _ chan<
 }
 
 func (o *ObservableImpl) WindowWithTime(timespan Duration, opts ...Option) Observable {
+	if timespan == nil {
+		return Thrown(IllegalInputError{error: "timespan must no be nil"})
+	}
+
 	//option := parseOptions(opts...)
 
 	// TODO Handle eager observation

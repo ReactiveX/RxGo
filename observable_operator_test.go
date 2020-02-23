@@ -186,55 +186,65 @@ func Test_Observable_BufferWithCount_InputError(t *testing.T) {
 	Assert(context.Background(), t, obs, HasAnError())
 }
 
-func Test_Observable_BufferWithTime_MockedTime(t *testing.T) {
-	timespan := new(mockDuration)
-	timespan.On("duration").Return(10 * time.Second)
-
-	timeshift := new(mockDuration)
-	timeshift.On("duration").Return(10 * time.Second)
-
-	obs := testObservable(1, 2, 3).BufferWithTime(timespan, timeshift)
-
-	Assert(context.Background(), t, obs, HasItems([]interface{}{1, 2, 3}))
-	timespan.AssertCalled(t, "duration")
-	timeshift.AssertNotCalled(t, "duration")
+func Test_Observable_BufferWithTime(t *testing.T) {
+	ctx, obs, d := timeCausality(1, 2, 3, tick, 4, tick, 5, 6, 7, tick)
+	obs = obs.BufferWithTime(d, WithContext(ctx))
+	Assert(context.Background(), t, obs, HasItems(
+		[]interface{}{1, 2, 3},
+		[]interface{}{4},
+		[]interface{}{5, 6, 7},
+	))
 }
 
-func Test_Observable_BufferWithTime_MinorMockedTime(t *testing.T) {
-	ch := make(chan Item)
-	from := FromChannel(ch)
-
-	timespan := new(mockDuration)
-	timespan.On("duration").Return(1 * time.Millisecond)
-
-	timeshift := new(mockDuration)
-	timeshift.On("duration").Return(1 * time.Millisecond)
-
-	obs := from.BufferWithTime(timespan, timeshift)
-
-	ch <- Of(1)
-	close(ch)
-
-	<-obs.Observe()
-	timespan.AssertCalled(t, "duration")
-}
-
-func Test_Observable_BufferWithTime_IllegalInput(t *testing.T) {
-	Assert(context.Background(), t, Empty().BufferWithTime(nil, nil), HasAnError())
-	Assert(context.Background(), t, Empty().BufferWithTime(WithDuration(0*time.Second), nil), HasAnError())
-}
-
-func Test_Observable_BufferWithTime_NilTimeshift(t *testing.T) {
-	testObservable := testObservable(1, 2, 3)
-	obs := testObservable.BufferWithTime(WithDuration(1*time.Second), nil)
-	Assert(context.Background(), t, obs, IsNotEmpty())
-}
-
-func Test_Observable_BufferWithTime_Error(t *testing.T) {
-	testObservable := testObservable(1, 2, 3, errFoo)
-	obs := testObservable.BufferWithTime(WithDuration(1*time.Second), nil)
-	Assert(context.Background(), t, obs, HasItems([]interface{}{1, 2, 3}), HasError(errFoo))
-}
+//func Test_Observable_BufferWithTime_MockedTime(t *testing.T) {
+//	timespan := new(mockDuration)
+//	timespan.On("duration").Return(10 * time.Second)
+//
+//	timeshift := new(mockDuration)
+//	timeshift.On("duration").Return(10 * time.Second)
+//
+//	obs := testObservable(1, 2, 3).BufferWithTime(timespan, timeshift)
+//
+//	Assert(context.Background(), t, obs, HasItems([]interface{}{1, 2, 3}))
+//	timespan.AssertCalled(t, "duration")
+//	timeshift.AssertNotCalled(t, "duration")
+//}
+//
+//func Test_Observable_BufferWithTime_MinorMockedTime(t *testing.T) {
+//	ch := make(chan Item)
+//	from := FromChannel(ch)
+//
+//	timespan := new(mockDuration)
+//	timespan.On("duration").Return(1 * time.Millisecond)
+//
+//	timeshift := new(mockDuration)
+//	timeshift.On("duration").Return(1 * time.Millisecond)
+//
+//	obs := from.BufferWithTime(timespan, timeshift)
+//
+//	ch <- Of(1)
+//	close(ch)
+//
+//	<-obs.Observe()
+//	timespan.AssertCalled(t, "duration")
+//}
+//
+//func Test_Observable_BufferWithTime_IllegalInput(t *testing.T) {
+//	Assert(context.Background(), t, Empty().BufferWithTime(nil, nil), HasAnError())
+//	Assert(context.Background(), t, Empty().BufferWithTime(WithDuration(0*time.Second), nil), HasAnError())
+//}
+//
+//func Test_Observable_BufferWithTime_NilTimeshift(t *testing.T) {
+//	testObservable := testObservable(1, 2, 3)
+//	obs := testObservable.BufferWithTime(WithDuration(1*time.Second), nil)
+//	Assert(context.Background(), t, obs, IsNotEmpty())
+//}
+//
+//func Test_Observable_BufferWithTime_Error(t *testing.T) {
+//	testObservable := testObservable(1, 2, 3, errFoo)
+//	obs := testObservable.BufferWithTime(WithDuration(1*time.Second), nil)
+//	Assert(context.Background(), t, obs, HasItems([]interface{}{1, 2, 3}), HasError(errFoo))
+//}
 
 func Test_Observable_BufferWithTimeOrCount_InvalidInputs(t *testing.T) {
 	obs := Empty().BufferWithTimeOrCount(nil, 5)
@@ -1480,7 +1490,7 @@ func Test_Observable_WindowWithCount_InputError(t *testing.T) {
 }
 
 func Test_Observable_WindowWithTime(t *testing.T) {
-	obs, ctx, d := timeCausality(1, 2, 3, tick, 4, tick)
+	ctx, obs, d := timeCausality(1, 2, 3, tick, 4, tick)
 	observe := obs.WindowWithTime(d, WithContext(ctx), WithBufferedChannel(10)).Observe()
 	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(1, 2, 3))
 	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(4))

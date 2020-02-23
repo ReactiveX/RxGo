@@ -25,7 +25,7 @@ type testDuration struct {
 
 var tick = struct{}{}
 
-func timeCausality(elems ...interface{}) (Observable, context.Context, Duration) {
+func timeCausality(elems ...interface{}) (context.Context, Observable, Duration) {
 	ch := make(chan Item, 1)
 	fs := make([]func(), len(elems)+1)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -43,7 +43,7 @@ func timeCausality(elems ...interface{}) (Observable, context.Context, Duration)
 	fs[len(elems)] = func() {
 		cancel()
 	}
-	return FromChannel(ch), ctx, &testDuration{fs: fs}
+	return ctx, FromChannel(ch), &testDuration{fs: fs}
 }
 
 func (d *testDuration) append(fs ...func()) {
