@@ -34,7 +34,7 @@ The philosophy of RxGo is to implement the ReactiveX concepts and leverage the m
 ## Installation of RxGo v2
 
 ```
-go get -u github.com/reactivex/rxgo/v2@develop
+go get -u github.com/reactivex/rxgo/v2
 ```
 
 ## Documentation
