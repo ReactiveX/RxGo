@@ -61,7 +61,7 @@ type Observable interface {
 	Skip(nth uint, opts ...Option) Observable
 	SkipLast(nth uint, opts ...Option) Observable
 	SkipWhile(apply Predicate, opts ...Option) Observable
-	StartWithIterable(iterable Iterable, opts ...Option) Observable
+	StartWith(iterable Iterable, opts ...Option) Observable
 	SumFloat32(opts ...Option) OptionalSingle
 	SumFloat64(opts ...Option) OptionalSingle
 	SumInt64(opts ...Option) OptionalSingle

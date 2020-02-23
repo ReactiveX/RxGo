@@ -2022,9 +2022,8 @@ func (op *skipWhileOperator) end(_ context.Context, _ chan<- Item) {
 func (op *skipWhileOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
-// StartWithIterable returns an Observable that emits the items in a specified Iterable before it begins to
-// emit items emitted by the source Observable.
-func (o *ObservableImpl) StartWithIterable(iterable Iterable, opts ...Option) Observable {
+// StartWith emits a specified Iterable before beginning to emit the items from the source Observable.
+func (o *ObservableImpl) StartWith(iterable Iterable, opts ...Option) Observable {
 	option := parseOptions(opts...)
 	next := option.buildChannel()
 	ctx := option.buildContext()

@@ -1176,17 +1176,17 @@ func Test_Observable_SkipWhile_Parallel(t *testing.T) {
 }
 
 func Test_Observable_StartWithIterable(t *testing.T) {
-	obs := testObservable(4, 5, 6).StartWithIterable(testObservable(1, 2, 3))
+	obs := testObservable(4, 5, 6).StartWith(testObservable(1, 2, 3))
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3, 4, 5, 6), HasNoError())
 }
 
 func Test_Observable_StartWithIterable_Error1(t *testing.T) {
-	obs := testObservable(4, 5, 6).StartWithIterable(testObservable(1, errFoo, 3))
+	obs := testObservable(4, 5, 6).StartWith(testObservable(1, errFoo, 3))
 	Assert(context.Background(), t, obs, HasItems(1), HasError(errFoo))
 }
 
 func Test_Observable_StartWithIterable_Error2(t *testing.T) {
-	obs := testObservable(4, errFoo, 6).StartWithIterable(testObservable(1, 2, 3))
+	obs := testObservable(4, errFoo, 6).StartWith(testObservable(1, 2, 3))
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3, 4), HasError(errFoo))
 }
 
