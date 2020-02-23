@@ -266,9 +266,9 @@ In this example, we create a pool of 32 goroutines that consume items concurrent
 ## Supported Operators in RxGo
 
 ### Creating Observables
-* [Create](doc/create.md) - create an Observable from scratch by calling observer methods programmatically
-* [Defer](doc/defer.md) - do not create the Observable until the observer subscribes, and create a fresh Observable for each observer
-* [Empty](doc/empty.md)/[Never](doc/never.md)/[Thrown](doc/thrown.md) - (http://reactivex.io/documentation/operators/empty-never-throw.html) — create Observables that have very precise and limited behaviour
+* [Create](doc/create.md) — create an Observable from scratch by calling observer methods programmatically
+* [Defer](doc/defer.md) — do not create the Observable until the observer subscribes, and create a fresh Observable for each observer
+* [Empty](doc/empty.md)/[Never](doc/never.md)/[Thrown](doc/thrown.md) — (http://reactivex.io/documentation/operators/empty-never-throw.html) — create Observables that have very precise and limited behaviour
 * [FromChannel](doc/fromchannel.md) — create an Observable based on a lazy channel
 * [FromEventSource](doc/fromeventsource.md) — create an Observable based on an eager channel
 * [Interval](doc/interval.md) — create an Observable that emits a sequence of integers spaced by a particular time interval
@@ -284,9 +284,9 @@ In this example, we create a pool of 32 goroutines that consume items concurrent
 * [FlatMap](doc/flatmap.md) — transform the items emitted by an Observable into Observables, then flatten the emissions from those into a single Observable
 * [GroupBy](doc/groupby.md) — divide an Observable into a set of Observables that each emit a different group of items from the original Observable, organized by key
 * [Map](doc/map.md) — transform the items emitted by an Observable by applying a function to each item
-* [Marshal](doc/marshal.md) - transform the items emitted by an Observable by applying a marshalling function to each item
+* [Marshal](doc/marshal.md) — transform the items emitted by an Observable by applying a marshalling function to each item
 * [Scan](doc/scan.md) — apply a function to each item emitted by an Observable, sequentially, and emit each successive value
-* [Unmarshal](doc/unmarshal.md) - transform the items emitted by an Observable by applying an unmarshalling function to each item
+* [Unmarshal](doc/unmarshal.md) — transform the items emitted by an Observable by applying an unmarshalling function to each item
 * [Window](doc/window.md) — apply a function to each item emitted by an Observable, sequentially, and emit each successive value
 
 ### Filtering Observables
@@ -314,8 +314,8 @@ In this example, we create a pool of 32 goroutines that consume items concurrent
 
 ### Observable Utility Operators
 * [Do](doc/do.md) - register an action to take upon a variety of Observable lifecycle events
-* [Run](doc/run.md) - create an Observer without consuming the emitted items
-* [Send](doc/send.md) - send the Observable items in a specific channel
+* [Run](doc/run.md) — create an Observer without consuming the emitted items
+* [Send](doc/send.md) — send the Observable items in a specific channel
 * [Serialize](doc/serialize.md) — force an Observable to make serialized calls and to be well-behaved
 
 ### Conditional and Boolean Operators
@@ -338,7 +338,7 @@ In this example, we create a pool of 32 goroutines that consume items concurrent
 * [Sum](doc/sum.md) — calculate the sum of numbers emitted by an Observable and emit this sum
 
 ### Operators to Convert Observables
-* [Error](doc/error.md)/[Errors](doc/errors.md) - convert an observable into an eventual error or list of errors
+* [Error](doc/error.md)/[Errors](doc/errors.md) — convert an observable into an eventual error or list of errors
 * [ToMap](doc/tomap.md)/[ToMapWithValueSelector](doc/tomapwithvalueselector.md)/[ToSlice](doc/toslice.md) — convert an Observable into another object or data structure
 
 ## Contributions
