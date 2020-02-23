@@ -505,85 +505,69 @@ func (o *ObservableImpl) BufferWithTime(timespan Duration, opts ...Option) Obser
 // BufferWithTimeOrCount returns an Observable that emits buffers of items it collects from the source
 // Observable either from a given count or at a given time interval.
 func (o *ObservableImpl) BufferWithTimeOrCount(timespan Duration, count int, opts ...Option) Observable {
-	if timespan == nil || timespan.duration() == 0 {
+	if timespan == nil {
 		return Thrown(IllegalInputError{error: "timespan must no be nil"})
 	}
 	if count <= 0 {
 		return Thrown(IllegalInputError{error: "count must be positive"})
 	}
 
-	sendCh := make(chan []interface{})
-	errCh := make(chan error)
-	buffer := make([]interface{}, 0)
-	var bufferMutex sync.Mutex
-	option := parseOptions(opts...)
-	next := option.buildChannel()
-	ctx := option.buildContext()
-
-	// First sender goroutine
-	go func() {
-		for {
-			select {
-			case currentBuffer := <-sendCh:
-				next <- Of(currentBuffer)
-			case err := <-errCh:
-				bufferMutex.Lock()
-				if len(buffer) > 0 {
-					next <- Of(buffer)
-				}
-				bufferMutex.Unlock()
-				if err != nil {
-					next <- Error(err)
-				}
-				close(next)
-				return
-			case <-time.After(timespan.duration()):
-				bufferMutex.Lock()
-				b := make([]interface{}, len(buffer))
-				copy(b, buffer)
-				buffer = make([]interface{}, 0)
-				bufferMutex.Unlock()
-				next <- Of(b)
-			}
-		}
-	}()
-
-	go func() {
-		observe := o.Observe()
-	loop:
-		for {
-			select {
-			case <-ctx.Done():
-				break loop
-			case i, ok := <-observe:
-				if !ok {
-					break loop
-				}
-				if i.Error() {
-					errCh <- i.E
-					break loop
-				}
-				// TODO Improve implementation without mutex (sending data over channel)
-				bufferMutex.Lock()
-				buffer = append(buffer, i.V)
-				if len(buffer) >= count {
-					b := make([]interface{}, len(buffer))
-					copy(b, buffer)
-					buffer = make([]interface{}, 0)
-					bufferMutex.Unlock()
-					sendCh <- b
-				} else {
-					bufferMutex.Unlock()
-				}
-			}
-		}
-		errCh <- nil
-		close(sendCh)
-		close(errCh)
-	}()
-
 	return &ObservableImpl{
-		iterable: newChannelIterable(next),
+		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
+			mergedOptions := append(opts, propagatedOptions...)
+			option := parseOptions(mergedOptions...)
+			next := option.buildChannel()
+			ctx := option.buildContext()
+
+			go func() {
+				defer close(next)
+				observe := o.Observe(mergedOptions...)
+				buffer := make([]interface{}, 0)
+
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					case item, ok := <-observe:
+						if !ok {
+							if len(buffer) != 0 {
+								select {
+								case <-ctx.Done():
+									return
+								case next <- Of(buffer):
+								}
+							}
+							return
+						}
+						if item.Error() {
+							next <- item
+							return
+						} else {
+							buffer = append(buffer, item.V)
+							if len(buffer) == count {
+								select {
+								case <-ctx.Done():
+									return
+								case next <- Of(buffer):
+								}
+								buffer = make([]interface{}, 0)
+							}
+						}
+					case <-time.After(timespan.duration()):
+						if len(buffer) != 0 {
+							select {
+							case <-ctx.Done():
+								return
+							case next <- Of(buffer):
+							}
+							buffer = make([]interface{}, 0)
+						}
+					}
+				}
+			}()
+
+			return next
+		}),
 	}
 }
 
