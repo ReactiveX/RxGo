@@ -3,6 +3,7 @@ package rxgo
 import (
 	"context"
 	"reflect"
+	"time"
 )
 
 type (
@@ -10,6 +11,12 @@ type (
 	Item struct {
 		V interface{}
 		E error
+	}
+
+	// TimestampItem attach a timestamp to an item.
+	TimestampItem struct {
+		Timestamp time.Time
+		V         interface{}
 	}
 
 	// CloseChannelStrategy indicates a strategy on whether to close a channel.

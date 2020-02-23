@@ -2333,6 +2333,33 @@ func (op *takeWhileOperator) end(_ context.Context, _ chan<- Item) {
 func (op *takeWhileOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
+// Timestamp attaches a timestamp to each item emitted by an Observable indicating when it was emitted.
+func (o *ObservableImpl) Timestamp(opts ...Option) Observable {
+	return observable(o, func() operator {
+		return &timestampOperator{}
+	}, true, false, opts...)
+}
+
+type timestampOperator struct {
+}
+
+func (op *timestampOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	dst <- Of(TimestampItem{
+		Timestamp: time.Now().UTC(),
+		V:         item.V,
+	})
+}
+
+func (op *timestampOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+}
+
+func (op *timestampOperator) end(ctx context.Context, dst chan<- Item) {
+}
+
+func (op *timestampOperator) gatherNext(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+}
+
 // ToMap convert the sequence of items emitted by an Observable
 // into a map keyed by a specified key function.
 // Cannot be run in parallel.

@@ -70,6 +70,7 @@ type Observable interface {
 	TakeLast(nth uint, opts ...Option) Observable
 	TakeUntil(apply Predicate, opts ...Option) Observable
 	TakeWhile(apply Predicate, opts ...Option) Observable
+	Timestamp(opts ...Option) Observable
 	ToMap(keySelector Func, opts ...Option) Single
 	ToMapWithValueSelector(keySelector, valueSelector Func, opts ...Option) Single
 	ToSlice(initialCapacity int, opts ...Option) ([]interface{}, error)

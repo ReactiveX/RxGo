@@ -318,6 +318,7 @@ In this example, we create a pool of 32 goroutines that consume items concurrent
 * [Run](doc/run.md) — create an Observer without consuming the emitted items
 * [Send](doc/send.md) — send the Observable items in a specific channel
 * [Serialize](doc/serialize.md) — force an Observable to make serialized calls and to be well-behaved
+* [Timestamp](doc/timestamp.md) — attach a timestamp to each item emitted by an Observable
 
 ### Conditional and Boolean Operators
 * [All](doc/all.md) — determine whether all items emitted by an Observable meet some criteria

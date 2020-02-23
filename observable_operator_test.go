@@ -1289,6 +1289,23 @@ func Test_Observable_TakeWhile(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(1, 2))
 }
 
+func Test_Observable_Timestamp(t *testing.T) {
+	observe := testObservable(1, 2, 3).Timestamp().Observe()
+	v := (<-observe).V.(TimestampItem)
+	assert.Equal(t, 1, v.V)
+	v = (<-observe).V.(TimestampItem)
+	assert.Equal(t, 2, v.V)
+	v = (<-observe).V.(TimestampItem)
+	assert.Equal(t, 3, v.V)
+}
+
+func Test_Observable_Error(t *testing.T) {
+	observe := testObservable(1, errFoo).Timestamp().Observe()
+	v := (<-observe).V.(TimestampItem)
+	assert.Equal(t, 1, v.V)
+	assert.True(t, (<-observe).Error())
+}
+
 func Test_Observable_ToMap(t *testing.T) {
 	obs := testObservable(3, 4, 5, true, false).ToMap(func(_ context.Context, i interface{}) (interface{}, error) {
 		switch v := i.(type) {
