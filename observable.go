@@ -75,6 +75,7 @@ type Observable interface {
 	Unmarshal(unmarshaller Unmarshaller, factory func() interface{}, opts ...Option) Observable
 	WindowWithCount(count int, opts ...Option) Observable
 	WindowWithTime(timespan Duration, opts ...Option) Observable
+	WindowWithTimeOrCount(timespan Duration, count int, opts ...Option) Observable
 	ZipFromIterable(iterable Iterable, zipper Func2, opts ...Option) Observable
 }
 

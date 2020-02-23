@@ -74,9 +74,9 @@ func (i Item) SendBlocking(ch chan<- Item) {
 	ch <- i
 }
 
-// SendContext sends an item and blocks until it is sent or a context canceled.
+// SendWithContext sends an item and blocks until it is sent or a context canceled.
 // It returns a boolean to indicate whether the item was sent.
-func (i Item) SendContext(ctx context.Context, ch chan<- Item) bool {
+func (i Item) SendWithContext(ctx context.Context, ch chan<- Item) bool {
 	select {
 	case <-ctx.Done():
 		return false

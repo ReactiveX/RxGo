@@ -19,11 +19,22 @@ type duration struct {
 	d time.Duration
 }
 
-type testDuration struct {
-	fs []func()
+func (d *duration) duration() time.Duration {
+	return d.d
+}
+
+// WithDuration is a duration option
+func WithDuration(d time.Duration) Duration {
+	return &duration{
+		d: d,
+	}
 }
 
 var tick = struct{}{}
+
+type causalityDuration struct {
+	fs []func()
+}
 
 func timeCausality(elems ...interface{}) (context.Context, Observable, Duration) {
 	ch := make(chan Item, 1)
@@ -35,27 +46,25 @@ func timeCausality(elems ...interface{}) (context.Context, Observable, Duration)
 		if elem == tick {
 			fs[i] = func() {}
 		} else {
-			fs[i] = func() {
-				ch <- Of(elem)
+			switch elem := elem.(type) {
+			default:
+				fs[i] = func() {
+					ch <- Of(elem)
+				}
+			case error:
+				fs[i] = func() {
+					ch <- Error(elem)
+				}
 			}
 		}
 	}
 	fs[len(elems)] = func() {
 		cancel()
 	}
-	return ctx, FromChannel(ch), &testDuration{fs: fs}
+	return ctx, FromChannel(ch), &causalityDuration{fs: fs}
 }
 
-func (d *testDuration) append(fs ...func()) {
-	if d.fs == nil {
-		d.fs = make([]func(), 0)
-	}
-	for _, f := range fs {
-		d.fs = append(d.fs, f)
-	}
-}
-
-func (d *testDuration) duration() time.Duration {
+func (d *causalityDuration) duration() time.Duration {
 	d.fs[0]()
 	d.fs = d.fs[1:]
 	return 0
@@ -68,15 +77,4 @@ type mockDuration struct {
 func (m *mockDuration) duration() time.Duration {
 	args := m.Called()
 	return args.Get(0).(time.Duration)
-}
-
-func (d *duration) duration() time.Duration {
-	return d.d
-}
-
-// WithDuration is a duration option
-func WithDuration(d time.Duration) Duration {
-	return &duration{
-		d: d,
-	}
 }

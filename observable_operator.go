@@ -481,9 +481,8 @@ func (o *ObservableImpl) BufferWithTime(timespan Duration, opts ...Option) Obser
 						if item.Error() {
 							next <- item
 							return
-						} else {
-							buffer = append(buffer, item.V)
 						}
+						buffer = append(buffer, item.V)
 					case <-time.After(timespan.duration()):
 						if len(buffer) != 0 {
 							select {
@@ -542,16 +541,15 @@ func (o *ObservableImpl) BufferWithTimeOrCount(timespan Duration, count int, opt
 						if item.Error() {
 							next <- item
 							return
-						} else {
-							buffer = append(buffer, item.V)
-							if len(buffer) == count {
-								select {
-								case <-ctx.Done():
-									return
-								case next <- Of(buffer):
-								}
-								buffer = make([]interface{}, 0)
+						}
+						buffer = append(buffer, item.V)
+						if len(buffer) == count {
+							select {
+							case <-ctx.Done():
+								return
+							case next <- Of(buffer):
 							}
+							buffer = make([]interface{}, 0)
 						}
 					case <-time.After(timespan.duration()):
 						if len(buffer) != 0 {
@@ -2501,65 +2499,158 @@ func (op *windowWithCountOperator) end(_ context.Context, _ chan<- Item) {
 func (op *windowWithCountOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
+// WindowWithTime periodically subdivides items from an Observable into Observables based on timed windows
+// and emit them rather than emitting the items one at a time.
 func (o *ObservableImpl) WindowWithTime(timespan Duration, opts ...Option) Observable {
 	if timespan == nil {
 		return Thrown(IllegalInputError{error: "timespan must no be nil"})
 	}
 
-	//option := parseOptions(opts...)
+	f := func(ctx context.Context, next chan Item, option Option, opts ...Option) {
+		defer close(next)
+		observe := o.Observe(opts...)
+		ch := option.buildChannel()
+		empty := true
+		if !Of(FromChannel(ch)).SendWithContext(ctx, next) {
+			return
+		}
 
-	// TODO Handle eager observation
+		for {
+			select {
+			case <-ctx.Done():
+				close(ch)
+				return
+			case item, ok := <-observe:
+				if !ok {
+					close(ch)
+					return
+				}
+				if item.Error() {
+					if !item.SendWithContext(ctx, ch) {
+						return
+					}
+					if option.getErrorStrategy() == Stop {
+						close(ch)
+						return
+					}
+				}
+				if !item.SendWithContext(ctx, ch) {
+					return
+				}
+				empty = false
+			case <-time.After(timespan.duration()):
+				if empty {
+					continue
+				}
+				close(ch)
+				ch = option.buildChannel()
+				empty = true
+				if !Of(FromChannel(ch)).SendWithContext(ctx, next) {
+					return
+				}
+			}
+		}
+	}
+
+	option := parseOptions(opts...)
+
+	if option.isEagerObservation() {
+		next := option.buildChannel()
+		ctx := option.buildContext()
+		go f(ctx, next, option, opts...)
+		return &ObservableImpl{iterable: newChannelIterable(next)}
+	}
+
 	return &ObservableImpl{
 		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
 			mergedOptions := append(opts, propagatedOptions...)
 			option := parseOptions(mergedOptions...)
 			next := option.buildChannel()
 			ctx := option.buildContext()
+			go f(ctx, next, option, mergedOptions...)
+			return next
+		}),
+	}
+}
 
-			go func() {
-				defer close(next)
-				observe := o.Observe(mergedOptions...)
-				ch := option.buildChannel()
-				empty := true
-				select {
-				case <-ctx.Done():
+func (o *ObservableImpl) WindowWithTimeOrCount(timespan Duration, count int, opts ...Option) Observable {
+	if timespan == nil {
+		return Thrown(IllegalInputError{error: "timespan must no be nil"})
+	}
+	if count < 0 {
+		return Thrown(IllegalInputError{error: "count must be positive or nil"})
+	}
+
+	f := func(ctx context.Context, next chan Item, option Option, opts ...Option) {
+		defer close(next)
+		observe := o.Observe(opts...)
+		ch := option.buildChannel()
+		iCount := 0
+		if !Of(FromChannel(ch)).SendWithContext(ctx, next) {
+			return
+		}
+
+		for {
+			select {
+			case <-ctx.Done():
+				close(ch)
+				return
+			case item, ok := <-observe:
+				if !ok {
+					close(ch)
 					return
-				case next <- Of(FromChannel(ch)):
 				}
-
-				for {
-					select {
-					case <-ctx.Done():
+				if item.Error() {
+					if !item.SendWithContext(ctx, ch) {
 						return
-					case item, ok := <-observe:
-						if !ok {
-							close(ch)
-							return
-						}
-						if item.Error() {
-							ch <- item
-							close(ch)
-							return
-						} else {
-							ch <- item
-							empty = false
-						}
-					case <-time.After(timespan.duration()):
-						if empty {
-							continue
-						}
+					}
+					if option.getErrorStrategy() == Stop {
 						close(ch)
-						ch = option.buildChannel()
-						empty = true
-						select {
-						case <-ctx.Done():
-							return
-						case next <- Of(FromChannel(ch)):
-						}
+						return
 					}
 				}
-			}()
+				if !item.SendWithContext(ctx, ch) {
+					return
+				}
+				iCount++
+				if iCount == count {
+					close(ch)
+					ch = option.buildChannel()
+					iCount = 0
+					if !Of(FromChannel(ch)).SendWithContext(ctx, next) {
+						return
+					}
+				}
+			case <-time.After(timespan.duration()):
+				if iCount == 0 {
+					continue
+				}
+				close(ch)
+				ch = option.buildChannel()
+				iCount = 0
+				if !Of(FromChannel(ch)).SendWithContext(ctx, next) {
+					return
+				}
+			}
+		}
+	}
 
+	option := parseOptions(opts...)
+
+	if option.isEagerObservation() {
+		next := option.buildChannel()
+		ctx := option.buildContext()
+		go f(ctx, next, option, opts...)
+		return &ObservableImpl{iterable: newChannelIterable(next)}
+	}
+
+	return &ObservableImpl{
+		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
+			mergedOptions := append(opts, propagatedOptions...)
+			option := parseOptions(mergedOptions...)
+			next := option.buildChannel()
+			ctx := option.buildContext()
+			go f(ctx, next, option, mergedOptions...)
 			return next
 		}),
 	}
