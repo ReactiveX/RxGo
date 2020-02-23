@@ -2153,6 +2153,54 @@ https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
 
+## Scan Operator
+
+### Overview
+
+Apply a function to each item emitted by an Observable, sequentially, and emit each successive value.
+
+![](http://reactivex.io/documentation/operators/images/scan.png)
+
+### Example
+
+```go
+observable := rxgo.Just([]interface{}{1, 2, 3, 4, 5}).
+    Scan(func(_ context.Context, acc interface{}, elem interface{}) (interface{}, error) {
+        if acc == nil {
+            return elem, nil
+        }
+        return acc.(int) + elem.(int), nil
+    })
+```
+
+* Output:
+
+```
+1
+3
+6
+10
+15
+```
+
+### Options
+
+#### WithBufferedChannel
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
+
+#### WithContext
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
+
+#### WithObservationStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
+
+#### WithErrorStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
+
 ## Start Operator
 
 ### Overview
