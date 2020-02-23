@@ -1480,24 +1480,8 @@ func Test_Observable_WindowWithCount_InputError(t *testing.T) {
 }
 
 func Test_Observable_WindowWithTime(t *testing.T) {
-	d := &testDuration{}
-	ch := make(chan Item, 10)
-	ctx, cancel := context.WithCancel(context.Background())
-	d.append(func() {
-		ch <- Of(1)
-	}, func() {
-		ch <- Of(2)
-	}, func() {
-		ch <- Of(3)
-	}, func() {
-	}, func() {
-		ch <- Of(4)
-	}, func() {
-	}, func() {
-		cancel()
-	})
-
-	observe := FromChannel(ch).WindowWithTime(d, WithContext(ctx), WithBufferedChannel(10)).Observe()
+	obs, ctx, d := timeCausality(1, 2, 3, tick, 4, tick)
+	observe := obs.WindowWithTime(d, WithContext(ctx), WithBufferedChannel(10)).Observe()
 	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(1, 2, 3))
 	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(4))
 }

@@ -1,6 +1,7 @@
 package rxgo
 
 import (
+	"context"
 	"time"
 
 	"github.com/stretchr/testify/mock"
@@ -20,6 +21,29 @@ type duration struct {
 
 type testDuration struct {
 	fs []func()
+}
+
+var tick = struct{}{}
+
+func timeCausality(elems ...interface{}) (Observable, context.Context, Duration) {
+	ch := make(chan Item, 1)
+	fs := make([]func(), len(elems)+1)
+	ctx, cancel := context.WithCancel(context.Background())
+	for i, elem := range elems {
+		i := i
+		elem := elem
+		if elem == tick {
+			fs[i] = func() {}
+		} else {
+			fs[i] = func() {
+				ch <- Of(elem)
+			}
+		}
+	}
+	fs[len(elems)] = func() {
+		cancel()
+	}
+	return FromChannel(ch), ctx, &testDuration{fs: fs}
 }
 
 func (d *testDuration) append(fs ...func()) {
