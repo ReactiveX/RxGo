@@ -4,14 +4,14 @@
 
 Create a hot observable from a channel.
 
+The items are consumed as soon as the observable is created. An Observer will see only the items since the moment he subscribed to the Observable.
+
 ## Example
 
 ```go
 ch := make(chan rxgo.Item)
 observable := rxgo.FromEventSource(ch)
 ```
-
-The items are consumed as soon as the observable is created. An Observer will see only the items since the moment he subscribed to the Observable.
 
 ## Options
 
