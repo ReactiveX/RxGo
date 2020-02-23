@@ -2201,6 +2201,246 @@ https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
+## SequenceEqual Operator
+
+### Overview
+
+Determine whether two Observables emit the same sequence of items.
+
+![](http://reactivex.io/documentation/operators/images/sequenceEqual.png)
+
+### Example
+
+```go
+observable := rxgo.Just([]interface{}{1, 2, 3, 4, 5}).
+	SequenceEqual(rxgo.Just([]interface{}{1, 2, 42, 4, 5}))
+```
+
+* Output:
+
+```
+false
+```
+
+### Options
+
+#### WithBufferedChannel
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
+
+#### WithContext
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
+
+#### WithObservationStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
+
+#### WithErrorStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
+
+## Send Operator
+
+### Overview
+
+Send the Observable items to a given channel that will closed once the operation completes.
+
+### Example
+
+```go
+ch := make(chan rxgo.Item)
+rxgo.Just([]interface{}{1, 2, 3}).Send(ch)
+for item := range ch {
+	fmt.Println(item.V)
+}
+```
+
+* Output:
+
+```
+1
+2
+3
+```
+
+### Options
+
+#### WithContext
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
+
+## Serialize Operator
+
+### Overview
+
+Force an Observable to make serialized calls and to be well-behaved. 
+It takes the starting index and a function that transforms an item value into an index. 
+
+![](http://reactivex.io/documentation/operators/images/serialize.c.png)
+
+### Example
+
+```go
+observable := rxgo.Range(0, 1_000_000, rxgo.WithBufferedChannel(capacity)).
+	Map(func(_ context.Context, i interface{}) (interface{}, error) {
+		return i, nil
+	}, rxgo.WithCPUPool(), rxgo.WithBufferedChannel(capacity)).
+	Serialize(0, func(i interface{}) int {
+		return i.(int)
+	})
+```
+
+* Output:
+
+```
+true
+```
+
+### Options
+
+#### WithBufferedChannel
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
+
+#### WithContext
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
+
+#### WithObservationStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
+
+#### WithErrorStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
+
+#### WithPool
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withpool
+
+#### WithCPUPool
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withcpupool
+
+## Skip Operator
+
+### Overview
+
+Suppress the first n items emitted by an Observable.
+
+![](http://reactivex.io/documentation/operators/images/skip.png)
+
+### Example
+
+```go
+observable := rxgo.Just([]interface{}{1, 2, 3, 4, 5}).Skip(2)
+```
+
+* Output:
+
+```
+3
+4
+5
+```
+
+### Options
+
+#### WithBufferedChannel
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
+
+#### WithContext
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
+
+#### WithObservationStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
+
+#### WithErrorStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
+
+## SkipLast Operator
+
+### Overview
+
+Suppress the last n items emitted by an Observable.
+
+### Example
+
+```go
+observable := rxgo.Just([]interface{}{1, 2, 3, 4, 5}).SkipLast(2)
+```
+
+* Output:
+
+```
+1
+2
+```
+
+### Options
+
+#### WithBufferedChannel
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
+
+#### WithContext
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
+
+#### WithObservationStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
+
+#### WithErrorStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
+
+## SkipWhile Operator
+
+### Overview
+
+Suppress the Observable items while a condition is not met.
+
+### Example
+
+```go
+observable := rxgo.Just([]interface{}{1, 2, 3, 4, 5}).SkipWhile(func(i interface{}) bool {
+	return i != 2
+})
+```
+
+* Output:
+
+```
+2
+3
+4
+5
+```
+
+### Options
+
+#### WithBufferedChannel
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
+
+#### WithContext
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
+
+#### WithObservationStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
+
+#### WithErrorStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
+
 ## Start Operator
 
 ### Overview

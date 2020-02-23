@@ -1724,7 +1724,7 @@ func popAndCompareFirstItems(
 	return true, inputSequence1, inputSequence2
 }
 
-// Send sends the items to a given channel
+// Send sends the items to a given channel.
 func (o *ObservableImpl) Send(output chan<- Item, opts ...Option) {
 	go func() {
 		option := parseOptions(opts...)
