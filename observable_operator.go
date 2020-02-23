@@ -2573,6 +2573,8 @@ func (o *ObservableImpl) WindowWithTime(timespan Duration, opts ...Option) Obser
 	}
 }
 
+// WindowWithTimeOrCount periodically subdivides items from an Observable into Observables based on timed windows or a specific size
+// and emit them rather than emitting the items one at a time.
 func (o *ObservableImpl) WindowWithTimeOrCount(timespan Duration, count int, opts ...Option) Observable {
 	if timespan == nil {
 		return Thrown(IllegalInputError{error: "timespan must no be nil"})

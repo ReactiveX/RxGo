@@ -51,6 +51,8 @@ func timeCausality(elems ...interface{}) (context.Context, Observable, Duration)
 				fs[i] = func() {
 					ch <- Of(elem)
 				}
+			case func():
+				fs[i] = elem
 			case error:
 				fs[i] = func() {
 					ch <- Error(elem)

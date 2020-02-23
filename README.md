@@ -289,6 +289,7 @@ In this example, we create a pool of 32 goroutines that consume items concurrent
 * Marshal - transform the items emitted by an Observable by applying a marshalling function to each item
 * [Scan](http://reactivex.io/documentation/operators/scan.html) — apply a function to each item emitted by an Observable, sequentially, and emit each successive value
 * Unmarshal - transform the items emitted by an Observable by applying an unmarshalling function to each item
+* [Window](http://reactivex.io/documentation/operators/window.html) — apply a function to each item emitted by an Observable, sequentially, and emit each successive value
 
 ### Filtering Observables
 * [Distinct/DistinctUntilChanged](http://reactivex.io/documentation/operators/distinct.html) — suppress duplicate items emitted by an Observable
