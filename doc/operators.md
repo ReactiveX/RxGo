@@ -86,7 +86,7 @@ observable := rxgo.Just([]interface{}{1, 2, 3, 4}).
 	})
 ```
 
-* Output:
+Output:
 
 ```
 true
@@ -135,7 +135,7 @@ observable := rxgo.Amb([]rxgo.Observable{
 })
 ```
 
-* Output:
+Output:
 
 ```
 1
@@ -191,7 +191,7 @@ Calculate the average of numbers emitted by an Observable and emits this average
 observable := rxgo.Just([]interface{}{1, 2, 3, 4}).AverageInt()
 ```
 
-* Output:
+Output:
 
 ```
 2
@@ -248,7 +248,7 @@ observable := rxgo.Defer([]rxgo.Producer{func(ctx context.Context, next chan<- r
 }}).BackOffRetry(backoff.WithMaxRetries(backOffCfg, 2))
 ```
 
-* Output:
+Output:
 
 ```
 1
@@ -278,57 +278,34 @@ https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
 
 https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
 
-## BufferWithCount Operator
+## Buffer Operator
 
 ### Overview
 
-BufferWithCount returns an Observable that emits buffers of items it collects from the source Observable.
+Periodically gather items emitted by an Observable into bundles and emit these bundles rather than emitting the items one at a time
 
 ![](http://reactivex.io/documentation/operators/images/Buffer.png)
 
-### Example
+### Instances
+
+* `BufferWithCount`:
+
+![](http://reactivex.io/documentation/operators/images/bufferWithCount3.png)
 
 ```go
 observable := rxgo.Just([]interface{}{1, 2, 3, 4}).BufferWithCount(3)
 ```
 
-* Output:
+Output:
 
 ```
 1 2 3
 4
 ```
 
-### Options
+* `BufferWithTime`:
 
-#### WithBufferedChannel
-
-https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
-
-#### WithContext
-
-https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
-
-#### WithObservationStrategy
-
-https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
-
-#### WithErrorStrategy
-
-https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
-
-## BufferWithTime Operator
-
-### Overview
-
-BufferWithTime returns an Observable that emits buffers of items it collects from the source Observable. 
-
-The resulting Observable starts a new buffer periodically, as determined by the
-timeshift argument. It emits each buffer after a fixed timespan, specified by the timespan argument.
-
-When the source Observable completes or encounters an error, the resulting Observable emits the current buffer and propagates the notification from the source Observable.
-
-### Example
+![](http://reactivex.io/documentation/operators/images/bufferWithTime5.png)
 
 ```go
 // Create the producer
@@ -345,7 +322,7 @@ observable := rxgo.FromChannel(ch).
 	BufferWithTime(rxgo.WithDuration(3*time.Second), nil)
 ```
 
-* Output:
+Output:
 
 ```
 0 1 2
@@ -354,31 +331,9 @@ observable := rxgo.FromChannel(ch).
 ...
 ```
 
-### Options
+* `BufferWithTimeOrCount`:
 
-#### WithBufferedChannel
-
-https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
-
-#### WithContext
-
-https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
-
-#### WithObservationStrategy
-
-https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
-
-#### WithErrorStrategy
-
-https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
-
-## BufferWithTimeOrCount Operator
-
-### Overview
-
-BufferWithTimeOrCount returns an Observable that emits buffers of items it collects from the source Observable either from a given count or at a given time interval.
-
-### Example
+![](http://reactivex.io/documentation/operators/images/bufferWithTimeOrCount6.png)
 
 ```go
 // Create the producer
@@ -395,7 +350,7 @@ observable := rxgo.FromChannel(ch).
 	BufferWithTimeOrCount(rxgo.WithDuration(3*time.Second), 2)
 ```
 
-* Output:
+Output:
 
 ```
 0 1
@@ -445,7 +400,7 @@ observable := rxgo.Just([]interface{}{1, 2, errors.New("foo")}).
 	})
 ```
 
-* Output:
+Output:
 
 ```
 1
@@ -463,7 +418,7 @@ observable := rxgo.Just([]interface{}{1, errors.New("2"), 3, errors.New("4"), 5}
 	})
 ```
 
-* Output:
+Output:
 
 ```
 1
@@ -480,7 +435,7 @@ observable := rxgo.Just([]interface{}{1, errors.New("2"), 3, errors.New("4"), 5}
 	OnErrorReturnItem("foo")
 ```
 
-* Output:
+Output:
 
 ```
 1
@@ -534,7 +489,7 @@ observable := rxgo.CombineLatest(func(i ...interface{}) interface{} {
 })
 ```
 
-* Output:
+Output:
 
 ```
 12
@@ -576,7 +531,7 @@ observable := rxgo.Concat([]rxgo.Observable{
 })
 ```
 
-* Output:
+Output:
 
 ```
 1
@@ -621,7 +576,7 @@ observable := rxgo.Just([]interface{}{1, 2, 3}).Contains(func(i interface{}) boo
 })
 ```
 
-* Output:
+Output:
 
 ```
 true
@@ -667,7 +622,7 @@ Count the number of items emitted by the source Observable and emit only this va
 observable := rxgo.Just([]interface{}{1, 2, 3}).Count()
 ```
 
-* Output:
+Output:
 
 ```
 3
@@ -710,7 +665,7 @@ observable := rxgo.Create([]rxgo.Producer{func(ctx context.Context, next chan<- 
 }})
 ```
 
-* Output:
+Output:
 
 ```
 1
@@ -756,7 +711,7 @@ Emit items from the source Observable, or a default item if the source Observabl
 observable := rxgo.Empty().DefaultIfEmpty(1)
 ```
 
-* Output:
+Output:
 
 ```
 1
@@ -799,7 +754,7 @@ observable := rxgo.Defer([]rxgo.Producer{func(ctx context.Context, next chan<- r
 }})
 ```
 
-* Output:
+Output:
 
 ```
 1
@@ -848,7 +803,7 @@ observable := rxgo.Just([]interface{}{1, 2, 2, 3, 4, 4, 5}).
 	})
 ```
 
-* Output:
+Output:
 
 ```
 1
@@ -899,7 +854,7 @@ observable := rxgo.Just([]interface{}{1, 2, 2, 1, 1, 3}).
 	})
 ```
 
-* Output:
+Output:
 
 ```
 1
@@ -953,7 +908,7 @@ Each one returns a `<-chan struct{}` that closes once the Observable terminates.
 	})
 ```
 
-* Output:
+Output:
 
 ```
 1
@@ -970,7 +925,7 @@ Each one returns a `<-chan struct{}` that closes once the Observable terminates.
 	})
 ```
 
-* Output:
+Output:
 
 ```
 foo
@@ -985,7 +940,7 @@ foo
 	})
 ```
 
-* Output:
+Output:
 
 ```
 done
@@ -1011,7 +966,7 @@ Emit only item n emitted by an Observable.
 observable := rxgo.Just([]interface{}{0, 1, 2, 3, 4}).ElementAt(2)
 ```
 
-* Output:
+Output:
 
 ```
 2
@@ -1049,7 +1004,7 @@ Create an Observable that emits no items but terminates normally.
 observable := rxgo.Empty()
 ```
 
-* Output:
+Output:
 
 ```
 ```
@@ -1069,7 +1024,7 @@ err := rxgo.Just([]interface{}{1, 2, errors.New("foo")}).Error()
 fmt.Println(err)
 ```
 
-* Output:
+Output:
 
 ```
 foo
@@ -1100,7 +1055,7 @@ errs := rxgo.Just([]interface{}{
 fmt.Println(errs)
 ```
 
-* Output:
+Output:
 
 ```
 [foo bar baz]
@@ -1129,7 +1084,7 @@ observable := rxgo.Just([]interface{}{1, 2, 3}).
 	})
 ```
 
-* Output:
+Output:
 
 ```
 1
@@ -1176,7 +1131,7 @@ Emit only the first item emitted by an Observable.
 observable := rxgo.Just([]interface{}{1, 2, 3}).First()
 ```
 
-* Output:
+Output:
 
 ```
 true
@@ -1210,7 +1165,7 @@ Similar to `First`, but we pass a default item that will be emitted if the sourc
 observable := rxgo.Empty().FirstOrDefault(1)
 ```
 
-* Output:
+Output:
 
 ```
 1
@@ -1249,7 +1204,7 @@ observable := rxgo.Just([]interface{}{1, 2, 3}).FlatMap(func(i rxgo.Item) rxgo.O
 })
 ```
 
-* Output:
+Output:
 
 ```
 10
@@ -1308,7 +1263,7 @@ It returns a `<-chan struct{}` that closes once the Observable terminates.
 		})
 ```
 
-* Output:
+Output:
 
 ```
 next: 1
@@ -1409,7 +1364,7 @@ for i := range observable.Observe() {
 }
 ```
 
-* Output:
+Output:
 
 ```
 New observable:
@@ -1461,7 +1416,7 @@ observable := rxgo.Just([]interface{}{1, 2, errors.New("foo")}).
 	IgnoreElements()
 ```
 
-* Output:
+Output:
 
 ```
 foo
@@ -1499,7 +1454,7 @@ Create an Observable that emits a sequence of integers spaced by a particular ti
 observable := rxgo.Interval(rxgo.WithDuration(5 * time.Second))
 ```
 
-* Output:
+Output:
 
 ```
 0 // After 5 seconds
@@ -1535,7 +1490,7 @@ Convert an object or a set of objects into an Observable that emits that or thos
 observable := rxgo.Just(1)
 ```
 
-* Output:
+Output:
 
 ```
 1
@@ -1547,7 +1502,7 @@ observable := rxgo.Just(1)
 observable := rxgo.Just([]interface{}{1, 2, 3})
 ```
 
-* Output:
+Output:
 
 ```
 1
@@ -1573,7 +1528,7 @@ Convert an object into a Single that emits that object.
 observable := rxgo.Just(1)
 ```
 
-* Output:
+Output:
 
 ```
 1
@@ -1599,7 +1554,7 @@ Emit only the last item emitted by an Observable.
 observable := rxgo.Just([]interface{}{1, 2, 3}).Last()
 ```
 
-* Output:
+Output:
 
 ```
 3
@@ -1637,7 +1592,7 @@ Similar to `Last`, but you pass it a default item that it can emit if the source
 observable := rxgo.Empty().LastOrDefault(1)
 ```
 
-* Output:
+Output:
 
 ```
 1
@@ -1678,7 +1633,7 @@ observable := rxgo.Just([]interface{}{1, 2, 3}).
 	})
 ```
 
-* Output:
+Output:
 
 ```
 10
@@ -1735,7 +1690,7 @@ observable := rxgo.Just([]customer{
 }).Marshal(json.Marshal)
 ```
 
-* Output:
+Output:
 
 ```
 {"id":1}
@@ -1785,7 +1740,7 @@ observable := rxgo.Just([]interface{}{2, 5, 1, 6, 3, 4}).
 	})
 ```
 
-* Output:
+Output:
 
 ```
 6
@@ -1834,7 +1789,7 @@ observable := rxgo.Merge([]rxgo.Observable{
 })
 ```
 
-* Output:
+Output:
 
 ```
 1
@@ -1878,7 +1833,7 @@ observable := rxgo.Just([]interface{}{2, 5, 1, 6, 3, 4}).
 	})
 ```
 
-* Output:
+Output:
 
 ```
 1
@@ -1924,7 +1879,7 @@ Create an Observable that emits no items and does not terminate.
 observable := rxgo.Never()
 ```
 
-* Output:
+Output:
 
 ```
 ```
@@ -1943,7 +1898,7 @@ Create an Observable that emits a range of sequential integers.
 observable := rxgo.Range(0, 3)
 ```
 
-* Output:
+Output:
 
 ```
 0
@@ -1982,7 +1937,7 @@ observable := rxgo.Just([]interface{}{1, 2, 3}).
 	})
 ```
 
-* Output:
+Output:
 
 ```
 6
@@ -2029,7 +1984,7 @@ observable := rxgo.Just([]interface{}{1, 2, 3}).
 	Repeat(3, rxgo.WithDuration(time.Second))
 ```
 
-* Output:
+Output:
 
 ```
 // Immediately
@@ -2079,7 +2034,7 @@ Implements a retry if a source Observable sends an error, resubscribe to it in t
 observable := rxgo.Just([]interface{}{1, 2, errors.New("foo")}).Retry(2)
 ```
 
-* Output:
+Output:
 
 ```
 1
@@ -2173,7 +2128,7 @@ observable := rxgo.Just([]interface{}{1, 2, 3, 4, 5}).
     })
 ```
 
-* Output:
+Output:
 
 ```
 1
@@ -2216,7 +2171,7 @@ observable := rxgo.Just([]interface{}{1, 2, 3, 4, 5}).
 	SequenceEqual(rxgo.Just([]interface{}{1, 2, 42, 4, 5}))
 ```
 
-* Output:
+Output:
 
 ```
 false
@@ -2256,7 +2211,7 @@ for item := range ch {
 }
 ```
 
-* Output:
+Output:
 
 ```
 1
@@ -2291,7 +2246,7 @@ observable := rxgo.Range(0, 1_000_000, rxgo.WithBufferedChannel(capacity)).
 	})
 ```
 
-* Output:
+Output:
 
 ```
 true
@@ -2337,7 +2292,7 @@ Suppress the first n items emitted by an Observable.
 observable := rxgo.Just([]interface{}{1, 2, 3, 4, 5}).Skip(2)
 ```
 
-* Output:
+Output:
 
 ```
 3
@@ -2375,7 +2330,7 @@ Suppress the last n items emitted by an Observable.
 observable := rxgo.Just([]interface{}{1, 2, 3, 4, 5}).SkipLast(2)
 ```
 
-* Output:
+Output:
 
 ```
 1
@@ -2414,7 +2369,7 @@ observable := rxgo.Just([]interface{}{1, 2, 3, 4, 5}).SkipWhile(func(i interface
 })
 ```
 
-* Output:
+Output:
 
 ```
 2
@@ -2459,7 +2414,7 @@ observable := rxgo.Start([]rxgo.Supplier{func(ctx context.Context) rxgo.Item {
 }})
 ```
 
-* Output:
+Output:
 
 ```
 1
@@ -2499,7 +2454,7 @@ observable := rxgo.Just([]interface{}{3, 4}).StartWith(
 	rxgo.Just([]interface{}{1, 2}))
 ```
 
-* Output:
+Output:
 
 ```
 1
@@ -2546,7 +2501,7 @@ Calculate the sum of numbers emitted by an Observable and emit this sum.
 observable := rxgo.Just([]interface{}{1, 2, 3, 4}).SumInt64()
 ```
 
-* Output:
+Output:
 
 ```
 10
@@ -2592,7 +2547,7 @@ Emit only the first n items emitted by an Observable.
 observable := rxgo.Just([]interface{}{1, 2, 3, 4, 5}).Take(2)
 ```
 
-* Output:
+Output:
 
 ```
 1
@@ -2631,7 +2586,7 @@ Emit only the final n items emitted by an Observable.
 observable := rxgo.Just([]interface{}{1, 2, 3, 4, 5}).TakeLast(2)
 ```
 
-* Output:
+Output:
 
 ```
 4
@@ -2672,7 +2627,7 @@ observable := rxgo.Just([]interface{}{1, 2, 3, 4, 5}).TakeUntil(func(i interface
 })
 ```
 
-* Output:
+Output:
 
 ```
 1
@@ -2714,7 +2669,7 @@ observable := rxgo.Just([]interface{}{1, 2, 3, 4, 5}).TakeWhile(func(i interface
 })
 ```
 
-* Output:
+Output:
 
 ```
 1
@@ -2753,7 +2708,7 @@ Create an Observable that emits no items and terminates with an error.
 observable := rxgo.Thrown(errors.New("foo"))
 ```
 
-* Output:
+Output:
 
 ```
 foo
@@ -2773,7 +2728,7 @@ Create an Observable that emits a single item after a given delay.
 observable := rxgo.Timer(rxgo.WithDuration(5 * time.Second))
 ```
 
-* Output:
+Output:
 
 ```
 {} // After 5 seconds
@@ -2784,6 +2739,117 @@ observable := rxgo.Timer(rxgo.WithDuration(5 * time.Second))
 #### WithContext
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
+
+## ToMap Operator
+
+### Overview
+
+Transform the Observable items into a Single emitting a map. It accepts a function that transforms each item into its corresponding key in the map.
+
+### Example
+
+```go
+observable := rxgo.Just([]interface{}{1, 2, 3}).
+	ToMap(func(_ context.Context, i interface{}) (interface{}, error) {
+		return i.(int) * 10, nil
+	})
+```
+
+Output:
+
+```
+map[10:1 20:2 30:3]
+```
+
+### Options
+
+#### WithContext
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
+
+#### WithObservationStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
+
+#### WithErrorStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
+
+## ToMapWithValueSelector Operator
+
+### Overview
+
+Transform the Observable items into a Single emitting a map. It accepts:
+* A function that transforms each item into its corresponding key in the map.
+* A function that transforms each item into its corresponding value in the map.
+
+### Example
+
+```go
+observable := rxgo.Just([]interface{}{1, 2, 3}).
+	ToMapWithValueSelector(func(_ context.Context, i interface{}) (interface{}, error) {
+		return i.(int) * 10, nil
+	}, func(_ context.Context, i interface{}) (interface{}, error) {
+		return i, nil
+	})
+```
+
+Output:
+
+```
+map[10:1 20:2 30:3]
+```
+
+### Options
+
+#### WithContext
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
+
+#### WithObservationStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
+
+#### WithErrorStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
+
+## ToSlice Operator
+
+### Overview
+
+Transform the Observable items into a slice. It accepts a capacity that will be used as the initial capacity of the slice produced.
+
+### Example
+
+```go
+s, err := rxgo.Just([]interface{}{1, 2, 3}).ToSlice(3)
+if err != nil {
+	return err
+}
+fmt.Println(s)
+```
+
+Output:
+
+```
+[1 2 3]
+```
+
+### Options
+
+#### WithContext
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
+
+#### WithObservationStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
+
+#### WithErrorStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
+
 
 ## Unmarshal Operator
 
@@ -2807,7 +2873,7 @@ observable := rxgo.Just([][]byte{
 	})
 ```
 
-* Output:
+Output:
 
 ```
 &{ID:1}
@@ -2839,3 +2905,118 @@ https://github.com/ReactiveX/RxGo/wiki/Options#withpool
 #### WithCPUPool
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcpupool
+
+## Window Operator
+
+### Overview
+
+Periodically subdivide items from an Observable into Observable windows and emit these windows rather than emitting the items one at a time.
+
+### Instances
+
+* `WindowWithCount`
+
+![](http://reactivex.io/documentation/operators/images/window3.png)
+
+* `WindowWithTime`
+
+![](http://reactivex.io/documentation/operators/images/window5.png)
+
+* `WindowWithTimeOrCount`
+
+![](http://reactivex.io/documentation/operators/images/window6.png)
+
+### Example
+
+```go
+observe := rxgo.Just([]interface{}{1, 2, 3}).WindowWithCount(2).Observe()
+
+fmt.Println("First Observable")
+for item := range (<-observe).V.(rxgo.Observable).Observe() {
+	if item.Error() {
+		return item.E
+	}
+	fmt.Println(item.V)
+}
+
+fmt.Println("Second Observable")
+for item := range (<-observe).V.(rxgo.Observable).Observe() {
+	if item.Error() {
+		return item.E
+	}
+	fmt.Println(item.V)
+}
+```
+
+Output:
+
+```
+First Observable
+1
+2
+Second Observable
+3
+```
+
+### Options
+
+#### WithBufferedChannel
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
+
+#### WithContext
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
+
+#### WithObservationStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
+
+#### WithErrorStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
+
+## ZipFromIterable Operator
+
+### Overview
+
+Merge the emissions of an Iterable via a specified function and emit single items for each combination based on the results of this function.
+
+![](http://reactivex.io/documentation/operators/images/zip.o.png)
+
+### Example
+
+```go
+observable1 := rxgo.Just([]interface{}{1, 2, 3})
+observable2 := rxgo.Just([]interface{}{10, 20, 30})
+zipper := func(_ context.Context, i1 interface{}, i2 interface{}) (interface{}, error) {
+	return i1.(int) + i2.(int), nil
+}
+zippedObservable := observable1.ZipFromIterable(observable2, zipper)
+```
+
+Output:
+
+```
+11
+12
+13
+```
+
+### Options
+
+#### WithBufferedChannel
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
+
+#### WithContext
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
+
+#### WithObservationStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
+
+#### WithErrorStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy

@@ -2657,7 +2657,7 @@ func (o *ObservableImpl) WindowWithTimeOrCount(timespan Duration, count int, opt
 	}
 }
 
-// ZipFromIterable merges the emissions of multiple Observables together via a specified function
+// ZipFromIterable merges the emissions of an Iterable via a specified function
 // and emit single items for each combination based on the results of this function.
 func (o *ObservableImpl) ZipFromIterable(iterable Iterable, zipper Func2, opts ...Option) Observable {
 	option := parseOptions(opts...)
