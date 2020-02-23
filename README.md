@@ -290,6 +290,7 @@ In this example, we create a pool of 32 goroutines that consume items concurrent
 * [Window](doc/window.md) — apply a function to each item emitted by an Observable, sequentially, and emit each successive value
 
 ### Filtering Observables
+* [Debounce](doc/debounce.md) — only emit an item from an Observable if a particular timespan has passed without it emitting another item
 * [Distinct](doc/distinct.md)/[DistinctUntilChanged](doc/distinctuntilchanged.md) — suppress duplicate items emitted by an Observable
 * [ElementAt](doc/elementat.md) — emit only item n emitted by an Observable
 * [Filter](doc/filter.md) — emit only those items from an Observable that pass a predicate test

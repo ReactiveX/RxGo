@@ -8,7 +8,6 @@ import (
 
 const (
 	benchChannelCap            = 1000
-	benchNumberOfElementsLarge = 1000000
 	benchNumberOfElementsSmall = 1000
 	ioPool                     = 32
 )

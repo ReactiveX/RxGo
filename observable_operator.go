@@ -637,6 +637,45 @@ func (op *countOperator) end(_ context.Context, dst chan<- Item) {
 func (op *countOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
+// Debounce only emits an item from an Observable if a particular timespan has passed without it emitting another item.
+func (o *ObservableImpl) Debounce(timespan Duration, opts ...Option) Observable {
+	f := func(ctx context.Context, next chan Item, option Option, opts ...Option) {
+		defer close(next)
+		observe := o.Observe(opts...)
+		var latest interface{}
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case item, ok := <-observe:
+				if !ok {
+					return
+				}
+				if item.Error() {
+					if !item.SendWithContext(ctx, next) {
+						return
+					}
+					if option.getErrorStrategy() == Stop {
+						return
+					}
+				} else {
+					latest = item.V
+				}
+			case <-time.After(timespan.duration()):
+				if latest != nil {
+					if !Of(latest).SendWithContext(ctx, next) {
+						return
+					}
+					latest = nil
+				}
+			}
+		}
+	}
+
+	return customObservableOperator(f, opts...)
+}
+
 // DefaultIfEmpty returns an Observable that emits the items emitted by the source
 // Observable or a specified default item if the source Observable is empty.
 func (o *ObservableImpl) DefaultIfEmpty(defaultValue interface{}, opts ...Option) Observable {
@@ -2551,25 +2590,7 @@ func (o *ObservableImpl) WindowWithTime(timespan Duration, opts ...Option) Obser
 		}
 	}
 
-	option := parseOptions(opts...)
-
-	if option.isEagerObservation() {
-		next := option.buildChannel()
-		ctx := option.buildContext()
-		go f(ctx, next, option, opts...)
-		return &ObservableImpl{iterable: newChannelIterable(next)}
-	}
-
-	return &ObservableImpl{
-		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
-			mergedOptions := append(opts, propagatedOptions...)
-			option := parseOptions(mergedOptions...)
-			next := option.buildChannel()
-			ctx := option.buildContext()
-			go f(ctx, next, option, mergedOptions...)
-			return next
-		}),
-	}
+	return customObservableOperator(f, opts...)
 }
 
 // WindowWithTimeOrCount periodically subdivides items from an Observable into Observables based on timed windows or a specific size
@@ -2636,25 +2657,7 @@ func (o *ObservableImpl) WindowWithTimeOrCount(timespan Duration, count int, opt
 		}
 	}
 
-	option := parseOptions(opts...)
-
-	if option.isEagerObservation() {
-		next := option.buildChannel()
-		ctx := option.buildContext()
-		go f(ctx, next, option, opts...)
-		return &ObservableImpl{iterable: newChannelIterable(next)}
-	}
-
-	return &ObservableImpl{
-		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
-			mergedOptions := append(opts, propagatedOptions...)
-			option := parseOptions(mergedOptions...)
-			next := option.buildChannel()
-			ctx := option.buildContext()
-			go f(ctx, next, option, mergedOptions...)
-			return next
-		}),
-	}
+	return customObservableOperator(f, opts...)
 }
 
 // ZipFromIterable merges the emissions of an Iterable via a specified function

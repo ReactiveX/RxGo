@@ -24,6 +24,7 @@ type Observable interface {
 	BufferWithTimeOrCount(timespan Duration, count int, opts ...Option) Observable
 	Contains(equal Predicate, opts ...Option) Single
 	Count(opts ...Option) Single
+	Debounce(timespan Duration, opts ...Option) Observable
 	DefaultIfEmpty(defaultValue interface{}, opts ...Option) Observable
 	Distinct(apply Func, opts ...Option) Observable
 	DistinctUntilChanged(apply Func, opts ...Option) Observable
@@ -312,4 +313,26 @@ func runPar(ctx context.Context, next chan Item, iterable Iterable, operatorFact
 		cancel()
 		close(gather)
 	}()
+}
+
+func customObservableOperator(f func(ctx context.Context, next chan Item, option Option, opts ...Option), opts ...Option) Observable {
+	option := parseOptions(opts...)
+
+	if option.isEagerObservation() {
+		next := option.buildChannel()
+		ctx := option.buildContext()
+		go f(ctx, next, option, opts...)
+		return &ObservableImpl{iterable: newChannelIterable(next)}
+	}
+
+	return &ObservableImpl{
+		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
+			mergedOptions := append(opts, propagatedOptions...)
+			option := parseOptions(mergedOptions...)
+			next := option.buildChannel()
+			ctx := option.buildContext()
+			go f(ctx, next, option, mergedOptions...)
+			return next
+		}),
+	}
 }
