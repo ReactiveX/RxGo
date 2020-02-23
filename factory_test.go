@@ -308,15 +308,6 @@ func Test_Interval(t *testing.T) {
 	Assert(context.Background(), t, obs, IsNotEmpty())
 }
 
-func Test_Interval_NoItem(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	obs := Interval(WithDuration(time.Nanosecond), WithContext(ctx))
-	time.Sleep(150 * time.Millisecond)
-	cancel()
-	// As Interval is built on an event source, we expect no items
-	Assert(context.Background(), t, obs, IsEmpty())
-}
-
 func Test_Merge(t *testing.T) {
 	obs := Merge([]Observable{testObservable(1, 2), testObservable(3, 4)})
 	Assert(context.Background(), t, obs, HasItemsNoOrder(1, 2, 3, 4))
