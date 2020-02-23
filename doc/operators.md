@@ -2578,6 +2578,167 @@ https://github.com/ReactiveX/RxGo/wiki/Options#withpool
 
 https://github.com/ReactiveX/RxGo/wiki/Options#withcpupool
 
+## Take Operator
+
+### Overview
+
+Emit only the first n items emitted by an Observable.
+
+![](http://reactivex.io/documentation/operators/images/take.png)
+
+### Example
+
+```go
+observable := rxgo.Just([]interface{}{1, 2, 3, 4, 5}).Take(2)
+```
+
+* Output:
+
+```
+1
+2
+```
+
+### Options
+
+#### WithBufferedChannel
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
+
+#### WithContext
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
+
+#### WithObservationStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
+
+#### WithErrorStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
+
+## TakeLast Operator
+
+### Overview
+
+Emit only the final n items emitted by an Observable.
+
+![](http://reactivex.io/documentation/operators/images/takeLast.n.png)
+
+### Example
+
+```go
+observable := rxgo.Just([]interface{}{1, 2, 3, 4, 5}).TakeLast(2)
+```
+
+* Output:
+
+```
+4
+5
+```
+
+### Options
+
+#### WithBufferedChannel
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
+
+#### WithContext
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
+
+#### WithObservationStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
+
+#### WithErrorStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
+
+## TakeUntil Operator
+
+### Overview
+
+Discard any items emitted by an Observable after a second Observable emits an item or terminates.
+
+![](http://reactivex.io/documentation/operators/images/takeUntil.png)
+
+### Example
+
+```go
+observable := rxgo.Just([]interface{}{1, 2, 3, 4, 5}).TakeUntil(func(i interface{}) bool {
+	return i == 3
+})
+```
+
+* Output:
+
+```
+1
+2
+3
+```
+
+### Options
+
+#### WithBufferedChannel
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
+
+#### WithContext
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
+
+#### WithObservationStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
+
+#### WithErrorStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
+
+## TakeWhile Operator
+
+### Overview
+
+Mirror items emitted by an Observable until a specified condition becomes false.
+
+![](http://reactivex.io/documentation/operators/images/takeWhile.c.png)
+
+### Example
+
+```go
+observable := rxgo.Just([]interface{}{1, 2, 3, 4, 5}).TakeWhile(func(i interface{}) bool {
+	return i != 3
+})
+```
+
+* Output:
+
+```
+1
+2
+```
+
+### Options
+
+#### WithBufferedChannel
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withbufferedchannel
+
+#### WithContext
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withcontext
+
+#### WithObservationStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#withobservationstrategy
+
+#### WithErrorStrategy
+
+https://github.com/ReactiveX/RxGo/wiki/Options#witherrorstrategy
+
 ## Thrown Operator
 
 ### Overview
