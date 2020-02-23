@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -1287,6 +1288,16 @@ func Test_Observable_TakeWhile(t *testing.T) {
 		return item != 3
 	})
 	Assert(context.Background(), t, obs, HasItems(1, 2))
+}
+
+func Test_Observable_TimeInterval(t *testing.T) {
+	obs := testObservable(1, 2, 3).TimeInterval()
+	Assert(context.Background(), t, obs, CustomPredicate(func(items []interface{}) error {
+		if len(items) != 3 {
+			return fmt.Errorf("expected 3 items, got %d items", len(items))
+		}
+		return nil
+	}))
 }
 
 func Test_Observable_Timestamp(t *testing.T) {

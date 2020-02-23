@@ -2333,6 +2333,42 @@ func (op *takeWhileOperator) end(_ context.Context, _ chan<- Item) {
 func (op *takeWhileOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
+// TimeInterval converts an Observable that emits items into one that emits indications of the amount of time elapsed between those emissions.
+func (o *ObservableImpl) TimeInterval(opts ...Option) Observable {
+	f := func(ctx context.Context, next chan Item, option Option, opts ...Option) {
+		defer close(next)
+		observe := o.Observe(opts...)
+		latest := time.Now().UTC()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case item, ok := <-observe:
+				if !ok {
+					return
+				}
+				if item.Error() {
+					if !item.SendWithContext(ctx, next) {
+						return
+					}
+					if option.getErrorStrategy() == Stop {
+						return
+					}
+				} else {
+					now := time.Now().UTC()
+					if !Of(now.Sub(latest)).SendWithContext(ctx, next) {
+						return
+					}
+					latest = now
+				}
+			}
+		}
+	}
+
+	return customObservableOperator(f, opts...)
+}
+
 // Timestamp attaches a timestamp to each item emitted by an Observable indicating when it was emitted.
 func (o *ObservableImpl) Timestamp(opts ...Option) Observable {
 	return observable(o, func() operator {
