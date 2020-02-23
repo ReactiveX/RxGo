@@ -15,11 +15,16 @@ func newRangeIterable(start, count int, opts ...Option) Iterable {
 
 func (i *rangeIterable) Observe(opts ...Option) <-chan Item {
 	option := parseOptions(append(i.opts, opts...)...)
+	ctx := option.buildContext()
 	next := option.buildChannel()
 
 	go func() {
 		for idx := i.start; idx <= i.start+i.count; idx++ {
-			next <- Of(idx)
+			select {
+			case <-ctx.Done():
+				return
+			case next <- Of(idx):
+			}
 		}
 		close(next)
 	}()

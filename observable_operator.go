@@ -13,7 +13,7 @@ import (
 	"github.com/emirpasic/gods/trees/binaryheap"
 )
 
-// All determine whether all items emitted by an Observable meet some criteria.
+// All determines whether all items emitted by an Observable meet some criteria.
 func (o *ObservableImpl) All(predicate Predicate, opts ...Option) Single {
 	return single(o, func() operator {
 		return &allOperator{
@@ -398,56 +398,37 @@ func (o *ObservableImpl) BackOffRetry(backOffCfg backoff.BackOff, opts ...Option
 // When the source Observable completes or encounters an error,
 // the resulting Observable emits the current buffer and propagates
 // the notification from the source Observable.
-func (o *ObservableImpl) BufferWithCount(count, skip int, opts ...Option) Observable {
+func (o *ObservableImpl) BufferWithCount(count int, opts ...Option) Observable {
 	if count <= 0 {
-		return newObservableFromError(IllegalInputError{error: "count must be positive"})
-	}
-	if skip <= 0 {
-		return newObservableFromError(IllegalInputError{error: "skip must be positive"})
+		return Thrown(IllegalInputError{error: "count must be positive"})
 	}
 
 	return observable(o, func() operator {
 		return &bufferWithCountOperator{
 			count:  count,
-			skip:   skip,
 			buffer: make([]interface{}, count),
 		}
 	}, true, false, opts...)
 }
 
 type bufferWithCountOperator struct {
-	count, skip int
-	buffer      []interface{}
-	iCount      int
-	iSkip       int
+	count  int
+	iCount int
+	buffer []interface{}
 }
 
 func (op *bufferWithCountOperator) next(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
-	if op.iCount >= op.count {
-		// Skip
-		op.iSkip++
-	} else {
-		// Add to buffer
-		op.buffer[op.iCount] = item.V
-		op.iCount++
-		op.iSkip++
-	}
-	if op.iSkip == op.skip {
-		// Send current buffer
+	op.buffer[op.iCount] = item.V
+	op.iCount++
+	if op.iCount == op.count {
 		dst <- Of(op.buffer)
-		op.buffer = make([]interface{}, op.count)
 		op.iCount = 0
-		op.iSkip = 0
+		op.buffer = make([]interface{}, op.count)
 	}
 }
 
-func (op *bufferWithCountOperator) err(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	if op.iCount != 0 {
-		dst <- Of(op.buffer[:op.iCount])
-	}
-	dst <- item
-	op.iCount = 0
-	operatorOptions.stop()
+func (op *bufferWithCountOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
 func (op *bufferWithCountOperator) end(_ context.Context, dst chan<- Item) {
@@ -464,181 +445,127 @@ func (op *bufferWithCountOperator) gatherNext(_ context.Context, _ Item, _ chan<
 // timeshift argument. It emits each buffer after a fixed timespan, specified by the timespan argument.
 // When the source Observable completes or encounters an error, the resulting Observable emits
 // the current buffer and propagates the notification from the source Observable.
-func (o *ObservableImpl) BufferWithTime(timespan, timeshift Duration, opts ...Option) Observable {
-	if timespan == nil || timespan.duration() == 0 {
-		return newObservableFromError(IllegalInputError{error: "timespan must no be nil"})
-	}
-	if timeshift == nil {
-		timeshift = WithDuration(0)
+func (o *ObservableImpl) BufferWithTime(timespan Duration, opts ...Option) Observable {
+	if timespan == nil {
+		return Thrown(IllegalInputError{error: "timespan must no be nil"})
 	}
 
-	var mux sync.Mutex
-	var listenMutex sync.Mutex
-	buffer := make([]interface{}, 0)
-	stop := false
-	listen := true
-
-	option := parseOptions(opts...)
-	next := option.buildChannel()
-	ctx := option.buildContext()
-
-	stopped := false
-
-	// First goroutine in charge to check the timespan
-	go func() {
-		for {
-			time.Sleep(timespan.duration())
-			mux.Lock()
-			if !stop {
-				next <- Of(buffer)
-				buffer = make([]interface{}, 0)
-				mux.Unlock()
-
-				if timeshift.duration() != 0 {
-					listenMutex.Lock()
-					listen = false
-					listenMutex.Unlock()
-					time.Sleep(timeshift.duration())
-					listenMutex.Lock()
-					listen = true
-					listenMutex.Unlock()
-				}
-			} else {
-				mux.Unlock()
-				return
-			}
-		}
-	}()
-
-	go func() {
-		observe := o.Observe()
-	loop:
-		for !stopped {
-			select {
-			case <-ctx.Done():
-				break loop
-			case i, ok := <-observe:
-				if !ok {
-					break loop
-				}
-				if i.Error() {
-					mux.Lock()
-					if len(buffer) > 0 {
-						next <- Of(buffer)
-					}
-					next <- i
-					close(next)
-					stop = true
-					mux.Unlock()
-					return
-				}
-				listenMutex.Lock()
-				l := listen
-				listenMutex.Unlock()
-
-				mux.Lock()
-				if l {
-					buffer = append(buffer, i.V)
-				}
-				mux.Unlock()
-			}
-		}
-		mux.Lock()
-		if len(buffer) > 0 {
-			next <- Of(buffer)
-		}
-		close(next)
-		stop = true
-		mux.Unlock()
-	}()
-
+	// TODO Handle eager observation
 	return &ObservableImpl{
-		iterable: newChannelIterable(next),
+		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
+			mergedOptions := append(opts, propagatedOptions...)
+			option := parseOptions(mergedOptions...)
+			next := option.buildChannel()
+			ctx := option.buildContext()
+
+			go func() {
+				defer close(next)
+				observe := o.Observe(mergedOptions...)
+				buffer := make([]interface{}, 0)
+
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					case item, ok := <-observe:
+						if !ok {
+							if len(buffer) != 0 {
+								select {
+								case <-ctx.Done():
+									return
+								case next <- Of(buffer):
+								}
+							}
+							return
+						}
+						if item.Error() {
+							next <- item
+							return
+						}
+						buffer = append(buffer, item.V)
+					case <-time.After(timespan.duration()):
+						if len(buffer) != 0 {
+							select {
+							case <-ctx.Done():
+								return
+							case next <- Of(buffer):
+							}
+							buffer = make([]interface{}, 0)
+						}
+					}
+				}
+			}()
+
+			return next
+		}),
 	}
 }
 
 // BufferWithTimeOrCount returns an Observable that emits buffers of items it collects from the source
 // Observable either from a given count or at a given time interval.
 func (o *ObservableImpl) BufferWithTimeOrCount(timespan Duration, count int, opts ...Option) Observable {
-	if timespan == nil || timespan.duration() == 0 {
-		return newObservableFromError(IllegalInputError{error: "timespan must no be nil"})
+	if timespan == nil {
+		return Thrown(IllegalInputError{error: "timespan must no be nil"})
 	}
 	if count <= 0 {
-		return newObservableFromError(IllegalInputError{error: "count must be positive"})
+		return Thrown(IllegalInputError{error: "count must be positive"})
 	}
 
-	sendCh := make(chan []interface{})
-	errCh := make(chan error)
-	buffer := make([]interface{}, 0)
-	var bufferMutex sync.Mutex
-	option := parseOptions(opts...)
-	next := option.buildChannel()
-	ctx := option.buildContext()
-
-	// First sender goroutine
-	go func() {
-		for {
-			select {
-			case currentBuffer := <-sendCh:
-				next <- Of(currentBuffer)
-			case err := <-errCh:
-				bufferMutex.Lock()
-				if len(buffer) > 0 {
-					next <- Of(buffer)
-				}
-				bufferMutex.Unlock()
-				if err != nil {
-					next <- Error(err)
-				}
-				close(next)
-				return
-			case <-time.After(timespan.duration()):
-				bufferMutex.Lock()
-				b := make([]interface{}, len(buffer))
-				copy(b, buffer)
-				buffer = make([]interface{}, 0)
-				bufferMutex.Unlock()
-				next <- Of(b)
-			}
-		}
-	}()
-
-	go func() {
-		observe := o.Observe()
-	loop:
-		for {
-			select {
-			case <-ctx.Done():
-				break loop
-			case i, ok := <-observe:
-				if !ok {
-					break loop
-				}
-				if i.Error() {
-					errCh <- i.E
-					break loop
-				}
-				// TODO Improve implementation without mutex (sending data over channel)
-				bufferMutex.Lock()
-				buffer = append(buffer, i.V)
-				if len(buffer) >= count {
-					b := make([]interface{}, len(buffer))
-					copy(b, buffer)
-					buffer = make([]interface{}, 0)
-					bufferMutex.Unlock()
-					sendCh <- b
-				} else {
-					bufferMutex.Unlock()
-				}
-			}
-		}
-		errCh <- nil
-		close(sendCh)
-		close(errCh)
-	}()
-
 	return &ObservableImpl{
-		iterable: newChannelIterable(next),
+		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
+			mergedOptions := append(opts, propagatedOptions...)
+			option := parseOptions(mergedOptions...)
+			next := option.buildChannel()
+			ctx := option.buildContext()
+
+			go func() {
+				defer close(next)
+				observe := o.Observe(mergedOptions...)
+				buffer := make([]interface{}, 0)
+
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					case item, ok := <-observe:
+						if !ok {
+							if len(buffer) != 0 {
+								select {
+								case <-ctx.Done():
+									return
+								case next <- Of(buffer):
+								}
+							}
+							return
+						}
+						if item.Error() {
+							next <- item
+							return
+						}
+						buffer = append(buffer, item.V)
+						if len(buffer) == count {
+							select {
+							case <-ctx.Done():
+								return
+							case next <- Of(buffer):
+							}
+							buffer = make([]interface{}, 0)
+						}
+					case <-time.After(timespan.duration()):
+						if len(buffer) != 0 {
+							select {
+							case <-ctx.Done():
+								return
+							case next <- Of(buffer):
+							}
+							buffer = make([]interface{}, 0)
+						}
+					}
+				}
+			}()
+
+			return next
+		}),
 	}
 }
 
@@ -660,8 +587,8 @@ type containsOperator struct {
 func (op *containsOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	if op.equal(item.V) {
 		dst <- Of(true)
-		operatorOptions.stop()
 		op.contains = true
+		operatorOptions.stop()
 	}
 }
 
@@ -670,13 +597,16 @@ func (op *containsOperator) err(ctx context.Context, item Item, dst chan<- Item,
 }
 
 func (op *containsOperator) end(_ context.Context, dst chan<- Item) {
-	dst <- Of(false)
+	if !op.contains {
+		dst <- Of(false)
+	}
 }
 
 func (op *containsOperator) gatherNext(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	if item.V == true {
 		dst <- Of(true)
 		operatorOptions.stop()
+		op.contains = true
 	}
 }
 
@@ -705,6 +635,45 @@ func (op *countOperator) end(_ context.Context, dst chan<- Item) {
 }
 
 func (op *countOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
+}
+
+// Debounce only emits an item from an Observable if a particular timespan has passed without it emitting another item.
+func (o *ObservableImpl) Debounce(timespan Duration, opts ...Option) Observable {
+	f := func(ctx context.Context, next chan Item, option Option, opts ...Option) {
+		defer close(next)
+		observe := o.Observe(opts...)
+		var latest interface{}
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case item, ok := <-observe:
+				if !ok {
+					return
+				}
+				if item.Error() {
+					if !item.SendWithContext(ctx, next) {
+						return
+					}
+					if option.getErrorStrategy() == Stop {
+						return
+					}
+				} else {
+					latest = item.V
+				}
+			case <-time.After(timespan.duration()):
+				if latest != nil {
+					if !Of(latest).SendWithContext(ctx, next) {
+						return
+					}
+					latest = nil
+				}
+			}
+		}
+	}
+
+	return customObservableOperator(f, opts...)
 }
 
 // DefaultIfEmpty returns an Observable that emits the items emitted by the source
@@ -757,8 +726,8 @@ type distinctOperator struct {
 	keyset map[interface{}]interface{}
 }
 
-func (op *distinctOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	key, err := op.apply(item.V)
+func (op *distinctOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	key, err := op.apply(ctx, item.V)
 	if err != nil {
 		dst <- Error(err)
 		operatorOptions.stop()
@@ -790,8 +759,7 @@ func (op *distinctOperator) gatherNext(_ context.Context, item Item, dst chan<- 
 	}
 }
 
-// DistinctUntilChanged suppresses consecutive duplicate items in the original
-// Observable and returns a new Observable.
+// DistinctUntilChanged suppresses consecutive duplicate items in the original Observable.
 // Cannot be run in parallel.
 func (o *ObservableImpl) DistinctUntilChanged(apply Func, opts ...Option) Observable {
 	return observable(o, func() operator {
@@ -806,8 +774,8 @@ type distinctUntilChangedOperator struct {
 	current interface{}
 }
 
-func (op *distinctUntilChangedOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	key, err := op.apply(item.V)
+func (op *distinctUntilChangedOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	key, err := op.apply(ctx, item.V)
 	if err != nil {
 		dst <- Error(err)
 		operatorOptions.stop()
@@ -952,24 +920,46 @@ func (op *elementAtOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item
 // Error returns the eventual Observable error.
 // This method is blocking.
 func (o *ObservableImpl) Error(opts ...Option) error {
-	for item := range o.iterable.Observe(opts...) {
-		if item.Error() {
-			return item.E
+	option := parseOptions(opts...)
+	ctx := option.buildContext()
+	observe := o.iterable.Observe(opts...)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case item, ok := <-observe:
+			if !ok {
+				return nil
+			}
+			if item.Error() {
+				return item.E
+			}
 		}
 	}
-	return nil
 }
 
 // Errors returns an eventual list of Observable errors.
 // This method is blocking
 func (o *ObservableImpl) Errors(opts ...Option) []error {
+	option := parseOptions(opts...)
+	ctx := option.buildContext()
+	observe := o.iterable.Observe(opts...)
 	errs := make([]error, 0)
-	for item := range o.iterable.Observe(opts...) {
-		if item.Error() {
-			errs = append(errs, item.E)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return []error{ctx.Err()}
+		case item, ok := <-observe:
+			if !ok {
+				return errs
+			}
+			if item.Error() {
+				errs = append(errs, item.E)
+			}
 		}
 	}
-	return errs
 }
 
 // Filter emits only those items from an Observable that pass a predicate test.
@@ -1209,7 +1199,9 @@ func (o *ObservableImpl) GroupBy(length int, distribution func(Item) int, opts .
 // Cannot be run in parallel.
 func (o *ObservableImpl) Last(opts ...Option) OptionalSingle {
 	return optionalSingle(o, func() operator {
-		return &lastOperator{}
+		return &lastOperator{
+			empty: true,
+		}
 	}, true, false, opts...)
 }
 
@@ -1285,9 +1277,8 @@ type mapOperator struct {
 	apply Func
 }
 
-// TODO pass context in map?
-func (op *mapOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	res, err := op.apply(item.V)
+func (op *mapOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	res, err := op.apply(ctx, item.V)
 	if err != nil {
 		dst <- Error(err)
 		operatorOptions.stop()
@@ -1313,7 +1304,7 @@ func (op *mapOperator) gatherNext(_ context.Context, item Item, dst chan<- Item,
 
 // Marshal transforms the items emitted by an Observable by applying a marshalling to each item.
 func (o *ObservableImpl) Marshal(marshaller Marshaller, opts ...Option) Observable {
-	return o.Map(func(i interface{}) (interface{}, error) {
+	return o.Map(func(_ context.Context, i interface{}) (interface{}, error) {
 		return marshaller(i)
 	}, opts...)
 }
@@ -1500,19 +1491,22 @@ type reduceOperator struct {
 	empty bool
 }
 
-func (op *reduceOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *reduceOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	op.empty = false
-	v, err := op.apply(op.acc, item.V)
+	v, err := op.apply(ctx, op.acc, item.V)
 	if err != nil {
 		dst <- Error(err)
 		operatorOptions.stop()
+		op.empty = true
 		return
 	}
 	op.acc = v
 }
 
-func (op *reduceOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+func (op *reduceOperator) err(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	dst <- item
+	operatorOptions.stop()
+	op.empty = true
 }
 
 func (op *reduceOperator) end(_ context.Context, dst chan<- Item) {
@@ -1531,7 +1525,7 @@ func (op *reduceOperator) gatherNext(ctx context.Context, item Item, dst chan<- 
 func (o *ObservableImpl) Repeat(count int64, frequency Duration, opts ...Option) Observable {
 	if count != Infinite {
 		if count < 0 {
-			return newObservableFromError(IllegalInputError{error: "count must be positive"})
+			return Thrown(IllegalInputError{error: "count must be positive"})
 		}
 	}
 
@@ -1623,7 +1617,7 @@ func (o *ObservableImpl) Retry(count int, opts ...Option) Observable {
 	}
 }
 
-// Run creates an observer without consuming the emitted items.
+// Run creates an Observer without consuming the emitted items.
 func (o *ObservableImpl) Run(opts ...Option) Disposed {
 	dispose := make(chan struct{})
 	option := parseOptions(opts...)
@@ -1735,8 +1729,8 @@ type scanOperator struct {
 	current interface{}
 }
 
-func (op *scanOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	v, err := op.apply(op.current, item.V)
+func (op *scanOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	v, err := op.apply(ctx, op.current, item.V)
 	if err != nil {
 		dst <- Error(err)
 		operatorOptions.stop()
@@ -1769,7 +1763,7 @@ func popAndCompareFirstItems(
 	return true, inputSequence1, inputSequence2
 }
 
-// Send sends the items to a given channel
+// Send sends the items to a given channel.
 func (o *ObservableImpl) Send(output chan<- Item, opts ...Option) {
 	go func() {
 		option := parseOptions(opts...)
@@ -2067,9 +2061,8 @@ func (op *skipWhileOperator) end(_ context.Context, _ chan<- Item) {
 func (op *skipWhileOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
-// StartWithIterable returns an Observable that emits the items in a specified Iterable before it begins to
-// emit items emitted by the source Observable.
-func (o *ObservableImpl) StartWithIterable(iterable Iterable, opts ...Option) Observable {
+// StartWith emits a specified Iterable before beginning to emit the items from the source Observable.
+func (o *ObservableImpl) StartWith(iterable Iterable, opts ...Option) Observable {
 	option := parseOptions(opts...)
 	next := option.buildChannel()
 	ctx := option.buildContext()
@@ -2119,7 +2112,7 @@ func (o *ObservableImpl) StartWithIterable(iterable Iterable, opts ...Option) Ob
 
 // SumFloat32 calculates the average of float32 emitted by an Observable and emits a float32.
 func (o *ObservableImpl) SumFloat32(opts ...Option) OptionalSingle {
-	return o.Reduce(func(acc interface{}, elem interface{}) (interface{}, error) {
+	return o.Reduce(func(_ context.Context, acc interface{}, elem interface{}) (interface{}, error) {
 		if acc == nil {
 			acc = float32(0)
 		}
@@ -2145,7 +2138,7 @@ func (o *ObservableImpl) SumFloat32(opts ...Option) OptionalSingle {
 
 // SumFloat64 calculates the average of float64 emitted by an Observable and emits a float64.
 func (o *ObservableImpl) SumFloat64(opts ...Option) OptionalSingle {
-	return o.Reduce(func(acc interface{}, elem interface{}) (interface{}, error) {
+	return o.Reduce(func(_ context.Context, acc interface{}, elem interface{}) (interface{}, error) {
 		if acc == nil {
 			acc = float64(0)
 		}
@@ -2173,7 +2166,7 @@ func (o *ObservableImpl) SumFloat64(opts ...Option) OptionalSingle {
 
 // SumInt64 calculates the average of integers emitted by an Observable and emits an int64.
 func (o *ObservableImpl) SumInt64(opts ...Option) OptionalSingle {
-	return o.Reduce(func(acc interface{}, elem interface{}) (interface{}, error) {
+	return o.Reduce(func(_ context.Context, acc interface{}, elem interface{}) (interface{}, error) {
 		if acc == nil {
 			acc = int64(0)
 		}
@@ -2340,6 +2333,69 @@ func (op *takeWhileOperator) end(_ context.Context, _ chan<- Item) {
 func (op *takeWhileOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
+// TimeInterval converts an Observable that emits items into one that emits indications of the amount of time elapsed between those emissions.
+func (o *ObservableImpl) TimeInterval(opts ...Option) Observable {
+	f := func(ctx context.Context, next chan Item, option Option, opts ...Option) {
+		defer close(next)
+		observe := o.Observe(opts...)
+		latest := time.Now().UTC()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case item, ok := <-observe:
+				if !ok {
+					return
+				}
+				if item.Error() {
+					if !item.SendWithContext(ctx, next) {
+						return
+					}
+					if option.getErrorStrategy() == Stop {
+						return
+					}
+				} else {
+					now := time.Now().UTC()
+					if !Of(now.Sub(latest)).SendWithContext(ctx, next) {
+						return
+					}
+					latest = now
+				}
+			}
+		}
+	}
+
+	return customObservableOperator(f, opts...)
+}
+
+// Timestamp attaches a timestamp to each item emitted by an Observable indicating when it was emitted.
+func (o *ObservableImpl) Timestamp(opts ...Option) Observable {
+	return observable(o, func() operator {
+		return &timestampOperator{}
+	}, true, false, opts...)
+}
+
+type timestampOperator struct {
+}
+
+func (op *timestampOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	dst <- Of(TimestampItem{
+		Timestamp: time.Now().UTC(),
+		V:         item.V,
+	})
+}
+
+func (op *timestampOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+}
+
+func (op *timestampOperator) end(ctx context.Context, dst chan<- Item) {
+}
+
+func (op *timestampOperator) gatherNext(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+}
+
 // ToMap convert the sequence of items emitted by an Observable
 // into a map keyed by a specified key function.
 // Cannot be run in parallel.
@@ -2357,8 +2413,8 @@ type toMapOperator struct {
 	m           map[interface{}]interface{}
 }
 
-func (op *toMapOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	k, err := op.keySelector(item.V)
+func (op *toMapOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	k, err := op.keySelector(ctx, item.V)
 	if err != nil {
 		dst <- Error(err)
 		operatorOptions.stop()
@@ -2397,15 +2453,15 @@ type toMapWithValueSelector struct {
 	m                          map[interface{}]interface{}
 }
 
-func (op *toMapWithValueSelector) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	k, err := op.keySelector(item.V)
+func (op *toMapWithValueSelector) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	k, err := op.keySelector(ctx, item.V)
 	if err != nil {
 		dst <- Error(err)
 		operatorOptions.stop()
 		return
 	}
 
-	v, err := op.valueSelector(item.V)
+	v, err := op.valueSelector(ctx, item.V)
 	if err != nil {
 		dst <- Error(err)
 		operatorOptions.stop()
@@ -2461,7 +2517,7 @@ func (op *toSliceOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, 
 
 // Unmarshal transforms the items emitted by an Observable by applying an unmarshalling to each item.
 func (o *ObservableImpl) Unmarshal(unmarshaller Unmarshaller, factory func() interface{}, opts ...Option) Observable {
-	return o.Map(func(i interface{}) (interface{}, error) {
+	return o.Map(func(_ context.Context, i interface{}) (interface{}, error) {
 		v := factory()
 		err := unmarshaller(i.([]byte), v)
 		if err != nil {
@@ -2471,7 +2527,203 @@ func (o *ObservableImpl) Unmarshal(unmarshaller Unmarshaller, factory func() int
 	}, opts...)
 }
 
-// ZipFromIterable merges the emissions of multiple Observables together via a specified function
+// WindowWithCount periodically subdivides items from an Observable into Observable windows of a given size and emit these windows
+// rather than emitting the items one at a time.
+func (o *ObservableImpl) WindowWithCount(count int, opts ...Option) Observable {
+	if count < 0 {
+		return Thrown(IllegalInputError{error: "count must be positive or nil"})
+	}
+
+	option := parseOptions(opts...)
+	return observable(o, func() operator {
+		return &windowWithCountOperator{
+			count:  count,
+			option: option,
+		}
+	}, true, false, opts...)
+}
+
+type windowWithCountOperator struct {
+	count          int
+	iCount         int
+	currentChannel chan Item
+	option         Option
+}
+
+func (op *windowWithCountOperator) pre(ctx context.Context, dst chan<- Item) {
+	if op.currentChannel == nil {
+		ch := op.option.buildChannel()
+		op.currentChannel = ch
+		select {
+		case <-ctx.Done():
+			return
+		case dst <- Of(FromChannel(ch)):
+		}
+	}
+}
+
+func (op *windowWithCountOperator) post(ctx context.Context, dst chan<- Item) {
+	if op.iCount == op.count {
+		op.iCount = 0
+		close(op.currentChannel)
+		ch := op.option.buildChannel()
+		op.currentChannel = ch
+		select {
+		case <-ctx.Done():
+			return
+		case dst <- Of(FromChannel(ch)):
+		}
+	}
+}
+
+func (op *windowWithCountOperator) next(ctx context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+	op.pre(ctx, dst)
+	op.currentChannel <- item
+	op.iCount++
+	op.post(ctx, dst)
+}
+
+func (op *windowWithCountOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	op.pre(ctx, dst)
+	op.currentChannel <- item
+	op.iCount++
+	op.post(ctx, dst)
+	operatorOptions.stop()
+}
+
+func (op *windowWithCountOperator) end(_ context.Context, _ chan<- Item) {
+	if op.currentChannel != nil {
+		close(op.currentChannel)
+	}
+}
+
+func (op *windowWithCountOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
+}
+
+// WindowWithTime periodically subdivides items from an Observable into Observables based on timed windows
+// and emit them rather than emitting the items one at a time.
+func (o *ObservableImpl) WindowWithTime(timespan Duration, opts ...Option) Observable {
+	if timespan == nil {
+		return Thrown(IllegalInputError{error: "timespan must no be nil"})
+	}
+
+	f := func(ctx context.Context, next chan Item, option Option, opts ...Option) {
+		defer close(next)
+		observe := o.Observe(opts...)
+		ch := option.buildChannel()
+		empty := true
+		if !Of(FromChannel(ch)).SendWithContext(ctx, next) {
+			return
+		}
+
+		for {
+			select {
+			case <-ctx.Done():
+				close(ch)
+				return
+			case item, ok := <-observe:
+				if !ok {
+					close(ch)
+					return
+				}
+				if item.Error() {
+					if !item.SendWithContext(ctx, ch) {
+						return
+					}
+					if option.getErrorStrategy() == Stop {
+						close(ch)
+						return
+					}
+				}
+				if !item.SendWithContext(ctx, ch) {
+					return
+				}
+				empty = false
+			case <-time.After(timespan.duration()):
+				if empty {
+					continue
+				}
+				close(ch)
+				ch = option.buildChannel()
+				empty = true
+				if !Of(FromChannel(ch)).SendWithContext(ctx, next) {
+					return
+				}
+			}
+		}
+	}
+
+	return customObservableOperator(f, opts...)
+}
+
+// WindowWithTimeOrCount periodically subdivides items from an Observable into Observables based on timed windows or a specific size
+// and emit them rather than emitting the items one at a time.
+func (o *ObservableImpl) WindowWithTimeOrCount(timespan Duration, count int, opts ...Option) Observable {
+	if timespan == nil {
+		return Thrown(IllegalInputError{error: "timespan must no be nil"})
+	}
+	if count < 0 {
+		return Thrown(IllegalInputError{error: "count must be positive or nil"})
+	}
+
+	f := func(ctx context.Context, next chan Item, option Option, opts ...Option) {
+		defer close(next)
+		observe := o.Observe(opts...)
+		ch := option.buildChannel()
+		iCount := 0
+		if !Of(FromChannel(ch)).SendWithContext(ctx, next) {
+			return
+		}
+
+		for {
+			select {
+			case <-ctx.Done():
+				close(ch)
+				return
+			case item, ok := <-observe:
+				if !ok {
+					close(ch)
+					return
+				}
+				if item.Error() {
+					if !item.SendWithContext(ctx, ch) {
+						return
+					}
+					if option.getErrorStrategy() == Stop {
+						close(ch)
+						return
+					}
+				}
+				if !item.SendWithContext(ctx, ch) {
+					return
+				}
+				iCount++
+				if iCount == count {
+					close(ch)
+					ch = option.buildChannel()
+					iCount = 0
+					if !Of(FromChannel(ch)).SendWithContext(ctx, next) {
+						return
+					}
+				}
+			case <-time.After(timespan.duration()):
+				if iCount == 0 {
+					continue
+				}
+				close(ch)
+				ch = option.buildChannel()
+				iCount = 0
+				if !Of(FromChannel(ch)).SendWithContext(ctx, next) {
+					return
+				}
+			}
+		}
+	}
+
+	return customObservableOperator(f, opts...)
+}
+
+// ZipFromIterable merges the emissions of an Iterable via a specified function
 // and emit single items for each combination based on the results of this function.
 func (o *ObservableImpl) ZipFromIterable(iterable Iterable, zipper Func2, opts ...Option) Observable {
 	option := parseOptions(opts...)
@@ -2507,7 +2759,7 @@ func (o *ObservableImpl) ZipFromIterable(iterable Iterable, zipper Func2, opts .
 							next <- i2
 							return
 						}
-						v, err := zipper(i1.V, i2.V)
+						v, err := zipper(ctx, i1.V, i2.V)
 						if err != nil {
 							next <- Error(err)
 							return

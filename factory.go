@@ -227,6 +227,8 @@ func Interval(interval Duration, opts ...Option) Observable {
 
 // Just creates an Observable with the provided items.
 func Just(items interface{}, opts ...Option) Observable {
+	// TODO WithErrorStrategy?
+	// TODO WithObservationStrategy?
 	return &ObservableImpl{
 		iterable: newJustIterable(items, opts...),
 	}
@@ -245,6 +247,7 @@ func Merge(observables []Observable, opts ...Option) Observable {
 	ctx := option.buildContext()
 	next := option.buildChannel()
 	wg := sync.WaitGroup{}
+	wg.Add(len(observables))
 
 	f := func(o Observable) {
 		defer wg.Done()
@@ -266,10 +269,11 @@ func Merge(observables []Observable, opts ...Option) Observable {
 		}
 	}
 
-	for _, o := range observables {
-		wg.Add(1)
-		go f(o)
-	}
+	go func() {
+		for _, o := range observables {
+			f(o)
+		}
+	}()
 
 	go func() {
 		wg.Wait()
@@ -291,10 +295,10 @@ func Never() Observable {
 // Range creates an Observable that emits a particular range of sequential integers.
 func Range(start, count int, opts ...Option) Observable {
 	if count < 0 {
-		return newObservableFromError(IllegalInputError{error: "count must be positive"})
+		return Thrown(IllegalInputError{error: "count must be positive"})
 	}
 	if start+count-1 > math.MaxInt32 {
-		return newObservableFromError(IllegalInputError{error: "max value is bigger than math.MaxInt32"})
+		return Thrown(IllegalInputError{error: "max value is bigger than math.MaxInt32"})
 	}
 	return &ObservableImpl{
 		iterable: newRangeIterable(start, count, opts...),
@@ -308,21 +312,27 @@ func Start(fs []Supplier, opts ...Option) Observable {
 	next := option.buildChannel()
 	ctx := option.buildContext()
 
-	var wg sync.WaitGroup
-	for _, f := range fs {
-		f := f
-		wg.Add(1)
-		go func() {
-			next <- f(ctx)
-			wg.Done()
-		}()
-	}
-
 	go func() {
-		wg.Wait()
-		close(next)
+		defer close(next)
+		for _, f := range fs {
+			select {
+			case <-ctx.Done():
+				return
+			case next <- f(ctx):
+			}
+		}
 	}()
 
+	return &ObservableImpl{
+		iterable: newChannelIterable(next),
+	}
+}
+
+// Thrown creates an Observable that emits no items and terminates with an error.
+func Thrown(err error) Observable {
+	next := make(chan Item, 1)
+	next <- Error(err)
+	close(next)
 	return &ObservableImpl{
 		iterable: newChannelIterable(next),
 	}
@@ -331,7 +341,7 @@ func Start(fs []Supplier, opts ...Option) Observable {
 // Timer returns an Observable that emits an empty structure after a specified delay, and then completes.
 func Timer(d Duration, opts ...Option) Observable {
 	option := parseOptions(opts...)
-	next := option.buildChannel()
+	next := make(chan Item, 1)
 	ctx := option.buildContext()
 
 	go func() {

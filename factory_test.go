@@ -23,11 +23,14 @@ func Test_CombineLatest(t *testing.T) {
 	obs := CombineLatest(func(ii ...interface{}) interface{} {
 		sum := 0
 		for _, v := range ii {
+			if v == nil {
+				continue
+			}
 			sum += v.(int)
 		}
 		return sum
 	}, []Observable{testObservable(1, 2), testObservable(10, 11)})
-	Assert(context.Background(), t, obs, HasSomeItems())
+	Assert(context.Background(), t, obs, IsNotEmpty())
 }
 
 func Test_CombineLatest_Empty(t *testing.T) {
@@ -38,7 +41,7 @@ func Test_CombineLatest_Empty(t *testing.T) {
 		}
 		return sum
 	}, []Observable{testObservable(1, 2), Empty()})
-	Assert(context.Background(), t, obs, HasNoItems())
+	Assert(context.Background(), t, obs, IsEmpty())
 }
 
 func Test_CombineLatest_Error(t *testing.T) {
@@ -49,7 +52,7 @@ func Test_CombineLatest_Error(t *testing.T) {
 		}
 		return sum
 	}, []Observable{testObservable(1, 2), testObservable(errFoo)})
-	Assert(context.Background(), t, obs, HasNoItems(), HasRaisedError(errFoo))
+	Assert(context.Background(), t, obs, IsEmpty(), HasError(errFoo))
 }
 
 func Test_Concat_SingleObservable(t *testing.T) {
@@ -69,7 +72,7 @@ func Test_Concat_MoreThanTwoObservables(t *testing.T) {
 
 func Test_Concat_EmptyObservables(t *testing.T) {
 	obs := Concat([]Observable{Empty(), Empty(), Empty()})
-	Assert(context.Background(), t, obs, HasNoItem())
+	Assert(context.Background(), t, obs, IsEmpty())
 }
 
 func Test_Concat_OneEmptyObservable(t *testing.T) {
@@ -87,7 +90,7 @@ func Test_Create(t *testing.T) {
 		next <- Of(3)
 		done()
 	}})
-	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNoError())
 }
 
 func Test_Create_SingleDup(t *testing.T) {
@@ -97,8 +100,8 @@ func Test_Create_SingleDup(t *testing.T) {
 		next <- Of(3)
 		done()
 	}})
-	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
-	Assert(context.Background(), t, obs, HasNoItems(), HasNotRaisedError())
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNoError())
+	Assert(context.Background(), t, obs, IsEmpty(), HasNoError())
 }
 
 func Test_Defer(t *testing.T) {
@@ -108,7 +111,7 @@ func Test_Defer(t *testing.T) {
 		next <- Of(3)
 		done()
 	}})
-	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNoError())
 }
 
 func Test_Defer_Multiple(t *testing.T) {
@@ -121,7 +124,7 @@ func Test_Defer_Multiple(t *testing.T) {
 		next <- Of(20)
 		done()
 	}})
-	Assert(context.Background(), t, obs, HasItemsNoParticularOrder(1, 2, 10, 20), HasNotRaisedError())
+	Assert(context.Background(), t, obs, HasItemsNoOrder(1, 2, 10, 20), HasNoError())
 }
 
 func Test_Defer_Close(t *testing.T) {
@@ -131,7 +134,7 @@ func Test_Defer_Close(t *testing.T) {
 		next <- Of(3)
 		done()
 	}})
-	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNoError())
 }
 
 func Test_Defer_SingleDup(t *testing.T) {
@@ -141,8 +144,8 @@ func Test_Defer_SingleDup(t *testing.T) {
 		next <- Of(3)
 		done()
 	}})
-	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
-	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNoError())
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNoError())
 }
 
 func Test_Defer_ComposedDup(t *testing.T) {
@@ -151,13 +154,13 @@ func Test_Defer_ComposedDup(t *testing.T) {
 		next <- Of(2)
 		next <- Of(3)
 		done()
-	}}).Map(func(i interface{}) (_ interface{}, _ error) {
+	}}).Map(func(_ context.Context, i interface{}) (_ interface{}, _ error) {
 		return i.(int) + 1, nil
-	}).Map(func(i interface{}) (_ interface{}, _ error) {
+	}).Map(func(_ context.Context, i interface{}) (_ interface{}, _ error) {
 		return i.(int) + 1, nil
 	})
-	Assert(context.Background(), t, obs, HasItems(3, 4, 5), HasNotRaisedError())
-	Assert(context.Background(), t, obs, HasItems(3, 4, 5), HasNotRaisedError())
+	Assert(context.Background(), t, obs, HasItems(3, 4, 5), HasNoError())
+	Assert(context.Background(), t, obs, HasItems(3, 4, 5), HasNoError())
 }
 
 func Test_Defer_ComposedDup_EagerObservation(t *testing.T) {
@@ -166,15 +169,15 @@ func Test_Defer_ComposedDup_EagerObservation(t *testing.T) {
 		next <- Of(2)
 		next <- Of(3)
 		done()
-	}}).Map(func(i interface{}) (_ interface{}, _ error) {
+	}}).Map(func(_ context.Context, i interface{}) (_ interface{}, _ error) {
 		return i.(int) + 1, nil
-	}, WithEagerObservation()).Map(func(i interface{}) (_ interface{}, _ error) {
+	}, WithObservationStrategy(Eager)).Map(func(_ context.Context, i interface{}) (_ interface{}, _ error) {
 		return i.(int) + 1, nil
 	})
-	Assert(context.Background(), t, obs, HasItems(3, 4, 5), HasNotRaisedError())
+	Assert(context.Background(), t, obs, HasItems(3, 4, 5), HasNoError())
 	// In the case of an eager observation, we already consumed the items produced by Defer
 	// So if we create another subscription, it will be empty
-	Assert(context.Background(), t, obs, HasNoItem(), HasNotRaisedError())
+	Assert(context.Background(), t, obs, IsEmpty(), HasNoError())
 }
 
 func Test_Defer_Error(t *testing.T) {
@@ -184,12 +187,12 @@ func Test_Defer_Error(t *testing.T) {
 		next <- Error(errFoo)
 		done()
 	}})
-	Assert(context.Background(), t, obs, HasItems(1, 2), HasRaisedError(errFoo))
+	Assert(context.Background(), t, obs, HasItems(1, 2), HasError(errFoo))
 }
 
 func Test_Empty(t *testing.T) {
 	obs := Empty()
-	Assert(context.Background(), t, obs, HasNoItems())
+	Assert(context.Background(), t, obs, IsEmpty())
 }
 
 func Test_FromChannel(t *testing.T) {
@@ -201,7 +204,7 @@ func Test_FromChannel(t *testing.T) {
 		close(ch)
 	}()
 	obs := FromChannel(ch)
-	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNoError())
 }
 
 func Test_FromChannel_SimpleCapacity(t *testing.T) {
@@ -211,12 +214,12 @@ func Test_FromChannel_SimpleCapacity(t *testing.T) {
 
 func Test_FromChannel_ComposedCapacity(t *testing.T) {
 	obs1 := FromChannel(make(chan Item, 10)).
-		Map(func(_ interface{}) (interface{}, error) {
+		Map(func(_ context.Context, _ interface{}) (interface{}, error) {
 			return 1, nil
 		}, WithBufferedChannel(11))
 	assert.Equal(t, 11, cap(obs1.Observe()))
 
-	obs2 := obs1.Map(func(_ interface{}) (interface{}, error) {
+	obs2 := obs1.Map(func(_ context.Context, _ interface{}) (interface{}, error) {
 		return 1, nil
 	}, WithBufferedChannel(12))
 	assert.Equal(t, 12, cap(obs2.Observe()))
@@ -224,14 +227,14 @@ func Test_FromChannel_ComposedCapacity(t *testing.T) {
 
 func Test_FromItem(t *testing.T) {
 	single := JustItem(1)
-	Assert(context.Background(), t, single, HasItem(1), HasNotRaisedError())
-	Assert(context.Background(), t, single, HasItem(1), HasNotRaisedError())
+	Assert(context.Background(), t, single, HasItem(1), HasNoError())
+	Assert(context.Background(), t, single, HasItem(1), HasNoError())
 }
 
 func Test_FromItems(t *testing.T) {
 	obs := Just([]int{1, 2, 3})
-	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
-	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNotRaisedError())
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNoError())
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNoError())
 }
 
 func Test_FromItems_SimpleCapacity(t *testing.T) {
@@ -240,12 +243,12 @@ func Test_FromItems_SimpleCapacity(t *testing.T) {
 }
 
 func Test_FromItems_ComposedCapacity(t *testing.T) {
-	obs1 := Just([]Item{Of(1)}).Map(func(_ interface{}) (interface{}, error) {
+	obs1 := Just([]Item{Of(1)}).Map(func(_ context.Context, _ interface{}) (interface{}, error) {
 		return 1, nil
 	}, WithBufferedChannel(11))
 	assert.Equal(t, 11, cap(obs1.Observe()))
 
-	obs2 := obs1.Map(func(_ interface{}) (interface{}, error) {
+	obs2 := obs1.Map(func(_ context.Context, _ interface{}) (interface{}, error) {
 		return 1, nil
 	}, WithBufferedChannel(12))
 	assert.Equal(t, 12, cap(obs2.Observe()))
@@ -302,27 +305,18 @@ func Test_Interval(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 		cancel()
 	}()
-	Assert(context.Background(), t, obs, HasSomeItems())
-}
-
-func Test_Interval_NoItem(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	obs := Interval(WithDuration(time.Nanosecond), WithContext(ctx))
-	time.Sleep(50 * time.Millisecond)
-	cancel()
-	// As Interval is built on an event source, we expect no items
-	Assert(context.Background(), t, obs, HasNoItem())
+	Assert(context.Background(), t, obs, IsNotEmpty())
 }
 
 func Test_Merge(t *testing.T) {
 	obs := Merge([]Observable{testObservable(1, 2), testObservable(3, 4)})
-	Assert(context.Background(), t, obs, HasItemsNoParticularOrder(1, 2, 3, 4))
+	Assert(context.Background(), t, obs, HasItemsNoOrder(1, 2, 3, 4))
 }
 
 func Test_Merge_Error(t *testing.T) {
 	obs := Merge([]Observable{testObservable(1, 2), testObservable(3, errFoo)})
 	// The content is not deterministic, hence we just test if we have some items
-	Assert(context.Background(), t, obs, HasSomeItems(), HasRaisedError(errFoo))
+	Assert(context.Background(), t, obs, IsNotEmpty(), HasError(errFoo))
 }
 
 func Test_Range(t *testing.T) {
@@ -334,12 +328,12 @@ func Test_Range(t *testing.T) {
 
 func Test_Range_NegativeCount(t *testing.T) {
 	obs := Range(1, -5)
-	Assert(context.Background(), t, obs, HasRaisedAnError())
+	Assert(context.Background(), t, obs, HasAnError())
 }
 
 func Test_Range_MaximumExceeded(t *testing.T) {
 	obs := Range(1<<31, 1)
-	Assert(context.Background(), t, obs, HasRaisedAnError())
+	Assert(context.Background(), t, obs, HasAnError())
 }
 
 func Test_Start(t *testing.T) {
@@ -348,12 +342,17 @@ func Test_Start(t *testing.T) {
 	}, func(ctx context.Context) Item {
 		return Of(2)
 	}})
-	Assert(context.Background(), t, obs, HasItemsNoParticularOrder(1, 2))
+	Assert(context.Background(), t, obs, HasItemsNoOrder(1, 2))
+}
+
+func Test_Thrown(t *testing.T) {
+	obs := Thrown(errFoo)
+	Assert(context.Background(), t, obs, HasError(errFoo))
 }
 
 func Test_Timer(t *testing.T) {
 	obs := Timer(WithDuration(time.Nanosecond))
-	Assert(context.Background(), t, obs, HasSomeItems())
+	Assert(context.Background(), t, obs, IsNotEmpty())
 }
 
 func Test_Timer_Empty(t *testing.T) {
@@ -363,5 +362,5 @@ func Test_Timer_Empty(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 		cancel()
 	}()
-	Assert(context.Background(), t, obs, HasNoItems())
+	Assert(context.Background(), t, obs, IsEmpty())
 }

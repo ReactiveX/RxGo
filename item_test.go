@@ -10,25 +10,25 @@ import (
 func Test_SendItems_Variadic(t *testing.T) {
 	ch := make(chan Item, 3)
 	go SendItems(ch, CloseChannel, 1, 2, 3)
-	Assert(context.Background(), t, FromChannel(ch), HasItems(1, 2, 3), HasNotRaisedError())
+	Assert(context.Background(), t, FromChannel(ch), HasItems(1, 2, 3), HasNoError())
 }
 
 func Test_SendItems_VariadicWithError(t *testing.T) {
 	ch := make(chan Item, 3)
 	go SendItems(ch, CloseChannel, 1, errFoo, 3)
-	Assert(context.Background(), t, FromChannel(ch), HasItems(1, 3), HasRaisedError(errFoo))
+	Assert(context.Background(), t, FromChannel(ch), HasItems(1, 3), HasError(errFoo))
 }
 
 func Test_SendItems_Slice(t *testing.T) {
 	ch := make(chan Item, 3)
 	go SendItems(ch, CloseChannel, []int{1, 2, 3})
-	Assert(context.Background(), t, FromChannel(ch), HasItems(1, 2, 3), HasNotRaisedError())
+	Assert(context.Background(), t, FromChannel(ch), HasItems(1, 2, 3), HasNoError())
 }
 
 func Test_SendItems_SliceWithError(t *testing.T) {
 	ch := make(chan Item, 3)
 	go SendItems(ch, CloseChannel, []interface{}{1, errFoo, 3})
-	Assert(context.Background(), t, FromChannel(ch), HasItems(1, 3), HasRaisedError(errFoo))
+	Assert(context.Background(), t, FromChannel(ch), HasItems(1, 3), HasError(errFoo))
 }
 
 func Test_Item_SendBlocking(t *testing.T) {
@@ -43,7 +43,7 @@ func Test_Item_SendContext_True(t *testing.T) {
 	defer close(ch)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	assert.True(t, Of(5).SendContext(ctx, ch))
+	assert.True(t, Of(5).SendWithContext(ctx, ch))
 }
 
 func Test_Item_SendNonBlocking(t *testing.T) {

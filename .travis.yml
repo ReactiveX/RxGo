@@ -9,7 +9,7 @@ matrix:
 go_import_path: github.com/reactivex/rxgo
 
 install:
-  - go get ./...
+  - go mod tidy
   - go get github.com/mattn/goveralls
 
 script:

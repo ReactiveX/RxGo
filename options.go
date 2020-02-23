@@ -22,7 +22,7 @@ type funcOption struct {
 	isBuffer             bool
 	buffer               int
 	ctx                  context.Context
-	eagerObservation     bool
+	observation          ObservationStrategy
 	pool                 int
 	backPressureStrategy BackpressureStrategy
 	onErrorStrategy      OnErrorStrategy
@@ -34,7 +34,7 @@ func (fdo *funcOption) toPropagate() bool {
 }
 
 func (fdo *funcOption) isEagerObservation() bool {
-	return fdo.eagerObservation
+	return fdo.observation == Eager
 }
 
 func (fdo *funcOption) getPool() (bool, int) {
@@ -96,10 +96,10 @@ func WithContext(ctx context.Context) Option {
 	})
 }
 
-// WithEagerObservation uses the eager observation mode meaning consuming the items even without subscription.
-func WithEagerObservation() Option {
+// WithObservationStrategy uses the eager observation mode meaning consuming the items even without subscription.
+func WithObservationStrategy(strategy ObservationStrategy) Option {
 	return newFuncOption(func(options *funcOption) {
-		options.eagerObservation = true
+		options.observation = strategy
 	})
 }
 

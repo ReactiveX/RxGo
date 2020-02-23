@@ -3,11 +3,6 @@ package rxgo
 import "context"
 
 type (
-	// BackpressureStrategy is the backpressure strategy type.
-	BackpressureStrategy uint32
-	// OnErrorStrategy is the Observable error strategy.
-	OnErrorStrategy uint32
-
 	operatorOptions struct {
 		stop          func()
 		resetIterable func(Iterable)
@@ -23,9 +18,9 @@ type (
 	// ErrorToObservable defines a function that transforms an observable from an error.
 	ErrorToObservable func(error) Observable
 	// Func defines a function that computes a value from an input value.
-	Func func(interface{}) (interface{}, error)
+	Func func(context.Context, interface{}) (interface{}, error)
 	// Func2 defines a function that computes a value from two input values.
-	Func2 func(interface{}, interface{}) (interface{}, error)
+	Func2 func(context.Context, interface{}, interface{}) (interface{}, error)
 	// FuncN defines a function that computes a value from N input values.
 	FuncN func(...interface{}) interface{}
 	// ErrorFunc defines a function that computes a value from an error.
@@ -51,6 +46,9 @@ type (
 	CompletedFunc func()
 )
 
+// BackpressureStrategy is the backpressure strategy type.
+type BackpressureStrategy uint32
+
 const (
 	// Block blocks until the channel is available.
 	Block BackpressureStrategy = iota
@@ -58,10 +56,23 @@ const (
 	Drop
 )
 
+// OnErrorStrategy is the Observable error strategy.
+type OnErrorStrategy uint32
+
 const (
 	// Stop is the default error strategy.
 	// An operator will stop processing items on error.
 	Stop OnErrorStrategy = iota
 	// Continue means an operator will continue processing items after an error.
 	Continue
+)
+
+// ObservationStrategy defines the strategy to consume from an Observable.
+type ObservationStrategy uint32
+
+const (
+	// Lazy is the default observation strategy, when an Observer subscribes.
+	Lazy ObservationStrategy = iota
+	// Eager means consuming as soon as the Observable is created.
+	Eager
 )

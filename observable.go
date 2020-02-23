@@ -19,11 +19,12 @@ type Observable interface {
 	AverageInt32(opts ...Option) Single
 	AverageInt64(opts ...Option) Single
 	BackOffRetry(backOffCfg backoff.BackOff, opts ...Option) Observable
-	BufferWithCount(count, skip int, opts ...Option) Observable
-	BufferWithTime(timespan, timeshift Duration, opts ...Option) Observable
+	BufferWithCount(count int, opts ...Option) Observable
+	BufferWithTime(timespan Duration, opts ...Option) Observable
 	BufferWithTimeOrCount(timespan Duration, count int, opts ...Option) Observable
 	Contains(equal Predicate, opts ...Option) Single
 	Count(opts ...Option) Single
+	Debounce(timespan Duration, opts ...Option) Observable
 	DefaultIfEmpty(defaultValue interface{}, opts ...Option) Observable
 	Distinct(apply Func, opts ...Option) Observable
 	DistinctUntilChanged(apply Func, opts ...Option) Observable
@@ -61,7 +62,7 @@ type Observable interface {
 	Skip(nth uint, opts ...Option) Observable
 	SkipLast(nth uint, opts ...Option) Observable
 	SkipWhile(apply Predicate, opts ...Option) Observable
-	StartWithIterable(iterable Iterable, opts ...Option) Observable
+	StartWith(iterable Iterable, opts ...Option) Observable
 	SumFloat32(opts ...Option) OptionalSingle
 	SumFloat64(opts ...Option) OptionalSingle
 	SumInt64(opts ...Option) OptionalSingle
@@ -69,10 +70,15 @@ type Observable interface {
 	TakeLast(nth uint, opts ...Option) Observable
 	TakeUntil(apply Predicate, opts ...Option) Observable
 	TakeWhile(apply Predicate, opts ...Option) Observable
+	TimeInterval(opts ...Option) Observable
+	Timestamp(opts ...Option) Observable
 	ToMap(keySelector Func, opts ...Option) Single
 	ToMapWithValueSelector(keySelector, valueSelector Func, opts ...Option) Single
 	ToSlice(initialCapacity int, opts ...Option) ([]interface{}, error)
 	Unmarshal(unmarshaller Unmarshaller, factory func() interface{}, opts ...Option) Observable
+	WindowWithCount(count int, opts ...Option) Observable
+	WindowWithTime(timespan Duration, opts ...Option) Observable
+	WindowWithTimeOrCount(timespan Duration, count int, opts ...Option) Observable
 	ZipFromIterable(iterable Iterable, zipper Func2, opts ...Option) Observable
 }
 
@@ -81,18 +87,9 @@ type ObservableImpl struct {
 	iterable Iterable
 }
 
-func defaultErrorFuncOperator(_ context.Context, item Item, dst chan<- Item, operator operatorOptions) {
+func defaultErrorFuncOperator(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	dst <- item
-	operator.stop()
-}
-
-func newObservableFromError(err error) Observable {
-	next := make(chan Item, 1)
-	next <- Error(err)
-	close(next)
-	return &ObservableImpl{
-		iterable: newChannelIterable(next),
-	}
+	operatorOptions.stop()
 }
 
 type operator interface {
@@ -318,4 +315,26 @@ func runPar(ctx context.Context, next chan Item, iterable Iterable, operatorFact
 		cancel()
 		close(gather)
 	}()
+}
+
+func customObservableOperator(f func(ctx context.Context, next chan Item, option Option, opts ...Option), opts ...Option) Observable {
+	option := parseOptions(opts...)
+
+	if option.isEagerObservation() {
+		next := option.buildChannel()
+		ctx := option.buildContext()
+		go f(ctx, next, option, opts...)
+		return &ObservableImpl{iterable: newChannelIterable(next)}
+	}
+
+	return &ObservableImpl{
+		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
+			mergedOptions := append(opts, propagatedOptions...)
+			option := parseOptions(mergedOptions...)
+			next := option.buildChannel()
+			ctx := option.buildContext()
+			go f(ctx, next, option, mergedOptions...)
+			return next
+		}),
+	}
 }
