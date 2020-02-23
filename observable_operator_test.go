@@ -647,6 +647,137 @@ func Test_Observable_GroupBy_Error(t *testing.T) {
 	Assert(context.Background(), t, s[2].(Observable), HasAnError())
 }
 
+func Test_Observable_Join(t *testing.T) {
+	type args struct {
+		left, right []interface{}
+		window      Duration
+	}
+	tests := []struct {
+		name     string
+		args     args
+		expected []int64
+	}{
+		{
+			name: "Test 1",
+			args: args{
+				left: []interface{}{
+					map[string]int64{"tt": 1, "V": 1},
+					map[string]int64{"tt": 4, "V": 2},
+					map[string]int64{"tt": 7, "V": 3},
+				},
+				right: []interface{}{
+					map[string]int64{"tt": 2, "V": 5},
+					map[string]int64{"tt": 3, "V": 6},
+					map[string]int64{"tt": 5, "V": 7},
+				},
+				window: WithDuration(2),
+			},
+			expected: []int64{
+				1, 5,
+				1, 6,
+				2, 5,
+				2, 6,
+				2, 7,
+				3, 7,
+			},
+		},
+		{
+			name: "Test 2",
+			args: args{
+				left: []interface{}{
+					map[string]int64{"tt": 1, "V": 1},
+					map[string]int64{"tt": 3, "V": 2},
+					map[string]int64{"tt": 5, "V": 3},
+					map[string]int64{"tt": 9, "V": 4},
+				},
+				right: []interface{}{
+					map[string]int64{"tt": 2, "V": 1},
+					map[string]int64{"tt": 7, "V": 2},
+					map[string]int64{"tt": 10, "V": 3},
+				},
+				window: WithDuration(3),
+			},
+			expected: []int64{
+				1, 1,
+				2, 1,
+				3, 2,
+				4, 2,
+				4, 3,
+			},
+		},
+		{
+			name: "Test with error on left",
+			args: args{
+				left: []interface{}{
+					map[string]int64{"tt": 1, "V": 1},
+					map[string]int64{"tt": 3, "V": 2},
+					errFoo,
+					map[string]int64{"tt": 9, "V": 4},
+				},
+				right: []interface{}{
+					map[string]int64{"tt": 2, "V": 1},
+					map[string]int64{"tt": 7, "V": 2},
+					map[string]int64{"tt": 10, "V": 3},
+				},
+				window: WithDuration(3),
+			},
+			expected: []int64{
+				1, 1,
+				2, 1,
+			},
+		},
+		{
+			name: "Test with error on right",
+			args: args{
+				left: []interface{}{
+					map[string]int64{"tt": 1, "V": 1},
+					map[string]int64{"tt": 3, "V": 2},
+					map[string]int64{"tt": 5, "V": 3},
+					map[string]int64{"tt": 9, "V": 4},
+				},
+				right: []interface{}{
+					map[string]int64{"tt": 2, "V": 1},
+					errFoo,
+					map[string]int64{"tt": 10, "V": 3},
+				},
+				window: WithDuration(3),
+			},
+			expected: []int64{
+				1, 1,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			leftObs := testObservable(tt.args.left...)
+			rightObs := testObservable(tt.args.right...)
+
+			obs := leftObs.Join(func(ctx context.Context, l interface{}, r interface{}) (interface{}, error) {
+				return map[string]interface{}{
+					"l": l,
+					"r": r,
+				}, nil
+			},
+				rightObs,
+				func(i interface{}) time.Time {
+					return time.Unix(i.(map[string]int64)["tt"], 0)
+				},
+				tt.args.window,
+			)
+
+			Assert(context.Background(), t, obs, CustomPredicate(func(items []interface{}) error {
+				actuals := []int64{}
+				for _, p := range items {
+					val := p.(map[string]interface{})
+					actuals = append(actuals, val["l"].(map[string]int64)["V"], val["r"].(map[string]int64)["V"])
+				}
+				assert.Equal(t, tt.expected, actuals)
+				return nil
+			}))
+		})
+	}
+}
+
 func Test_Observable_Last_NotEmpty(t *testing.T) {
 	obs := testObservable(1, 2, 3).Last()
 	Assert(context.Background(), t, obs, HasItem(3))
