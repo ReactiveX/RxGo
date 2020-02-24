@@ -67,7 +67,7 @@ func timeCausality(elems ...interface{}) (context.Context, Observable, Duration)
 func (d *causalityDuration) duration() time.Duration {
 	d.fs[0]()
 	d.fs = d.fs[1:]
-	return 0
+	return time.Nanosecond
 }
 
 type mockDuration struct {
