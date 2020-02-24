@@ -361,7 +361,7 @@ func (o *ObservableImpl) BackOffRetry(backOffCfg backoff.BackOff, opts ...Option
 	ctx := option.buildContext()
 
 	f := func() error {
-		observe := o.Observe()
+		observe := o.Observe(opts...)
 		for {
 			select {
 			case <-ctx.Done():
@@ -450,54 +450,43 @@ func (o *ObservableImpl) BufferWithTime(timespan Duration, opts ...Option) Obser
 		return Thrown(IllegalInputError{error: "timespan must no be nil"})
 	}
 
-	return &ObservableImpl{
-		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
-			mergedOptions := append(opts, propagatedOptions...)
-			option := parseOptions(mergedOptions...)
-			next := option.buildChannel()
-			ctx := option.buildContext()
+	f := func(ctx context.Context, next chan Item, option Option, opts ...Option) {
+		defer close(next)
+		observe := o.Observe(opts...)
+		buffer := make([]interface{}, 0)
 
-			go func() {
-				defer close(next)
-				observe := o.Observe(mergedOptions...)
-				buffer := make([]interface{}, 0)
-
-				for {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case item, ok := <-observe:
+				if !ok {
+					if len(buffer) != 0 {
+						Of(buffer).SendWithContext(ctx, next)
+					}
+					return
+				}
+				if item.Error() {
+					item.SendWithContext(ctx, next)
+					if option.getErrorStrategy() == Stop {
+						return
+					}
+				} else {
+					buffer = append(buffer, item.V)
+				}
+			case <-time.After(timespan.duration()):
+				if len(buffer) != 0 {
 					select {
 					case <-ctx.Done():
 						return
-					case item, ok := <-observe:
-						if !ok {
-							if len(buffer) != 0 {
-								select {
-								case <-ctx.Done():
-									return
-								case next <- Of(buffer):
-								}
-							}
-							return
-						}
-						if item.Error() {
-							next <- item
-							return
-						}
-						buffer = append(buffer, item.V)
-					case <-time.After(timespan.duration()):
-						if len(buffer) != 0 {
-							select {
-							case <-ctx.Done():
-								return
-							case next <- Of(buffer):
-							}
-							buffer = make([]interface{}, 0)
-						}
+					case next <- Of(buffer):
 					}
+					buffer = make([]interface{}, 0)
 				}
-			}()
-
-			return next
-		}),
+			}
+		}
 	}
+	return customObservableOperator(f, opts...)
 }
 
 // BufferWithTimeOrCount returns an Observable that emits buffers of items it collects from the source
