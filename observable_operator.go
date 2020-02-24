@@ -113,10 +113,10 @@ type averageFloat64Operator struct {
 	count float64
 }
 
-func (op *averageFloat64Operator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *averageFloat64Operator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	switch v := item.V.(type) {
 	default:
-		dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: float or int, got: %t", item)})
+		Error(IllegalInputError{error: fmt.Sprintf("expected type: float or int, got: %t", item)}).SendCtx(ctx, dst)
 		operatorOptions.stop()
 	case int:
 		op.sum += float64(v)
@@ -134,11 +134,11 @@ func (op *averageFloat64Operator) err(ctx context.Context, item Item, dst chan<-
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *averageFloat64Operator) end(_ context.Context, dst chan<- Item) {
+func (op *averageFloat64Operator) end(ctx context.Context, dst chan<- Item) {
 	if op.count == 0 {
-		dst <- Of(0)
+		Of(0).SendCtx(ctx, dst)
 	} else {
-		dst <- Of(op.sum / op.count)
+		Of(op.sum/op.count).SendCtx(ctx, dst)
 	}
 }
 
@@ -160,10 +160,10 @@ type averageIntOperator struct {
 	count int
 }
 
-func (op *averageIntOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *averageIntOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	switch v := item.V.(type) {
 	default:
-		dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int, got: %t", item)})
+		Error(IllegalInputError{error: fmt.Sprintf("expected type: int, got: %t", item)}).SendCtx(ctx, dst)
 		operatorOptions.stop()
 	case int:
 		op.sum += v
@@ -175,11 +175,11 @@ func (op *averageIntOperator) err(ctx context.Context, item Item, dst chan<- Ite
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *averageIntOperator) end(_ context.Context, dst chan<- Item) {
+func (op *averageIntOperator) end(ctx context.Context, dst chan<- Item) {
 	if op.count == 0 {
-		dst <- Of(0)
+		Of(0).SendCtx(ctx, dst)
 	} else {
-		dst <- Of(op.sum / op.count)
+		Of(op.sum/op.count).SendCtx(ctx, dst)
 	}
 }
 
@@ -201,10 +201,10 @@ type averageInt8Operator struct {
 	count int8
 }
 
-func (op *averageInt8Operator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *averageInt8Operator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	switch v := item.V.(type) {
 	default:
-		dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int8, got: %t", item)})
+		Error(IllegalInputError{error: fmt.Sprintf("expected type: int8, got: %t", item)}).SendCtx(ctx, dst)
 		operatorOptions.stop()
 	case int8:
 		op.sum += v
@@ -216,11 +216,11 @@ func (op *averageInt8Operator) err(ctx context.Context, item Item, dst chan<- It
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *averageInt8Operator) end(_ context.Context, dst chan<- Item) {
+func (op *averageInt8Operator) end(ctx context.Context, dst chan<- Item) {
 	if op.count == 0 {
-		dst <- Of(0)
+		Of(0).SendCtx(ctx, dst)
 	} else {
-		dst <- Of(op.sum / op.count)
+		Of(op.sum/op.count).SendCtx(ctx, dst)
 	}
 }
 
@@ -242,10 +242,10 @@ type averageInt16Operator struct {
 	count int16
 }
 
-func (op *averageInt16Operator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *averageInt16Operator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	switch v := item.V.(type) {
 	default:
-		dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int16, got: %t", item)})
+		Error(IllegalInputError{error: fmt.Sprintf("expected type: int16, got: %t", item)}).SendCtx(ctx, dst)
 		operatorOptions.stop()
 	case int16:
 		op.sum += v
@@ -257,11 +257,11 @@ func (op *averageInt16Operator) err(ctx context.Context, item Item, dst chan<- I
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *averageInt16Operator) end(_ context.Context, dst chan<- Item) {
+func (op *averageInt16Operator) end(ctx context.Context, dst chan<- Item) {
 	if op.count == 0 {
-		dst <- Of(0)
+		Of(0).SendCtx(ctx, dst)
 	} else {
-		dst <- Of(op.sum / op.count)
+		Of(op.sum/op.count).SendCtx(ctx, dst)
 	}
 }
 
@@ -283,10 +283,10 @@ type averageInt32Operator struct {
 	count int32
 }
 
-func (op *averageInt32Operator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *averageInt32Operator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	switch v := item.V.(type) {
 	default:
-		dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int32, got: %t", item)})
+		Error(IllegalInputError{error: fmt.Sprintf("expected type: int32, got: %t", item)}).SendCtx(ctx, dst)
 		operatorOptions.stop()
 	case int32:
 		op.sum += v
@@ -298,11 +298,11 @@ func (op *averageInt32Operator) err(ctx context.Context, item Item, dst chan<- I
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *averageInt32Operator) end(_ context.Context, dst chan<- Item) {
+func (op *averageInt32Operator) end(ctx context.Context, dst chan<- Item) {
 	if op.count == 0 {
-		dst <- Of(0)
+		Of(0).SendCtx(ctx, dst)
 	} else {
-		dst <- Of(op.sum / op.count)
+		Of(op.sum/op.count).SendCtx(ctx, dst)
 	}
 }
 
@@ -324,10 +324,10 @@ type averageInt64Operator struct {
 	count int64
 }
 
-func (op *averageInt64Operator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *averageInt64Operator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	switch v := item.V.(type) {
 	default:
-		dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int64, got: %t", item)})
+		Error(IllegalInputError{error: fmt.Sprintf("expected type: int64, got: %t", item)}).SendCtx(ctx, dst)
 		operatorOptions.stop()
 	case int64:
 		op.sum += v
@@ -339,11 +339,11 @@ func (op *averageInt64Operator) err(ctx context.Context, item Item, dst chan<- I
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *averageInt64Operator) end(_ context.Context, dst chan<- Item) {
+func (op *averageInt64Operator) end(ctx context.Context, dst chan<- Item) {
 	if op.count == 0 {
-		dst <- Of(0)
+		Of(0).SendCtx(ctx, dst)
 	} else {
-		dst <- Of(op.sum / op.count)
+		Of(op.sum/op.count).SendCtx(ctx, dst)
 	}
 }
 
@@ -380,7 +380,7 @@ func (o *ObservableImpl) BackOffRetry(backOffCfg backoff.BackOff, opts ...Option
 	}
 	go func() {
 		if err := backoff.Retry(f, backOffCfg); err != nil {
-			next <- Error(err)
+			Error(err).SendCtx(ctx, next)
 			close(next)
 			return
 		}
@@ -417,11 +417,11 @@ type bufferWithCountOperator struct {
 	buffer []interface{}
 }
 
-func (op *bufferWithCountOperator) next(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+func (op *bufferWithCountOperator) next(ctx context.Context, item Item, dst chan<- Item, _ operatorOptions) {
 	op.buffer[op.iCount] = item.V
 	op.iCount++
 	if op.iCount == op.count {
-		dst <- Of(op.buffer)
+		Of(op.buffer).SendCtx(ctx, dst)
 		op.iCount = 0
 		op.buffer = make([]interface{}, op.count)
 	}
@@ -431,9 +431,9 @@ func (op *bufferWithCountOperator) err(ctx context.Context, item Item, dst chan<
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *bufferWithCountOperator) end(_ context.Context, dst chan<- Item) {
+func (op *bufferWithCountOperator) end(ctx context.Context, dst chan<- Item) {
 	if op.iCount != 0 {
-		dst <- Of(op.buffer[:op.iCount])
+		Of(op.buffer[:op.iCount]).SendCtx(ctx, dst)
 	}
 }
 
