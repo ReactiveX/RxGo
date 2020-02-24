@@ -4,7 +4,7 @@ Contributions are always welcome. However, to make this a smooth collaboration e
 
 ## Consistency
 
-There are already +80 operators and +250 unit tests. Please don't try to reinvent the wheel and make sure to check first how the current implementation solve the most common problems.
+There are already +80 operators and +250 unit tests. Please don't try necessarily to reinvent the wheel and make sure to check first how the current implementation solves the most common problems.
 
 ## Edge Case
 
@@ -12,20 +12,28 @@ When we develop a new operator, there are a lot of edge cases to handle (eager/l
 
 ## Unit Tests
 
-Make sure to include unit tests. Again, consistency is key. In most of the unit tests we use the RxGo assertion API.
+Make sure to include unit tests. Again, consistency is key. In most of the unit tests, we use the RxGo assertion API.
 
 ## Duration
 
 If an operator input contains a duration, we should use `rxgo.Duration`. It allows us to mock it and to implement deterministic tests whenever possible using `timeCausality()`.
 
+## Write Nice Code
+
+Try to write idiomatic code according to [Go style guide](https://github.com/golang/go/wiki/CodeReviewComments). Also, see this project style guide for project-specific idioms (when in doubt, consult the first).
+
 ## Code Formatting
 
 Before to create a pull request, make sure to format your code using:
 
-* [gofumpt](https://github.com/mvdan/gofumpt)
+* [gofumpt](https://github.com/mvdan/gofumpt):
     * Install: `go get mvdan.cc/gofumpt`
-    * Execution: `gofumpt -s -w .`
+    * Execute: `gofumpt -s -w .`
 
-* [goimports](https://godoc.org/golang.org/x/tools/cmd/goimports)
+* [goimports](https://godoc.org/golang.org/x/tools/cmd/goimports):
     * Install: `go get golang.o`
-    * Execution: `goimports -w .`
+    * Execute: `goimports -w .`
+    
+## Open an issue
+
+This is to encourage discussions and reach a sound design decision before implementing an additional feature or fixing a bug. If you're proposing a new feature, make it obvious in the subject.
