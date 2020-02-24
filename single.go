@@ -29,7 +29,7 @@ func (s *SingleImpl) Get(opts ...Option) (Item, error) {
 	option := parseOptions(opts...)
 	ctx := option.buildContext()
 
-	observe := s.Observe()
+	observe := s.Observe(opts...)
 	for {
 		select {
 		case <-ctx.Done():
@@ -109,7 +109,7 @@ func (s *SingleImpl) Run(opts ...Option) Disposed {
 
 	go func() {
 		defer close(dispose)
-		observe := s.Observe()
+		observe := s.Observe(opts...)
 		for {
 			select {
 			case <-ctx.Done():
