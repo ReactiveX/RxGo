@@ -476,10 +476,8 @@ func (o *ObservableImpl) BufferWithTime(timespan Duration, opts ...Option) Obser
 				}
 			case <-time.After(timespan.duration()):
 				if len(buffer) != 0 {
-					select {
-					case <-ctx.Done():
+					if !Of(buffer).SendWithContext(ctx, next) {
 						return
-					case next <- Of(buffer):
 					}
 					buffer = make([]interface{}, 0)
 				}
@@ -499,62 +497,48 @@ func (o *ObservableImpl) BufferWithTimeOrCount(timespan Duration, count int, opt
 		return Thrown(IllegalInputError{error: "count must be positive"})
 	}
 
-	return &ObservableImpl{
-		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
-			mergedOptions := append(opts, propagatedOptions...)
-			option := parseOptions(mergedOptions...)
-			next := option.buildChannel()
-			ctx := option.buildContext()
+	f := func(ctx context.Context, next chan Item, option Option, opts ...Option) {
+		defer close(next)
+		observe := o.Observe(opts...)
+		buffer := make([]interface{}, 0)
 
-			go func() {
-				defer close(next)
-				observe := o.Observe(mergedOptions...)
-				buffer := make([]interface{}, 0)
-
-				for {
-					select {
-					case <-ctx.Done():
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case item, ok := <-observe:
+				if !ok {
+					if len(buffer) != 0 {
+						Of(buffer).SendWithContext(ctx, next)
+					}
+					return
+				}
+				if item.Error() {
+					item.SendWithContext(ctx, next)
+					if option.getErrorStrategy() == Stop {
 						return
-					case item, ok := <-observe:
-						if !ok {
-							if len(buffer) != 0 {
-								select {
-								case <-ctx.Done():
-									return
-								case next <- Of(buffer):
-								}
-							}
+					}
+				} else {
+					buffer = append(buffer, item.V)
+					if len(buffer) == count {
+						if !Of(buffer).SendWithContext(ctx, next) {
 							return
 						}
-						if item.Error() {
-							next <- item
-							return
-						}
-						buffer = append(buffer, item.V)
-						if len(buffer) == count {
-							select {
-							case <-ctx.Done():
-								return
-							case next <- Of(buffer):
-							}
-							buffer = make([]interface{}, 0)
-						}
-					case <-time.After(timespan.duration()):
-						if len(buffer) != 0 {
-							select {
-							case <-ctx.Done():
-								return
-							case next <- Of(buffer):
-							}
-							buffer = make([]interface{}, 0)
-						}
+						buffer = make([]interface{}, 0)
 					}
 				}
-			}()
-
-			return next
-		}),
+			case <-time.After(timespan.duration()):
+				if len(buffer) != 0 {
+					if !Of(buffer).SendWithContext(ctx, next) {
+						return
+					}
+					buffer = make([]interface{}, 0)
+				}
+			}
+		}
 	}
+
+	return customObservableOperator(f, opts...)
 }
 
 // Contains determines whether an Observable emits a particular item or not.
