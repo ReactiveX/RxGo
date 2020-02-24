@@ -10,6 +10,7 @@ import (
 // Observable is the standard interface for Observables.
 type Observable interface {
 	Iterable
+	Connect() Observable
 	All(predicate Predicate, opts ...Option) Single
 	AverageFloat32(opts ...Option) Single
 	AverageFloat64(opts ...Option) Single
@@ -117,7 +118,7 @@ func observable(iterable Iterable, operatorFactory func() operator, forceSeq, by
 	return &ObservableImpl{
 		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
 			mergedOptions := append(opts, propagatedOptions...)
-			option = parseOptions(mergedOptions...)
+			option := parseOptions(mergedOptions...)
 
 			next := option.buildChannel()
 			ctx := option.buildContext()
@@ -196,10 +197,10 @@ func optionalSingle(iterable Iterable, operatorFactory func() operator, forceSeq
 }
 
 func runSeq(ctx context.Context, next chan Item, iterable Iterable, operatorFactory func() operator, option Option, opts ...Option) {
+	observe := iterable.Observe(opts...)
 	go func() {
 		op := operatorFactory()
 		stopped := false
-		observe := iterable.Observe(opts...)
 		operator := operatorOptions{
 			stop: func() {
 				if option.getErrorStrategy() == StopOnError {

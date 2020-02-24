@@ -9,6 +9,25 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func collect(ctx context.Context, ch <-chan Item) ([]interface{}, error) {
+	s := make([]interface{}, 0)
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case item, ok := <-ch:
+			if !ok {
+				return s, nil
+			}
+			if item.Error() {
+				s = append(s, item.E)
+			} else {
+				s = append(s, item.V)
+			}
+		}
+	}
+}
+
 func Test_Amb1(t *testing.T) {
 	obs := Amb([]Observable{testObservable(1, 2, 3), Empty()})
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3))

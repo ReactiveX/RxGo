@@ -185,9 +185,9 @@ func Empty() Observable {
 }
 
 // FromChannel creates a cold observable from a channel.
-func FromChannel(next <-chan Item) Observable {
+func FromChannel(next <-chan Item, opts ...Option) Observable {
 	return &ObservableImpl{
-		iterable: newChannelIterable(next),
+		iterable: newChannelIterable(next, opts...),
 	}
 }
 

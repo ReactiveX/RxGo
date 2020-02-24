@@ -15,6 +15,8 @@ type Option interface {
 	buildContext() context.Context
 	getBackPressureStrategy() BackpressureStrategy
 	getErrorStrategy() OnErrorStrategy
+	isConnectable() bool
+	isConnectOperation() bool
 }
 
 type funcOption struct {
@@ -27,6 +29,8 @@ type funcOption struct {
 	backPressureStrategy BackpressureStrategy
 	onErrorStrategy      OnErrorStrategy
 	propagate            bool
+	connectable          bool
+	connectOperation     bool
 }
 
 func (fdo *funcOption) toPropagate() bool {
@@ -61,6 +65,14 @@ func (fdo *funcOption) getBackPressureStrategy() BackpressureStrategy {
 
 func (fdo *funcOption) getErrorStrategy() OnErrorStrategy {
 	return fdo.onErrorStrategy
+}
+
+func (fdo *funcOption) isConnectable() bool {
+	return fdo.connectable
+}
+
+func (fdo *funcOption) isConnectOperation() bool {
+	return fdo.connectOperation
 }
 
 func (fdo *funcOption) apply(do *funcOption) {
@@ -129,5 +141,17 @@ func WithBackPressureStrategy(strategy BackpressureStrategy) Option {
 func WithErrorStrategy(strategy OnErrorStrategy) Option {
 	return newFuncOption(func(options *funcOption) {
 		options.onErrorStrategy = strategy
+	})
+}
+
+func WithPublishStrategy() Option {
+	return newFuncOption(func(options *funcOption) {
+		options.connectable = true
+	})
+}
+
+func connect() Option {
+	return newFuncOption(func(options *funcOption) {
+		options.connectOperation = true
 	})
 }

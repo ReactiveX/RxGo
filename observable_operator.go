@@ -541,6 +541,11 @@ func (o *ObservableImpl) BufferWithTimeOrCount(timespan Duration, count int, opt
 	return customObservableOperator(f, opts...)
 }
 
+func (o *ObservableImpl) Connect() Observable {
+	o.Observe(connect())
+	return o
+}
+
 // Contains determines whether an Observable emits a particular item or not.
 func (o *ObservableImpl) Contains(equal Predicate, opts ...Option) Single {
 	return single(o, func() operator {
