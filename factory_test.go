@@ -385,7 +385,11 @@ func Test_Thrown(t *testing.T) {
 
 func Test_Timer(t *testing.T) {
 	obs := Timer(WithDuration(time.Nanosecond))
-	Assert(context.Background(), t, obs, IsNotEmpty())
+	select {
+	case <-time.Tick(time.Second):
+		assert.FailNow(t, "observable not closed")
+	case <-obs.Observe():
+	}
 }
 
 func Test_Timer_Empty(t *testing.T) {
@@ -395,5 +399,9 @@ func Test_Timer_Empty(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 		cancel()
 	}()
-	Assert(context.Background(), t, obs, IsEmpty())
+	select {
+	case <-time.Tick(time.Second):
+		assert.FailNow(t, "observable not closed")
+	case <-obs.Observe():
+	}
 }

@@ -277,7 +277,7 @@ In this example, we create a pool of 32 goroutines that consume items concurrent
 * [Range](doc/range.md) — create an Observable that emits a range of sequential integers
 * [Repeat](doc/repeat.md) — create an Observable that emits a particular item or sequence of items repeatedly
 * [Start](doc/start.md) — create an Observable that emits the return value of a function
-* [Timer](doc/timer.md) — create an Observable that emits a single item after a given delay
+* [Timer](doc/timer.md) — create an Observable that completes after a specified delay
 
 ### Transforming Observables
 * [Buffer](doc/buffer.md) — periodically gather items from an Observable into bundles and emit these bundles rather than emitting the items one at a time

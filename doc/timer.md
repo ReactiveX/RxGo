@@ -2,7 +2,7 @@
 
 ## Overview
 
-Create an Observable that emits a single item after a given delay.
+Create an Observable that completes after a specified delay.
 
 ![](http://reactivex.io/documentation/operators/images/timer.png)
 

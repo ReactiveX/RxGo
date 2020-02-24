@@ -336,7 +336,7 @@ func Thrown(err error) Observable {
 	}
 }
 
-// Timer returns an Observable that emits an empty structure after a specified delay, and then completes.
+// Timer returns an Observable that completes after a specified delay.
 func Timer(d Duration, opts ...Option) Observable {
 	option := parseOptions(opts...)
 	next := make(chan Item, 1)
@@ -348,7 +348,7 @@ func Timer(d Duration, opts ...Option) Observable {
 		case <-ctx.Done():
 			return
 		case <-time.After(d.duration()):
-			next <- Of(struct{}{})
+			return
 		}
 	}()
 	return &ObservableImpl{
