@@ -1023,46 +1023,44 @@ func (op *firstOrDefaultOperator) gatherNext(_ context.Context, _ Item, _ chan<-
 
 // FlatMap transforms the items emitted by an Observable into Observables, then flatten the emissions from those into a single Observable.
 func (o *ObservableImpl) FlatMap(apply ItemToObservable, opts ...Option) Observable {
-	option := parseOptions(opts...)
-	next := option.buildChannel()
-	ctx := option.buildContext()
-
-	go func() {
+	f := func(ctx context.Context, next chan Item, option Option, opts ...Option) {
 		defer close(next)
-		observe := o.Observe()
-	loop1:
+		observe := o.Observe(opts...)
 		for {
 			select {
 			case <-ctx.Done():
-				break loop1
-			case i, ok := <-observe:
+				return
+			case item, ok := <-observe:
 				if !ok {
-					break loop1
+					return
 				}
-				observe2 := apply(i).Observe()
+				observe2 := apply(item).Observe()
 			loop2:
 				for {
 					select {
 					case <-ctx.Done():
-						break loop2
-					case i, ok := <-observe2:
+						return
+					case item, ok := <-observe2:
 						if !ok {
 							break loop2
 						}
-						if i.Error() {
-							next <- i
-							return
+						if item.Error() {
+							item.SendWithContext(ctx, next)
+							if option.getErrorStrategy() == Stop {
+								return
+							}
+						} else {
+							if !item.SendWithContext(ctx, next) {
+								return
+							}
 						}
-						next <- i
 					}
 				}
 			}
 		}
-	}()
-
-	return &ObservableImpl{
-		iterable: newChannelIterable(next),
 	}
+
+	return customObservableOperator(f, opts...)
 }
 
 // ForEach subscribes to the Observable and receives notifications for each element.
