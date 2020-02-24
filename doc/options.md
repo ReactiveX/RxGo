@@ -35,13 +35,13 @@ rxgo.WithObservation(rxgo.Eager)
 * Stop (default): stop processing if the Observable produces an error.
 
 ```go
-rxgo.WithErrorStrategy(rxgo.Stop)
+rxgo.WithErrorStrategy(rxgo.StopOnError)
 ```
 
 * Continue: continue processing items if the Observable produces an error.
 
 ```go
-rxgo.WithErrorStrategy(rxgo.Continue)
+rxgo.WithErrorStrategy(rxgo.ContinueOnError)
 ```
 
 This strategy is propagated to the parent(s) Observable(s).

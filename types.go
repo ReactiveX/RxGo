@@ -60,11 +60,11 @@ const (
 type OnErrorStrategy uint32
 
 const (
-	// Stop is the default error strategy.
+	// StopOnError is the default error strategy.
 	// An operator will stop processing items on error.
-	Stop OnErrorStrategy = iota
-	// Continue means an operator will continue processing items after an error.
-	Continue
+	StopOnError OnErrorStrategy = iota
+	// ContinueOnError means an operator will continue processing items after an error.
+	ContinueOnError
 )
 
 // ObservationStrategy defines the strategy to consume from an Observable.

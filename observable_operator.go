@@ -468,7 +468,7 @@ func (o *ObservableImpl) BufferWithTime(timespan Duration, opts ...Option) Obser
 				}
 				if item.Error() {
 					item.SendCtx(ctx, next)
-					if option.getErrorStrategy() == Stop {
+					if option.getErrorStrategy() == StopOnError {
 						return
 					}
 				} else {
@@ -515,7 +515,7 @@ func (o *ObservableImpl) BufferWithTimeOrCount(timespan Duration, count int, opt
 				}
 				if item.Error() {
 					item.SendCtx(ctx, next)
-					if option.getErrorStrategy() == Stop {
+					if option.getErrorStrategy() == StopOnError {
 						return
 					}
 				} else {
@@ -628,7 +628,7 @@ func (o *ObservableImpl) Debounce(timespan Duration, opts ...Option) Observable 
 					if !item.SendCtx(ctx, next) {
 						return
 					}
-					if option.getErrorStrategy() == Stop {
+					if option.getErrorStrategy() == StopOnError {
 						return
 					}
 				} else {
@@ -1046,7 +1046,7 @@ func (o *ObservableImpl) FlatMap(apply ItemToObservable, opts ...Option) Observa
 						}
 						if item.Error() {
 							item.SendCtx(ctx, next)
-							if option.getErrorStrategy() == Stop {
+							if option.getErrorStrategy() == StopOnError {
 								return
 							}
 						} else {
@@ -2326,7 +2326,7 @@ func (o *ObservableImpl) TimeInterval(opts ...Option) Observable {
 					if !item.SendCtx(ctx, next) {
 						return
 					}
-					if option.getErrorStrategy() == Stop {
+					if option.getErrorStrategy() == StopOnError {
 						return
 					}
 				} else {
@@ -2595,7 +2595,7 @@ func (o *ObservableImpl) WindowWithTime(timespan Duration, opts ...Option) Obser
 					if !item.SendCtx(ctx, ch) {
 						return
 					}
-					if option.getErrorStrategy() == Stop {
+					if option.getErrorStrategy() == StopOnError {
 						close(ch)
 						return
 					}
@@ -2654,7 +2654,7 @@ func (o *ObservableImpl) WindowWithTimeOrCount(timespan Duration, count int, opt
 					if !item.SendCtx(ctx, ch) {
 						return
 					}
-					if option.getErrorStrategy() == Stop {
+					if option.getErrorStrategy() == StopOnError {
 						close(ch)
 						return
 					}

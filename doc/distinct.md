@@ -45,8 +45,8 @@ Output:
 
 ### WithPool
 
-https://github.com/ReactiveX/RxGo/wiki/Options#withpool
+[Detail](options.md#withpool)
 
 ### WithCPUPool
 
-https://github.com/ReactiveX/RxGo/wiki/Options#withcpupool
+[Detail](options.md#withcpupool)

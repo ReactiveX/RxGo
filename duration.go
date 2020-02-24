@@ -87,9 +87,8 @@ func (d *causalityDuration) duration() time.Duration {
 	d.fs = d.fs[1:]
 	if pop.isTick {
 		return time.Nanosecond
-	} else {
-		return time.Minute
 	}
+	return time.Minute
 }
 
 type mockDuration struct {

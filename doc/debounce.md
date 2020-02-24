@@ -34,8 +34,8 @@ Output: each item emitted by the Observable if not item has been emitted after 2
 
 ### WithPool
 
-https://github.com/ReactiveX/RxGo/wiki/Options#withpool
+[Detail](options.md#withpool)
 
 ### WithCPUPool
 
-https://github.com/ReactiveX/RxGo/wiki/Options#withcpupool
+[Detail](options.md#withcpupool)

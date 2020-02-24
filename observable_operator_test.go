@@ -441,7 +441,7 @@ func Test_Observable_Errors_MultipleErrorFromMap(t *testing.T) {
 			return nil, errBar
 		}
 		return i, nil
-	}, WithErrorStrategy(Continue)).Errors()
+	}, WithErrorStrategy(ContinueOnError)).Errors()
 	assert.Equal(t, 2, len(errs))
 }
 
@@ -946,7 +946,7 @@ func Test_Observable_Reduce_Parallel_WithErrorStrategy(t *testing.T) {
 			return elem.(int), nil
 		}
 		return 0, errFoo
-	}, WithCPUPool(), WithErrorStrategy(Continue))
+	}, WithCPUPool(), WithErrorStrategy(ContinueOnError))
 	Assert(context.Background(), t, obs, HasItem(50015000), HasError(errFoo))
 }
 
@@ -1473,7 +1473,7 @@ func Test_Observable_WindowWithTime_Eager(t *testing.T) {
 
 func Test_Observable_WindowWithTime_ContinueOnError(t *testing.T) {
 	ctx, obs, d := timeCausality(1, 2, errFoo, 3, tick, 4, tick)
-	observe := obs.WindowWithTime(d, WithContext(ctx), WithBufferedChannel(10), WithErrorStrategy(Continue)).
+	observe := obs.WindowWithTime(d, WithContext(ctx), WithBufferedChannel(10), WithErrorStrategy(ContinueOnError)).
 		Observe()
 	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(1, 2, 3), HasError(errFoo))
 	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(4), HasNoError())
@@ -1508,7 +1508,7 @@ func Test_Observable_WindowWithTimeOrCount_Eager(t *testing.T) {
 
 func Test_Observable_WindowWithTimeOrCount_ContinueOnError(t *testing.T) {
 	ctx, obs, d := timeCausality(1, 2, 3, tick, 4, 5, 6, 7, tick, 8, tick)
-	observe := obs.WindowWithTimeOrCount(d, 2, WithContext(ctx), WithErrorStrategy(Continue)).Observe()
+	observe := obs.WindowWithTimeOrCount(d, 2, WithContext(ctx), WithErrorStrategy(ContinueOnError)).Observe()
 	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(1, 2))
 	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(3))
 	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(4, 5))
@@ -1574,7 +1574,7 @@ func Test_Observable_Option_WithOnErrorStrategy_Single(t *testing.T) {
 				return nil, errFoo
 			}
 			return i, nil
-		}, WithErrorStrategy(Continue))
+		}, WithErrorStrategy(ContinueOnError))
 	Assert(context.Background(), t, obs, HasItems(1, 3), HasError(errFoo))
 }
 
@@ -1591,7 +1591,7 @@ func Test_Observable_Option_WithOnErrorStrategy_Propagate(t *testing.T) {
 				return nil, errBar
 			}
 			return i, nil
-		}, WithErrorStrategy(Continue))
+		}, WithErrorStrategy(ContinueOnError))
 	Assert(context.Background(), t, obs, HasItems(3), HasErrors(errFoo, errBar))
 }
 

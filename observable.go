@@ -202,7 +202,7 @@ func runSeq(ctx context.Context, next chan Item, iterable Iterable, operatorFact
 		observe := iterable.Observe(opts...)
 		operator := operatorOptions{
 			stop: func() {
-				if option.getErrorStrategy() == Stop {
+				if option.getErrorStrategy() == StopOnError {
 					stopped = true
 				}
 			},
@@ -251,7 +251,7 @@ func runPar(ctx context.Context, next chan Item, iterable Iterable, operatorFact
 			stopped := false
 			operator := operatorOptions{
 				stop: func() {
-					if option.getErrorStrategy() == Stop {
+					if option.getErrorStrategy() == StopOnError {
 						stopped = true
 					}
 				},
@@ -281,7 +281,7 @@ func runPar(ctx context.Context, next chan Item, iterable Iterable, operatorFact
 			stopped := false
 			operator := operatorOptions{
 				stop: func() {
-					if option.getErrorStrategy() == Stop {
+					if option.getErrorStrategy() == StopOnError {
 						stopped = true
 					}
 				},
