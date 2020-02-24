@@ -116,6 +116,39 @@ func Test_Connectable_IterableChannel_WithoutConnect(t *testing.T) {
 		ch <- Of(3)
 		close(ch)
 	}()
-	obs := FromChannel(ch, WithPublishStrategy(), WithBufferedChannel(10))
+	obs := FromChannel(ch, WithPublishStrategy())
 	testConnectableWithoutConnect(t, obs)
+}
+
+func Test_Connectable_IterableCreate_Single(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	testConnectableSingle(t, Create([]Producer{func(_ context.Context, ch chan<- Item) {
+		ch <- Of(1)
+		ch <- Of(2)
+		ch <- Of(3)
+		cancel()
+	}}, WithPublishStrategy(), WithContext(ctx)))
+}
+
+func Test_Connectable_IterableCreate_Composed(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	testConnectableComposed(t, Create([]Producer{func(_ context.Context, ch chan<- Item) {
+		ch <- Of(1)
+		ch <- Of(2)
+		ch <- Of(3)
+		cancel()
+	}}, WithPublishStrategy(), WithContext(ctx)))
+}
+
+func Test_Connectable_IterableCreate_WithoutConnect(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	testConnectableWithoutConnect(t, Create([]Producer{func(_ context.Context, ch chan<- Item) {
+		ch <- Of(1)
+		ch <- Of(2)
+		ch <- Of(3)
+		cancel()
+	}}, WithPublishStrategy(), WithContext(ctx)))
 }

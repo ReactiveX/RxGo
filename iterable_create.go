@@ -5,8 +5,11 @@ import (
 )
 
 type createIterable struct {
-	opts []Option
-	next <-chan Item
+	next                   <-chan Item
+	opts                   []Option
+	subscribers            []chan Item
+	mutex                  sync.RWMutex
+	producerAlreadyCreated bool
 }
 
 func newCreateIterable(fs []Producer, opts ...Option) Iterable {
@@ -33,7 +36,47 @@ func newCreateIterable(fs []Producer, opts ...Option) Iterable {
 		next: next,
 	}
 }
+func (i *createIterable) Observe(opts ...Option) <-chan Item {
+	mergedOptions := append(i.opts, opts...)
+	option := parseOptions(mergedOptions...)
 
-func (i *createIterable) Observe(_ ...Option) <-chan Item {
-	return i.next
+	if !option.isConnectable() {
+		return i.next
+	}
+
+	if option.isConnectOperation() {
+		i.connect()
+		return nil
+	}
+
+	ch := option.buildChannel()
+	i.mutex.Lock()
+	i.subscribers = append(i.subscribers, ch)
+	i.mutex.Unlock()
+	return ch
+}
+
+func (i *createIterable) connect() {
+	i.mutex.Lock()
+	if !i.producerAlreadyCreated {
+		go i.produce()
+		i.producerAlreadyCreated = true
+	}
+	i.mutex.Unlock()
+}
+
+func (i *createIterable) produce() {
+	for item := range i.next {
+		i.mutex.RLock()
+		for _, subscriber := range i.subscribers {
+			subscriber <- item
+		}
+		i.mutex.RUnlock()
+	}
+
+	i.mutex.RLock()
+	for _, subscriber := range i.subscribers {
+		close(subscriber)
+	}
+	i.mutex.RUnlock()
 }
