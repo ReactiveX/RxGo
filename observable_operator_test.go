@@ -1471,6 +1471,7 @@ func Test_Observable_WindowWithTime_Eager(t *testing.T) {
 	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(4))
 }
 
+// FIXME
 func Test_Observable_WindowWithTime_ContinueOnError(t *testing.T) {
 	ctx, obs, d := timeCausality(1, 2, errFoo, 3, tick, 4, tick)
 	observe := obs.WindowWithTime(d, WithContext(ctx), WithBufferedChannel(10), WithErrorStrategy(Continue)).

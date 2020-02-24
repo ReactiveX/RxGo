@@ -87,8 +87,8 @@ type ObservableImpl struct {
 	iterable Iterable
 }
 
-func defaultErrorFuncOperator(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	dst <- item
+func defaultErrorFuncOperator(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	item.SendCtx(ctx, dst)
 	operatorOptions.stop()
 }
 
