@@ -54,11 +54,11 @@ type mapOperatorSingle struct {
 func (op *mapOperatorSingle) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	res, err := op.apply(ctx, item.V)
 	if err != nil {
-		Error(err).SendCtx(ctx, dst)
+		Error(err).SendContext(ctx, dst)
 		operatorOptions.stop()
 		return
 	}
-	Of(res).SendCtx(ctx, dst)
+	Of(res).SendContext(ctx, dst)
 }
 
 func (op *mapOperatorSingle) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
@@ -73,7 +73,7 @@ func (op *mapOperatorSingle) gatherNext(ctx context.Context, item Item, dst chan
 	case *mapOperatorSingle:
 		return
 	}
-	item.SendCtx(ctx, dst)
+	item.SendContext(ctx, dst)
 }
 
 // Observe observes a Single by returning its channel.
@@ -87,7 +87,7 @@ type filterOperatorSingle struct {
 
 func (op *filterOperatorSingle) next(ctx context.Context, item Item, dst chan<- Item, _ operatorOptions) {
 	if op.apply(item.V) {
-		item.SendCtx(ctx, dst)
+		item.SendContext(ctx, dst)
 	}
 }
 

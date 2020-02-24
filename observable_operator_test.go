@@ -140,16 +140,14 @@ func Test_Observable_BackOffRetry(t *testing.T) {
 	i := 0
 	backOffCfg := backoff.NewExponentialBackOff()
 	backOffCfg.InitialInterval = time.Nanosecond
-	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item, done func()) {
+	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item) {
 		next <- Of(1)
 		next <- Of(2)
 		if i == 2 {
 			next <- Of(3)
-			done()
 		} else {
 			i++
 			next <- Error(errFoo)
-			done()
 		}
 	}}).BackOffRetry(backoff.WithMaxRetries(backOffCfg, 3))
 	Assert(context.Background(), t, obs, HasItems(1, 2, 1, 2, 1, 2, 3), HasNoError())
@@ -158,11 +156,10 @@ func Test_Observable_BackOffRetry(t *testing.T) {
 func Test_Observable_BackOffRetry_Error(t *testing.T) {
 	backOffCfg := backoff.NewExponentialBackOff()
 	backOffCfg.InitialInterval = time.Nanosecond
-	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item, done func()) {
+	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item) {
 		next <- Of(1)
 		next <- Of(2)
 		next <- Error(errFoo)
-		done()
 	}}).BackOffRetry(backoff.WithMaxRetries(backOffCfg, 3))
 	Assert(context.Background(), t, obs, HasItems(1, 2, 1, 2, 1, 2, 1, 2), HasError(errFoo))
 }
@@ -992,27 +989,24 @@ func Test_Observable_Repeat_Frequency(t *testing.T) {
 
 func Test_Observable_Retry(t *testing.T) {
 	i := 0
-	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item, done func()) {
+	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item) {
 		next <- Of(1)
 		next <- Of(2)
 		if i == 2 {
 			next <- Of(3)
-			done()
 		} else {
 			i++
 			next <- Error(errFoo)
-			done()
 		}
 	}}).Retry(3)
 	Assert(context.Background(), t, obs, HasItems(1, 2, 1, 2, 1, 2, 3), HasNoError())
 }
 
 func Test_Observable_Retry_Error(t *testing.T) {
-	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item, done func()) {
+	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item) {
 		next <- Of(1)
 		next <- Of(2)
 		next <- Error(errFoo)
-		done()
 	}}).Retry(3)
 	Assert(context.Background(), t, obs, HasItems(1, 2, 1, 2, 1, 2, 1, 2), HasError(errFoo))
 }

@@ -32,7 +32,7 @@ type (
 	// Unmarshaller defines an unmarshaller type ([]byte to interface).
 	Unmarshaller func([]byte, interface{}) error
 	// Producer defines a producer implementation.
-	Producer func(ctx context.Context, next chan<- Item, done func())
+	Producer func(ctx context.Context, next chan<- Item)
 	// Supplier defines a function that supplies a result from nothing.
 	Supplier func(ctx context.Context) Item
 	// Disposed is a notification channel indicating when an Observable is closed.

@@ -84,76 +84,97 @@ func Test_Concat_OneEmptyObservable(t *testing.T) {
 }
 
 func Test_Create(t *testing.T) {
-	obs := Create([]Producer{func(ctx context.Context, next chan<- Item, done func()) {
+	obs := Create([]Producer{func(ctx context.Context, next chan<- Item) {
 		next <- Of(1)
 		next <- Of(2)
 		next <- Of(3)
-		done()
 	}})
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNoError())
 }
 
 func Test_Create_SingleDup(t *testing.T) {
-	obs := Create([]Producer{func(ctx context.Context, next chan<- Item, done func()) {
+	obs := Create([]Producer{func(ctx context.Context, next chan<- Item) {
 		next <- Of(1)
 		next <- Of(2)
 		next <- Of(3)
-		done()
 	}})
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNoError())
 	Assert(context.Background(), t, obs, IsEmpty(), HasNoError())
 }
 
+func Test_Create_ContextCancelled(t *testing.T) {
+	closed1 := make(chan struct{})
+	ctx, cancel := context.WithCancel(context.Background())
+	Create([]Producer{
+		func(ctx context.Context, next chan<- Item) {
+			cancel()
+		}, func(ctx context.Context, next chan<- Item) {
+			<-ctx.Done()
+			closed1 <- struct{}{}
+		},
+	}, WithContext(ctx)).Run()
+
+	select {
+	case <-time.Tick(time.Second):
+		assert.FailNow(t, "producer not closed")
+	case <-closed1:
+	}
+}
+
 func Test_Defer(t *testing.T) {
-	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item, done func()) {
+	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item) {
 		next <- Of(1)
 		next <- Of(2)
 		next <- Of(3)
-		done()
 	}})
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNoError())
 }
 
 func Test_Defer_Multiple(t *testing.T) {
-	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item, done func()) {
+	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item) {
 		next <- Of(1)
 		next <- Of(2)
-		done()
-	}, func(ctx context.Context, next chan<- Item, done func()) {
+	}, func(ctx context.Context, next chan<- Item) {
 		next <- Of(10)
 		next <- Of(20)
-		done()
 	}})
 	Assert(context.Background(), t, obs, HasItemsNoOrder(1, 2, 10, 20), HasNoError())
 }
 
-func Test_Defer_Close(t *testing.T) {
-	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item, done func()) {
-		next <- Of(1)
-		next <- Of(2)
-		next <- Of(3)
-		done()
-	}})
-	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNoError())
+func Test_Defer_ContextCancelled(t *testing.T) {
+	closed1 := make(chan struct{})
+	ctx, cancel := context.WithCancel(context.Background())
+	Defer([]Producer{
+		func(ctx context.Context, next chan<- Item) {
+			cancel()
+		}, func(ctx context.Context, next chan<- Item) {
+			<-ctx.Done()
+			closed1 <- struct{}{}
+		},
+	}, WithContext(ctx)).Run()
+
+	select {
+	case <-time.Tick(time.Second):
+		assert.FailNow(t, "producer not closed")
+	case <-closed1:
+	}
 }
 
 func Test_Defer_SingleDup(t *testing.T) {
-	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item, done func()) {
+	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item) {
 		next <- Of(1)
 		next <- Of(2)
 		next <- Of(3)
-		done()
 	}})
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNoError())
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNoError())
 }
 
 func Test_Defer_ComposedDup(t *testing.T) {
-	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item, done func()) {
+	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item) {
 		next <- Of(1)
 		next <- Of(2)
 		next <- Of(3)
-		done()
 	}}).Map(func(_ context.Context, i interface{}) (_ interface{}, _ error) {
 		return i.(int) + 1, nil
 	}).Map(func(_ context.Context, i interface{}) (_ interface{}, _ error) {
@@ -164,11 +185,10 @@ func Test_Defer_ComposedDup(t *testing.T) {
 }
 
 func Test_Defer_ComposedDup_EagerObservation(t *testing.T) {
-	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item, done func()) {
+	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item) {
 		next <- Of(1)
 		next <- Of(2)
 		next <- Of(3)
-		done()
 	}}).Map(func(_ context.Context, i interface{}) (_ interface{}, _ error) {
 		return i.(int) + 1, nil
 	}, WithObservationStrategy(Eager)).Map(func(_ context.Context, i interface{}) (_ interface{}, _ error) {
@@ -181,11 +201,10 @@ func Test_Defer_ComposedDup_EagerObservation(t *testing.T) {
 }
 
 func Test_Defer_Error(t *testing.T) {
-	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item, done func()) {
+	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item) {
 		next <- Of(1)
 		next <- Of(2)
 		next <- Error(errFoo)
-		done()
 	}})
 	Assert(context.Background(), t, obs, HasItems(1, 2), HasError(errFoo))
 }

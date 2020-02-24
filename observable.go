@@ -88,7 +88,7 @@ type ObservableImpl struct {
 }
 
 func defaultErrorFuncOperator(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	item.SendCtx(ctx, dst)
+	item.SendContext(ctx, dst)
 	operatorOptions.stop()
 }
 
@@ -297,7 +297,7 @@ func runPar(ctx context.Context, next chan Item, iterable Iterable, operatorFact
 				case item, ok := <-observe:
 					if !ok {
 						if !bypassGather {
-							Of(op).SendCtx(ctx, gather)
+							Of(op).SendContext(ctx, gather)
 						}
 						return
 					}

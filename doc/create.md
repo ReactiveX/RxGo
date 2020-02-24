@@ -9,11 +9,10 @@ Create an Observable from scratch by calling observer methods programmatically.
 ## Example
 
 ```go
-observable := rxgo.Create([]rxgo.Producer{func(ctx context.Context, next chan<- rxgo.Item, done func()) {
+observable := rxgo.Create([]rxgo.Producer{func(ctx context.Context, next chan<- rxgo.Item) {
 	next <- rxgo.Of(1)
 	next <- rxgo.Of(2)
 	next <- rxgo.Of(3)
-	done()
 }})
 ```
 
@@ -24,12 +23,6 @@ Output:
 2
 3
 ```
-
-There are two ways to close the Observable:
-* Closing the `next` channel.
-* Calling the `done()` function.
-
-Yet, as we can pass multiple producers, using the `done()` function is the recommended approach.
 
 ## Options
 

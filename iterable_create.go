@@ -15,12 +15,13 @@ func newCreateIterable(fs []Producer, opts ...Option) Iterable {
 	ctx := option.buildContext()
 
 	wg := sync.WaitGroup{}
-	done := func() {
-		wg.Done()
-	}
 	for _, f := range fs {
+		f := f
 		wg.Add(1)
-		go f(ctx, next, done)
+		go func() {
+			defer wg.Done()
+			f(ctx, next)
+		}()
 	}
 	go func() {
 		wg.Wait()

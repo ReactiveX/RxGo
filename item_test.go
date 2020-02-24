@@ -43,7 +43,7 @@ func Test_Item_SendContext_True(t *testing.T) {
 	defer close(ch)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	assert.True(t, Of(5).SendCtx(ctx, ch))
+	assert.True(t, Of(5).SendContext(ctx, ch))
 }
 
 func Test_Item_SendNonBlocking(t *testing.T) {
