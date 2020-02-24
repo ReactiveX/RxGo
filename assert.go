@@ -237,8 +237,8 @@ loop:
 	}
 	if checkHasItem, value := ass.itemToBeChecked(); checkHasItem {
 		length := len(got)
-		if length > 1 {
-			assert.Fail(t, "wrong number of items", "expected 1, got %d", length)
+		if length != 1 {
+			assert.FailNow(t, "wrong number of items", "expected 1, got %d", length)
 		}
 		assert.Equal(t, value, got[0])
 	}

@@ -28,9 +28,9 @@ type allOperator struct {
 	all       bool
 }
 
-func (op *allOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *allOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	if !op.predicate(item.V) {
-		dst <- Of(false)
+		Of(false).SendCtx(ctx, dst)
 		op.all = false
 		operatorOptions.stop()
 	}
@@ -40,15 +40,15 @@ func (op *allOperator) err(ctx context.Context, item Item, dst chan<- Item, oper
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *allOperator) end(_ context.Context, dst chan<- Item) {
+func (op *allOperator) end(ctx context.Context, dst chan<- Item) {
 	if op.all {
-		dst <- Of(true)
+		Of(true).SendCtx(ctx, dst)
 	}
 }
 
-func (op *allOperator) gatherNext(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *allOperator) gatherNext(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	if item.V == false {
-		dst <- Of(false)
+		Of(false).SendCtx(ctx, dst)
 		op.all = false
 		operatorOptions.stop()
 	}
@@ -66,10 +66,10 @@ type averageFloat32Operator struct {
 	count float32
 }
 
-func (op *averageFloat32Operator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *averageFloat32Operator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	switch v := item.V.(type) {
 	default:
-		dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: float or int, got: %t", item)})
+		Error(IllegalInputError{error: fmt.Sprintf("expected type: float or int, got: %t", item)}).SendCtx(ctx, dst)
 		operatorOptions.stop()
 	case int:
 		op.sum += float32(v)
@@ -87,11 +87,11 @@ func (op *averageFloat32Operator) err(ctx context.Context, item Item, dst chan<-
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *averageFloat32Operator) end(_ context.Context, dst chan<- Item) {
+func (op *averageFloat32Operator) end(ctx context.Context, dst chan<- Item) {
 	if op.count == 0 {
-		dst <- Of(0)
+		Of(0).SendCtx(ctx, dst)
 	} else {
-		dst <- Of(op.sum / op.count)
+		Of(op.sum/op.count).SendCtx(ctx, dst)
 	}
 }
 
@@ -462,12 +462,12 @@ func (o *ObservableImpl) BufferWithTime(timespan Duration, opts ...Option) Obser
 			case item, ok := <-observe:
 				if !ok {
 					if len(buffer) != 0 {
-						Of(buffer).SendWithContext(ctx, next)
+						Of(buffer).SendCtx(ctx, next)
 					}
 					return
 				}
 				if item.Error() {
-					item.SendWithContext(ctx, next)
+					item.SendCtx(ctx, next)
 					if option.getErrorStrategy() == Stop {
 						return
 					}
@@ -476,7 +476,7 @@ func (o *ObservableImpl) BufferWithTime(timespan Duration, opts ...Option) Obser
 				}
 			case <-time.After(timespan.duration()):
 				if len(buffer) != 0 {
-					if !Of(buffer).SendWithContext(ctx, next) {
+					if !Of(buffer).SendCtx(ctx, next) {
 						return
 					}
 					buffer = make([]interface{}, 0)
@@ -509,19 +509,19 @@ func (o *ObservableImpl) BufferWithTimeOrCount(timespan Duration, count int, opt
 			case item, ok := <-observe:
 				if !ok {
 					if len(buffer) != 0 {
-						Of(buffer).SendWithContext(ctx, next)
+						Of(buffer).SendCtx(ctx, next)
 					}
 					return
 				}
 				if item.Error() {
-					item.SendWithContext(ctx, next)
+					item.SendCtx(ctx, next)
 					if option.getErrorStrategy() == Stop {
 						return
 					}
 				} else {
 					buffer = append(buffer, item.V)
 					if len(buffer) == count {
-						if !Of(buffer).SendWithContext(ctx, next) {
+						if !Of(buffer).SendCtx(ctx, next) {
 							return
 						}
 						buffer = make([]interface{}, 0)
@@ -529,7 +529,7 @@ func (o *ObservableImpl) BufferWithTimeOrCount(timespan Duration, count int, opt
 				}
 			case <-time.After(timespan.duration()):
 				if len(buffer) != 0 {
-					if !Of(buffer).SendWithContext(ctx, next) {
+					if !Of(buffer).SendCtx(ctx, next) {
 						return
 					}
 					buffer = make([]interface{}, 0)
@@ -625,7 +625,7 @@ func (o *ObservableImpl) Debounce(timespan Duration, opts ...Option) Observable 
 					return
 				}
 				if item.Error() {
-					if !item.SendWithContext(ctx, next) {
+					if !item.SendCtx(ctx, next) {
 						return
 					}
 					if option.getErrorStrategy() == Stop {
@@ -636,7 +636,7 @@ func (o *ObservableImpl) Debounce(timespan Duration, opts ...Option) Observable 
 				}
 			case <-time.After(timespan.duration()):
 				if latest != nil {
-					if !Of(latest).SendWithContext(ctx, next) {
+					if !Of(latest).SendCtx(ctx, next) {
 						return
 					}
 					latest = nil
@@ -1045,12 +1045,12 @@ func (o *ObservableImpl) FlatMap(apply ItemToObservable, opts ...Option) Observa
 							break loop2
 						}
 						if item.Error() {
-							item.SendWithContext(ctx, next)
+							item.SendCtx(ctx, next)
 							if option.getErrorStrategy() == Stop {
 								return
 							}
 						} else {
-							if !item.SendWithContext(ctx, next) {
+							if !item.SendCtx(ctx, next) {
 								return
 							}
 						}
@@ -2319,7 +2319,7 @@ func (o *ObservableImpl) TimeInterval(opts ...Option) Observable {
 					return
 				}
 				if item.Error() {
-					if !item.SendWithContext(ctx, next) {
+					if !item.SendCtx(ctx, next) {
 						return
 					}
 					if option.getErrorStrategy() == Stop {
@@ -2327,7 +2327,7 @@ func (o *ObservableImpl) TimeInterval(opts ...Option) Observable {
 					}
 				} else {
 					now := time.Now().UTC()
-					if !Of(now.Sub(latest)).SendWithContext(ctx, next) {
+					if !Of(now.Sub(latest)).SendCtx(ctx, next) {
 						return
 					}
 					latest = now
@@ -2582,7 +2582,7 @@ func (o *ObservableImpl) WindowWithTime(timespan Duration, opts ...Option) Obser
 		observe := o.Observe(opts...)
 		ch := option.buildChannel()
 		empty := true
-		if !Of(FromChannel(ch)).SendWithContext(ctx, next) {
+		if !Of(FromChannel(ch)).SendCtx(ctx, next) {
 			return
 		}
 
@@ -2597,7 +2597,7 @@ func (o *ObservableImpl) WindowWithTime(timespan Duration, opts ...Option) Obser
 					return
 				}
 				if item.Error() {
-					if !item.SendWithContext(ctx, ch) {
+					if !item.SendCtx(ctx, ch) {
 						return
 					}
 					if option.getErrorStrategy() == Stop {
@@ -2605,7 +2605,7 @@ func (o *ObservableImpl) WindowWithTime(timespan Duration, opts ...Option) Obser
 						return
 					}
 				}
-				if !item.SendWithContext(ctx, ch) {
+				if !item.SendCtx(ctx, ch) {
 					return
 				}
 				empty = false
@@ -2616,7 +2616,7 @@ func (o *ObservableImpl) WindowWithTime(timespan Duration, opts ...Option) Obser
 				close(ch)
 				ch = option.buildChannel()
 				empty = true
-				if !Of(FromChannel(ch)).SendWithContext(ctx, next) {
+				if !Of(FromChannel(ch)).SendCtx(ctx, next) {
 					return
 				}
 			}
@@ -2641,7 +2641,7 @@ func (o *ObservableImpl) WindowWithTimeOrCount(timespan Duration, count int, opt
 		observe := o.Observe(opts...)
 		ch := option.buildChannel()
 		iCount := 0
-		if !Of(FromChannel(ch)).SendWithContext(ctx, next) {
+		if !Of(FromChannel(ch)).SendCtx(ctx, next) {
 			return
 		}
 
@@ -2656,7 +2656,7 @@ func (o *ObservableImpl) WindowWithTimeOrCount(timespan Duration, count int, opt
 					return
 				}
 				if item.Error() {
-					if !item.SendWithContext(ctx, ch) {
+					if !item.SendCtx(ctx, ch) {
 						return
 					}
 					if option.getErrorStrategy() == Stop {
@@ -2664,7 +2664,7 @@ func (o *ObservableImpl) WindowWithTimeOrCount(timespan Duration, count int, opt
 						return
 					}
 				}
-				if !item.SendWithContext(ctx, ch) {
+				if !item.SendCtx(ctx, ch) {
 					return
 				}
 				iCount++
@@ -2672,7 +2672,7 @@ func (o *ObservableImpl) WindowWithTimeOrCount(timespan Duration, count int, opt
 					close(ch)
 					ch = option.buildChannel()
 					iCount = 0
-					if !Of(FromChannel(ch)).SendWithContext(ctx, next) {
+					if !Of(FromChannel(ch)).SendCtx(ctx, next) {
 						return
 					}
 				}
@@ -2683,7 +2683,7 @@ func (o *ObservableImpl) WindowWithTimeOrCount(timespan Duration, count int, opt
 				close(ch)
 				ch = option.buildChannel()
 				iCount = 0
-				if !Of(FromChannel(ch)).SendWithContext(ctx, next) {
+				if !Of(FromChannel(ch)).SendCtx(ctx, next) {
 					return
 				}
 			}

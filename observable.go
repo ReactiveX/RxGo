@@ -238,7 +238,6 @@ func runPar(ctx context.Context, next chan Item, iterable Iterable, operatorFact
 	wg := sync.WaitGroup{}
 	_, pool := option.getPool()
 	wg.Add(pool)
-	ctx, cancel := context.WithCancel(ctx)
 
 	var gather chan Item
 	if bypassGather {
@@ -246,6 +245,7 @@ func runPar(ctx context.Context, next chan Item, iterable Iterable, operatorFact
 	} else {
 		gather = make(chan Item, 1)
 
+		// Gather
 		go func() {
 			op := operatorFactory()
 			stopped := false
@@ -274,6 +274,7 @@ func runPar(ctx context.Context, next chan Item, iterable Iterable, operatorFact
 		}()
 	}
 
+	// Scatter
 	for i := 0; i < pool; i++ {
 		go func() {
 			op := operatorFactory()
@@ -312,7 +313,6 @@ func runPar(ctx context.Context, next chan Item, iterable Iterable, operatorFact
 
 	go func() {
 		wg.Wait()
-		cancel()
 		close(gather)
 	}()
 }
