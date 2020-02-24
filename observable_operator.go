@@ -374,7 +374,7 @@ func (o *ObservableImpl) BackOffRetry(backOffCfg backoff.BackOff, opts ...Option
 				if i.Error() {
 					return i.E
 				}
-				next <- i
+				i.SendCtx(ctx, next)
 			}
 		}
 	}
@@ -792,7 +792,7 @@ func (o *ObservableImpl) DoOnCompleted(completedFunc CompletedFunc, opts ...Opti
 
 	option := parseOptions(opts...)
 	ctx := option.buildContext()
-	go handler(ctx, o.Observe())
+	go handler(ctx, o.Observe(opts...))
 	return dispose
 }
 
@@ -819,7 +819,7 @@ func (o *ObservableImpl) DoOnError(errFunc ErrFunc, opts ...Option) Disposed {
 
 	option := parseOptions(opts...)
 	ctx := option.buildContext()
-	go handler(ctx, o.Observe())
+	go handler(ctx, o.Observe(opts...))
 	return dispose
 }
 
@@ -846,7 +846,7 @@ func (o *ObservableImpl) DoOnNext(nextFunc NextFunc, opts ...Option) Disposed {
 
 	option := parseOptions(opts...)
 	ctx := option.buildContext()
-	go handler(ctx, o.Observe())
+	go handler(ctx, o.Observe(opts...))
 	return dispose
 }
 
@@ -1034,7 +1034,7 @@ func (o *ObservableImpl) FlatMap(apply ItemToObservable, opts ...Option) Observa
 				if !ok {
 					return
 				}
-				observe2 := apply(item).Observe()
+				observe2 := apply(item).Observe(opts...)
 			loop2:
 				for {
 					select {
@@ -1089,7 +1089,7 @@ func (o *ObservableImpl) ForEach(nextFunc NextFunc, errFunc ErrFunc, completedFu
 
 	option := parseOptions(opts...)
 	ctx := option.buildContext()
-	go handler(ctx, o.Observe())
+	go handler(ctx, o.Observe(opts...))
 	return dispose
 }
 
@@ -1557,7 +1557,7 @@ func (o *ObservableImpl) Retry(count int, opts ...Option) Observable {
 	ctx := option.buildContext()
 
 	go func() {
-		observe := o.Observe()
+		observe := o.Observe(opts...)
 	loop:
 		for {
 			select {
@@ -1573,7 +1573,7 @@ func (o *ObservableImpl) Retry(count int, opts ...Option) Observable {
 						i.SendCtx(ctx, next)
 						break loop
 					}
-					observe = o.Observe()
+					observe = o.Observe(opts...)
 				} else {
 					i.SendCtx(ctx, next)
 				}
@@ -1622,7 +1622,7 @@ func (o *ObservableImpl) Sample(iterable Iterable, opts ...Option) Observable {
 
 	go func() {
 		defer close(obsCh)
-		observe := o.Observe()
+		observe := o.Observe(opts...)
 		for {
 			select {
 			case <-ctx.Done():
@@ -1631,14 +1631,14 @@ func (o *ObservableImpl) Sample(iterable Iterable, opts ...Option) Observable {
 				if !ok {
 					return
 				}
-				obsCh <- i
+				i.SendCtx(ctx, obsCh)
 			}
 		}
 	}()
 
 	go func() {
 		defer close(itCh)
-		observe := iterable.Observe()
+		observe := iterable.Observe(opts...)
 		for {
 			select {
 			case <-ctx.Done():
@@ -1647,7 +1647,7 @@ func (o *ObservableImpl) Sample(iterable Iterable, opts ...Option) Observable {
 				if !ok {
 					return
 				}
-				itCh <- i
+				i.SendCtx(ctx, itCh)
 			}
 		}
 	}()
@@ -1702,11 +1702,11 @@ type scanOperator struct {
 func (op *scanOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	v, err := op.apply(ctx, op.current, item.V)
 	if err != nil {
-		dst <- Error(err)
+		Error(err).SendCtx(ctx, dst)
 		operatorOptions.stop()
 		return
 	}
-	dst <- Of(v)
+	Of(v).SendCtx(ctx, dst)
 	op.current = v
 }
 
@@ -1738,7 +1738,7 @@ func (o *ObservableImpl) Send(output chan<- Item, opts ...Option) {
 	go func() {
 		option := parseOptions(opts...)
 		ctx := option.buildContext()
-		observe := o.Observe()
+		observe := o.Observe(opts...)
 	loop:
 		for {
 			select {
@@ -1752,7 +1752,7 @@ func (o *ObservableImpl) Send(output chan<- Item, opts ...Option) {
 					output <- i
 					break loop
 				}
-				output <- i
+				i.SendCtx(ctx, output)
 			}
 		}
 		close(output)
@@ -1770,7 +1770,7 @@ func (o *ObservableImpl) SequenceEqual(iterable Iterable, opts ...Option) Single
 
 	go func() {
 		defer close(obsCh)
-		observe := o.Observe()
+		observe := o.Observe(opts...)
 		for {
 			select {
 			case <-ctx.Done():
@@ -1779,14 +1779,14 @@ func (o *ObservableImpl) SequenceEqual(iterable Iterable, opts ...Option) Single
 				if !ok {
 					return
 				}
-				obsCh <- i
+				i.SendCtx(ctx, obsCh)
 			}
 		}
 	}()
 
 	go func() {
 		defer close(itCh)
-		observe := iterable.Observe()
+		observe := iterable.Observe(opts...)
 		for {
 			select {
 			case <-ctx.Done():
@@ -1795,7 +1795,7 @@ func (o *ObservableImpl) SequenceEqual(iterable Iterable, opts ...Option) Single
 				if !ok {
 					return
 				}
-				itCh <- i
+				i.SendCtx(ctx, itCh)
 			}
 		}
 	}()
@@ -1831,7 +1831,7 @@ func (o *ObservableImpl) SequenceEqual(iterable Iterable, opts ...Option) Single
 			}
 		}
 
-		next <- Of(areCorrect && len(mainSequence) == 0 && len(obsSequence) == 0)
+		Of(areCorrect && len(mainSequence) == 0 && len(obsSequence) == 0).SendCtx(ctx, next)
 		close(next)
 	}()
 
@@ -1858,7 +1858,7 @@ func (o *ObservableImpl) Serialize(from int, identifier func(interface{}) int, o
 	// Scatter
 	go func() {
 		defer close(notif)
-		src := o.Observe()
+		src := o.Observe(opts...)
 
 		for {
 			select {
@@ -1880,7 +1880,11 @@ func (o *ObservableImpl) Serialize(from int, identifier func(interface{}) int, o
 				}
 				status[id] = item.V
 				mutex.Unlock()
-				notif <- struct{}{}
+				select {
+				case <-ctx.Done():
+					return
+				case notif <- struct{}{}:
+				}
 			}
 		}
 	}()
@@ -1907,7 +1911,7 @@ func (o *ObservableImpl) Serialize(from int, identifier func(interface{}) int, o
 							minHeap.Pop()
 							delete(status, id)
 							mutex.Unlock()
-							next <- Of(itemValue)
+							Of(itemValue).SendCtx(ctx, next)
 							mutex.Lock()
 							atomic.AddInt64(&counter, 1)
 							continue
@@ -1941,12 +1945,12 @@ type skipOperator struct {
 	skipCount int
 }
 
-func (op *skipOperator) next(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+func (op *skipOperator) next(ctx context.Context, item Item, dst chan<- Item, _ operatorOptions) {
 	if op.skipCount < int(op.nth) {
 		op.skipCount++
 		return
 	}
-	dst <- item
+	item.SendCtx(ctx, dst)
 }
 
 func (op *skipOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
@@ -1975,13 +1979,13 @@ type skipLastOperator struct {
 	skipCount int
 }
 
-func (op *skipLastOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *skipLastOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	if op.skipCount >= int(op.nth) {
 		operatorOptions.stop()
 		return
 	}
 	op.skipCount++
-	dst <- item
+	item.SendCtx(ctx, dst)
 }
 
 func (op *skipLastOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
@@ -2010,13 +2014,13 @@ type skipWhileOperator struct {
 	skip  bool
 }
 
-func (op *skipWhileOperator) next(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+func (op *skipWhileOperator) next(ctx context.Context, item Item, dst chan<- Item, _ operatorOptions) {
 	if !op.skip {
-		dst <- item
+		item.SendCtx(ctx, dst)
 	} else {
 		if !op.apply(item.V) {
 			op.skip = false
-			dst <- item
+			item.SendCtx(ctx, dst)
 		}
 	}
 }
@@ -2039,7 +2043,7 @@ func (o *ObservableImpl) StartWith(iterable Iterable, opts ...Option) Observable
 
 	go func() {
 		defer close(next)
-		observe := iterable.Observe()
+		observe := iterable.Observe(opts...)
 	loop1:
 		for {
 			select {
@@ -2053,10 +2057,10 @@ func (o *ObservableImpl) StartWith(iterable Iterable, opts ...Option) Observable
 					next <- i
 					return
 				}
-				next <- i
+				i.SendCtx(ctx, next)
 			}
 		}
-		observe = o.Observe()
+		observe = o.Observe(opts...)
 	loop2:
 		for {
 			select {
@@ -2067,10 +2071,10 @@ func (o *ObservableImpl) StartWith(iterable Iterable, opts ...Option) Observable
 					break loop2
 				}
 				if i.Error() {
-					next <- i
+					i.SendCtx(ctx, next)
 					return
 				}
-				next <- i
+				i.SendCtx(ctx, next)
 			}
 		}
 	}()
@@ -2173,10 +2177,10 @@ type takeOperator struct {
 	takeCount int
 }
 
-func (op *takeOperator) next(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+func (op *takeOperator) next(ctx context.Context, item Item, dst chan<- Item, _ operatorOptions) {
 	if op.takeCount < int(op.nth) {
 		op.takeCount++
-		dst <- item
+		item.SendCtx(ctx, dst)
 	}
 }
 
@@ -2218,7 +2222,7 @@ func (op *takeLast) err(ctx context.Context, item Item, dst chan<- Item, operato
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *takeLast) end(_ context.Context, dst chan<- Item) {
+func (op *takeLast) end(ctx context.Context, dst chan<- Item) {
 	if op.count < op.n {
 		remaining := op.n - op.count
 		if remaining <= op.count {
@@ -2229,7 +2233,7 @@ func (op *takeLast) end(_ context.Context, dst chan<- Item) {
 		op.n = op.count
 	}
 	for i := 0; i < op.n; i++ {
-		dst <- Of(op.r.Value)
+		Of(op.r.Value).SendCtx(ctx, dst)
 		op.r = op.r.Next()
 	}
 }
@@ -2252,8 +2256,8 @@ type takeUntilOperator struct {
 	apply Predicate
 }
 
-func (op *takeUntilOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	dst <- item
+func (op *takeUntilOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	item.SendCtx(ctx, dst)
 	if op.apply(item.V) {
 		operatorOptions.stop()
 		return
@@ -2285,12 +2289,12 @@ type takeWhileOperator struct {
 	apply Predicate
 }
 
-func (op *takeWhileOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *takeWhileOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	if !op.apply(item.V) {
 		operatorOptions.stop()
 		return
 	}
-	dst <- item
+	item.SendCtx(ctx, dst)
 }
 
 func (op *takeWhileOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
@@ -2350,20 +2354,20 @@ type timestampOperator struct {
 }
 
 func (op *timestampOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	dst <- Of(TimestampItem{
+	Of(TimestampItem{
 		Timestamp: time.Now().UTC(),
 		V:         item.V,
-	})
+	}).SendCtx(ctx, dst)
 }
 
 func (op *timestampOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *timestampOperator) end(ctx context.Context, dst chan<- Item) {
+func (op *timestampOperator) end(_ context.Context, _ chan<- Item) {
 }
 
-func (op *timestampOperator) gatherNext(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *timestampOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
 // ToMap convert the sequence of items emitted by an Observable
@@ -2386,7 +2390,7 @@ type toMapOperator struct {
 func (op *toMapOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	k, err := op.keySelector(ctx, item.V)
 	if err != nil {
-		dst <- Error(err)
+		Error(err).SendCtx(ctx, dst)
 		operatorOptions.stop()
 		return
 	}
@@ -2397,8 +2401,8 @@ func (op *toMapOperator) err(ctx context.Context, item Item, dst chan<- Item, op
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *toMapOperator) end(_ context.Context, dst chan<- Item) {
-	dst <- Of(op.m)
+func (op *toMapOperator) end(ctx context.Context, dst chan<- Item) {
+	Of(op.m).SendCtx(ctx, dst)
 }
 
 func (op *toMapOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
@@ -2426,14 +2430,14 @@ type toMapWithValueSelector struct {
 func (op *toMapWithValueSelector) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	k, err := op.keySelector(ctx, item.V)
 	if err != nil {
-		dst <- Error(err)
+		Error(err).SendCtx(ctx, dst)
 		operatorOptions.stop()
 		return
 	}
 
 	v, err := op.valueSelector(ctx, item.V)
 	if err != nil {
-		dst <- Error(err)
+		Error(err).SendCtx(ctx, dst)
 		operatorOptions.stop()
 		return
 	}
@@ -2445,12 +2449,11 @@ func (op *toMapWithValueSelector) err(ctx context.Context, item Item, dst chan<-
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *toMapWithValueSelector) end(_ context.Context, dst chan<- Item) {
-	dst <- Of(op.m)
+func (op *toMapWithValueSelector) end(ctx context.Context, dst chan<- Item) {
+	Of(op.m).SendCtx(ctx, dst)
 }
 
 func (op *toMapWithValueSelector) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
-	panic("implement me")
 }
 
 // ToSlice collects all items from an Observable and emit them in a slice and an optional error.
@@ -2524,11 +2527,7 @@ func (op *windowWithCountOperator) pre(ctx context.Context, dst chan<- Item) {
 	if op.currentChannel == nil {
 		ch := op.option.buildChannel()
 		op.currentChannel = ch
-		select {
-		case <-ctx.Done():
-			return
-		case dst <- Of(FromChannel(ch)):
-		}
+		Of(FromChannel(ch)).SendCtx(ctx, dst)
 	}
 }
 
@@ -2538,11 +2537,7 @@ func (op *windowWithCountOperator) post(ctx context.Context, dst chan<- Item) {
 		close(op.currentChannel)
 		ch := op.option.buildChannel()
 		op.currentChannel = ch
-		select {
-		case <-ctx.Done():
-			return
-		case dst <- Of(FromChannel(ch)):
-		}
+		Of(FromChannel(ch)).SendCtx(ctx, dst)
 	}
 }
 
@@ -2702,8 +2697,8 @@ func (o *ObservableImpl) ZipFromIterable(iterable Iterable, zipper Func2, opts .
 
 	go func() {
 		defer close(next)
-		it1 := o.Observe()
-		it2 := iterable.Observe()
+		it1 := o.Observe(opts...)
+		it2 := iterable.Observe(opts...)
 	loop:
 		for {
 			select {
@@ -2714,7 +2709,7 @@ func (o *ObservableImpl) ZipFromIterable(iterable Iterable, zipper Func2, opts .
 					break loop
 				}
 				if i1.Error() {
-					next <- i1
+					i1.SendCtx(ctx, next)
 					return
 				}
 				for {
@@ -2726,15 +2721,15 @@ func (o *ObservableImpl) ZipFromIterable(iterable Iterable, zipper Func2, opts .
 							break loop
 						}
 						if i2.Error() {
-							next <- i2
+							i2.SendCtx(ctx, next)
 							return
 						}
 						v, err := zipper(ctx, i1.V, i2.V)
 						if err != nil {
-							next <- Error(err)
+							Error(err).SendCtx(ctx, next)
 							return
 						}
-						next <- Of(v)
+						Of(v).SendCtx(ctx, next)
 						continue loop
 					}
 				}
