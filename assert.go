@@ -233,7 +233,9 @@ loop:
 		for _, v := range got {
 			delete(m, v)
 		}
-		assert.Equal(t, 0, len(m))
+		if len(m) != 0 {
+			assert.Fail(t, "missing elements", "%v", got)
+		}
 	}
 	if checkHasItem, value := ass.itemToBeChecked(); checkHasItem {
 		length := len(got)
