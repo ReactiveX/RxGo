@@ -28,9 +28,9 @@ type allOperator struct {
 	all       bool
 }
 
-func (op *allOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *allOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	if !op.predicate(item.V) {
-		dst <- Of(false)
+		Of(false).SendCtx(ctx, dst)
 		op.all = false
 		operatorOptions.stop()
 	}
@@ -40,15 +40,15 @@ func (op *allOperator) err(ctx context.Context, item Item, dst chan<- Item, oper
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *allOperator) end(_ context.Context, dst chan<- Item) {
+func (op *allOperator) end(ctx context.Context, dst chan<- Item) {
 	if op.all {
-		dst <- Of(true)
+		Of(true).SendCtx(ctx, dst)
 	}
 }
 
-func (op *allOperator) gatherNext(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *allOperator) gatherNext(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	if item.V == false {
-		dst <- Of(false)
+		Of(false).SendCtx(ctx, dst)
 		op.all = false
 		operatorOptions.stop()
 	}
@@ -66,10 +66,10 @@ type averageFloat32Operator struct {
 	count float32
 }
 
-func (op *averageFloat32Operator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *averageFloat32Operator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	switch v := item.V.(type) {
 	default:
-		dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: float or int, got: %t", item)})
+		Error(IllegalInputError{error: fmt.Sprintf("expected type: float or int, got: %t", item)}).SendCtx(ctx, dst)
 		operatorOptions.stop()
 	case int:
 		op.sum += float32(v)
@@ -87,11 +87,11 @@ func (op *averageFloat32Operator) err(ctx context.Context, item Item, dst chan<-
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *averageFloat32Operator) end(_ context.Context, dst chan<- Item) {
+func (op *averageFloat32Operator) end(ctx context.Context, dst chan<- Item) {
 	if op.count == 0 {
-		dst <- Of(0)
+		Of(0).SendCtx(ctx, dst)
 	} else {
-		dst <- Of(op.sum / op.count)
+		Of(op.sum/op.count).SendCtx(ctx, dst)
 	}
 }
 
@@ -113,10 +113,10 @@ type averageFloat64Operator struct {
 	count float64
 }
 
-func (op *averageFloat64Operator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *averageFloat64Operator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	switch v := item.V.(type) {
 	default:
-		dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: float or int, got: %t", item)})
+		Error(IllegalInputError{error: fmt.Sprintf("expected type: float or int, got: %t", item)}).SendCtx(ctx, dst)
 		operatorOptions.stop()
 	case int:
 		op.sum += float64(v)
@@ -134,11 +134,11 @@ func (op *averageFloat64Operator) err(ctx context.Context, item Item, dst chan<-
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *averageFloat64Operator) end(_ context.Context, dst chan<- Item) {
+func (op *averageFloat64Operator) end(ctx context.Context, dst chan<- Item) {
 	if op.count == 0 {
-		dst <- Of(0)
+		Of(0).SendCtx(ctx, dst)
 	} else {
-		dst <- Of(op.sum / op.count)
+		Of(op.sum/op.count).SendCtx(ctx, dst)
 	}
 }
 
@@ -160,10 +160,10 @@ type averageIntOperator struct {
 	count int
 }
 
-func (op *averageIntOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *averageIntOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	switch v := item.V.(type) {
 	default:
-		dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int, got: %t", item)})
+		Error(IllegalInputError{error: fmt.Sprintf("expected type: int, got: %t", item)}).SendCtx(ctx, dst)
 		operatorOptions.stop()
 	case int:
 		op.sum += v
@@ -175,11 +175,11 @@ func (op *averageIntOperator) err(ctx context.Context, item Item, dst chan<- Ite
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *averageIntOperator) end(_ context.Context, dst chan<- Item) {
+func (op *averageIntOperator) end(ctx context.Context, dst chan<- Item) {
 	if op.count == 0 {
-		dst <- Of(0)
+		Of(0).SendCtx(ctx, dst)
 	} else {
-		dst <- Of(op.sum / op.count)
+		Of(op.sum/op.count).SendCtx(ctx, dst)
 	}
 }
 
@@ -201,10 +201,10 @@ type averageInt8Operator struct {
 	count int8
 }
 
-func (op *averageInt8Operator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *averageInt8Operator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	switch v := item.V.(type) {
 	default:
-		dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int8, got: %t", item)})
+		Error(IllegalInputError{error: fmt.Sprintf("expected type: int8, got: %t", item)}).SendCtx(ctx, dst)
 		operatorOptions.stop()
 	case int8:
 		op.sum += v
@@ -216,11 +216,11 @@ func (op *averageInt8Operator) err(ctx context.Context, item Item, dst chan<- It
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *averageInt8Operator) end(_ context.Context, dst chan<- Item) {
+func (op *averageInt8Operator) end(ctx context.Context, dst chan<- Item) {
 	if op.count == 0 {
-		dst <- Of(0)
+		Of(0).SendCtx(ctx, dst)
 	} else {
-		dst <- Of(op.sum / op.count)
+		Of(op.sum/op.count).SendCtx(ctx, dst)
 	}
 }
 
@@ -242,10 +242,10 @@ type averageInt16Operator struct {
 	count int16
 }
 
-func (op *averageInt16Operator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *averageInt16Operator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	switch v := item.V.(type) {
 	default:
-		dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int16, got: %t", item)})
+		Error(IllegalInputError{error: fmt.Sprintf("expected type: int16, got: %t", item)}).SendCtx(ctx, dst)
 		operatorOptions.stop()
 	case int16:
 		op.sum += v
@@ -257,11 +257,11 @@ func (op *averageInt16Operator) err(ctx context.Context, item Item, dst chan<- I
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *averageInt16Operator) end(_ context.Context, dst chan<- Item) {
+func (op *averageInt16Operator) end(ctx context.Context, dst chan<- Item) {
 	if op.count == 0 {
-		dst <- Of(0)
+		Of(0).SendCtx(ctx, dst)
 	} else {
-		dst <- Of(op.sum / op.count)
+		Of(op.sum/op.count).SendCtx(ctx, dst)
 	}
 }
 
@@ -283,10 +283,10 @@ type averageInt32Operator struct {
 	count int32
 }
 
-func (op *averageInt32Operator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *averageInt32Operator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	switch v := item.V.(type) {
 	default:
-		dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int32, got: %t", item)})
+		Error(IllegalInputError{error: fmt.Sprintf("expected type: int32, got: %t", item)}).SendCtx(ctx, dst)
 		operatorOptions.stop()
 	case int32:
 		op.sum += v
@@ -298,11 +298,11 @@ func (op *averageInt32Operator) err(ctx context.Context, item Item, dst chan<- I
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *averageInt32Operator) end(_ context.Context, dst chan<- Item) {
+func (op *averageInt32Operator) end(ctx context.Context, dst chan<- Item) {
 	if op.count == 0 {
-		dst <- Of(0)
+		Of(0).SendCtx(ctx, dst)
 	} else {
-		dst <- Of(op.sum / op.count)
+		Of(op.sum/op.count).SendCtx(ctx, dst)
 	}
 }
 
@@ -324,10 +324,10 @@ type averageInt64Operator struct {
 	count int64
 }
 
-func (op *averageInt64Operator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *averageInt64Operator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	switch v := item.V.(type) {
 	default:
-		dst <- Error(IllegalInputError{error: fmt.Sprintf("expected type: int64, got: %t", item)})
+		Error(IllegalInputError{error: fmt.Sprintf("expected type: int64, got: %t", item)}).SendCtx(ctx, dst)
 		operatorOptions.stop()
 	case int64:
 		op.sum += v
@@ -339,11 +339,11 @@ func (op *averageInt64Operator) err(ctx context.Context, item Item, dst chan<- I
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *averageInt64Operator) end(_ context.Context, dst chan<- Item) {
+func (op *averageInt64Operator) end(ctx context.Context, dst chan<- Item) {
 	if op.count == 0 {
-		dst <- Of(0)
+		Of(0).SendCtx(ctx, dst)
 	} else {
-		dst <- Of(op.sum / op.count)
+		Of(op.sum/op.count).SendCtx(ctx, dst)
 	}
 }
 
@@ -374,13 +374,13 @@ func (o *ObservableImpl) BackOffRetry(backOffCfg backoff.BackOff, opts ...Option
 				if i.Error() {
 					return i.E
 				}
-				next <- i
+				i.SendCtx(ctx, next)
 			}
 		}
 	}
 	go func() {
 		if err := backoff.Retry(f, backOffCfg); err != nil {
-			next <- Error(err)
+			Error(err).SendCtx(ctx, next)
 			close(next)
 			return
 		}
@@ -417,11 +417,11 @@ type bufferWithCountOperator struct {
 	buffer []interface{}
 }
 
-func (op *bufferWithCountOperator) next(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+func (op *bufferWithCountOperator) next(ctx context.Context, item Item, dst chan<- Item, _ operatorOptions) {
 	op.buffer[op.iCount] = item.V
 	op.iCount++
 	if op.iCount == op.count {
-		dst <- Of(op.buffer)
+		Of(op.buffer).SendCtx(ctx, dst)
 		op.iCount = 0
 		op.buffer = make([]interface{}, op.count)
 	}
@@ -431,9 +431,9 @@ func (op *bufferWithCountOperator) err(ctx context.Context, item Item, dst chan<
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *bufferWithCountOperator) end(_ context.Context, dst chan<- Item) {
+func (op *bufferWithCountOperator) end(ctx context.Context, dst chan<- Item) {
 	if op.iCount != 0 {
-		dst <- Of(op.buffer[:op.iCount])
+		Of(op.buffer[:op.iCount]).SendCtx(ctx, dst)
 	}
 }
 
@@ -462,12 +462,12 @@ func (o *ObservableImpl) BufferWithTime(timespan Duration, opts ...Option) Obser
 			case item, ok := <-observe:
 				if !ok {
 					if len(buffer) != 0 {
-						Of(buffer).SendWithContext(ctx, next)
+						Of(buffer).SendCtx(ctx, next)
 					}
 					return
 				}
 				if item.Error() {
-					item.SendWithContext(ctx, next)
+					item.SendCtx(ctx, next)
 					if option.getErrorStrategy() == Stop {
 						return
 					}
@@ -476,7 +476,7 @@ func (o *ObservableImpl) BufferWithTime(timespan Duration, opts ...Option) Obser
 				}
 			case <-time.After(timespan.duration()):
 				if len(buffer) != 0 {
-					if !Of(buffer).SendWithContext(ctx, next) {
+					if !Of(buffer).SendCtx(ctx, next) {
 						return
 					}
 					buffer = make([]interface{}, 0)
@@ -509,19 +509,19 @@ func (o *ObservableImpl) BufferWithTimeOrCount(timespan Duration, count int, opt
 			case item, ok := <-observe:
 				if !ok {
 					if len(buffer) != 0 {
-						Of(buffer).SendWithContext(ctx, next)
+						Of(buffer).SendCtx(ctx, next)
 					}
 					return
 				}
 				if item.Error() {
-					item.SendWithContext(ctx, next)
+					item.SendCtx(ctx, next)
 					if option.getErrorStrategy() == Stop {
 						return
 					}
 				} else {
 					buffer = append(buffer, item.V)
 					if len(buffer) == count {
-						if !Of(buffer).SendWithContext(ctx, next) {
+						if !Of(buffer).SendCtx(ctx, next) {
 							return
 						}
 						buffer = make([]interface{}, 0)
@@ -529,7 +529,7 @@ func (o *ObservableImpl) BufferWithTimeOrCount(timespan Duration, count int, opt
 				}
 			case <-time.After(timespan.duration()):
 				if len(buffer) != 0 {
-					if !Of(buffer).SendWithContext(ctx, next) {
+					if !Of(buffer).SendCtx(ctx, next) {
 						return
 					}
 					buffer = make([]interface{}, 0)
@@ -556,9 +556,9 @@ type containsOperator struct {
 	contains bool
 }
 
-func (op *containsOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *containsOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	if op.equal(item.V) {
-		dst <- Of(true)
+		Of(true).SendCtx(ctx, dst)
 		op.contains = true
 		operatorOptions.stop()
 	}
@@ -568,15 +568,15 @@ func (op *containsOperator) err(ctx context.Context, item Item, dst chan<- Item,
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *containsOperator) end(_ context.Context, dst chan<- Item) {
+func (op *containsOperator) end(ctx context.Context, dst chan<- Item) {
 	if !op.contains {
-		dst <- Of(false)
+		Of(false).SendCtx(ctx, dst)
 	}
 }
 
-func (op *containsOperator) gatherNext(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *containsOperator) gatherNext(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	if item.V == true {
-		dst <- Of(true)
+		Of(true).SendCtx(ctx, dst)
 		operatorOptions.stop()
 		op.contains = true
 	}
@@ -602,8 +602,8 @@ func (op *countOperator) err(_ context.Context, _ Item, _ chan<- Item, operatorO
 	operatorOptions.stop()
 }
 
-func (op *countOperator) end(_ context.Context, dst chan<- Item) {
-	dst <- Of(op.count)
+func (op *countOperator) end(ctx context.Context, dst chan<- Item) {
+	Of(op.count).SendCtx(ctx, dst)
 }
 
 func (op *countOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
@@ -625,7 +625,7 @@ func (o *ObservableImpl) Debounce(timespan Duration, opts ...Option) Observable 
 					return
 				}
 				if item.Error() {
-					if !item.SendWithContext(ctx, next) {
+					if !item.SendCtx(ctx, next) {
 						return
 					}
 					if option.getErrorStrategy() == Stop {
@@ -636,7 +636,7 @@ func (o *ObservableImpl) Debounce(timespan Duration, opts ...Option) Observable 
 				}
 			case <-time.After(timespan.duration()):
 				if latest != nil {
-					if !Of(latest).SendWithContext(ctx, next) {
+					if !Of(latest).SendCtx(ctx, next) {
 						return
 					}
 					latest = nil
@@ -664,18 +664,18 @@ type defaultIfEmptyOperator struct {
 	empty        bool
 }
 
-func (op *defaultIfEmptyOperator) next(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+func (op *defaultIfEmptyOperator) next(ctx context.Context, item Item, dst chan<- Item, _ operatorOptions) {
 	op.empty = false
-	dst <- item
+	item.SendCtx(ctx, dst)
 }
 
 func (op *defaultIfEmptyOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *defaultIfEmptyOperator) end(_ context.Context, dst chan<- Item) {
+func (op *defaultIfEmptyOperator) end(ctx context.Context, dst chan<- Item) {
 	if op.empty {
-		dst <- Of(op.defaultValue)
+		Of(op.defaultValue).SendCtx(ctx, dst)
 	}
 }
 
@@ -701,13 +701,13 @@ type distinctOperator struct {
 func (op *distinctOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	key, err := op.apply(ctx, item.V)
 	if err != nil {
-		dst <- Error(err)
+		Error(err).SendCtx(ctx, dst)
 		operatorOptions.stop()
 		return
 	}
 	_, ok := op.keyset[key]
 	if !ok {
-		dst <- item
+		item.SendCtx(ctx, dst)
 	}
 	op.keyset[key] = nil
 }
@@ -719,14 +719,14 @@ func (op *distinctOperator) err(ctx context.Context, item Item, dst chan<- Item,
 func (op *distinctOperator) end(_ context.Context, _ chan<- Item) {
 }
 
-func (op *distinctOperator) gatherNext(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+func (op *distinctOperator) gatherNext(ctx context.Context, item Item, dst chan<- Item, _ operatorOptions) {
 	switch item.V.(type) {
 	case *distinctOperator:
 		return
 	}
 
 	if _, contains := op.keyset[item.V]; !contains {
-		dst <- Of(item.V)
+		Of(item.V).SendCtx(ctx, dst)
 		op.keyset[item.V] = nil
 	}
 }
@@ -749,12 +749,12 @@ type distinctUntilChangedOperator struct {
 func (op *distinctUntilChangedOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	key, err := op.apply(ctx, item.V)
 	if err != nil {
-		dst <- Error(err)
+		Error(err).SendCtx(ctx, dst)
 		operatorOptions.stop()
 		return
 	}
 	if op.current != key {
-		dst <- item
+		item.SendCtx(ctx, dst)
 		op.current = key
 	}
 }
@@ -792,7 +792,7 @@ func (o *ObservableImpl) DoOnCompleted(completedFunc CompletedFunc, opts ...Opti
 
 	option := parseOptions(opts...)
 	ctx := option.buildContext()
-	go handler(ctx, o.Observe())
+	go handler(ctx, o.Observe(opts...))
 	return dispose
 }
 
@@ -819,7 +819,7 @@ func (o *ObservableImpl) DoOnError(errFunc ErrFunc, opts ...Option) Disposed {
 
 	option := parseOptions(opts...)
 	ctx := option.buildContext()
-	go handler(ctx, o.Observe())
+	go handler(ctx, o.Observe(opts...))
 	return dispose
 }
 
@@ -846,7 +846,7 @@ func (o *ObservableImpl) DoOnNext(nextFunc NextFunc, opts ...Option) Disposed {
 
 	option := parseOptions(opts...)
 	ctx := option.buildContext()
-	go handler(ctx, o.Observe())
+	go handler(ctx, o.Observe(opts...))
 	return dispose
 }
 
@@ -866,9 +866,9 @@ type elementAtOperator struct {
 	sent      bool
 }
 
-func (op *elementAtOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *elementAtOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	if op.takeCount == int(op.index) {
-		dst <- item
+		item.SendCtx(ctx, dst)
 		op.sent = true
 		operatorOptions.stop()
 		return
@@ -880,9 +880,9 @@ func (op *elementAtOperator) err(ctx context.Context, item Item, dst chan<- Item
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *elementAtOperator) end(_ context.Context, dst chan<- Item) {
+func (op *elementAtOperator) end(ctx context.Context, dst chan<- Item) {
 	if !op.sent {
-		dst <- Error(&IllegalInputError{})
+		Error(&IllegalInputError{}).SendCtx(ctx, dst)
 	}
 }
 
@@ -945,9 +945,9 @@ type filterOperator struct {
 	apply Predicate
 }
 
-func (op *filterOperator) next(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+func (op *filterOperator) next(ctx context.Context, item Item, dst chan<- Item, _ operatorOptions) {
 	if op.apply(item.V) {
-		dst <- item
+		item.SendCtx(ctx, dst)
 	}
 }
 
@@ -971,8 +971,8 @@ func (o *ObservableImpl) First(opts ...Option) OptionalSingle {
 
 type firstOperator struct{}
 
-func (op *firstOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	dst <- item
+func (op *firstOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	item.SendCtx(ctx, dst)
 	operatorOptions.stop()
 }
 
@@ -1002,8 +1002,8 @@ type firstOrDefaultOperator struct {
 	sent         bool
 }
 
-func (op *firstOrDefaultOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	dst <- item
+func (op *firstOrDefaultOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	item.SendCtx(ctx, dst)
 	op.sent = true
 	operatorOptions.stop()
 }
@@ -1012,9 +1012,9 @@ func (op *firstOrDefaultOperator) err(ctx context.Context, item Item, dst chan<-
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *firstOrDefaultOperator) end(_ context.Context, dst chan<- Item) {
+func (op *firstOrDefaultOperator) end(ctx context.Context, dst chan<- Item) {
 	if !op.sent {
-		dst <- Of(op.defaultValue)
+		Of(op.defaultValue).SendCtx(ctx, dst)
 	}
 }
 
@@ -1034,7 +1034,7 @@ func (o *ObservableImpl) FlatMap(apply ItemToObservable, opts ...Option) Observa
 				if !ok {
 					return
 				}
-				observe2 := apply(item).Observe()
+				observe2 := apply(item).Observe(opts...)
 			loop2:
 				for {
 					select {
@@ -1045,12 +1045,12 @@ func (o *ObservableImpl) FlatMap(apply ItemToObservable, opts ...Option) Observa
 							break loop2
 						}
 						if item.Error() {
-							item.SendWithContext(ctx, next)
+							item.SendCtx(ctx, next)
 							if option.getErrorStrategy() == Stop {
 								return
 							}
 						} else {
-							if !item.SendWithContext(ctx, next) {
+							if !item.SendCtx(ctx, next) {
 								return
 							}
 						}
@@ -1089,7 +1089,7 @@ func (o *ObservableImpl) ForEach(nextFunc NextFunc, errFunc ErrFunc, completedFu
 
 	option := parseOptions(opts...)
 	ctx := option.buildContext()
-	go handler(ctx, o.Observe())
+	go handler(ctx, o.Observe(opts...))
 	return dispose
 }
 
@@ -1132,7 +1132,7 @@ func (o *ObservableImpl) GroupBy(length int, distribution func(Item) int, opts .
 	}
 
 	go func() {
-		observe := o.Observe()
+		observe := o.Observe(opts...)
 		defer func() {
 			for i := 0; i < length; i++ {
 				close(chs[i])
@@ -1151,11 +1151,11 @@ func (o *ObservableImpl) GroupBy(length int, distribution func(Item) int, opts .
 				if idx >= length {
 					err := Error(IndexOutOfBoundError{error: fmt.Sprintf("index %d, length %d", idx, length)})
 					for i := 0; i < length; i++ {
-						err.SendBlocking(chs[i])
+						err.SendCtx(ctx, chs[i])
 					}
 					return
 				}
-				item.SendBlocking(chs[idx])
+				item.SendCtx(ctx, chs[idx])
 			}
 		}
 	}()
@@ -1189,9 +1189,9 @@ func (op *lastOperator) err(ctx context.Context, item Item, dst chan<- Item, ope
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *lastOperator) end(_ context.Context, dst chan<- Item) {
+func (op *lastOperator) end(ctx context.Context, dst chan<- Item) {
 	if !op.empty {
-		dst <- op.last
+		op.last.SendCtx(ctx, dst)
 	}
 }
 
@@ -1225,11 +1225,11 @@ func (op *lastOrDefaultOperator) err(ctx context.Context, item Item, dst chan<- 
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *lastOrDefaultOperator) end(_ context.Context, dst chan<- Item) {
+func (op *lastOrDefaultOperator) end(ctx context.Context, dst chan<- Item) {
 	if !op.empty {
-		dst <- op.last
+		op.last.SendCtx(ctx, dst)
 	} else {
-		dst <- Of(op.defaultValue)
+		Of(op.defaultValue).SendCtx(ctx, dst)
 	}
 }
 
@@ -1250,11 +1250,11 @@ type mapOperator struct {
 func (op *mapOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	res, err := op.apply(ctx, item.V)
 	if err != nil {
-		dst <- Error(err)
+		Error(err).SendCtx(ctx, dst)
 		operatorOptions.stop()
 		return
 	}
-	dst <- Of(res)
+	Of(res).SendCtx(ctx, dst)
 }
 
 func (op *mapOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
@@ -1264,12 +1264,12 @@ func (op *mapOperator) err(ctx context.Context, item Item, dst chan<- Item, oper
 func (op *mapOperator) end(_ context.Context, _ chan<- Item) {
 }
 
-func (op *mapOperator) gatherNext(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+func (op *mapOperator) gatherNext(ctx context.Context, item Item, dst chan<- Item, _ operatorOptions) {
 	switch item.V.(type) {
 	case *mapOperator:
 		return
 	}
-	dst <- item
+	item.SendCtx(ctx, dst)
 }
 
 // Marshal transforms the items emitted by an Observable by applying a marshalling to each item.
@@ -1311,9 +1311,9 @@ func (op *maxOperator) err(ctx context.Context, item Item, dst chan<- Item, oper
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *maxOperator) end(_ context.Context, dst chan<- Item) {
+func (op *maxOperator) end(ctx context.Context, dst chan<- Item) {
 	if !op.empty {
-		dst <- Of(op.max)
+		Of(op.max).SendCtx(ctx, dst)
 	}
 }
 
@@ -1353,9 +1353,9 @@ func (op *minOperator) err(ctx context.Context, item Item, dst chan<- Item, oper
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *minOperator) end(_ context.Context, dst chan<- Item) {
+func (op *minOperator) end(ctx context.Context, dst chan<- Item) {
 	if !op.empty {
-		dst <- Of(op.max)
+		Of(op.max).SendCtx(ctx, dst)
 	}
 }
 
@@ -1380,8 +1380,8 @@ type onErrorResumeNextOperator struct {
 	resumeSequence ErrorToObservable
 }
 
-func (op *onErrorResumeNextOperator) next(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
-	dst <- item
+func (op *onErrorResumeNextOperator) next(ctx context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+	item.SendCtx(ctx, dst)
 }
 
 func (op *onErrorResumeNextOperator) err(_ context.Context, item Item, _ chan<- Item, operatorOptions operatorOptions) {
@@ -1406,12 +1406,12 @@ type onErrorReturnOperator struct {
 	resumeFunc ErrorFunc
 }
 
-func (op *onErrorReturnOperator) next(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
-	dst <- item
+func (op *onErrorReturnOperator) next(ctx context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+	item.SendCtx(ctx, dst)
 }
 
-func (op *onErrorReturnOperator) err(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
-	dst <- Of(op.resumeFunc(item.E))
+func (op *onErrorReturnOperator) err(ctx context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+	Of(op.resumeFunc(item.E)).SendCtx(ctx, dst)
 }
 
 func (op *onErrorReturnOperator) end(_ context.Context, _ chan<- Item) {
@@ -1431,12 +1431,12 @@ type onErrorReturnItemOperator struct {
 	resume interface{}
 }
 
-func (op *onErrorReturnItemOperator) next(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
-	dst <- item
+func (op *onErrorReturnItemOperator) next(ctx context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+	item.SendCtx(ctx, dst)
 }
 
-func (op *onErrorReturnItemOperator) err(_ context.Context, _ Item, dst chan<- Item, _ operatorOptions) {
-	dst <- Of(op.resume)
+func (op *onErrorReturnItemOperator) err(ctx context.Context, _ Item, dst chan<- Item, _ operatorOptions) {
+	Of(op.resume).SendCtx(ctx, dst)
 }
 
 func (op *onErrorReturnItemOperator) end(_ context.Context, _ chan<- Item) {
@@ -1465,7 +1465,7 @@ func (op *reduceOperator) next(ctx context.Context, item Item, dst chan<- Item, 
 	op.empty = false
 	v, err := op.apply(ctx, op.acc, item.V)
 	if err != nil {
-		dst <- Error(err)
+		Error(err).SendCtx(ctx, dst)
 		operatorOptions.stop()
 		op.empty = true
 		return
@@ -1479,9 +1479,9 @@ func (op *reduceOperator) err(_ context.Context, item Item, dst chan<- Item, ope
 	op.empty = true
 }
 
-func (op *reduceOperator) end(_ context.Context, dst chan<- Item) {
+func (op *reduceOperator) end(ctx context.Context, dst chan<- Item) {
 	if !op.empty {
-		dst <- Of(op.acc)
+		Of(op.acc).SendCtx(ctx, dst)
 	}
 }
 
@@ -1514,8 +1514,8 @@ type repeatOperator struct {
 	seq       []Item
 }
 
-func (op *repeatOperator) next(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
-	dst <- item
+func (op *repeatOperator) next(ctx context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+	item.SendCtx(ctx, dst)
 	op.seq = append(op.seq, item)
 }
 
@@ -1540,7 +1540,7 @@ func (op *repeatOperator) end(ctx context.Context, dst chan<- Item) {
 			time.Sleep(op.frequency.duration())
 		}
 		for _, v := range op.seq {
-			dst <- v
+			v.SendCtx(ctx, dst)
 		}
 		op.count = op.count - 1
 	}
@@ -1557,7 +1557,7 @@ func (o *ObservableImpl) Retry(count int, opts ...Option) Observable {
 	ctx := option.buildContext()
 
 	go func() {
-		observe := o.Observe()
+		observe := o.Observe(opts...)
 	loop:
 		for {
 			select {
@@ -1570,12 +1570,12 @@ func (o *ObservableImpl) Retry(count int, opts ...Option) Observable {
 				if i.Error() {
 					count--
 					if count < 0 {
-						next <- i
+						i.SendCtx(ctx, next)
 						break loop
 					}
-					observe = o.Observe()
+					observe = o.Observe(opts...)
 				} else {
-					next <- i
+					i.SendCtx(ctx, next)
 				}
 			}
 		}
@@ -1595,7 +1595,7 @@ func (o *ObservableImpl) Run(opts ...Option) Disposed {
 
 	go func() {
 		defer close(dispose)
-		observe := o.Observe()
+		observe := o.Observe(opts...)
 		for {
 			select {
 			case <-ctx.Done():
@@ -1622,7 +1622,7 @@ func (o *ObservableImpl) Sample(iterable Iterable, opts ...Option) Observable {
 
 	go func() {
 		defer close(obsCh)
-		observe := o.Observe()
+		observe := o.Observe(opts...)
 		for {
 			select {
 			case <-ctx.Done():
@@ -1631,14 +1631,14 @@ func (o *ObservableImpl) Sample(iterable Iterable, opts ...Option) Observable {
 				if !ok {
 					return
 				}
-				obsCh <- i
+				i.SendCtx(ctx, obsCh)
 			}
 		}
 	}()
 
 	go func() {
 		defer close(itCh)
-		observe := iterable.Observe()
+		observe := iterable.Observe(opts...)
 		for {
 			select {
 			case <-ctx.Done():
@@ -1647,7 +1647,7 @@ func (o *ObservableImpl) Sample(iterable Iterable, opts ...Option) Observable {
 				if !ok {
 					return
 				}
-				itCh <- i
+				i.SendCtx(ctx, itCh)
 			}
 		}
 	}()
@@ -1702,11 +1702,11 @@ type scanOperator struct {
 func (op *scanOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	v, err := op.apply(ctx, op.current, item.V)
 	if err != nil {
-		dst <- Error(err)
+		Error(err).SendCtx(ctx, dst)
 		operatorOptions.stop()
 		return
 	}
-	dst <- Of(v)
+	Of(v).SendCtx(ctx, dst)
 	op.current = v
 }
 
@@ -1738,7 +1738,7 @@ func (o *ObservableImpl) Send(output chan<- Item, opts ...Option) {
 	go func() {
 		option := parseOptions(opts...)
 		ctx := option.buildContext()
-		observe := o.Observe()
+		observe := o.Observe(opts...)
 	loop:
 		for {
 			select {
@@ -1752,7 +1752,7 @@ func (o *ObservableImpl) Send(output chan<- Item, opts ...Option) {
 					output <- i
 					break loop
 				}
-				output <- i
+				i.SendCtx(ctx, output)
 			}
 		}
 		close(output)
@@ -1770,7 +1770,7 @@ func (o *ObservableImpl) SequenceEqual(iterable Iterable, opts ...Option) Single
 
 	go func() {
 		defer close(obsCh)
-		observe := o.Observe()
+		observe := o.Observe(opts...)
 		for {
 			select {
 			case <-ctx.Done():
@@ -1779,14 +1779,14 @@ func (o *ObservableImpl) SequenceEqual(iterable Iterable, opts ...Option) Single
 				if !ok {
 					return
 				}
-				obsCh <- i
+				i.SendCtx(ctx, obsCh)
 			}
 		}
 	}()
 
 	go func() {
 		defer close(itCh)
-		observe := iterable.Observe()
+		observe := iterable.Observe(opts...)
 		for {
 			select {
 			case <-ctx.Done():
@@ -1795,7 +1795,7 @@ func (o *ObservableImpl) SequenceEqual(iterable Iterable, opts ...Option) Single
 				if !ok {
 					return
 				}
-				itCh <- i
+				i.SendCtx(ctx, itCh)
 			}
 		}
 	}()
@@ -1831,7 +1831,7 @@ func (o *ObservableImpl) SequenceEqual(iterable Iterable, opts ...Option) Single
 			}
 		}
 
-		next <- Of(areCorrect && len(mainSequence) == 0 && len(obsSequence) == 0)
+		Of(areCorrect && len(mainSequence) == 0 && len(obsSequence) == 0).SendCtx(ctx, next)
 		close(next)
 	}()
 
@@ -1858,7 +1858,7 @@ func (o *ObservableImpl) Serialize(from int, identifier func(interface{}) int, o
 	// Scatter
 	go func() {
 		defer close(notif)
-		src := o.Observe()
+		src := o.Observe(opts...)
 
 		for {
 			select {
@@ -1880,7 +1880,11 @@ func (o *ObservableImpl) Serialize(from int, identifier func(interface{}) int, o
 				}
 				status[id] = item.V
 				mutex.Unlock()
-				notif <- struct{}{}
+				select {
+				case <-ctx.Done():
+					return
+				case notif <- struct{}{}:
+				}
 			}
 		}
 	}()
@@ -1907,7 +1911,7 @@ func (o *ObservableImpl) Serialize(from int, identifier func(interface{}) int, o
 							minHeap.Pop()
 							delete(status, id)
 							mutex.Unlock()
-							next <- Of(itemValue)
+							Of(itemValue).SendCtx(ctx, next)
 							mutex.Lock()
 							atomic.AddInt64(&counter, 1)
 							continue
@@ -1941,12 +1945,12 @@ type skipOperator struct {
 	skipCount int
 }
 
-func (op *skipOperator) next(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+func (op *skipOperator) next(ctx context.Context, item Item, dst chan<- Item, _ operatorOptions) {
 	if op.skipCount < int(op.nth) {
 		op.skipCount++
 		return
 	}
-	dst <- item
+	item.SendCtx(ctx, dst)
 }
 
 func (op *skipOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
@@ -1975,13 +1979,13 @@ type skipLastOperator struct {
 	skipCount int
 }
 
-func (op *skipLastOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *skipLastOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	if op.skipCount >= int(op.nth) {
 		operatorOptions.stop()
 		return
 	}
 	op.skipCount++
-	dst <- item
+	item.SendCtx(ctx, dst)
 }
 
 func (op *skipLastOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
@@ -2010,13 +2014,13 @@ type skipWhileOperator struct {
 	skip  bool
 }
 
-func (op *skipWhileOperator) next(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+func (op *skipWhileOperator) next(ctx context.Context, item Item, dst chan<- Item, _ operatorOptions) {
 	if !op.skip {
-		dst <- item
+		item.SendCtx(ctx, dst)
 	} else {
 		if !op.apply(item.V) {
 			op.skip = false
-			dst <- item
+			item.SendCtx(ctx, dst)
 		}
 	}
 }
@@ -2039,7 +2043,7 @@ func (o *ObservableImpl) StartWith(iterable Iterable, opts ...Option) Observable
 
 	go func() {
 		defer close(next)
-		observe := iterable.Observe()
+		observe := iterable.Observe(opts...)
 	loop1:
 		for {
 			select {
@@ -2053,10 +2057,10 @@ func (o *ObservableImpl) StartWith(iterable Iterable, opts ...Option) Observable
 					next <- i
 					return
 				}
-				next <- i
+				i.SendCtx(ctx, next)
 			}
 		}
-		observe = o.Observe()
+		observe = o.Observe(opts...)
 	loop2:
 		for {
 			select {
@@ -2067,10 +2071,10 @@ func (o *ObservableImpl) StartWith(iterable Iterable, opts ...Option) Observable
 					break loop2
 				}
 				if i.Error() {
-					next <- i
+					i.SendCtx(ctx, next)
 					return
 				}
-				next <- i
+				i.SendCtx(ctx, next)
 			}
 		}
 	}()
@@ -2173,10 +2177,10 @@ type takeOperator struct {
 	takeCount int
 }
 
-func (op *takeOperator) next(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+func (op *takeOperator) next(ctx context.Context, item Item, dst chan<- Item, _ operatorOptions) {
 	if op.takeCount < int(op.nth) {
 		op.takeCount++
-		dst <- item
+		item.SendCtx(ctx, dst)
 	}
 }
 
@@ -2218,7 +2222,7 @@ func (op *takeLast) err(ctx context.Context, item Item, dst chan<- Item, operato
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *takeLast) end(_ context.Context, dst chan<- Item) {
+func (op *takeLast) end(ctx context.Context, dst chan<- Item) {
 	if op.count < op.n {
 		remaining := op.n - op.count
 		if remaining <= op.count {
@@ -2229,7 +2233,7 @@ func (op *takeLast) end(_ context.Context, dst chan<- Item) {
 		op.n = op.count
 	}
 	for i := 0; i < op.n; i++ {
-		dst <- Of(op.r.Value)
+		Of(op.r.Value).SendCtx(ctx, dst)
 		op.r = op.r.Next()
 	}
 }
@@ -2252,8 +2256,8 @@ type takeUntilOperator struct {
 	apply Predicate
 }
 
-func (op *takeUntilOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	dst <- item
+func (op *takeUntilOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	item.SendCtx(ctx, dst)
 	if op.apply(item.V) {
 		operatorOptions.stop()
 		return
@@ -2285,12 +2289,12 @@ type takeWhileOperator struct {
 	apply Predicate
 }
 
-func (op *takeWhileOperator) next(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *takeWhileOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	if !op.apply(item.V) {
 		operatorOptions.stop()
 		return
 	}
-	dst <- item
+	item.SendCtx(ctx, dst)
 }
 
 func (op *takeWhileOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
@@ -2319,7 +2323,7 @@ func (o *ObservableImpl) TimeInterval(opts ...Option) Observable {
 					return
 				}
 				if item.Error() {
-					if !item.SendWithContext(ctx, next) {
+					if !item.SendCtx(ctx, next) {
 						return
 					}
 					if option.getErrorStrategy() == Stop {
@@ -2327,7 +2331,7 @@ func (o *ObservableImpl) TimeInterval(opts ...Option) Observable {
 					}
 				} else {
 					now := time.Now().UTC()
-					if !Of(now.Sub(latest)).SendWithContext(ctx, next) {
+					if !Of(now.Sub(latest)).SendCtx(ctx, next) {
 						return
 					}
 					latest = now
@@ -2350,20 +2354,20 @@ type timestampOperator struct {
 }
 
 func (op *timestampOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	dst <- Of(TimestampItem{
+	Of(TimestampItem{
 		Timestamp: time.Now().UTC(),
 		V:         item.V,
-	})
+	}).SendCtx(ctx, dst)
 }
 
 func (op *timestampOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *timestampOperator) end(ctx context.Context, dst chan<- Item) {
+func (op *timestampOperator) end(_ context.Context, _ chan<- Item) {
 }
 
-func (op *timestampOperator) gatherNext(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *timestampOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
 // ToMap convert the sequence of items emitted by an Observable
@@ -2386,7 +2390,7 @@ type toMapOperator struct {
 func (op *toMapOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	k, err := op.keySelector(ctx, item.V)
 	if err != nil {
-		dst <- Error(err)
+		Error(err).SendCtx(ctx, dst)
 		operatorOptions.stop()
 		return
 	}
@@ -2397,8 +2401,8 @@ func (op *toMapOperator) err(ctx context.Context, item Item, dst chan<- Item, op
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *toMapOperator) end(_ context.Context, dst chan<- Item) {
-	dst <- Of(op.m)
+func (op *toMapOperator) end(ctx context.Context, dst chan<- Item) {
+	Of(op.m).SendCtx(ctx, dst)
 }
 
 func (op *toMapOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
@@ -2426,14 +2430,14 @@ type toMapWithValueSelector struct {
 func (op *toMapWithValueSelector) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	k, err := op.keySelector(ctx, item.V)
 	if err != nil {
-		dst <- Error(err)
+		Error(err).SendCtx(ctx, dst)
 		operatorOptions.stop()
 		return
 	}
 
 	v, err := op.valueSelector(ctx, item.V)
 	if err != nil {
-		dst <- Error(err)
+		Error(err).SendCtx(ctx, dst)
 		operatorOptions.stop()
 		return
 	}
@@ -2445,12 +2449,11 @@ func (op *toMapWithValueSelector) err(ctx context.Context, item Item, dst chan<-
 	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
 }
 
-func (op *toMapWithValueSelector) end(_ context.Context, dst chan<- Item) {
-	dst <- Of(op.m)
+func (op *toMapWithValueSelector) end(ctx context.Context, dst chan<- Item) {
+	Of(op.m).SendCtx(ctx, dst)
 }
 
 func (op *toMapWithValueSelector) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
-	panic("implement me")
 }
 
 // ToSlice collects all items from an Observable and emit them in a slice and an optional error.
@@ -2524,11 +2527,7 @@ func (op *windowWithCountOperator) pre(ctx context.Context, dst chan<- Item) {
 	if op.currentChannel == nil {
 		ch := op.option.buildChannel()
 		op.currentChannel = ch
-		select {
-		case <-ctx.Done():
-			return
-		case dst <- Of(FromChannel(ch)):
-		}
+		Of(FromChannel(ch)).SendCtx(ctx, dst)
 	}
 }
 
@@ -2538,11 +2537,7 @@ func (op *windowWithCountOperator) post(ctx context.Context, dst chan<- Item) {
 		close(op.currentChannel)
 		ch := op.option.buildChannel()
 		op.currentChannel = ch
-		select {
-		case <-ctx.Done():
-			return
-		case dst <- Of(FromChannel(ch)):
-		}
+		Of(FromChannel(ch)).SendCtx(ctx, dst)
 	}
 }
 
@@ -2582,7 +2577,7 @@ func (o *ObservableImpl) WindowWithTime(timespan Duration, opts ...Option) Obser
 		observe := o.Observe(opts...)
 		ch := option.buildChannel()
 		empty := true
-		if !Of(FromChannel(ch)).SendWithContext(ctx, next) {
+		if !Of(FromChannel(ch)).SendCtx(ctx, next) {
 			return
 		}
 
@@ -2597,7 +2592,7 @@ func (o *ObservableImpl) WindowWithTime(timespan Duration, opts ...Option) Obser
 					return
 				}
 				if item.Error() {
-					if !item.SendWithContext(ctx, ch) {
+					if !item.SendCtx(ctx, ch) {
 						return
 					}
 					if option.getErrorStrategy() == Stop {
@@ -2605,7 +2600,7 @@ func (o *ObservableImpl) WindowWithTime(timespan Duration, opts ...Option) Obser
 						return
 					}
 				}
-				if !item.SendWithContext(ctx, ch) {
+				if !item.SendCtx(ctx, ch) {
 					return
 				}
 				empty = false
@@ -2616,7 +2611,7 @@ func (o *ObservableImpl) WindowWithTime(timespan Duration, opts ...Option) Obser
 				close(ch)
 				ch = option.buildChannel()
 				empty = true
-				if !Of(FromChannel(ch)).SendWithContext(ctx, next) {
+				if !Of(FromChannel(ch)).SendCtx(ctx, next) {
 					return
 				}
 			}
@@ -2641,7 +2636,7 @@ func (o *ObservableImpl) WindowWithTimeOrCount(timespan Duration, count int, opt
 		observe := o.Observe(opts...)
 		ch := option.buildChannel()
 		iCount := 0
-		if !Of(FromChannel(ch)).SendWithContext(ctx, next) {
+		if !Of(FromChannel(ch)).SendCtx(ctx, next) {
 			return
 		}
 
@@ -2656,7 +2651,7 @@ func (o *ObservableImpl) WindowWithTimeOrCount(timespan Duration, count int, opt
 					return
 				}
 				if item.Error() {
-					if !item.SendWithContext(ctx, ch) {
+					if !item.SendCtx(ctx, ch) {
 						return
 					}
 					if option.getErrorStrategy() == Stop {
@@ -2664,7 +2659,7 @@ func (o *ObservableImpl) WindowWithTimeOrCount(timespan Duration, count int, opt
 						return
 					}
 				}
-				if !item.SendWithContext(ctx, ch) {
+				if !item.SendCtx(ctx, ch) {
 					return
 				}
 				iCount++
@@ -2672,7 +2667,7 @@ func (o *ObservableImpl) WindowWithTimeOrCount(timespan Duration, count int, opt
 					close(ch)
 					ch = option.buildChannel()
 					iCount = 0
-					if !Of(FromChannel(ch)).SendWithContext(ctx, next) {
+					if !Of(FromChannel(ch)).SendCtx(ctx, next) {
 						return
 					}
 				}
@@ -2683,7 +2678,7 @@ func (o *ObservableImpl) WindowWithTimeOrCount(timespan Duration, count int, opt
 				close(ch)
 				ch = option.buildChannel()
 				iCount = 0
-				if !Of(FromChannel(ch)).SendWithContext(ctx, next) {
+				if !Of(FromChannel(ch)).SendCtx(ctx, next) {
 					return
 				}
 			}
@@ -2702,8 +2697,8 @@ func (o *ObservableImpl) ZipFromIterable(iterable Iterable, zipper Func2, opts .
 
 	go func() {
 		defer close(next)
-		it1 := o.Observe()
-		it2 := iterable.Observe()
+		it1 := o.Observe(opts...)
+		it2 := iterable.Observe(opts...)
 	loop:
 		for {
 			select {
@@ -2714,7 +2709,7 @@ func (o *ObservableImpl) ZipFromIterable(iterable Iterable, zipper Func2, opts .
 					break loop
 				}
 				if i1.Error() {
-					next <- i1
+					i1.SendCtx(ctx, next)
 					return
 				}
 				for {
@@ -2726,15 +2721,15 @@ func (o *ObservableImpl) ZipFromIterable(iterable Iterable, zipper Func2, opts .
 							break loop
 						}
 						if i2.Error() {
-							next <- i2
+							i2.SendCtx(ctx, next)
 							return
 						}
 						v, err := zipper(ctx, i1.V, i2.V)
 						if err != nil {
-							next <- Error(err)
+							Error(err).SendCtx(ctx, next)
 							return
 						}
-						next <- Of(v)
+						Of(v).SendCtx(ctx, next)
 						continue loop
 					}
 				}

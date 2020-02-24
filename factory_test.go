@@ -225,35 +225,6 @@ func Test_FromChannel_ComposedCapacity(t *testing.T) {
 	assert.Equal(t, 12, cap(obs2.Observe()))
 }
 
-func Test_FromItem(t *testing.T) {
-	single := JustItem(1)
-	Assert(context.Background(), t, single, HasItem(1), HasNoError())
-	Assert(context.Background(), t, single, HasItem(1), HasNoError())
-}
-
-func Test_FromItems(t *testing.T) {
-	obs := Just([]int{1, 2, 3})
-	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNoError())
-	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNoError())
-}
-
-func Test_FromItems_SimpleCapacity(t *testing.T) {
-	ch := Just([]Item{Of(1)}, WithBufferedChannel(5)).Observe()
-	assert.Equal(t, 5, cap(ch))
-}
-
-func Test_FromItems_ComposedCapacity(t *testing.T) {
-	obs1 := Just([]Item{Of(1)}).Map(func(_ context.Context, _ interface{}) (interface{}, error) {
-		return 1, nil
-	}, WithBufferedChannel(11))
-	assert.Equal(t, 11, cap(obs1.Observe()))
-
-	obs2 := obs1.Map(func(_ context.Context, _ interface{}) (interface{}, error) {
-		return 1, nil
-	}, WithBufferedChannel(12))
-	assert.Equal(t, 12, cap(obs2.Observe()))
-}
-
 func Test_FromEventSource_ObservationAfterAllSent(t *testing.T) {
 	const max = 10
 	next := make(chan Item, max)
@@ -306,6 +277,49 @@ func Test_Interval(t *testing.T) {
 		cancel()
 	}()
 	Assert(context.Background(), t, obs, IsNotEmpty())
+}
+
+func Test_JustItem(t *testing.T) {
+	single := JustItem(1)
+	Assert(context.Background(), t, single, HasItem(1), HasNoError())
+	Assert(context.Background(), t, single, HasItem(1), HasNoError())
+}
+
+func Test_Just(t *testing.T) {
+	obs := Just([]int{1, 2, 3})
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNoError())
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNoError())
+}
+
+func Test_Just_CustomStructure(t *testing.T) {
+	type customer struct {
+		id int
+	}
+
+	obs := Just([]customer{
+		{id: 1},
+		{id: 2},
+		{id: 3},
+	})
+	Assert(context.Background(), t, obs, HasItems(customer{id: 1}, customer{id: 2}, customer{id: 3}), HasNoError())
+	Assert(context.Background(), t, obs, HasItems(customer{id: 1}, customer{id: 2}, customer{id: 3}), HasNoError())
+}
+
+func Test_Just_SimpleCapacity(t *testing.T) {
+	ch := Just([]Item{Of(1)}, WithBufferedChannel(5)).Observe()
+	assert.Equal(t, 5, cap(ch))
+}
+
+func Test_Just_ComposedCapacity(t *testing.T) {
+	obs1 := Just([]Item{Of(1)}).Map(func(_ context.Context, _ interface{}) (interface{}, error) {
+		return 1, nil
+	}, WithBufferedChannel(11))
+	assert.Equal(t, 11, cap(obs1.Observe()))
+
+	obs2 := obs1.Map(func(_ context.Context, _ interface{}) (interface{}, error) {
+		return 1, nil
+	}, WithBufferedChannel(12))
+	assert.Equal(t, 12, cap(obs2.Observe()))
 }
 
 func Test_Merge(t *testing.T) {

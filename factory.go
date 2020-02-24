@@ -17,7 +17,7 @@ func Amb(observables []Observable, opts ...Option) Observable {
 	once := sync.Once{}
 
 	f := func(o Observable) {
-		it := o.Observe()
+		it := o.Observe(opts...)
 
 		select {
 		case <-ctx.Done():
@@ -79,7 +79,7 @@ func CombineLatest(f FuncN, observables []Observable, opts ...Option) Observable
 
 		handler := func(ctx context.Context, it Iterable, i int) {
 			defer wg.Done()
-			observe := it.Observe()
+			observe := it.Observe(opts...)
 			for {
 				select {
 				case <-ctx.Done():
@@ -136,7 +136,7 @@ func Concat(observables []Observable, opts ...Option) Observable {
 	go func() {
 		defer close(next)
 		for _, obs := range observables {
-			observe := obs.Observe()
+			observe := obs.Observe(opts...)
 		loop:
 			for {
 				select {
@@ -249,7 +249,7 @@ func Merge(observables []Observable, opts ...Option) Observable {
 
 	f := func(o Observable) {
 		defer wg.Done()
-		observe := o.Observe()
+		observe := o.Observe(opts...)
 		for {
 			select {
 			case <-ctx.Done():

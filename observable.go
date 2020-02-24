@@ -87,8 +87,8 @@ type ObservableImpl struct {
 	iterable Iterable
 }
 
-func defaultErrorFuncOperator(_ context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	dst <- item
+func defaultErrorFuncOperator(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	item.SendCtx(ctx, dst)
 	operatorOptions.stop()
 }
 
@@ -238,7 +238,6 @@ func runPar(ctx context.Context, next chan Item, iterable Iterable, operatorFact
 	wg := sync.WaitGroup{}
 	_, pool := option.getPool()
 	wg.Add(pool)
-	ctx, cancel := context.WithCancel(ctx)
 
 	var gather chan Item
 	if bypassGather {
@@ -246,6 +245,7 @@ func runPar(ctx context.Context, next chan Item, iterable Iterable, operatorFact
 	} else {
 		gather = make(chan Item, 1)
 
+		// Gather
 		go func() {
 			op := operatorFactory()
 			stopped := false
@@ -274,6 +274,7 @@ func runPar(ctx context.Context, next chan Item, iterable Iterable, operatorFact
 		}()
 	}
 
+	// Scatter
 	for i := 0; i < pool; i++ {
 		go func() {
 			op := operatorFactory()
@@ -296,7 +297,7 @@ func runPar(ctx context.Context, next chan Item, iterable Iterable, operatorFact
 				case item, ok := <-observe:
 					if !ok {
 						if !bypassGather {
-							gather <- Of(op)
+							Of(op).SendCtx(ctx, gather)
 						}
 						return
 					}
@@ -312,7 +313,6 @@ func runPar(ctx context.Context, next chan Item, iterable Iterable, operatorFact
 
 	go func() {
 		wg.Wait()
-		cancel()
 		close(gather)
 	}()
 }
