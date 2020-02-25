@@ -1123,6 +1123,12 @@ func (op *ignoreElementsOperator) end(_ context.Context, _ chan<- Item) {
 func (op *ignoreElementsOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
+// Returns absolute value for int64
+func abs(n int64) int64 {
+	y := n >> 63
+	return (n ^ y) - y
+}
+
 // Join will do inner join of current stream with supplied stream.
 // Join is performed according to http://reactivex.io/documentation/operators/join.html
 // ttExtractor accepts Item.V and returns its timestamp.
@@ -1139,6 +1145,7 @@ func (o *ObservableImpl) Join(joiner Func2, right Observable, ttExtractor func(i
 
 		lObserve := o.Observe()
 		rObserve := right.Observe()
+	lLoop:
 		for {
 			select {
 			case <-ctx.Done():
@@ -1151,11 +1158,11 @@ func (o *ObservableImpl) Join(joiner Func2, right Observable, ttExtractor func(i
 					next <- lItem
 					return
 				}
-				lTime := ttExtractor(lItem.V).Unix()
+				lTime := ttExtractor(lItem.V).UnixNano()
 				cutPoint := 0
 				for i, rItem := range rBuf {
-					rTime := ttExtractor(rItem.V).Unix()
-					if (lTime <= rTime && rTime <= lTime+windowDuration) || (rTime <= lTime && lTime <= rTime+windowDuration) {
+					rTime := ttExtractor(rItem.V).UnixNano()
+					if abs(lTime-rTime) <= windowDuration {
 						i, err := joiner(ctx, lItem.V, rItem.V)
 						if err != nil {
 							next <- Error(err)
@@ -1163,21 +1170,20 @@ func (o *ObservableImpl) Join(joiner Func2, right Observable, ttExtractor func(i
 						}
 						next <- Of(i)
 					}
-					if lTime >= rTime {
+					if lTime > rTime+windowDuration {
 						cutPoint = i + 1
 					}
 				}
 
 				rBuf = rBuf[cutPoint:]
 
-			rLoop:
 				for {
 					select {
 					case <-ctx.Done():
 						return
 					case rItem, ok := <-rObserve:
 						if rItem.V == nil && !ok {
-							break rLoop
+							continue lLoop
 						}
 						if rItem.Error() {
 							next <- rItem
@@ -1185,8 +1191,8 @@ func (o *ObservableImpl) Join(joiner Func2, right Observable, ttExtractor func(i
 						}
 
 						rBuf = append(rBuf, rItem)
-						rTime := ttExtractor(rItem.V).Unix()
-						if (lTime <= rTime && rTime <= lTime+windowDuration) || (rTime <= lTime && lTime <= rTime+windowDuration) {
+						rTime := ttExtractor(rItem.V).UnixNano()
+						if abs(lTime-rTime) <= windowDuration {
 							i, err := joiner(ctx, lItem.V, rItem.V)
 							if err != nil {
 								next <- Error(err)
@@ -1196,7 +1202,7 @@ func (o *ObservableImpl) Join(joiner Func2, right Observable, ttExtractor func(i
 
 							continue
 						}
-						break rLoop
+						continue lLoop
 					}
 				}
 			}
