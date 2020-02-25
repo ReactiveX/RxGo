@@ -3,6 +3,9 @@ package rxgo
 import (
 	"context"
 	"sync"
+	"sync/atomic"
+
+	"github.com/emirpasic/gods/trees/binaryheap"
 
 	"github.com/cenkalti/backoff/v4"
 )
@@ -152,8 +155,8 @@ func observable(iterable Iterable, operatorFactory func() operator, forceSeq, by
 	}
 
 	if serialized, f := option.isSerialized(); serialized {
-		result := make(chan int, 1)
-		ch := make(chan int, 1)
+		firstItemIDCh := make(chan int, 1)
+		fromCh := make(chan int, 1)
 		obs := &ObservableImpl{
 			iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
 				mergedOptions := append(opts, propagatedOptions...)
@@ -163,14 +166,19 @@ func observable(iterable Iterable, operatorFactory func() operator, forceSeq, by
 				ctx := option.buildContext()
 				observe := iterable.Observe(opts...)
 				go func() {
-					ch <- <-result
-					runParallel(ctx, next, observe, operatorFactory, bypassGather, option, mergedOptions...)
+					select {
+					case <-ctx.Done():
+						return
+					case firstItemID := <-firstItemIDCh:
+						fromCh <- firstItemID
+						runParallel(ctx, next, observe, operatorFactory, bypassGather, option, mergedOptions...)
+					}
 				}()
-				runSerialize(ctx, f, result, observe, next, operatorFactory, bypassGather, option, mergedOptions...)
+				runFirstItem(ctx, f, firstItemIDCh, observe, next, operatorFactory, bypassGather, option, mergedOptions...)
 				return next
 			}),
 		}
-		return obs.serialize(ch, f)
+		return obs.serialize(fromCh, f)
 	}
 
 	return &ObservableImpl{
@@ -370,7 +378,7 @@ func runParallel(ctx context.Context, next chan Item, observe <-chan Item, opera
 	}()
 }
 
-func runSerialize(ctx context.Context, f func(interface{}) int, notif chan int, observe <-chan Item, next chan Item, operatorFactory func() operator, bypassGather bool, option Option, opts ...Option) {
+func runFirstItem(ctx context.Context, f func(interface{}) int, notif chan int, observe <-chan Item, next chan Item, operatorFactory func() operator, bypassGather bool, option Option, opts ...Option) {
 	go func() {
 		op := operatorFactory()
 		stopped := false
@@ -405,4 +413,102 @@ func runSerialize(ctx context.Context, f func(interface{}) int, notif chan int, 
 		op.end(ctx, next)
 		close(next)
 	}()
+}
+
+func (o *ObservableImpl) serialize(fromCh chan int, identifier func(interface{}) int, opts ...Option) Observable {
+	option := parseOptions(opts...)
+	next := option.buildChannel()
+
+	ctx := option.buildContext()
+	mutex := sync.Mutex{}
+	minHeap := binaryheap.NewWith(func(a, b interface{}) int {
+		return a.(int) - b.(int)
+	})
+	status := make(map[int]interface{})
+	notif := make(chan struct{})
+	ready := make(chan struct{})
+
+	var from int
+	var counter int64
+	src := o.Observe(opts...)
+	go func() {
+		from = <-fromCh
+		minHeap.Push(from)
+		counter = int64(from)
+		close(ready)
+	}()
+
+	// Scatter
+	go func() {
+		<-ready
+		defer close(notif)
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case item, ok := <-src:
+				if !ok {
+					return
+				}
+				if item.Error() {
+					next <- item
+					return
+				}
+
+				id := identifier(item.V)
+				mutex.Lock()
+				if id != from {
+					minHeap.Push(id)
+				}
+				status[id] = item.V
+				mutex.Unlock()
+				select {
+				case <-ctx.Done():
+					return
+				case notif <- struct{}{}:
+				}
+			}
+		}
+	}()
+
+	// Gather
+	go func() {
+		<-ready
+		defer close(next)
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case _, ok := <-notif:
+				if !ok {
+					return
+				}
+
+				mutex.Lock()
+				for !minHeap.Empty() {
+					v, _ := minHeap.Peek()
+					id := v.(int)
+					if atomic.LoadInt64(&counter) == int64(id) {
+						if itemValue, contains := status[id]; contains {
+							minHeap.Pop()
+							delete(status, id)
+							mutex.Unlock()
+							Of(itemValue).SendContext(ctx, next)
+							mutex.Lock()
+							atomic.AddInt64(&counter, 1)
+							continue
+						}
+					}
+					break
+				}
+				mutex.Unlock()
+			}
+		}
+	}()
+
+	return &ObservableImpl{
+		iterable: newChannelIterable(next),
+	}
 }
