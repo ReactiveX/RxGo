@@ -37,10 +37,6 @@ The philosophy of RxGo is to implement the ReactiveX concepts and leverage the m
 go get -u github.com/reactivex/rxgo/v2
 ```
 
-## Documentation
-
-[https://pkg.go.dev/github.com/reactivex/rxgo/v2](https://pkg.go.dev/github.com/reactivex/rxgo/v2)
-
 ## Getting Started
 
 ### Hello World
@@ -400,6 +396,8 @@ An Iterable can be either:
 * An Optional Single: emit 0 or 1 item
 
 ## Documentation
+
+Package documentation: [https://pkg.go.dev/github.com/reactivex/rxgo/v2](https://pkg.go.dev/github.com/reactivex/rxgo/v2)
 
 ### Assert API
 
