@@ -161,9 +161,9 @@ func WithPublishStrategy() Option {
 }
 
 // Serialize forces an Observable to make serialized calls and to be well-behaved.
-func Serialize(f func(interface{}) int) Option {
+func Serialize(identifier func(interface{}) int) Option {
 	return newFuncOption(func(options *funcOption) {
-		options.serialized = f
+		options.serialized = identifier
 	})
 }
 
