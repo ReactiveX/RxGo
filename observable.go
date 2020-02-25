@@ -416,7 +416,6 @@ func runFirstItem(ctx context.Context, f func(interface{}) int, notif chan Item,
 			}
 		}
 		op.end(ctx, next)
-		close(next)
 	}()
 }
 

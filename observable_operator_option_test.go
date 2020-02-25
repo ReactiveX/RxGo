@@ -77,7 +77,22 @@ func Test_Observable_Option_Serialize(t *testing.T) {
 	})
 }
 
-func Test_Observable_Option_Error(t *testing.T) {
+func Test_Observable_Option_Serialize_SingleElement(t *testing.T) {
+	idx := 0
+	<-Just([]interface{}{0}).Map(func(_ context.Context, i interface{}) (interface{}, error) {
+		return i, nil
+	}, WithBufferedChannel(10), WithCPUPool(), Serialize(func(i interface{}) int {
+		return i.(int)
+	})).DoOnNext(func(i interface{}) {
+		v := i.(int)
+		if v != idx {
+			assert.FailNow(t, "not sequential", "expected=%d, got=%d", idx, v)
+		}
+		idx++
+	})
+}
+
+func Test_Observable_Option_Serialize_Error(t *testing.T) {
 	obs := testObservable(errFoo, 2, 3, 4).Map(func(_ context.Context, i interface{}) (interface{}, error) {
 		return i, nil
 	}, WithBufferedChannel(10), WithCPUPool(), Serialize(func(i interface{}) int {
@@ -85,5 +100,3 @@ func Test_Observable_Option_Error(t *testing.T) {
 	}))
 	Assert(context.Background(), t, obs, IsEmpty(), HasError(errFoo))
 }
-
-// TODO Document connectable

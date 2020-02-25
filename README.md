@@ -97,54 +97,71 @@ In this example, we passed 3 functions:
 <-observable.ForEach(...)
 ```
 
-### Deep Dive
+### Real World Example
 
-Let's implement a more complete example. We will create an Observable from a channel and implement three operators (`Map`, `Filter` and `Reduce`):
+Let's say we want to implement a stream that consume the following `Customer` structure:
+```go
+type Customer struct {
+	ID             int
+	Name, LastName string
+	Age            int
+	TaxNumber       string
+}
+```
 
+We create an producer that will emit `Customer`s to a given `chan rxgo.Item` and create an Observable from it:
 ```go
 // Create the input channel
 ch := make(chan rxgo.Item)
-// Create the data producer
+// Data producer
 go producer(ch)
 
 // Create an Observable
-observable := rxgo.FromChannel(ch).
-    Map(func(item interface{}) (interface{}, error) {
-        if num, ok := item.(int); ok {
-            return num * 2, nil
-        }
-        return nil, errors.New("input error")
-    }).
-    Filter(func(item interface{}) bool {
-        return item != 4
-    }).
-    Reduce(func(acc interface{}, item interface{}) (interface{}, error) {
-        if acc == nil {
-            return 1, nil
-        }
-        return acc.(int) * item.(int), nil
-    })
-
-// Observe it
-product := <-observable.Observe()
-
-fmt.Println(product)
+observable := rxgo.FromChannel(ch)
 ```
 
-We started by defining a `chan rxgo.Item` that will act as an input channel. We also created a `producer` goroutine that will be in charge to produce the inputs for our Observable.
+Then, we need to perform the two following operations:
+* Filter the customers whose age is below 18
+* Enrich each customer with a tax number. Retrieving a tax number is done for example by an IO-bound function doing an external REST call.
 
-The Observable was created using `FromChannel` operator. This is basically a wrapper on top of an existing channel. Then, we implemented 3 operators:
-* `Map` to double each input.
-* `Filter` to filter items equals to 4.
-* `Reduce` to perform a reduction based on the product of each item.
+As the enrich step is IO-bound, it might be interested to parallelize it within a given pool of goroutines.
+Yet, for some reason, all the customer items need to be produced sequentially based on its `ID`.
 
-In the end, `Observe` returns the output channel. We consume the output using the standard `<-` operator and we print the value.
+```go
+observable.
+	Filter(func(item interface{}) bool {
+		// Filter operation
+		customer := item.(Customer)
+		return customer.Age > 18
+	}).
+	Map(func(_ context.Context, item interface{}) (interface{}, error) {
+		// Enrich operation
+		customer := item.(Customer)
+		taxNumber, err := getTaxNumber(customer)
+		if err != nil {
+			return nil, err
+		}
+		customer.TaxNumber = taxNumber
+		return customer, nil
+	},
+		// Create multiple instances of the map operator
+		rxgo.WithPool(pool),
+		// Serialize the items emitted by their Customer.ID
+		rxgo.Serialize(func(item interface{}) int {
+			customer := item.(Customer)
+			return customer.ID
+		}), rxgo.WithBufferedChannel(1))
+``` 
 
-In this example, the Observable does produce zero or one item. This is what we would expect from a basic `Reduce` operator. 
-
-An Observable that produces exactly one item is a Single (e.g. `Count`, `FirstOrDefault`, etc.). An Observable that produces zero or one item is called an OptionalSingle (e.g. `Reduce`, `Max`, etc.).
-
-The operators producing a Single or OptionalSingle emit an item (or no item in the case of an OptionalSingle) when the stream is closed. In this example, the action that triggers the closure of the stream is when the `input` channel will be closed (most likely by the producer).
+In the end, we consume the items using `ForEach()` or `Observe()` for example. `Observe()` returns a `<-chan Item`:
+```go
+for customer := range observable.Observe() {
+	if customer.Error() {
+		return err
+	}
+	fmt.Println(customer)
+}
+```
 
 ## Observable Types
 
@@ -370,6 +387,15 @@ First observer: 3
 Second observer: 2
 Second observer: 3
 ```
+
+### Observable, Single and OptionalSingle
+
+An Iterable is an object that can be observed using `Observe(opts ...Option) <-chan Item`.
+
+An Iterable can be either:
+* An Observable: emit 0 or multiple items.
+* A Single: emit 1 item.
+* An OptionalSingle: emit 0 or 1 item.
 
 ## Documentation
 
