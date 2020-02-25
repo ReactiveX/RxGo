@@ -115,6 +115,42 @@ func observable(iterable Iterable, operatorFactory func() operator, forceSeq, by
 		return &ObservableImpl{iterable: newChannelIterable(next)}
 	}
 
+	if forceSeq || !parallel {
+		return &ObservableImpl{
+			iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
+				mergedOptions := append(opts, propagatedOptions...)
+				option := parseOptions(mergedOptions...)
+
+				next := option.buildChannel()
+				ctx := option.buildContext()
+				runSeq(ctx, next, iterable, operatorFactory, option, mergedOptions...)
+				return next
+			}),
+		}
+	}
+
+	if serialized, f := option.isSerialized(); serialized {
+		ch := make(chan int, 1)
+		notif := make(chan int, 1)
+		obs := &ObservableImpl{
+			iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
+				mergedOptions := append(opts, propagatedOptions...)
+				option := parseOptions(mergedOptions...)
+
+				next := option.buildChannel()
+				ctx := option.buildContext()
+				observe := iterable.Observe(opts...)
+				go func() {
+					ch <- <-notif
+					runPar2(ctx, observe, next, iterable, operatorFactory, bypassGather, option, mergedOptions...)
+				}()
+				runFirstItem(ctx, f, notif, observe, next, iterable, operatorFactory, bypassGather, option, mergedOptions...)
+				return next
+			}),
+		}
+		return obs.serialize(ch, f)
+	}
+
 	return &ObservableImpl{
 		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
 			mergedOptions := append(opts, propagatedOptions...)
@@ -122,11 +158,7 @@ func observable(iterable Iterable, operatorFactory func() operator, forceSeq, by
 
 			next := option.buildChannel()
 			ctx := option.buildContext()
-			if forceSeq || !parallel {
-				runSeq(ctx, next, iterable, operatorFactory, option, mergedOptions...)
-			} else {
-				runPar(ctx, next, iterable, operatorFactory, bypassGather, option, mergedOptions...)
-			}
+			runPar(ctx, next, iterable, operatorFactory, bypassGather, option, mergedOptions...)
 			return next
 		}),
 	}
@@ -315,6 +347,126 @@ func runPar(ctx context.Context, next chan Item, iterable Iterable, operatorFact
 	go func() {
 		wg.Wait()
 		close(gather)
+	}()
+}
+
+func runPar2(ctx context.Context, observe <-chan Item, next chan Item, iterable Iterable, operatorFactory func() operator, bypassGather bool, option Option, opts ...Option) {
+	wg := sync.WaitGroup{}
+	_, pool := option.getPool()
+	wg.Add(pool)
+
+	var gather chan Item
+	if bypassGather {
+		gather = next
+	} else {
+		gather = make(chan Item, 1)
+
+		// Gather
+		go func() {
+			op := operatorFactory()
+			stopped := false
+			operator := operatorOptions{
+				stop: func() {
+					if option.getErrorStrategy() == StopOnError {
+						stopped = true
+					}
+				},
+				resetIterable: func(newIterable Iterable) {
+					observe = newIterable.Observe(opts...)
+				},
+			}
+			for item := range gather {
+				if stopped {
+					break
+				}
+				if item.Error() {
+					op.err(ctx, item, next, operator)
+				} else {
+					op.gatherNext(ctx, item, next, operator)
+				}
+			}
+			op.end(ctx, next)
+			close(next)
+		}()
+	}
+
+	// Scatter
+	for i := 0; i < pool; i++ {
+		go func() {
+			op := operatorFactory()
+			stopped := false
+			operator := operatorOptions{
+				stop: func() {
+					if option.getErrorStrategy() == StopOnError {
+						stopped = true
+					}
+				},
+				resetIterable: func(newIterable Iterable) {
+					observe = newIterable.Observe(opts...)
+				},
+			}
+			defer wg.Done()
+			for !stopped {
+				select {
+				case <-ctx.Done():
+					return
+				case item, ok := <-observe:
+					if !ok {
+						if !bypassGather {
+							Of(op).SendContext(ctx, gather)
+						}
+						return
+					}
+					if item.Error() {
+						op.err(ctx, item, gather, operator)
+					} else {
+						op.next(ctx, item, gather, operator)
+					}
+				}
+			}
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		close(gather)
+	}()
+}
+
+func runFirstItem(ctx context.Context, f func(interface{}) int, notif chan int, observe <-chan Item, next chan Item, iterable Iterable, operatorFactory func() operator, bypassGather bool, option Option, opts ...Option) {
+	go func() {
+		op := operatorFactory()
+		stopped := false
+		operator := operatorOptions{
+			stop: func() {
+				if option.getErrorStrategy() == StopOnError {
+					stopped = true
+				}
+			},
+			resetIterable: func(newIterable Iterable) {
+				observe = newIterable.Observe(opts...)
+			},
+		}
+
+	loop:
+		for !stopped {
+			select {
+			case <-ctx.Done():
+				break loop
+			case i, ok := <-observe:
+				if !ok {
+					break loop
+				}
+				if i.Error() {
+					op.err(ctx, i, next, operator)
+				} else {
+					op.next(ctx, i, next, operator)
+					notif <- f(i.V)
+				}
+			}
+		}
+		op.end(ctx, next)
+		close(next)
 	}()
 }
 
