@@ -34,6 +34,13 @@ Output:
 3
 ```
 
+### Channel
+
+```go
+externalCh := make(chan int)
+observable := rxgo.Just(externalCh)
+```
+
 ## Options
 
 ### WithBufferedChannel

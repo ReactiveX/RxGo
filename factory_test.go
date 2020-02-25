@@ -343,6 +343,18 @@ func Test_Just_CustomStructure(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(customer{id: 1}, customer{id: 2}, customer{id: 3}), HasNoError())
 }
 
+func Test_Just_Channel(t *testing.T) {
+	ch := make(chan int, 1)
+	go func() {
+		ch <- 1
+		ch <- 2
+		ch <- 3
+		close(ch)
+	}()
+	obs := Just(ch)
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3))
+}
+
 func Test_Just_SimpleCapacity(t *testing.T) {
 	ch := Just([]Item{Of(1)}, WithBufferedChannel(5)).Observe()
 	assert.Equal(t, 5, cap(ch))
