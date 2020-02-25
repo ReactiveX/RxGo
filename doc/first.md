@@ -31,3 +31,7 @@ true
 ### WithObservationStrategy
 
 [Detail](options.md#withobservationstrategy)
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)

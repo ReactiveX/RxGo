@@ -83,3 +83,13 @@ rxgo.Serialize()
 ```
 
 This option should be used in coordination with `rxgo.WithPool(n)` or `rxgo.WithCPUPool()`.
+
+## WithPublishStrategy
+
+Create a [Connectable Observable](../README.md#connectable-observable).
+
+```go
+rxgo.WithPublishStrategy()
+```
+
+This option is propagated to the parent(s) Observable(s).

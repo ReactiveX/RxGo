@@ -51,3 +51,7 @@ Output:
 ### Serialize
 
 [Detail](options.md#serialize)
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)

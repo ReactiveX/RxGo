@@ -21,3 +21,7 @@ sampledObservable := observable1.Sample(observable2)
 ### WithContext
 
 [Detail](options.md#withcontext)
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)

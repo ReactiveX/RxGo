@@ -86,4 +86,4 @@ func Test_Observable_Option_Error(t *testing.T) {
 	Assert(context.Background(), t, obs, IsEmpty(), HasError(errFoo))
 }
 
-// TODO Document connectable, assert
+// TODO Document connectable

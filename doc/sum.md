@@ -49,3 +49,7 @@ Output:
 ### WithCPUPool
 
 [Detail](options.md#withcpupool)
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)

@@ -263,11 +263,119 @@ observable.Map(transform, rxgo.WithPool(32))
 
 In this example, we create a pool of 32 goroutines that consume items concurrently from the same channel. If the operation is CPU-bound, we can use the `WithCPUPool()` option that creates a pool based on the number of logical CPUs.
 
+### Connectable Observable
+
+A Connectable Observable resembles an ordinary Observable, except that it does not begin emitting items when it is subscribed to, but only when its connect() method is called. In this way, you can wait for all intended Subscribers to subscribe to the Observable before the Observable begins emitting items.
+
+Let's create a Connectable Observable using `rxgo.WithPublishStrategy`:
+
+```go
+ch := make(chan rxgo.Item)
+go func() {
+	ch <- rxgo.Of(1)
+	ch <- rxgo.Of(2)
+	ch <- rxgo.Of(3)
+	close(ch)
+}()
+observable := rxgo.FromChannel(ch, rxgo.WithPublishStrategy())
+```
+
+Then, we create two Observers:
+
+```go
+observable.Map(func(_ context.Context, i interface{}) (interface{}, error) {
+	return i.(int) + 1, nil
+}).DoOnNext(func(i interface{}) {
+	fmt.Printf("First observer: %d\n", i)
+})
+
+observable.Map(func(_ context.Context, i interface{}) (interface{}, error) {
+	return i.(int) * 2, nil
+}).DoOnNext(func(i interface{}) {
+	fmt.Printf("Second observer: %d\n", i)
+})
+```
+
+If `observable` was not a Connectable Observable, as `DoOnNext` creates an Observer, the source Observable would have begun emitting items. Yet, in the case of a Connectable Observable, we have to call `Connect()`:
+
+```go
+observable.Connect()
+``` 
+
+Once `Connect()` is called, the Connectable Observable begin to emit items.
+
+There is another important change with a regular Observable. A Connectable Observable publishes its items. It means, all the Observers receive a copy of the items.
+
+Here is an example with a regular Observable:
+
+```go
+// Create a regular Observable
+ch := make(chan rxgo.Item)
+go func() {
+	ch <- rxgo.Of(1)
+	ch <- rxgo.Of(2)
+	ch <- rxgo.Of(3)
+	close(ch)
+}()
+observable := rxgo.FromChannel(ch)
+
+// Create the first Observer
+observable.DoOnNext(func(i interface{}) {
+	fmt.Printf("First observer: %d\n", i)
+})
+
+// Create the second Observer
+observable.DoOnNext(func(i interface{}) {
+	fmt.Printf("Second observer: %d\n", i)
+})
+```
+
+```
+First observer: 1
+First observer: 2
+First observer: 3
+```
+
+Now, with a Connectable Observable:
+
+```go
+// Create a regular Observable
+ch := make(chan rxgo.Item)
+go func() {
+	ch <- rxgo.Of(1)
+	ch <- rxgo.Of(2)
+	ch <- rxgo.Of(3)
+	close(ch)
+}()
+observable := rxgo.FromChannel(ch, rxgo.WithPublishStrategy())
+
+// Create the first Observer
+observable.DoOnNext(func(i interface{}) {
+	fmt.Printf("First observer: %d\n", i)
+})
+
+// Create the second Observer
+observable.DoOnNext(func(i interface{}) {
+	fmt.Printf("Second observer: %d\n", i)
+})
+
+observable.Connect()
+```
+
+```
+Second observer: 1
+First observer: 1
+First observer: 2
+First observer: 3
+Second observer: 2
+Second observer: 3
+```
+
 ## Documentation
 
 ### Assert API
 
-How to use the [assert API](doc/assert.md) to write unit tests while using RxGo
+How to use the [assert API](doc/assert.md) to write unit tests while using RxGo.
 
 ### Operator Options
 

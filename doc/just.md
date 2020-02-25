@@ -39,3 +39,7 @@ Output:
 ### WithBufferedChannel
 
 [Detail](options.md#withbufferedchannel)
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)

@@ -96,3 +96,7 @@ Output:
 ### WithErrorStrategy
 
 [Detail](options.md#witherrorstrategy)
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)
