@@ -32,11 +32,13 @@ type (
 	// Unmarshaller defines an unmarshaller type ([]byte to interface).
 	Unmarshaller func([]byte, interface{}) error
 	// Producer defines a producer implementation.
-	Producer func(ctx context.Context, next chan<- Item, done func())
+	Producer func(ctx context.Context, next chan<- Item)
 	// Supplier defines a function that supplies a result from nothing.
 	Supplier func(ctx context.Context) Item
 	// Disposed is a notification channel indicating when an Observable is closed.
 	Disposed <-chan struct{}
+	// Disposable is a function to be called in order to dispose a subscription.
+	Disposable context.CancelFunc
 
 	// NextFunc handles a next item in a stream.
 	NextFunc func(interface{})
@@ -60,11 +62,11 @@ const (
 type OnErrorStrategy uint32
 
 const (
-	// Stop is the default error strategy.
+	// StopOnError is the default error strategy.
 	// An operator will stop processing items on error.
-	Stop OnErrorStrategy = iota
-	// Continue means an operator will continue processing items after an error.
-	Continue
+	StopOnError OnErrorStrategy = iota
+	// ContinueOnError means an operator will continue processing items after an error.
+	ContinueOnError
 )
 
 // ObservationStrategy defines the strategy to consume from an Observable.

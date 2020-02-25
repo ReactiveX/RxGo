@@ -10,8 +10,8 @@ Combine multiple Observables into one by merging their emissions.
 
 ```go
 observable := rxgo.Merge([]rxgo.Observable{
-	rxgo.Just([]interface{}{1, 2}),
-	rxgo.Just([]interface{}{3, 4}),
+	rxgo.Just(1, 2)(),
+	rxgo.Just(3, 4)(),
 })
 ```
 
@@ -41,3 +41,7 @@ Output:
 ### WithErrorStrategy
 
 [Detail](options.md#witherrorstrategy)
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)

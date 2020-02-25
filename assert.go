@@ -233,12 +233,14 @@ loop:
 		for _, v := range got {
 			delete(m, v)
 		}
-		assert.Equal(t, 0, len(m))
+		if len(m) != 0 {
+			assert.Fail(t, "missing elements", "%v", got)
+		}
 	}
 	if checkHasItem, value := ass.itemToBeChecked(); checkHasItem {
 		length := len(got)
-		if length > 1 {
-			assert.Fail(t, "wrong number of items", "expected 1, got %d", length)
+		if length != 1 {
+			assert.FailNow(t, "wrong number of items", "expected 1, got %d", length)
 		}
 		assert.Equal(t, value, got[0])
 	}
@@ -252,6 +254,9 @@ loop:
 		if expectedError == nil {
 			assert.Equal(t, 0, len(errs))
 		} else {
+			if len(errs) == 0 {
+				assert.FailNow(t, "no error raised", "expected %v", expectedError)
+			}
 			assert.Equal(t, expectedError, errs[0])
 		}
 	}

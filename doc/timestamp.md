@@ -9,7 +9,7 @@ Determine whether all items emitted by an Observable meet some criteria.
 ## Example
 
 ```go
-observe := rxgo.Just([]interface{}{1, 2, 3}).Timestamp().Observe()
+observe := rxgo.Just(1, 2, 3)().Timestamp().Observe()
 var timestampItem rxgo.TimestampItem
 timestampItem = (<-observe).V.(rxgo.TimestampItem)
 fmt.Println(timestampItem)
@@ -38,3 +38,7 @@ Output:
 ### WithErrorStrategy
 
 [Detail](options.md#witherrorstrategy)
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)

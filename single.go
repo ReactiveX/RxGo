@@ -29,7 +29,7 @@ func (s *SingleImpl) Get(opts ...Option) (Item, error) {
 	option := parseOptions(opts...)
 	ctx := option.buildContext()
 
-	observe := s.Observe()
+	observe := s.Observe(opts...)
 	for {
 		select {
 		case <-ctx.Done():
@@ -54,11 +54,11 @@ type mapOperatorSingle struct {
 func (op *mapOperatorSingle) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
 	res, err := op.apply(ctx, item.V)
 	if err != nil {
-		dst <- Error(err)
+		Error(err).SendContext(ctx, dst)
 		operatorOptions.stop()
 		return
 	}
-	dst <- Of(res)
+	Of(res).SendContext(ctx, dst)
 }
 
 func (op *mapOperatorSingle) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
@@ -68,12 +68,12 @@ func (op *mapOperatorSingle) err(ctx context.Context, item Item, dst chan<- Item
 func (op *mapOperatorSingle) end(_ context.Context, _ chan<- Item) {
 }
 
-func (op *mapOperatorSingle) gatherNext(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+func (op *mapOperatorSingle) gatherNext(ctx context.Context, item Item, dst chan<- Item, _ operatorOptions) {
 	switch item.V.(type) {
 	case *mapOperatorSingle:
 		return
 	}
-	dst <- item
+	item.SendContext(ctx, dst)
 }
 
 // Observe observes a Single by returning its channel.
@@ -85,9 +85,9 @@ type filterOperatorSingle struct {
 	apply Predicate
 }
 
-func (op *filterOperatorSingle) next(_ context.Context, item Item, dst chan<- Item, _ operatorOptions) {
+func (op *filterOperatorSingle) next(ctx context.Context, item Item, dst chan<- Item, _ operatorOptions) {
 	if op.apply(item.V) {
-		dst <- item
+		item.SendContext(ctx, dst)
 	}
 }
 
@@ -109,7 +109,7 @@ func (s *SingleImpl) Run(opts ...Option) Disposed {
 
 	go func() {
 		defer close(dispose)
-		observe := s.Observe()
+		observe := s.Observe(opts...)
 		for {
 			select {
 			case <-ctx.Done():

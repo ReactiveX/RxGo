@@ -15,7 +15,7 @@ Calculate the sum of numbers emitted by an Observable and emit this sum.
 ## Example
 
 ```go
-observable := rxgo.Just([]interface{}{1, 2, 3, 4}).SumInt64()
+observable := rxgo.Just(1, 2, 3, 4)().SumInt64()
 ```
 
 Output:
@@ -44,8 +44,12 @@ Output:
 
 ### WithPool
 
-https://github.com/ReactiveX/RxGo/wiki/Options#withpool
+[Detail](options.md#withpool)
 
 ### WithCPUPool
 
-https://github.com/ReactiveX/RxGo/wiki/Options#withcpupool
+[Detail](options.md#withcpupool)
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)

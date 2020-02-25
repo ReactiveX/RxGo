@@ -1,5 +1,17 @@
 # Operator Options
 
+Most of the operators accept a list of functional options to impact the Observable behaviour.
+
+As an example:
+
+```go
+observable.Map(func(_ context.Context, i interface{}) (interface{}, error) {
+	return i.(int) * 10, nil
+}, rxgo.WithContext(),
+   rxgo.WithCPUPool(),
+   rxgo.WihtBufferedChannel(1))
+```
+
 ## WithBufferedChannel
 
 Configure the capacity of the output channel.
@@ -35,13 +47,13 @@ rxgo.WithObservation(rxgo.Eager)
 * Stop (default): stop processing if the Observable produces an error.
 
 ```go
-rxgo.WithErrorStrategy(rxgo.Stop)
+rxgo.WithErrorStrategy(rxgo.StopOnError)
 ```
 
 * Continue: continue processing items if the Observable produces an error.
 
 ```go
-rxgo.WithErrorStrategy(rxgo.Continue)
+rxgo.WithErrorStrategy(rxgo.ContinueOnError)
 ```
 
 This strategy is propagated to the parent(s) Observable(s).
@@ -61,3 +73,23 @@ Convert the operator in a parallel operator and specify the number of concurrent
 ```go
 rxgo.WithCPUPool()
 ```
+
+## Serialize
+
+Force an Observable to produce items sequentially.
+
+```go
+rxgo.Serialize()
+```
+
+This option should be used in coordination with `rxgo.WithPool(n)` or `rxgo.WithCPUPool()`.
+
+## WithPublishStrategy
+
+Create a [Connectable Observable](../README.md#connectable-observable).
+
+```go
+rxgo.WithPublishStrategy()
+```
+
+This option is propagated to the parent(s) Observable(s).

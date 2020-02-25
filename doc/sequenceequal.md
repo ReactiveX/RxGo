@@ -9,8 +9,8 @@ Determine whether two Observables emit the same sequence of items.
 ## Example
 
 ```go
-observable := rxgo.Just([]interface{}{1, 2, 3, 4, 5}).
-	SequenceEqual(rxgo.Just([]interface{}{1, 2, 42, 4, 5}))
+observable := rxgo.Just(1, 2, 3, 4, 5)().
+	SequenceEqual(rxgo.Just(1, 2, 42, 4, 5)())
 ```
 
 Output:
@@ -36,3 +36,7 @@ false
 ### WithErrorStrategy
 
 [Detail](options.md#witherrorstrategy)
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)

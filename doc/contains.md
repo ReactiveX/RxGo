@@ -9,7 +9,7 @@ Determine whether an Observable emits a particular item or not.
 ## Example
 
 ```go
-observable := rxgo.Just([]interface{}{1, 2, 3}).Contains(func(i interface{}) bool {
+observable := rxgo.Just(1, 2, 3)().Contains(func(i interface{}) bool {
 	return i == 2
 })
 ```
@@ -32,11 +32,11 @@ true
 
 ### WithPool
 
-https://github.com/ReactiveX/RxGo/wiki/Options#withpool
+[Detail](options.md#withpool)
 
 ### WithCPUPool
 
-https://github.com/ReactiveX/RxGo/wiki/Options#withcpupool
+[Detail](options.md#withcpupool)
 
 ### WithObservationStrategy
 
@@ -45,3 +45,7 @@ https://github.com/ReactiveX/RxGo/wiki/Options#withcpupool
 ### WithErrorStrategy
 
 [Detail](options.md#witherrorstrategy)
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)

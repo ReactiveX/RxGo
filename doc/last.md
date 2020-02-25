@@ -9,7 +9,7 @@ Emit only the last item emitted by an Observable.
 ## Example
 
 ```go
-observable := rxgo.Just([]interface{}{1, 2, 3}).Last()
+observable := rxgo.Just(1, 2, 3)().Last()
 ```
 
 Output:
@@ -35,3 +35,7 @@ Output:
 ### WithErrorStrategy
 
 [Detail](options.md#witherrorstrategy)
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)

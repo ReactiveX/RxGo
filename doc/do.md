@@ -19,7 +19,7 @@ Each one returns a `<-chan struct{}` that closes once the Observable terminates.
 ### DoOnNext
 
 ```go
-<-rxgo.Just([]interface{}{1, 2, 3}).
+<-rxgo.Just(1, 2, 3)().
 	DoOnNext(func(i interface{}) {
 		fmt.Println(i)
 	})
@@ -36,7 +36,7 @@ Output:
 ### DoOnError
 
 ```go
-<-rxgo.Just([]interface{}{1, 2, errors.New("foo")}).
+<-rxgo.Just(1, 2, errors.New("foo"))().
 	DoOnError(func(err error) {
 		fmt.Println(err)
 	})
@@ -51,7 +51,7 @@ foo
 ### DoOnCompleted
 
 ```go
-<-rxgo.Just([]interface{}{1, 2, 3}).
+<-rxgo.Just(1, 2, 3)().
 	DoOnCompleted(func() {
 		fmt.Println("done")
 	})

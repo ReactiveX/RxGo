@@ -9,7 +9,7 @@ Count the number of items emitted by the source Observable and emit only this va
 ## Example
 
 ```go
-observable := rxgo.Just([]interface{}{1, 2, 3}).Count()
+observable := rxgo.Just(1, 2, 3)().Count()
 ```
 
 Output:
@@ -35,3 +35,7 @@ Output:
 ### WithErrorStrategy
 
 [Detail](options.md#witherrorstrategy)
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)

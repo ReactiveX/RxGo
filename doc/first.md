@@ -9,7 +9,7 @@ Emit only the first item emitted by an Observable.
 ## Example
 
 ```go
-observable := rxgo.Just([]interface{}{1, 2, 3}).First()
+observable := rxgo.Just(1, 2, 3)().First()
 ```
 
 Output:
@@ -31,3 +31,7 @@ true
 ### WithObservationStrategy
 
 [Detail](options.md#withobservationstrategy)
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)

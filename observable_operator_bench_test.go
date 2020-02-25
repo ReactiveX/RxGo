@@ -43,6 +43,22 @@ func Benchmark_Range_Serialize(b *testing.B) {
 	}
 }
 
+func Benchmark_Range_OptionSerialize(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		obs := Range(0, benchNumberOfElementsSmall, WithBufferedChannel(benchChannelCap)).
+			Map(func(_ context.Context, i interface{}) (interface{}, error) {
+				// Simulate a blocking IO call
+				time.Sleep(5 * time.Millisecond)
+				return i, nil
+			}, WithCPUPool(), WithBufferedChannel(benchChannelCap), Serialize(func(i interface{}) int {
+				return i.(int)
+			}))
+		b.StartTimer()
+		<-obs.Run()
+	}
+}
+
 func Benchmark_Reduce_Sequential(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()

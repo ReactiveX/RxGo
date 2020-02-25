@@ -9,8 +9,8 @@ Emit a specified Iterable before beginning to emit the items from the source Obs
 ## Example
 
 ```go
-observable := rxgo.Just([]interface{}{3, 4}).StartWith(
-	rxgo.Just([]interface{}{1, 2}))
+observable := rxgo.Just(3, 4)().StartWith(
+	rxgo.Just(1, 2)())
 ```
 
 Output:
@@ -39,3 +39,7 @@ Output:
 ### WithErrorStrategy
 
 [Detail](options.md#witherrorstrategy)
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)

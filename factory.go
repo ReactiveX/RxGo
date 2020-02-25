@@ -17,7 +17,7 @@ func Amb(observables []Observable, opts ...Option) Observable {
 	once := sync.Once{}
 
 	f := func(o Observable) {
-		it := o.Observe()
+		it := o.Observe(opts...)
 
 		select {
 		case <-ctx.Done():
@@ -79,7 +79,7 @@ func CombineLatest(f FuncN, observables []Observable, opts ...Option) Observable
 
 		handler := func(ctx context.Context, it Iterable, i int) {
 			defer wg.Done()
-			observe := it.Observe()
+			observe := it.Observe(opts...)
 			for {
 				select {
 				case <-ctx.Done():
@@ -136,7 +136,7 @@ func Concat(observables []Observable, opts ...Option) Observable {
 	go func() {
 		defer close(next)
 		for _, obs := range observables {
-			observe := obs.Observe()
+			observe := obs.Observe(opts...)
 		loop:
 			for {
 				select {
@@ -185,9 +185,9 @@ func Empty() Observable {
 }
 
 // FromChannel creates a cold observable from a channel.
-func FromChannel(next <-chan Item) Observable {
+func FromChannel(next <-chan Item, opts ...Option) Observable {
 	return &ObservableImpl{
-		iterable: newChannelIterable(next),
+		iterable: newChannelIterable(next, opts...),
 	}
 }
 
@@ -226,16 +226,18 @@ func Interval(interval Duration, opts ...Option) Observable {
 }
 
 // Just creates an Observable with the provided items.
-func Just(items interface{}, opts ...Option) Observable {
-	return &ObservableImpl{
-		iterable: newJustIterable(items, opts...),
+func Just(items ...interface{}) func(opts ...Option) Observable {
+	return func(opts ...Option) Observable {
+		return &ObservableImpl{
+			iterable: newJustIterable(items...)(opts...),
+		}
 	}
 }
 
 // JustItem creates a single from one item.
 func JustItem(item interface{}, opts ...Option) Single {
 	return &SingleImpl{
-		iterable: newJustIterable(item, opts...),
+		iterable: newJustIterable(item)(opts...),
 	}
 }
 
@@ -249,7 +251,7 @@ func Merge(observables []Observable, opts ...Option) Observable {
 
 	f := func(o Observable) {
 		defer wg.Done()
-		observe := o.Observe()
+		observe := o.Observe(opts...)
 		for {
 			select {
 			case <-ctx.Done():
@@ -336,7 +338,7 @@ func Thrown(err error) Observable {
 	}
 }
 
-// Timer returns an Observable that emits an empty structure after a specified delay, and then completes.
+// Timer returns an Observable that completes after a specified delay.
 func Timer(d Duration, opts ...Option) Observable {
 	option := parseOptions(opts...)
 	next := make(chan Item, 1)
@@ -348,7 +350,7 @@ func Timer(d Duration, opts ...Option) Observable {
 		case <-ctx.Done():
 			return
 		case <-time.After(d.duration()):
-			next <- Of(struct{}{})
+			return
 		}
 	}()
 	return &ObservableImpl{

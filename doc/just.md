@@ -11,7 +11,7 @@ Convert an object or a set of objects into an Observable that emits that or thos
 ### Single Item
 
 ```go
-observable := rxgo.Just(1)
+observable := rxgo.Just(1)()
 ```
 
 Output:
@@ -23,7 +23,7 @@ Output:
 ### Multiple Items
 
 ```go
-observable := rxgo.Just([]interface{}{1, 2, 3})
+observable := rxgo.Just(1, 2, 3)()
 ```
 
 Output:
@@ -34,8 +34,19 @@ Output:
 3
 ```
 
+### Channel
+
+```go
+externalCh := make(chan int)
+observable := rxgo.Just(externalCh)()
+```
+
 ## Options
 
 ### WithBufferedChannel
 
 [Detail](options.md#withbufferedchannel)
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)

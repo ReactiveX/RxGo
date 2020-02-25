@@ -11,14 +11,14 @@ type customer struct {
 	ID int `json:"id"`
 }
 
-observable := rxgo.Just([]customer{
-	{
+observable := rxgo.Just(
+	customer{
 		ID: 1,
 	},
-	{
+	customer{
 		ID: 2,
 	},
-}).Marshal(json.Marshal)
+)().Marshal(json.Marshal)
 ```
 
 Output:
@@ -48,8 +48,12 @@ Output:
 
 ### WithPool
 
-https://github.com/ReactiveX/RxGo/wiki/Options#withpool
+[Detail](options.md#withpool)
 
 ### WithCPUPool
 
-https://github.com/ReactiveX/RxGo/wiki/Options#withcpupool
+[Detail](options.md#withcpupool)
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)

@@ -9,7 +9,7 @@ Determine whether all items emitted by an Observable meet some criteria.
 ## Example
 
 ```go
-observable := rxgo.Just([]interface{}{1, 2, 3, 4}).
+observable := rxgo.Just(1, 2, 3, 4)().
 	All(func(i interface{}) bool {
 		// Check all items are less than 10
 		return i.(int) < 10
@@ -42,8 +42,12 @@ true
 
 ### WithPool
 
-https://github.com/ReactiveX/RxGo/wiki/Options#withpool
+[Detail](options.md#withpool)
 
 ### WithCPUPool
 
-https://github.com/ReactiveX/RxGo/wiki/Options#withcpupool
+[Detail](options.md#withcpupool)
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)

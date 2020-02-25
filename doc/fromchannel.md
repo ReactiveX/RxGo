@@ -12,3 +12,7 @@ The items are consumed when an Observer subscribes.
 ch := make(chan rxgo.Item)
 observable := rxgo.FromChannel(ch)
 ```
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)

@@ -8,14 +8,14 @@ import (
 )
 
 func Test_Single_Get_Item(t *testing.T) {
-	var s Single = &SingleImpl{iterable: Just(1)}
+	var s Single = &SingleImpl{iterable: Just(1)()}
 	get, err := s.Get()
 	assert.NoError(t, err)
 	assert.Equal(t, 1, get.V)
 }
 
 func Test_Single_Get_Error(t *testing.T) {
-	var s Single = &SingleImpl{iterable: Just(errFoo)}
+	var s Single = &SingleImpl{iterable: Just(errFoo)()}
 	get, err := s.Get()
 	assert.NoError(t, err)
 	assert.Equal(t, errFoo, get.E)

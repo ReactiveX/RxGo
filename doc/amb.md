@@ -10,8 +10,8 @@ Given two or more source Observables, emit all of the items from only the first 
 
 ```go
 observable := rxgo.Amb([]rxgo.Observable{
-	rxgo.Just([]interface{}{1, 2, 3}),
-	rxgo.Just([]interface{}{4, 5, 6}),
+	rxgo.Just(1, 2, 3)(),
+	rxgo.Just(4, 5, 6)(),
 })
 ```
 

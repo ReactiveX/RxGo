@@ -9,7 +9,7 @@ Determine, and emit, the maximum-valued item emitted by an Observable.
 ## Example
 
 ```go
-observable := rxgo.Just([]interface{}{2, 5, 1, 6, 3, 4}).
+observable := rxgo.Just(2, 5, 1, 6, 3, 4)().
 	Max(func(i1 interface{}, i2 interface{}) int {
 		return i1.(int) - i2.(int)
 	})
@@ -41,8 +41,12 @@ Output:
 
 ### WithPool
 
-https://github.com/ReactiveX/RxGo/wiki/Options#withpool
+[Detail](options.md#withpool)
 
 ### WithCPUPool
 
-https://github.com/ReactiveX/RxGo/wiki/Options#withcpupool
+[Detail](options.md#withcpupool)
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)

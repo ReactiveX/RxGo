@@ -42,31 +42,44 @@ func Error(err error) Item {
 
 // SendItems is an utility function that send a list of interface{} and indicate a strategy on whether to close
 // the channel once the function completes.
-func SendItems(ch chan<- Item, strategy CloseChannelStrategy, items ...interface{}) {
+func SendItems(ctx context.Context, ch chan<- Item, strategy CloseChannelStrategy, items ...interface{}) {
 	if strategy == CloseChannel {
 		defer close(ch)
 	}
+	send(ctx, ch, items...)
+}
+
+func send(ctx context.Context, ch chan<- Item, items ...interface{}) {
 	for _, currentItem := range items {
 		switch item := currentItem.(type) {
 		default:
 			rt := reflect.TypeOf(item)
 			switch rt.Kind() {
 			default:
-				ch <- Of(item)
+				Of(item).SendContext(ctx, ch)
+			case reflect.Chan:
+				in := reflect.ValueOf(currentItem)
+				for {
+					v, ok := in.Recv()
+					if !ok {
+						return
+					}
+					currentItem := v.Interface()
+					switch item := currentItem.(type) {
+					default:
+						Of(item).SendContext(ctx, ch)
+					case error:
+						Error(item).SendContext(ctx, ch)
+					}
+				}
 			case reflect.Slice:
 				s := reflect.ValueOf(currentItem)
 				for i := 0; i < s.Len(); i++ {
-					currentItem := s.Index(i).Interface()
-					switch item := currentItem.(type) {
-					default:
-						ch <- Of(item)
-					case error:
-						ch <- Error(item)
-					}
+					send(ctx, ch, s.Index(i).Interface())
 				}
 			}
 		case error:
-			ch <- Error(item)
+			Error(item).SendContext(ctx, ch)
 		}
 	}
 }
@@ -81,9 +94,9 @@ func (i Item) SendBlocking(ch chan<- Item) {
 	ch <- i
 }
 
-// SendWithContext sends an item and blocks until it is sent or a context canceled.
+// SendContext sends an item and blocks until it is sent or a context canceled.
 // It returns a boolean to indicate whether the item was sent.
-func (i Item) SendWithContext(ctx context.Context, ch chan<- Item) bool {
+func (i Item) SendContext(ctx context.Context, ch chan<- Item) bool {
 	select {
 	case <-ctx.Done():
 		return false

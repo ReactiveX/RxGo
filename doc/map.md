@@ -1,3 +1,4 @@
+
 # Map Operator
 
 ## Overview
@@ -9,7 +10,7 @@ Transform the items emitted by an Observable by applying a function to each item
 ## Example
 
 ```go
-observable := rxgo.Just([]interface{}{1, 2, 3}).
+observable := rxgo.Just(1, 2, 3)().
 	Map(func(_ context.Context, i interface{}) (interface{}, error) {
 		return i.(int) * 10, nil
 	})
@@ -43,8 +44,16 @@ Output:
 
 ### WithPool
 
-https://github.com/ReactiveX/RxGo/wiki/Options#withpool
+[Detail](options.md#withpool)
 
 ### WithCPUPool
 
-https://github.com/ReactiveX/RxGo/wiki/Options#withcpupool
+[Detail](options.md#withcpupool)
+
+### Serialize
+
+[Detail](options.md#serialize)
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)
