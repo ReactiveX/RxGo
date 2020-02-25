@@ -1141,7 +1141,8 @@ func (o *ObservableImpl) Join(joiner Func2, right Observable, ttExtractor func(i
 	windowDuration := int64(window.duration())
 	go func() {
 		defer close(next)
-		rBuf := []Item{}
+		windowDuration := int64(window.duration())
+		rBuf := make([]Item, 0)
 
 		lObserve := o.Observe()
 		rObserve := right.Observe()
@@ -1155,9 +1156,13 @@ func (o *ObservableImpl) Join(joiner Func2, right Observable, ttExtractor func(i
 					return
 				}
 				if lItem.Error() {
-					next <- lItem
-					return
+					lItem.SendContext(ctx, next)
+					if option.getErrorStrategy() == StopOnError {
+						return
+					}
+					continue
 				}
+
 				lTime := ttExtractor(lItem.V).UnixNano()
 				cutPoint := 0
 				for i, rItem := range rBuf {
@@ -1165,10 +1170,13 @@ func (o *ObservableImpl) Join(joiner Func2, right Observable, ttExtractor func(i
 					if abs(lTime-rTime) <= windowDuration {
 						i, err := joiner(ctx, lItem.V, rItem.V)
 						if err != nil {
-							next <- Error(err)
-							return
+							Error(err).SendContext(ctx, next)
+							if option.getErrorStrategy() == StopOnError {
+								return
+							}
+							continue
 						}
-						next <- Of(i)
+						Of(i).SendContext(ctx, next)
 					}
 					if lTime > rTime+windowDuration {
 						cutPoint = i + 1
@@ -1186,19 +1194,26 @@ func (o *ObservableImpl) Join(joiner Func2, right Observable, ttExtractor func(i
 							continue lLoop
 						}
 						if rItem.Error() {
-							next <- rItem
-							return
+							rItem.SendContext(ctx, next)
+							if option.getErrorStrategy() == StopOnError {
+								return
+							}
+							continue
 						}
 
 						rBuf = append(rBuf, rItem)
+
 						rTime := ttExtractor(rItem.V).UnixNano()
 						if abs(lTime-rTime) <= windowDuration {
 							i, err := joiner(ctx, lItem.V, rItem.V)
 							if err != nil {
-								next <- Error(err)
-								return
+								Error(err).SendContext(ctx, next)
+								if option.getErrorStrategy() == StopOnError {
+									return
+								}
+								continue
 							}
-							next <- Of(i)
+							Of(i).SendContext(ctx, next)
 
 							continue
 						}
@@ -1207,11 +1222,9 @@ func (o *ObservableImpl) Join(joiner Func2, right Observable, ttExtractor func(i
 				}
 			}
 		}
-	}()
-
-	return &ObservableImpl{
-		iterable: newChannelIterable(next),
 	}
+
+	return customObservableOperator(f, opts...)
 }
 
 // GroupBy divides an Observable into a set of Observables that each emit a different group of items from the original Observable, organized by key.
@@ -1649,7 +1662,7 @@ func (op *repeatOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _
 
 // Retry retries if a source Observable sends an error, resubscribe to it in the hopes that it will complete without error.
 // Cannot be run in parallel.
-func (o *ObservableImpl) Retry(count int, opts ...Option) Observable {
+func (o *ObservableImpl) Retry(count int, shouldRetry func(error) bool, opts ...Option) Observable {
 	option := parseOptions(opts...)
 	next := option.buildChannel()
 	ctx := option.buildContext()
@@ -1667,7 +1680,7 @@ func (o *ObservableImpl) Retry(count int, opts ...Option) Observable {
 				}
 				if i.Error() {
 					count--
-					if count < 0 {
+					if count < 0 || !shouldRetry(i.E) {
 						i.SendContext(ctx, next)
 						break loop
 					}

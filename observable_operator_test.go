@@ -662,7 +662,7 @@ func joinTest(t *testing.T, left, right []interface{}, window Duration, expected
 	)
 
 	Assert(context.Background(), t, obs, CustomPredicate(func(items []interface{}) error {
-		actuals := []int64{}
+		actuals := make([]int64, 0)
 		for _, p := range items {
 			val := p.(map[string]interface{})
 			actuals = append(actuals, val["l"].(map[string]int64)["V"], val["r"].(map[string]int64)["V"])
@@ -766,7 +766,7 @@ func Test_Observable_Join_Error_On_Left(t *testing.T) {
 	joinTest(t, left, right, window, expected)
 }
 
-func Test_Observable_Join_Error_On_Right(t *testing.T) {
+func Test_Observable_Join_Error_OnRight(t *testing.T) {
 	left := []interface{}{
 		map[string]int64{"tt": 1, "V": 1},
 		map[string]int64{"tt": 3, "V": 2},
@@ -932,8 +932,20 @@ func Test_Observable_Max(t *testing.T) {
 
 func Test_Observable_Max_Parallel(t *testing.T) {
 	obs := Range(0, 10000).Max(func(e1 interface{}, e2 interface{}) int {
-		i1 := e1.(int)
-		i2 := e2.(int)
+		var i1 int
+		if e1 == nil {
+			i1 = 0
+		} else {
+			i1 = e1.(int)
+		}
+
+		var i2 int
+		if e2 == nil {
+			i2 = 0
+		} else {
+			i2 = e2.(int)
+		}
+
 		if i1 > i2 {
 			return 1
 		} else if i1 < i2 {
@@ -1140,17 +1152,32 @@ func Test_Observable_Retry(t *testing.T) {
 			i++
 			next <- Error(errFoo)
 		}
-	}}).Retry(3)
+	}}).Retry(3, func(err error) bool {
+		return true
+	})
 	Assert(context.Background(), t, obs, HasItems(1, 2, 1, 2, 1, 2, 3), HasNoError())
 }
 
-func Test_Observable_Retry_Error(t *testing.T) {
+func Test_Observable_Retry_Error_ShouldRetry(t *testing.T) {
 	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item) {
 		next <- Of(1)
 		next <- Of(2)
 		next <- Error(errFoo)
-	}}).Retry(3)
+	}}).Retry(3, func(err error) bool {
+		return true
+	})
 	Assert(context.Background(), t, obs, HasItems(1, 2, 1, 2, 1, 2, 1, 2), HasError(errFoo))
+}
+
+func Test_Observable_Retry_Error_ShouldNotRetry(t *testing.T) {
+	obs := Defer([]Producer{func(ctx context.Context, next chan<- Item) {
+		next <- Of(1)
+		next <- Of(2)
+		next <- Error(errFoo)
+	}}).Retry(3, func(err error) bool {
+		return false
+	})
+	Assert(context.Background(), t, obs, HasItems(1, 2), HasError(errFoo))
 }
 
 func Test_Observable_Run(t *testing.T) {

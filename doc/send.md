@@ -24,6 +24,4 @@ Output:
 
 ## Options
 
-### WithContext
-
-[Detail](options.md#withcontext)
+* [WithContext](options.md#withcontext)

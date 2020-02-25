@@ -22,30 +22,16 @@ true
 
 ## Options
 
-### WithBufferedChannel
+* [WithBufferedChannel](options.md#withbufferedchannel)
 
-[Detail](options.md#withbufferedchannel)
+* [WithContext](options.md#withcontext)
 
-### WithContext
+* [WithPool](options.md#withpool)
 
-[Detail](options.md#withcontext)
+* [WithCPUPool](options.md#withcpupool)
 
-### WithPool
+* [WithObservationStrategy](options.md#withobservationstrategy)
 
-[Detail](options.md#withpool)
+* [WithErrorStrategy](options.md#witherrorstrategy)
 
-### WithCPUPool
-
-[Detail](options.md#withcpupool)
-
-### WithObservationStrategy
-
-[Detail](options.md#withobservationstrategy)
-
-### WithErrorStrategy
-
-[Detail](options.md#witherrorstrategy)
-
-### WithPublishStrategy
-
-[Detail](options.md#withpublishstrategy)
+* [WithPublishStrategy](options.md#withpublishstrategy)

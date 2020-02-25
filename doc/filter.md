@@ -24,34 +24,20 @@ Output:
 
 ## Options
 
-### WithBufferedChannel
+* [WithBufferedChannel](options.md#withbufferedchannel)
 
-[Detail](options.md#withbufferedchannel)
+* [WithContext](options.md#withcontext)
 
-### WithContext
+* [WithObservationStrategy](options.md#withobservationstrategy)
 
-[Detail](options.md#withcontext)
+* [WithErrorStrategy](options.md#witherrorstrategy)
 
-### WithObservationStrategy
+* [WithPool](options.md#withpool)
 
-[Detail](options.md#withobservationstrategy)
-
-### WithErrorStrategy
-
-[Detail](options.md#witherrorstrategy)
-
-### WithPool
-
-[Detail](options.md#withpool)
-
-### WithCPUPool
-
-[Detail](options.md#withcpupool)
+* [WithCPUPool](options.md#withcpupool)
 
 ### Serialize
 
 [Detail](options.md#serialize)
 
-### WithPublishStrategy
-
-[Detail](options.md#withpublishstrategy)
+* [WithPublishStrategy](options.md#withpublishstrategy)

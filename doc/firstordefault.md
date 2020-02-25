@@ -20,18 +20,10 @@ Output:
 
 ## Options
 
-### WithBufferedChannel
+* [WithBufferedChannel](options.md#withbufferedchannel)
 
-[Detail](options.md#withbufferedchannel)
+* [WithContext](options.md#withcontext)
 
-### WithContext
+* [WithObservationStrategy](options.md#withobservationstrategy)
 
-[Detail](options.md#withcontext)
-
-### WithObservationStrategy
-
-[Detail](options.md#withobservationstrategy)
-
-### WithPublishStrategy
-
-[Detail](options.md#withpublishstrategy)
+* [WithPublishStrategy](options.md#withpublishstrategy)

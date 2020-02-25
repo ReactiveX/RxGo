@@ -37,10 +37,6 @@ The philosophy of RxGo is to implement the ReactiveX concepts and leverage the m
 go get -u github.com/reactivex/rxgo/v2
 ```
 
-## Documentation
-
-[https://pkg.go.dev/github.com/reactivex/rxgo/v2](https://pkg.go.dev/github.com/reactivex/rxgo/v2)
-
 ## Getting Started
 
 ### Hello World
@@ -123,7 +119,7 @@ observable := rxgo.FromChannel(ch)
 ```
 
 Then, we need to perform the two following operations:
-* Filter the customers whose age is below 18
+* Filter the customers whose age is below 18.
 * Enrich each customer with a tax number. Retrieving a tax number is done for example by an IO-bound function doing an external REST call.
 
 As the enriching step is IO-bound, it might be interesting to parallelize it within a given pool of goroutines.
@@ -401,6 +397,8 @@ An Iterable can be either:
 
 ## Documentation
 
+Package documentation: [https://pkg.go.dev/github.com/reactivex/rxgo/v2](https://pkg.go.dev/github.com/reactivex/rxgo/v2)
+
 ### Assert API
 
 How to use the [assert API](doc/assert.md) to write unit tests while using RxGo.
@@ -449,6 +447,7 @@ How to use the [assert API](doc/assert.md) to write unit tests while using RxGo.
 
 ### Combining Observables
 * [CombineLatest](doc/combinelatest.md) — when an item is emitted by either of two Observables, combine the latest item emitted by each Observable via a specified function and emit items based on the results of this function
+* [Join](doc/join.md) — combine items emitted by two Observables whenever an item from one Observable is emitted during a time window defined according to an item emitted by the other Observable
 * [Merge](doc/merge.md) — combine multiple Observables into one by merging their emissions
 * [StartWithIterable](doc/startwithiterable.md) — emit a specified sequence of items before beginning to emit the items from the source Iterable
 * [ZipFromIterable](doc/zipfromiterable.md) — combine the emissions of multiple Observables together via a specified function and emit single items for each combination based on the results of this function

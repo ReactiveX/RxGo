@@ -3,10 +3,10 @@ package rxgo
 import (
 	"context"
 	"sync"
-  "sync/atomic"
+	"sync/atomic"
 	"time"
 
-  "github.com/cenkalti/backoff/v4"
+	"github.com/cenkalti/backoff/v4"
 	"github.com/emirpasic/gods/trees/binaryheap"
 )
 
@@ -45,7 +45,7 @@ type Observable interface {
 	ForEach(nextFunc NextFunc, errFunc ErrFunc, completedFunc CompletedFunc, opts ...Option) Disposed
 	GroupBy(length int, distribution func(Item) int, opts ...Option) Observable
 	IgnoreElements(opts ...Option) Observable
-	Join(joiner Func2, right Observable, ttExtractor func(interface{}) time.Time, window Duration, opts ...Option) Observable
+	Join(joiner Func2, right Observable, timeExtractor func(interface{}) time.Time, window Duration, opts ...Option) Observable
 	Last(opts ...Option) OptionalSingle
 	LastOrDefault(defaultValue interface{}, opts ...Option) Single
 	Map(apply Func, opts ...Option) Observable
@@ -57,7 +57,7 @@ type Observable interface {
 	OnErrorReturnItem(resume interface{}, opts ...Option) Observable
 	Reduce(apply Func2, opts ...Option) OptionalSingle
 	Repeat(count int64, frequency Duration, opts ...Option) Observable
-	Retry(count int, opts ...Option) Observable
+	Retry(count int, shouldRetry func(error) bool, opts ...Option) Observable
 	Run(opts ...Option) Disposed
 	Sample(iterable Iterable, opts ...Option) Observable
 	Scan(apply Func2, opts ...Option) Observable

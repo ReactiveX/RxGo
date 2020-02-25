@@ -15,32 +15,16 @@ observable := rxgo.FromEventSource(ch)
 
 ## Options
 
-### WithBackPressureStrategy
+* WithBackPressureStrategy
 
-* Block (default): block until the Observer is ready to consume the next item.
+    * Block (default): block until the Observer is ready to consume the next item using `rxgo.WithBackPressureStrategy(rxgo.Block)`
 
-```go
-rxgo.FromEventSource(ch, rxgo.WithBackPressureStrategy(rxgo.Block))
-```
+    * Drop: drop the item if the Observer isn't ready using `rxgo.WithBackPressureStrategy(rxgo.Drop)`
 
-* Drop: drop the item if the Observer isn't ready.
+* [WithBufferedChannel](options.md#withbufferedchannel)
 
-```go
-rxgo.FromEventSource(ch, rxgo.WithBackPressureStrategy(rxgo.Drop))
-```
+* [WithContext](options.md#withcontext)
 
-### WithBufferedChannel
+* [WithObservationStrategy](options.md#withobservationstrategy)
 
-[Detail](options.md#withbufferedchannel)
-
-### WithContext
-
-[Detail](options.md#withcontext)
-
-### WithObservationStrategy
-
-[Detail](options.md#withobservationstrategy)
-
-### WithErrorStrategy
-
-[Detail](options.md#witherrorstrategy)
+* [WithErrorStrategy](options.md#witherrorstrategy)
