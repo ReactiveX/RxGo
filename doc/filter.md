@@ -47,3 +47,7 @@ Output:
 ### WithCPUPool
 
 [Detail](options.md#withcpupool)
+
+### Serialize
+
+[Detail](options.md#serialize)
