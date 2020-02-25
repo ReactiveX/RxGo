@@ -1648,7 +1648,7 @@ func (op *repeatOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _
 
 // Retry retries if a source Observable sends an error, resubscribe to it in the hopes that it will complete without error.
 // Cannot be run in parallel.
-func (o *ObservableImpl) Retry(count int, opts ...Option) Observable {
+func (o *ObservableImpl) Retry(count int, shouldRetry func(error) bool, opts ...Option) Observable {
 	option := parseOptions(opts...)
 	next := option.buildChannel()
 	ctx := option.buildContext()
@@ -1666,7 +1666,7 @@ func (o *ObservableImpl) Retry(count int, opts ...Option) Observable {
 				}
 				if i.Error() {
 					count--
-					if count < 0 {
+					if count < 0 || !shouldRetry(i.E) {
 						i.SendContext(ctx, next)
 						break loop
 					}

@@ -119,7 +119,7 @@ observable := rxgo.FromChannel(ch)
 ```
 
 Then, we need to perform the two following operations:
-* Filter the customers whose age is below 18
+* Filter the customers whose age is below 18.
 * Enrich each customer with a tax number. Retrieving a tax number is done for example by an IO-bound function doing an external REST call.
 
 As the enriching step is IO-bound, it might be interesting to parallelize it within a given pool of goroutines.
