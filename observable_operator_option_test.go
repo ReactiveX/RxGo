@@ -66,7 +66,7 @@ func Test_Observable_Option_Serialize(t *testing.T) {
 	idx := 0
 	<-Range(0, 10000).Map(func(_ context.Context, i interface{}) (interface{}, error) {
 		return i, nil
-	}, WithBufferedChannel(1), WithCPUPool(), Serialize(func(i interface{}) int {
+	}, WithBufferedChannel(10), WithCPUPool(), Serialize(func(i interface{}) int {
 		return i.(int)
 	})).DoOnNext(func(i interface{}) {
 		v := i.(int)
@@ -75,4 +75,13 @@ func Test_Observable_Option_Serialize(t *testing.T) {
 		}
 		idx++
 	})
+}
+
+func Test_Observable_Option_Error(t *testing.T) {
+	obs := testObservable(errFoo, 2, 3, 4).Map(func(_ context.Context, i interface{}) (interface{}, error) {
+		return i, nil
+	}, WithBufferedChannel(10), WithCPUPool(), Serialize(func(i interface{}) int {
+		return i.(int)
+	}))
+	Assert(context.Background(), t, obs, IsEmpty(), HasError(errFoo))
 }
