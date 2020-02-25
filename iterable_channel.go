@@ -1,6 +1,7 @@
 package rxgo
 
 import (
+	"context"
 	"sync"
 )
 
@@ -29,7 +30,7 @@ func (i *channelIterable) Observe(opts ...Option) <-chan Item {
 	}
 
 	if option.isConnectOperation() {
-		i.connect()
+		i.connect(option.buildContext())
 		return nil
 	}
 
@@ -40,27 +41,37 @@ func (i *channelIterable) Observe(opts ...Option) <-chan Item {
 	return ch
 }
 
-func (i *channelIterable) connect() {
+func (i *channelIterable) connect(ctx context.Context) {
 	i.mutex.Lock()
 	if !i.producerAlreadyCreated {
-		go i.produce()
+		go i.produce(ctx)
 		i.producerAlreadyCreated = true
 	}
 	i.mutex.Unlock()
 }
 
-func (i *channelIterable) produce() {
-	for item := range i.next {
+func (i *channelIterable) produce(ctx context.Context) {
+	defer func() {
 		i.mutex.RLock()
 		for _, subscriber := range i.subscribers {
-			subscriber <- item
+			close(subscriber)
 		}
 		i.mutex.RUnlock()
-	}
+	}()
 
-	i.mutex.RLock()
-	for _, subscriber := range i.subscribers {
-		close(subscriber)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case item, ok := <-i.next:
+			if !ok {
+				return
+			}
+			i.mutex.RLock()
+			for _, subscriber := range i.subscribers {
+				subscriber <- item
+			}
+			i.mutex.RUnlock()
+		}
 	}
-	i.mutex.RUnlock()
 }

@@ -40,6 +40,24 @@ func Test_Connectable_IterableChannel_Composed(t *testing.T) {
 	testConnectableComposed(t, obs)
 }
 
+func Test_Connectable_IterableChannel_Disposed(t *testing.T) {
+	ch := make(chan Item, 10)
+	go func() {
+		ch <- Of(1)
+		ch <- Of(2)
+		ch <- Of(3)
+		close(ch)
+	}()
+	obs := &ObservableImpl{
+		iterable: newChannelIterable(ch, WithPublishStrategy()),
+	}
+	obs.Connect()()
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	time.Sleep(50 * time.Millisecond)
+	Assert(ctx, t, obs, IsEmpty())
+}
+
 func Test_Connectable_IterableChannel_WithoutConnect(t *testing.T) {
 	ch := make(chan Item, 10)
 	go func() {
@@ -80,6 +98,24 @@ func Test_Connectable_IterableCreate_Composed(t *testing.T) {
 		}}, WithPublishStrategy(), WithContext(ctx)),
 	}
 	testConnectableComposed(t, obs)
+}
+
+func Test_Connectable_IterableCreate_Disposed(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	obs := &ObservableImpl{
+		iterable: newCreateIterable([]Producer{func(_ context.Context, ch chan<- Item) {
+			ch <- Of(1)
+			ch <- Of(2)
+			ch <- Of(3)
+			cancel()
+		}}, WithPublishStrategy(), WithContext(ctx)),
+	}
+	obs.Connect()()
+	ctx, cancel = context.WithTimeout(context.Background(), 550*time.Millisecond)
+	defer cancel()
+	time.Sleep(50 * time.Millisecond)
+	Assert(ctx, t, obs, IsEmpty())
 }
 
 func Test_Connectable_IterableCreate_WithoutConnect(t *testing.T) {

@@ -10,7 +10,6 @@ import (
 // Observable is the standard interface for Observables.
 type Observable interface {
 	Iterable
-	Connect() Observable
 	All(predicate Predicate, opts ...Option) Single
 	AverageFloat32(opts ...Option) Single
 	AverageFloat64(opts ...Option) Single
@@ -23,6 +22,7 @@ type Observable interface {
 	BufferWithCount(count int, opts ...Option) Observable
 	BufferWithTime(timespan Duration, opts ...Option) Observable
 	BufferWithTimeOrCount(timespan Duration, count int, opts ...Option) Observable
+	Connect() Disposable
 	Contains(equal Predicate, opts ...Option) Single
 	Count(opts ...Option) Single
 	Debounce(timespan Duration, opts ...Option) Observable

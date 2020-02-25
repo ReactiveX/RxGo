@@ -37,6 +37,8 @@ type (
 	Supplier func(ctx context.Context) Item
 	// Disposed is a notification channel indicating when an Observable is closed.
 	Disposed <-chan struct{}
+	// Disposable is a function to be called in order to dispose a subscription.
+	Disposable context.CancelFunc
 
 	// NextFunc handles a next item in a stream.
 	NextFunc func(interface{})
