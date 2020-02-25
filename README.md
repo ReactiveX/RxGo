@@ -12,11 +12,11 @@ Reactive Extensions for the Go Language
 
 ReactiveX is a new, alternative way of asynchronous programming to callbacks, promises and deferred. It is about processing streams of events or items, with events being any occurrences or changes within the system. A stream of events is called an [Observable](http://reactivex.io/documentation/contract.html).
 
-An operator is basically a function that defines an Observable, how and when it should emit data. The list of operators covered is available [here](README.md#supported-operators-in-rxgo).
+An operator is a function that defines an Observable, how and when it should emit data. The list of operators covered is available [here](README.md#supported-operators-in-rxgo).
 
 ## RxGo
 
-The RxGo implementation is based on the [pipelines](https://blog.golang.org/pipelines) concept. In a nutshell, a pipeline is a series of stages connected by channels, where each stage is a group of goroutines running the same function.
+The RxGo implementation is based on the concept of [pipelines](https://blog.golang.org/pipelines). In a nutshell, a pipeline is a series of stages connected by channels, where each stage is a group of goroutines running the same function.
 
 ![](doc/rx.png)
 
@@ -97,9 +97,9 @@ In this example, we passed 3 functions:
 <-observable.ForEach(...)
 ```
 
-### Real World Example
+### Real-World Example
 
-Let's say we want to implement a stream that consume the following `Customer` structure:
+Let's say we want to implement a stream that consumes the following `Customer` structure:
 ```go
 type Customer struct {
 	ID             int
@@ -124,8 +124,8 @@ Then, we need to perform the two following operations:
 * Filter the customers whose age is below 18
 * Enrich each customer with a tax number. Retrieving a tax number is done for example by an IO-bound function doing an external REST call.
 
-As the enrich step is IO-bound, it might be interested to parallelize it within a given pool of goroutines.
-Yet, for some reason, all the customer items need to be produced sequentially based on its `ID`.
+As the enriching step is IO-bound, it might be interesting to parallelize it within a given pool of goroutines.
+Yet, for some reason, all the `Customer` items need to be produced sequentially based on its `ID`.
 
 ```go
 observable.
