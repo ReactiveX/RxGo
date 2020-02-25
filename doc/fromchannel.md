@@ -13,6 +13,4 @@ ch := make(chan rxgo.Item)
 observable := rxgo.FromChannel(ch)
 ```
 
-### WithPublishStrategy
-
-[Detail](options.md#withpublishstrategy)
+* [WithPublishStrategy](options.md#withpublishstrategy)

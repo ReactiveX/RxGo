@@ -52,22 +52,12 @@ Second Observable
 
 ## Options
 
-### WithBufferedChannel
+* [WithBufferedChannel](options.md#withbufferedchannel)
 
-[Detail](options.md#withbufferedchannel)
+* [WithContext](options.md#withcontext)
 
-### WithContext
+* [WithObservationStrategy](options.md#withobservationstrategy)
 
-[Detail](options.md#withcontext)
+* [WithErrorStrategy](options.md#witherrorstrategy)
 
-### WithObservationStrategy
-
-[Detail](options.md#withobservationstrategy)
-
-### WithErrorStrategy
-
-[Detail](options.md#witherrorstrategy)
-
-### WithPublishStrategy
-
-[Detail](options.md#withpublishstrategy)
+* [WithPublishStrategy](options.md#withpublishstrategy)

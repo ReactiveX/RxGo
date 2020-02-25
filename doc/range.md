@@ -23,10 +23,6 @@ Output:
 
 ## Options
 
-### WithBufferedChannel
+* [WithBufferedChannel](options.md#withbufferedchannel)
 
-[Detail](options.md#withbufferedchannel)
-
-### WithContext
-
-[Detail](options.md#withcontext)
+* [WithContext](options.md#withcontext)

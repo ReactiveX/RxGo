@@ -14,6 +14,4 @@ It returns a `<-chan struct{}` that closes once the Observable terminates.
 
 ## Options
 
-### WithContext
-
-[Detail](options.md#withcontext)
+* [WithContext](options.md#withcontext)

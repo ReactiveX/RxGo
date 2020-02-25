@@ -14,14 +14,8 @@ sampledObservable := observable1.Sample(observable2)
 
 ## Options
 
-### WithBufferedChannel
+* [WithBufferedChannel](options.md#withbufferedchannel)
 
-[Detail](options.md#withbufferedchannel)
+* [WithContext](options.md#withcontext)
 
-### WithContext
-
-[Detail](options.md#withcontext)
-
-### WithPublishStrategy
-
-[Detail](options.md#withpublishstrategy)
+* [WithPublishStrategy](options.md#withpublishstrategy)

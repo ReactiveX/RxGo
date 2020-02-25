@@ -21,14 +21,8 @@ map[10:1 20:2 30:3]
 
 ## Options
 
-### WithContext
+* [WithContext](options.md#withcontext)
 
-[Detail](options.md#withcontext)
+* [WithObservationStrategy](options.md#withobservationstrategy)
 
-### WithObservationStrategy
-
-[Detail](options.md#withobservationstrategy)
-
-### WithErrorStrategy
-
-[Detail](options.md#witherrorstrategy)
+* [WithErrorStrategy](options.md#witherrorstrategy)
