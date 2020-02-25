@@ -23,7 +23,7 @@ observable := rxgo.FromEventSource(ch)
 rxgo.FromEventSource(ch, rxgo.WithBackPressureStrategy(rxgo.Block))
 ```
 
-    * Drop: drop the item if the Observer isn't ready.
+   * Drop: drop the item if the Observer isn't ready.
 
 ```go
 rxgo.FromEventSource(ch, rxgo.WithBackPressureStrategy(rxgo.Drop))
