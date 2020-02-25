@@ -326,7 +326,6 @@ There is another important change with a regular Observable. A Connectable Obser
 Here is an example with a regular Observable:
 
 ```go
-// Create a regular Observable
 ch := make(chan rxgo.Item)
 go func() {
 	ch <- rxgo.Of(1)
@@ -334,6 +333,7 @@ go func() {
 	ch <- rxgo.Of(3)
 	close(ch)
 }()
+// Create a regular Observable
 observable := rxgo.FromChannel(ch)
 
 // Create the first Observer
@@ -356,7 +356,6 @@ First observer: 3
 Now, with a Connectable Observable:
 
 ```go
-// Create a regular Observable
 ch := make(chan rxgo.Item)
 go func() {
 	ch <- rxgo.Of(1)
@@ -364,6 +363,7 @@ go func() {
 	ch <- rxgo.Of(3)
 	close(ch)
 }()
+// Create a Connectable Observable
 observable := rxgo.FromChannel(ch, rxgo.WithPublishStrategy())
 
 // Create the first Observer
@@ -388,14 +388,14 @@ Second observer: 2
 Second observer: 3
 ```
 
-### Observable, Single and OptionalSingle
+### Observable, Single and Optional Single
 
 An Iterable is an object that can be observed using `Observe(opts ...Option) <-chan Item`.
 
 An Iterable can be either:
-* An Observable: emit 0 or multiple items.
-* A Single: emit 1 item.
-* An OptionalSingle: emit 0 or 1 item.
+* An Observable: emit 0 or multiple items
+* A Single: emit 1 item
+* An Optional Single: emit 0 or 1 item
 
 ## Documentation
 
