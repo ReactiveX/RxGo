@@ -1103,6 +1103,24 @@ func Test_Observable_Serialize(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(message{1}, message{2}, message{3}, message{4}, message{5}))
 }
 
+func Test_Observable_Serialize2(t *testing.T) {
+	idx := 0
+	<-Range(1, 10000).
+		Serialize(0, func(i interface{}) int {
+			return i.(int)
+		}).
+		Map(func(_ context.Context, i interface{}) (interface{}, error) {
+			return i, nil
+		}, WithCPUPool()).
+		DoOnNext(func(i interface{}) {
+			v := i.(int)
+			if v != idx {
+				assert.FailNow(t, "not sequential", "expected=%d, got=%d", idx, v)
+			}
+			idx++
+		})
+}
+
 func Test_Observable_Serialize_DifferentFrom(t *testing.T) {
 	obs := testObservable(message{13}, message{15}, message{11}, message{12}, message{14}).
 		Serialize(11, func(i interface{}) int {
