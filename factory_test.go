@@ -324,7 +324,7 @@ func Test_JustItem(t *testing.T) {
 }
 
 func Test_Just(t *testing.T) {
-	obs := Just([]int{1, 2, 3})
+	obs := Just(1, 2, 3)()
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNoError())
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3), HasNoError())
 }
@@ -334,11 +334,7 @@ func Test_Just_CustomStructure(t *testing.T) {
 		id int
 	}
 
-	obs := Just([]customer{
-		{id: 1},
-		{id: 2},
-		{id: 3},
-	})
+	obs := Just(customer{id: 1}, customer{id: 2}, customer{id: 3})()
 	Assert(context.Background(), t, obs, HasItems(customer{id: 1}, customer{id: 2}, customer{id: 3}), HasNoError())
 	Assert(context.Background(), t, obs, HasItems(customer{id: 1}, customer{id: 2}, customer{id: 3}), HasNoError())
 }
@@ -351,17 +347,17 @@ func Test_Just_Channel(t *testing.T) {
 		ch <- 3
 		close(ch)
 	}()
-	obs := Just(ch)
+	obs := Just(ch)()
 	Assert(context.Background(), t, obs, HasItems(1, 2, 3))
 }
 
 func Test_Just_SimpleCapacity(t *testing.T) {
-	ch := Just([]Item{Of(1)}, WithBufferedChannel(5)).Observe()
+	ch := Just(1)(WithBufferedChannel(5)).Observe()
 	assert.Equal(t, 5, cap(ch))
 }
 
 func Test_Just_ComposedCapacity(t *testing.T) {
-	obs1 := Just([]Item{Of(1)}).Map(func(_ context.Context, _ interface{}) (interface{}, error) {
+	obs1 := Just(1)().Map(func(_ context.Context, _ interface{}) (interface{}, error) {
 		return 1, nil
 	}, WithBufferedChannel(11))
 	assert.Equal(t, 11, cap(obs1.Observe()))

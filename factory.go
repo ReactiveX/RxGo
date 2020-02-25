@@ -226,16 +226,18 @@ func Interval(interval Duration, opts ...Option) Observable {
 }
 
 // Just creates an Observable with the provided items.
-func Just(items interface{}, opts ...Option) Observable {
-	return &ObservableImpl{
-		iterable: newJustIterable(items, opts...),
+func Just(items ...interface{}) func(opts ...Option) Observable {
+	return func(opts ...Option) Observable {
+		return &ObservableImpl{
+			iterable: newJustIterable(items...)(opts...),
+		}
 	}
 }
 
 // JustItem creates a single from one item.
 func JustItem(item interface{}, opts ...Option) Single {
 	return &SingleImpl{
-		iterable: newJustIterable(item, opts...),
+		iterable: newJustIterable(item)(opts...),
 	}
 }
 

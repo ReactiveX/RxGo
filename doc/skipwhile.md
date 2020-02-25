@@ -7,7 +7,7 @@ Suppress the Observable items while a condition is not met.
 ## Example
 
 ```go
-observable := rxgo.Just([]interface{}{1, 2, 3, 4, 5}).SkipWhile(func(i interface{}) bool {
+observable := rxgo.Just(1, 2, 3, 4, 5)().SkipWhile(func(i interface{}) bool {
 	return i != 2
 })
 ```

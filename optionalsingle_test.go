@@ -8,7 +8,7 @@ import (
 )
 
 func Test_OptionalSingle_Get_Item(t *testing.T) {
-	var os OptionalSingle = &OptionalSingleImpl{iterable: Just(1)}
+	var os OptionalSingle = &OptionalSingleImpl{iterable: Just(1)()}
 	get, err := os.Get()
 	assert.NoError(t, err)
 	assert.Equal(t, 1, get.V)
@@ -22,7 +22,7 @@ func Test_OptionalSingle_Get_Empty(t *testing.T) {
 }
 
 func Test_OptionalSingle_Get_Error(t *testing.T) {
-	var os OptionalSingle = &OptionalSingleImpl{iterable: Just(errFoo)}
+	var os OptionalSingle = &OptionalSingleImpl{iterable: Just(errFoo)()}
 	get, err := os.Get()
 	assert.NoError(t, err)
 	assert.Equal(t, errFoo, get.E)
@@ -37,7 +37,7 @@ func Test_OptionalSingle_Get_ContextCanceled(t *testing.T) {
 }
 
 func Test_OptionalSingle_Map(t *testing.T) {
-	single := Just(1).Max(func(_ interface{}, _ interface{}) int {
+	single := Just(1)().Max(func(_ interface{}, _ interface{}) int {
 		return 1
 	}).Map(func(_ context.Context, i interface{}) (interface{}, error) {
 		return i.(int) + 1, nil

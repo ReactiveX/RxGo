@@ -9,7 +9,7 @@ It returns a `<-chan struct{}` that closes once the Observable terminates.
 ## Example
 
 ```go
-<-rxgo.Just([]interface{}{1, 2, errors.New("foo")}).Run()
+<-rxgo.Just(1, 2, errors.New("foo"))().Run()
 ```
 
 ## Options

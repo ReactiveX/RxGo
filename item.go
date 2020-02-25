@@ -46,6 +46,10 @@ func SendItems(ctx context.Context, ch chan<- Item, strategy CloseChannelStrateg
 	if strategy == CloseChannel {
 		defer close(ch)
 	}
+	send(ctx, ch, items...)
+}
+
+func send(ctx context.Context, ch chan<- Item, items ...interface{}) {
 	for _, currentItem := range items {
 		switch item := currentItem.(type) {
 		default:
@@ -71,13 +75,7 @@ func SendItems(ctx context.Context, ch chan<- Item, strategy CloseChannelStrateg
 			case reflect.Slice:
 				s := reflect.ValueOf(currentItem)
 				for i := 0; i < s.Len(); i++ {
-					currentItem := s.Index(i).Interface()
-					switch item := currentItem.(type) {
-					default:
-						Of(item).SendContext(ctx, ch)
-					case error:
-						Error(item).SendContext(ctx, ch)
-					}
+					send(ctx, ch, s.Index(i).Interface())
 				}
 			}
 		case error:

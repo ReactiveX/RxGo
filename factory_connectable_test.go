@@ -164,7 +164,7 @@ func Test_Connectable_IterableJust_Single(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	obs := &ObservableImpl{
-		iterable: newJustIterable([]interface{}{1, 2, 3}, WithPublishStrategy(), WithContext(ctx)),
+		iterable: newJustIterable(1, 2, 3)(WithPublishStrategy(), WithContext(ctx)),
 	}
 	testConnectableSingle(t, obs)
 }
@@ -173,7 +173,7 @@ func Test_Connectable_IterableJust_Composed(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	obs := &ObservableImpl{
-		iterable: newJustIterable([]interface{}{1, 2, 3}, WithPublishStrategy(), WithContext(ctx)),
+		iterable: newJustIterable(1, 2, 3)(WithPublishStrategy(), WithContext(ctx)),
 	}
 	testConnectableComposed(t, obs)
 }

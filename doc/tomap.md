@@ -7,7 +7,7 @@ Transform the Observable items into a Single emitting a map. It accepts a functi
 ## Example
 
 ```go
-observable := rxgo.Just([]interface{}{1, 2, 3}).
+observable := rxgo.Just(1, 2, 3)().
 	ToMap(func(_ context.Context, i interface{}) (interface{}, error) {
 		return i.(int) * 10, nil
 	})

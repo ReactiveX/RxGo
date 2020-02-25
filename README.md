@@ -48,13 +48,15 @@ go get -u github.com/reactivex/rxgo/v2
 Let's create our first Observable and consume an item:
 
 ```go
-observable := rxgo.Just([]rxgo.Item{rxgo.Of("Hello, World!")})
+observable := rxgo.Just("Hello, World!")()
 ch := observable.Observe()
 item := <-ch
 fmt.Println(item.V)
 ```
 
 The `Just` operator creates an Observable from a static list of items. `Of(value)` creates an item from a given value. If we want to create an item from an error, we have to use `Error(err)`. This is a difference with the v1 that was accepting directly a value or an error without having to wrap it. What's the rationale for this change? It is to prepare RxGo for the generics feature coming (hopefully) in Go 2.
+
+By the way, the `Just` operator uses currying as a syntactic sugar. This way, it accepts multiple items in the first parameter list and multiple options in the second parameter list. We'll see below how to specify options.
 
 Once the Observable is created, we can observe it using `Observe()`. By default, an Observable is lazy in the sense that it emits items only once a subscription is made. `Observe()` returns a `<-chan rxgo.Item`.
 

@@ -8,7 +8,7 @@ Send the Observable items to a given channel that will closed once the operation
 
 ```go
 ch := make(chan rxgo.Item)
-rxgo.Just([]interface{}{1, 2, 3}).Send(ch)
+rxgo.Just(1, 2, 3)().Send(ch)
 for item := range ch {
 	fmt.Println(item.V)
 }

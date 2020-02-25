@@ -9,7 +9,7 @@ Emit only item n emitted by an Observable.
 ## Example
 
 ```go
-observable := rxgo.Just([]interface{}{0, 1, 2, 3, 4}).ElementAt(2)
+observable := rxgo.Just(0, 1, 2, 3, 4)().ElementAt(2)
 ```
 
 Output:

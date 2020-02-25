@@ -9,7 +9,7 @@ Implements a retry if a source Observable sends an error, resubscribe to it in t
 ## Example
 
 ```go
-observable := rxgo.Just([]interface{}{1, 2, errors.New("foo")}).Retry(2)
+observable := rxgo.Just(1, 2, errors.New("foo"))().Retry(2)
 ```
 
 Output:

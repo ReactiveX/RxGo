@@ -9,8 +9,8 @@ Merge the emissions of an Iterable via a specified function and emit single item
 ## Example
 
 ```go
-observable1 := rxgo.Just([]interface{}{1, 2, 3})
-observable2 := rxgo.Just([]interface{}{10, 20, 30})
+observable1 := rxgo.Just(1, 2, 3)()
+observable2 := rxgo.Just(10, 20, 30)()
 zipper := func(_ context.Context, i1 interface{}, i2 interface{}) (interface{}, error) {
 	return i1.(int) + i2.(int), nil
 }

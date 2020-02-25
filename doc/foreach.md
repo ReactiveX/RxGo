@@ -9,7 +9,7 @@ It returns a `<-chan struct{}` that closes once the Observable terminates.
 ## Example
 
 ```go
-<-rxgo.Just([]interface{}{1, errors.New("foo")}).
+<-rxgo.Just(1, errors.New("foo"))().
 	ForEach(
 		func(i interface{}) {
 			fmt.Printf("next: %v\n", i)

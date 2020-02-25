@@ -9,7 +9,7 @@ Determine whether an Observable emits a particular item or not.
 ## Example
 
 ```go
-observable := rxgo.Just([]interface{}{1, 2, 3}).Contains(func(i interface{}) bool {
+observable := rxgo.Just(1, 2, 3)().Contains(func(i interface{}) bool {
 	return i == 2
 })
 ```

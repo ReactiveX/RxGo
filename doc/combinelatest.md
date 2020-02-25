@@ -19,8 +19,8 @@ observable := rxgo.CombineLatest(func(i ...interface{}) interface{} {
 	}
 	return sum
 }, []rxgo.Observable{
-	rxgo.Just([]interface{}{1, 2}),
-	rxgo.Just([]interface{}{10, 11}),
+	rxgo.Just(1, 2)(),
+	rxgo.Just(10, 11)(),
 })
 ```
 

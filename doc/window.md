@@ -21,7 +21,7 @@ Periodically subdivide items from an Observable into Observable windows and emit
 ## Example
 
 ```go
-observe := rxgo.Just([]interface{}{1, 2, 3}).WindowWithCount(2).Observe()
+observe := rxgo.Just(1, 2, 3)().WindowWithCount(2).Observe()
 
 fmt.Println("First Observable")
 for item := range (<-observe).V.(rxgo.Observable).Observe() {

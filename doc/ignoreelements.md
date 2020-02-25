@@ -9,7 +9,7 @@ Do not emit any items from an Observable but mirror its termination notification
 ## Example
 
 ```go
-observable := rxgo.Just([]interface{}{1, 2, errors.New("foo")}).
+observable := rxgo.Just(1, 2, errors.New("foo"))().
 	IgnoreElements()
 ```
 

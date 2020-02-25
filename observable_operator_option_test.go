@@ -36,12 +36,12 @@ func Test_Observable_Option_WithOnErrorStrategy_Propagate(t *testing.T) {
 }
 
 func Test_Observable_Option_SimpleCapacity(t *testing.T) {
-	ch := Just(1, WithBufferedChannel(5)).Observe()
+	ch := Just(1)(WithBufferedChannel(5)).Observe()
 	assert.Equal(t, 5, cap(ch))
 }
 
 func Test_Observable_Option_ComposedCapacity(t *testing.T) {
-	obs1 := Just(1).Map(func(_ context.Context, _ interface{}) (interface{}, error) {
+	obs1 := Just(1)().Map(func(_ context.Context, _ interface{}) (interface{}, error) {
 		return 1, nil
 	}, WithBufferedChannel(11))
 	obs2 := obs1.Map(func(_ context.Context, _ interface{}) (interface{}, error) {
@@ -55,7 +55,7 @@ func Test_Observable_Option_ComposedCapacity(t *testing.T) {
 func Test_Observable_Option_ContextPropagation(t *testing.T) {
 	expectedCtx := context.Background()
 	var gotCtx context.Context
-	<-Just(1).Map(func(ctx context.Context, i interface{}) (interface{}, error) {
+	<-Just(1)().Map(func(ctx context.Context, i interface{}) (interface{}, error) {
 		gotCtx = ctx
 		return i, nil
 	}, WithContext(expectedCtx)).Run()
@@ -79,7 +79,7 @@ func Test_Observable_Option_Serialize(t *testing.T) {
 
 func Test_Observable_Option_Serialize_SingleElement(t *testing.T) {
 	idx := 0
-	<-Just([]interface{}{0}).Map(func(_ context.Context, i interface{}) (interface{}, error) {
+	<-Just(0)().Map(func(_ context.Context, i interface{}) (interface{}, error) {
 		return i, nil
 	}, WithBufferedChannel(10), WithCPUPool(), Serialize(func(i interface{}) int {
 		return i.(int)

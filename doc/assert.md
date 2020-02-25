@@ -7,7 +7,7 @@ There is a public API to facilitate writing unit tests while using RxGo. This is
 ```go
 func TestMap(t *testing.T) {
 	err := errors.New("foo")
-	observable := rxgo.Just([]interface{}{1, 2, 3}).
+	observable := rxgo.Just(1, 2, 3)().
 		Map(func(_ context.Context, i interface{}) (interface{}, error) {
 			if i == 3 {
 				return nil, err

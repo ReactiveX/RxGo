@@ -9,11 +9,8 @@ Transform the items emitted by an Observable into Observables, then flatten the 
 ## Example
 
 ```go
-observable := rxgo.Just([]interface{}{1, 2, 3}).FlatMap(func(i rxgo.Item) rxgo.Observable {
-	return rxgo.Just([]interface{}{
-		i.V.(int) * 10,
-		i.V.(int) * 100,
-	})
+observable := rxgo.Just(1, 2, 3)().FlatMap(func(i rxgo.Item) rxgo.Observable {
+	return rxgo.Just(i.V.(int) * 10, i.V.(int) * 100)()
 })
 ```
 

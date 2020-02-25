@@ -9,11 +9,11 @@ This method is blocking.
 ## Example
 
 ```go
-errs := rxgo.Just([]interface{}{
+errs := rxgo.Just(
 	errors.New("foo"),
 	errors.New("bar"),
 	errors.New("baz"),
-}).Errors(rxgo.WithErrorStrategy(rxgo.Continue))
+)().Errors(rxgo.WithErrorStrategy(rxgo.Continue))
 fmt.Println(errs)
 ```
 
