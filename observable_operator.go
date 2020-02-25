@@ -1123,6 +1123,91 @@ func (op *ignoreElementsOperator) end(_ context.Context, _ chan<- Item) {
 func (op *ignoreElementsOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
+// Join will do inner join of current stream with supplied stream.
+// Join is performed according to http://reactivex.io/documentation/operators/join.html
+// ttExtractor accepts Item.V and returns its timestamp.
+// Window here is sliding window. That mean that window start is aligned with item timestamp.
+func (o *ObservableImpl) Join(joiner Func2, right Observable, ttExtractor func(interface{}) time.Time, window Duration, opts ...Option) Observable {
+	option := parseOptions(opts...)
+	ctx := option.buildContext()
+	next := option.buildChannel()
+
+	windowDuration := int64(window.duration())
+	go func() {
+		defer close(next)
+		rBuf := []Item{}
+
+		lObserve := o.Observe()
+		rObserve := right.Observe()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case lItem, ok := <-lObserve:
+				if lItem.V == nil && !ok {
+					return
+				}
+				if lItem.Error() {
+					next <- lItem
+					return
+				}
+				lTime := ttExtractor(lItem.V).Unix()
+				cutPoint := 0
+				for i, rItem := range rBuf {
+					rTime := ttExtractor(rItem.V).Unix()
+					if (lTime <= rTime && rTime <= lTime+windowDuration) || (rTime <= lTime && lTime <= rTime+windowDuration) {
+						i, err := joiner(ctx, lItem.V, rItem.V)
+						if err != nil {
+							next <- Error(err)
+							return
+						}
+						next <- Of(i)
+					}
+					if lTime >= rTime {
+						cutPoint = i + 1
+					}
+				}
+
+				rBuf = rBuf[cutPoint:]
+
+			rLoop:
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					case rItem, ok := <-rObserve:
+						if rItem.V == nil && !ok {
+							break rLoop
+						}
+						if rItem.Error() {
+							next <- rItem
+							return
+						}
+
+						rBuf = append(rBuf, rItem)
+						rTime := ttExtractor(rItem.V).Unix()
+						if (lTime <= rTime && rTime <= lTime+windowDuration) || (rTime <= lTime && lTime <= rTime+windowDuration) {
+							i, err := joiner(ctx, lItem.V, rItem.V)
+							if err != nil {
+								next <- Error(err)
+								return
+							}
+							next <- Of(i)
+
+							continue
+						}
+						break rLoop
+					}
+				}
+			}
+		}
+	}()
+
+	return &ObservableImpl{
+		iterable: newChannelIterable(next),
+	}
+}
+
 // GroupBy divides an Observable into a set of Observables that each emit a different group of items from the original Observable, organized by key.
 func (o *ObservableImpl) GroupBy(length int, distribution func(Item) int, opts ...Option) Observable {
 	option := parseOptions(opts...)
