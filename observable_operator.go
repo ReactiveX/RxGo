@@ -541,6 +541,7 @@ func (o *ObservableImpl) BufferWithTimeOrCount(timespan Duration, count int, opt
 	return customObservableOperator(f, opts...)
 }
 
+// Connect instructs a connectable Observable to begin emitting items to its subscribers.
 func (o *ObservableImpl) Connect() Observable {
 	o.Observe(connect())
 	return o

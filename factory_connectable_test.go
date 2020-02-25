@@ -3,13 +3,178 @@ package rxgo
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"golang.org/x/sync/errgroup"
 	"reflect"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"golang.org/x/sync/errgroup"
 )
+
+func Test_Connectable_IterableChannel_Single(t *testing.T) {
+	ch := make(chan Item, 10)
+	go func() {
+		ch <- Of(1)
+		ch <- Of(2)
+		ch <- Of(3)
+		close(ch)
+	}()
+	obs := &ObservableImpl{
+		iterable: newChannelIterable(ch, WithPublishStrategy()),
+	}
+	testConnectableSingle(t, obs)
+}
+
+func Test_Connectable_IterableChannel_Composed(t *testing.T) {
+	ch := make(chan Item, 10)
+	go func() {
+		ch <- Of(1)
+		ch <- Of(2)
+		ch <- Of(3)
+		close(ch)
+	}()
+	obs := &ObservableImpl{
+		iterable: newChannelIterable(ch, WithPublishStrategy()),
+	}
+	testConnectableComposed(t, obs)
+}
+
+func Test_Connectable_IterableChannel_WithoutConnect(t *testing.T) {
+	ch := make(chan Item, 10)
+	go func() {
+		ch <- Of(1)
+		ch <- Of(2)
+		ch <- Of(3)
+		close(ch)
+	}()
+	obs := &ObservableImpl{
+		iterable: newChannelIterable(ch, WithPublishStrategy()),
+	}
+	testConnectableWithoutConnect(t, obs)
+}
+
+func Test_Connectable_IterableCreate_Single(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	obs := &ObservableImpl{
+		iterable: newCreateIterable([]Producer{func(_ context.Context, ch chan<- Item) {
+			ch <- Of(1)
+			ch <- Of(2)
+			ch <- Of(3)
+			cancel()
+		}}, WithPublishStrategy(), WithContext(ctx)),
+	}
+	testConnectableSingle(t, obs)
+}
+
+func Test_Connectable_IterableCreate_Composed(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	obs := &ObservableImpl{
+		iterable: newCreateIterable([]Producer{func(_ context.Context, ch chan<- Item) {
+			ch <- Of(1)
+			ch <- Of(2)
+			ch <- Of(3)
+			cancel()
+		}}, WithPublishStrategy(), WithContext(ctx)),
+	}
+	testConnectableComposed(t, obs)
+}
+
+func Test_Connectable_IterableCreate_WithoutConnect(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	obs := &ObservableImpl{
+		iterable: newCreateIterable([]Producer{func(_ context.Context, ch chan<- Item) {
+			ch <- Of(1)
+			ch <- Of(2)
+			ch <- Of(3)
+			cancel()
+		}}, WithPublishStrategy(), WithContext(ctx)),
+	}
+	testConnectableWithoutConnect(t, obs)
+}
+
+func Test_Connectable_IterableDefer_Single(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	obs := &ObservableImpl{
+		iterable: newDeferIterable([]Producer{func(_ context.Context, ch chan<- Item) {
+			ch <- Of(1)
+			ch <- Of(2)
+			ch <- Of(3)
+			cancel()
+		}}, WithPublishStrategy(), WithContext(ctx)),
+	}
+	testConnectableSingle(t, obs)
+}
+
+func Test_Connectable_IterableDefer_Composed(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	obs := &ObservableImpl{
+		iterable: newDeferIterable([]Producer{func(_ context.Context, ch chan<- Item) {
+			ch <- Of(1)
+			ch <- Of(2)
+			ch <- Of(3)
+			cancel()
+		}}, WithPublishStrategy(), WithContext(ctx)),
+	}
+	testConnectableComposed(t, obs)
+}
+
+func Test_Connectable_IterableJust_Single(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	obs := &ObservableImpl{
+		iterable: newJustIterable([]interface{}{1, 2, 3}, WithPublishStrategy(), WithContext(ctx)),
+	}
+	testConnectableSingle(t, obs)
+}
+
+func Test_Connectable_IterableJust_Composed(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	obs := &ObservableImpl{
+		iterable: newJustIterable([]interface{}{1, 2, 3}, WithPublishStrategy(), WithContext(ctx)),
+	}
+	testConnectableComposed(t, obs)
+}
+
+func Test_Connectable_IterableRange_Single(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	obs := &ObservableImpl{
+		iterable: newRangeIterable(1, 2, WithPublishStrategy(), WithContext(ctx)),
+	}
+	testConnectableSingle(t, obs)
+}
+
+func Test_Connectable_IterableRange_Composed(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	obs := &ObservableImpl{
+		iterable: newRangeIterable(1, 2, WithPublishStrategy(), WithContext(ctx)),
+	}
+	testConnectableComposed(t, obs)
+}
+
+func Test_Connectable_IterableSlice_Single(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	obs := &ObservableImpl{iterable: newSliceIterable([]Item{Of(1), Of(2), Of(3)},
+		WithPublishStrategy(), WithContext(ctx))}
+	testConnectableSingle(t, obs)
+}
+
+func Test_Connectable_IterableSlice_Composed(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	obs := &ObservableImpl{iterable: newSliceIterable([]Item{Of(1), Of(2), Of(3)},
+		WithPublishStrategy(), WithContext(ctx))}
+	testConnectableComposed(t, obs)
+}
 
 func testConnectableSingle(t *testing.T, obs Observable) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -84,71 +249,4 @@ func testConnectableWithoutConnect(t *testing.T, obs Observable) {
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 	Assert(ctx, t, obs, IsEmpty())
-}
-
-func Test_Connectable_IterableChannel_Single(t *testing.T) {
-	ch := make(chan Item, 10)
-	go func() {
-		ch <- Of(1)
-		ch <- Of(2)
-		ch <- Of(3)
-		close(ch)
-	}()
-	testConnectableSingle(t, FromChannel(ch, WithPublishStrategy()))
-}
-
-func Test_Connectable_IterableChannel_Composed(t *testing.T) {
-	ch := make(chan Item, 10)
-	go func() {
-		ch <- Of(1)
-		ch <- Of(2)
-		ch <- Of(3)
-		close(ch)
-	}()
-	testConnectableComposed(t, FromChannel(ch, WithPublishStrategy()))
-}
-
-func Test_Connectable_IterableChannel_WithoutConnect(t *testing.T) {
-	ch := make(chan Item, 10)
-	go func() {
-		ch <- Of(1)
-		ch <- Of(2)
-		ch <- Of(3)
-		close(ch)
-	}()
-	obs := FromChannel(ch, WithPublishStrategy())
-	testConnectableWithoutConnect(t, obs)
-}
-
-func Test_Connectable_IterableCreate_Single(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	testConnectableSingle(t, Create([]Producer{func(_ context.Context, ch chan<- Item) {
-		ch <- Of(1)
-		ch <- Of(2)
-		ch <- Of(3)
-		cancel()
-	}}, WithPublishStrategy(), WithContext(ctx)))
-}
-
-func Test_Connectable_IterableCreate_Composed(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	testConnectableComposed(t, Create([]Producer{func(_ context.Context, ch chan<- Item) {
-		ch <- Of(1)
-		ch <- Of(2)
-		ch <- Of(3)
-		cancel()
-	}}, WithPublishStrategy(), WithContext(ctx)))
-}
-
-func Test_Connectable_IterableCreate_WithoutConnect(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	testConnectableWithoutConnect(t, Create([]Producer{func(_ context.Context, ch chan<- Item) {
-		ch <- Of(1)
-		ch <- Of(2)
-		ch <- Of(3)
-		cancel()
-	}}, WithPublishStrategy(), WithContext(ctx)))
 }

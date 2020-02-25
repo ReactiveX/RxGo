@@ -144,6 +144,7 @@ func WithErrorStrategy(strategy OnErrorStrategy) Option {
 	})
 }
 
+// WithPublishStrategy converts an ordinary Observable into a connectable Observable.
 func WithPublishStrategy() Option {
 	return newFuncOption(func(options *funcOption) {
 		options.connectable = true

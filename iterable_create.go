@@ -36,6 +36,7 @@ func newCreateIterable(fs []Producer, opts ...Option) Iterable {
 		next: next,
 	}
 }
+
 func (i *createIterable) Observe(opts ...Option) <-chan Item {
 	mergedOptions := append(i.opts, opts...)
 	option := parseOptions(mergedOptions...)
