@@ -1123,19 +1123,14 @@ func (op *ignoreElementsOperator) end(_ context.Context, _ chan<- Item) {
 func (op *ignoreElementsOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
-// Join will do inner join of current stream with supplied stream.
-// Join is performed according to http://reactivex.io/documentation/operators/join.html
-// ttExtractor accepts Item.V and returns its timestamp.
-// Window here is sliding window. That mean that window start is aligned with item timestamp.
-func (o *ObservableImpl) Join(joiner Func2, right Observable, ttExtractor func(interface{}) time.Time, window Duration, opts ...Option) Observable {
-	option := parseOptions(opts...)
-	ctx := option.buildContext()
-	next := option.buildChannel()
-
-	windowDuration := int64(window.duration())
-	go func() {
+// Join combines items emitted by two Observables whenever an item from one Observable is emitted during
+// a time window defined according to an item emitted by the other Observable.
+// The time is extracted using a timeExtractor function.
+func (o *ObservableImpl) Join(joiner Func2, right Observable, timeExtractor func(interface{}) time.Time, window Duration, opts ...Option) Observable {
+	f := func(ctx context.Context, next chan Item, option Option, opts ...Option) {
 		defer close(next)
-		rBuf := []Item{}
+		windowDuration := int64(window.duration())
+		rBuf := make([]Item, 0)
 
 		lObserve := o.Observe()
 		rObserve := right.Observe()
@@ -1148,20 +1143,26 @@ func (o *ObservableImpl) Join(joiner Func2, right Observable, ttExtractor func(i
 					return
 				}
 				if lItem.Error() {
-					next <- lItem
-					return
+					lItem.SendContext(ctx, next)
+					if option.getErrorStrategy() == StopOnError {
+						return
+					}
+					continue
 				}
-				lTime := ttExtractor(lItem.V).Unix()
+				lTime := timeExtractor(lItem.V).Unix()
 				cutPoint := 0
 				for i, rItem := range rBuf {
-					rTime := ttExtractor(rItem.V).Unix()
+					rTime := timeExtractor(rItem.V).Unix()
 					if (lTime <= rTime && rTime <= lTime+windowDuration) || (rTime <= lTime && lTime <= rTime+windowDuration) {
 						i, err := joiner(ctx, lItem.V, rItem.V)
 						if err != nil {
-							next <- Error(err)
-							return
+							Error(err).SendContext(ctx, next)
+							if option.getErrorStrategy() == StopOnError {
+								return
+							}
+							continue
 						}
-						next <- Of(i)
+						Of(i).SendContext(ctx, next)
 					}
 					if lTime >= rTime {
 						cutPoint = i + 1
@@ -1180,19 +1181,25 @@ func (o *ObservableImpl) Join(joiner Func2, right Observable, ttExtractor func(i
 							break rLoop
 						}
 						if rItem.Error() {
-							next <- rItem
-							return
+							rItem.SendContext(ctx, next)
+							if option.getErrorStrategy() == StopOnError {
+								return
+							}
+							continue
 						}
 
 						rBuf = append(rBuf, rItem)
-						rTime := ttExtractor(rItem.V).Unix()
+						rTime := timeExtractor(rItem.V).Unix()
 						if (lTime <= rTime && rTime <= lTime+windowDuration) || (rTime <= lTime && lTime <= rTime+windowDuration) {
 							i, err := joiner(ctx, lItem.V, rItem.V)
 							if err != nil {
-								next <- Error(err)
-								return
+								Error(err).SendContext(ctx, next)
+								if option.getErrorStrategy() == StopOnError {
+									return
+								}
+								continue
 							}
-							next <- Of(i)
+							Of(i).SendContext(ctx, next)
 
 							continue
 						}
@@ -1201,11 +1208,9 @@ func (o *ObservableImpl) Join(joiner Func2, right Observable, ttExtractor func(i
 				}
 			}
 		}
-	}()
-
-	return &ObservableImpl{
-		iterable: newChannelIterable(next),
 	}
+
+	return customObservableOperator(f, opts...)
 }
 
 // GroupBy divides an Observable into a set of Observables that each emit a different group of items from the original Observable, organized by key.

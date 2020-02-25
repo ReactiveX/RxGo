@@ -662,7 +662,7 @@ func joinTest(t *testing.T, left, right []interface{}, window Duration, expected
 	)
 
 	Assert(context.Background(), t, obs, CustomPredicate(func(items []interface{}) error {
-		actuals := []int64{}
+		actuals := make([]int64, 0)
 		for _, p := range items {
 			val := p.(map[string]interface{})
 			actuals = append(actuals, val["l"].(map[string]int64)["V"], val["r"].(map[string]int64)["V"])
@@ -720,7 +720,7 @@ func Test_Observable_Join2(t *testing.T) {
 	joinTest(t, left, right, window, expected)
 }
 
-func Test_Observable_Join_Error_On_Left(t *testing.T) {
+func Test_Observable_Join_Error_OnLeft(t *testing.T) {
 	left := []interface{}{
 		map[string]int64{"tt": 1, "V": 1},
 		map[string]int64{"tt": 3, "V": 2},
@@ -741,7 +741,7 @@ func Test_Observable_Join_Error_On_Left(t *testing.T) {
 	joinTest(t, left, right, window, expected)
 }
 
-func Test_Observable_Join_Error_On_Right(t *testing.T) {
+func Test_Observable_Join_Error_OnRight(t *testing.T) {
 	left := []interface{}{
 		map[string]int64{"tt": 1, "V": 1},
 		map[string]int64{"tt": 3, "V": 2},
