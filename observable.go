@@ -432,16 +432,26 @@ func (o *ObservableImpl) serialize(fromCh chan int, identifier func(interface{})
 	var counter int64
 	src := o.Observe(opts...)
 	go func() {
-		from = <-fromCh
-		minHeap.Push(from)
-		counter = int64(from)
-		close(ready)
+		defer close(ready)
+		select {
+		case <-ctx.Done():
+			return
+		case from := <-fromCh:
+			minHeap.Push(from)
+			counter = int64(from)
+		}
 	}()
 
 	// Scatter
 	go func() {
-		<-ready
 		defer close(notif)
+
+		// Wait for the from identifier to be set
+		select {
+		case <-ctx.Done():
+			return
+		case <-ready:
+		}
 
 		for {
 			select {
@@ -474,7 +484,6 @@ func (o *ObservableImpl) serialize(fromCh chan int, identifier func(interface{})
 
 	// Gather
 	go func() {
-		<-ready
 		defer close(next)
 
 		for {
