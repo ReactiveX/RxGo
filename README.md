@@ -265,6 +265,10 @@ In this example, we create a pool of 32 goroutines that consume items concurrent
 
 ## Documentation
 
+### Assert API
+
+How to use the [assert API](doc/assert.md) to write unit tests while using RxGo
+
 ### Operator Options
 
 [Operator options](doc/options.md)
