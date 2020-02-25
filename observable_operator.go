@@ -541,6 +541,13 @@ func (o *ObservableImpl) BufferWithTimeOrCount(timespan Duration, count int, opt
 	return customObservableOperator(f, opts...)
 }
 
+// Connect instructs a connectable Observable to begin emitting items to its subscribers.
+func (o *ObservableImpl) Connect() Disposable {
+	ctx, cancel := context.WithCancel(context.Background())
+	o.Observe(WithContext(ctx), connect())
+	return Disposable(cancel)
+}
+
 // Contains determines whether an Observable emits a particular item or not.
 func (o *ObservableImpl) Contains(equal Predicate, opts ...Option) Single {
 	return single(o, func() operator {

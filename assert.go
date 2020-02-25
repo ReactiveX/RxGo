@@ -254,6 +254,9 @@ loop:
 		if expectedError == nil {
 			assert.Equal(t, 0, len(errs))
 		} else {
+			if len(errs) == 0 {
+				assert.FailNow(t, "no error raised", "expected %v", expectedError)
+			}
 			assert.Equal(t, expectedError, errs[0])
 		}
 	}

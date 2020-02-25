@@ -19,7 +19,7 @@ Calculate the average of numbers emitted by an Observable and emits this average
 ## Example
 
 ```go
-observable := rxgo.Just([]interface{}{1, 2, 3, 4}).AverageInt()
+observable := rxgo.Just(1, 2, 3, 4)().AverageInt()
 ```
 
 Output:
@@ -53,3 +53,7 @@ Output:
 ### WithCPUPool
 
 [Detail](options.md#withcpupool)
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)

@@ -9,7 +9,7 @@ Apply a function to each item emitted by an Observable, sequentially, and emit t
 ## Example
 
 ```go
-observable := rxgo.Just([]interface{}{1, 2, 3}).
+observable := rxgo.Just(1, 2, 3)().
 	Reduce(func(_ context.Context, acc interface{}, elem interface{}) (interface{}, error) {
 		if acc == nil {
 			return elem, nil
@@ -49,3 +49,7 @@ Output:
 ### WithCPUPool
 
 [Detail](options.md#withcpupool)
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)

@@ -9,7 +9,7 @@ Suppress duplicate items emitted by an Observable.
 ## Example
 
 ```go
-observable := rxgo.Just([]interface{}{1, 2, 2, 3, 4, 4, 5}).
+observable := rxgo.Just(1, 2, 2, 3, 4, 4, 5)().
 	Distinct(func(_ context.Context, i interface{}) (interface{}, error) {
 		return i, nil
 	})
@@ -50,3 +50,11 @@ Output:
 ### WithCPUPool
 
 [Detail](options.md#withcpupool)
+
+### Serialize
+
+[Detail](options.md#serialize)
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)

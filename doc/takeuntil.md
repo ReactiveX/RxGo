@@ -9,7 +9,7 @@ Discard any items emitted by an Observable after a second Observable emits an it
 ## Example
 
 ```go
-observable := rxgo.Just([]interface{}{1, 2, 3, 4, 5}).TakeUntil(func(i interface{}) bool {
+observable := rxgo.Just(1, 2, 3, 4, 5)().TakeUntil(func(i interface{}) bool {
 	return i == 3
 })
 ```
@@ -39,3 +39,7 @@ Output:
 ### WithErrorStrategy
 
 [Detail](options.md#witherrorstrategy)
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)

@@ -15,6 +15,9 @@ type Option interface {
 	buildContext() context.Context
 	getBackPressureStrategy() BackpressureStrategy
 	getErrorStrategy() OnErrorStrategy
+	isConnectable() bool
+	isConnectOperation() bool
+	isSerialized() (bool, func(interface{}) int)
 }
 
 type funcOption struct {
@@ -27,6 +30,9 @@ type funcOption struct {
 	backPressureStrategy BackpressureStrategy
 	onErrorStrategy      OnErrorStrategy
 	propagate            bool
+	connectable          bool
+	connectOperation     bool
+	serialized           func(interface{}) int
 }
 
 func (fdo *funcOption) toPropagate() bool {
@@ -63,8 +69,23 @@ func (fdo *funcOption) getErrorStrategy() OnErrorStrategy {
 	return fdo.onErrorStrategy
 }
 
+func (fdo *funcOption) isConnectable() bool {
+	return fdo.connectable
+}
+
+func (fdo *funcOption) isConnectOperation() bool {
+	return fdo.connectOperation
+}
+
 func (fdo *funcOption) apply(do *funcOption) {
 	fdo.f(do)
+}
+
+func (fdo *funcOption) isSerialized() (bool, func(interface{}) int) {
+	if fdo.serialized == nil {
+		return false, nil
+	}
+	return true, fdo.serialized
 }
 
 func newFuncOption(f func(*funcOption)) *funcOption {
@@ -129,5 +150,25 @@ func WithBackPressureStrategy(strategy BackpressureStrategy) Option {
 func WithErrorStrategy(strategy OnErrorStrategy) Option {
 	return newFuncOption(func(options *funcOption) {
 		options.onErrorStrategy = strategy
+	})
+}
+
+// WithPublishStrategy converts an ordinary Observable into a connectable Observable.
+func WithPublishStrategy() Option {
+	return newFuncOption(func(options *funcOption) {
+		options.connectable = true
+	})
+}
+
+// Serialize forces an Observable to make serialized calls and to be well-behaved.
+func Serialize(identifier func(interface{}) int) Option {
+	return newFuncOption(func(options *funcOption) {
+		options.serialized = identifier
+	})
+}
+
+func connect() Option {
+	return newFuncOption(func(options *funcOption) {
+		options.connectOperation = true
 	})
 }

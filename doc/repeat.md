@@ -9,7 +9,7 @@ Create an Observable that emits a particular item multiple times at a particular
 ## Example
 
 ```go
-observable := rxgo.Just([]interface{}{1, 2, 3}).
+observable := rxgo.Just(1, 2, 3)().
 	Repeat(3, rxgo.WithDuration(time.Second))
 ```
 
@@ -48,3 +48,7 @@ Output:
 ### WithErrorStrategy
 
 [Detail](options.md#witherrorstrategy)
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)

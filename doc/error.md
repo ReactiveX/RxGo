@@ -9,7 +9,7 @@ This method is blocking.
 ## Example
 
 ```go
-err := rxgo.Just([]interface{}{1, 2, errors.New("foo")}).Error()
+err := rxgo.Just(1, 2, errors.New("foo"))().Error()
 fmt.Println(err)
 ```
 

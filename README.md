@@ -12,11 +12,11 @@ Reactive Extensions for the Go Language
 
 ReactiveX is a new, alternative way of asynchronous programming to callbacks, promises and deferred. It is about processing streams of events or items, with events being any occurrences or changes within the system. A stream of events is called an [Observable](http://reactivex.io/documentation/contract.html).
 
-An operator is basically a function that defines an Observable, how and when it should emit data. The list of operators covered is available [here](README.md#supported-operators-in-rxgo).
+An operator is a function that defines an Observable, how and when it should emit data. The list of operators covered is available [here](README.md#supported-operators-in-rxgo).
 
 ## RxGo
 
-The RxGo implementation is based on the [pipelines](https://blog.golang.org/pipelines) concept. In a nutshell, a pipeline is a series of stages connected by channels, where each stage is a group of goroutines running the same function.
+The RxGo implementation is based on the concept of [pipelines](https://blog.golang.org/pipelines). In a nutshell, a pipeline is a series of stages connected by channels, where each stage is a group of goroutines running the same function.
 
 ![](doc/rx.png)
 
@@ -48,13 +48,15 @@ go get -u github.com/reactivex/rxgo/v2
 Let's create our first Observable and consume an item:
 
 ```go
-observable := rxgo.Just([]rxgo.Item{rxgo.Of("Hello, World!")})
+observable := rxgo.Just("Hello, World!")()
 ch := observable.Observe()
 item := <-ch
 fmt.Println(item.V)
 ```
 
 The `Just` operator creates an Observable from a static list of items. `Of(value)` creates an item from a given value. If we want to create an item from an error, we have to use `Error(err)`. This is a difference with the v1 that was accepting directly a value or an error without having to wrap it. What's the rationale for this change? It is to prepare RxGo for the generics feature coming (hopefully) in Go 2.
+
+By the way, the `Just` operator uses currying as a syntactic sugar. This way, it accepts multiple items in the first parameter list and multiple options in the second parameter list. We'll see below how to specify options.
 
 Once the Observable is created, we can observe it using `Observe()`. By default, an Observable is lazy in the sense that it emits items only once a subscription is made. `Observe()` returns a `<-chan rxgo.Item`.
 
@@ -97,54 +99,71 @@ In this example, we passed 3 functions:
 <-observable.ForEach(...)
 ```
 
-### Deep Dive
+### Real-World Example
 
-Let's implement a more complete example. We will create an Observable from a channel and implement three operators (`Map`, `Filter` and `Reduce`):
+Let's say we want to implement a stream that consumes the following `Customer` structure:
+```go
+type Customer struct {
+	ID             int
+	Name, LastName string
+	Age            int
+	TaxNumber       string
+}
+```
 
+We create an producer that will emit `Customer`s to a given `chan rxgo.Item` and create an Observable from it:
 ```go
 // Create the input channel
 ch := make(chan rxgo.Item)
-// Create the data producer
+// Data producer
 go producer(ch)
 
 // Create an Observable
-observable := rxgo.FromChannel(ch).
-    Map(func(item interface{}) (interface{}, error) {
-        if num, ok := item.(int); ok {
-            return num * 2, nil
-        }
-        return nil, errors.New("input error")
-    }).
-    Filter(func(item interface{}) bool {
-        return item != 4
-    }).
-    Reduce(func(acc interface{}, item interface{}) (interface{}, error) {
-        if acc == nil {
-            return 1, nil
-        }
-        return acc.(int) * item.(int), nil
-    })
-
-// Observe it
-product := <-observable.Observe()
-
-fmt.Println(product)
+observable := rxgo.FromChannel(ch)
 ```
 
-We started by defining a `chan rxgo.Item` that will act as an input channel. We also created a `producer` goroutine that will be in charge to produce the inputs for our Observable.
+Then, we need to perform the two following operations:
+* Filter the customers whose age is below 18
+* Enrich each customer with a tax number. Retrieving a tax number is done for example by an IO-bound function doing an external REST call.
 
-The Observable was created using `FromChannel` operator. This is basically a wrapper on top of an existing channel. Then, we implemented 3 operators:
-* `Map` to double each input.
-* `Filter` to filter items equals to 4.
-* `Reduce` to perform a reduction based on the product of each item.
+As the enriching step is IO-bound, it might be interesting to parallelize it within a given pool of goroutines.
+Yet, for some reason, all the `Customer` items need to be produced sequentially based on its `ID`.
 
-In the end, `Observe` returns the output channel. We consume the output using the standard `<-` operator and we print the value.
+```go
+observable.
+	Filter(func(item interface{}) bool {
+		// Filter operation
+		customer := item.(Customer)
+		return customer.Age > 18
+	}).
+	Map(func(_ context.Context, item interface{}) (interface{}, error) {
+		// Enrich operation
+		customer := item.(Customer)
+		taxNumber, err := getTaxNumber(customer)
+		if err != nil {
+			return nil, err
+		}
+		customer.TaxNumber = taxNumber
+		return customer, nil
+	},
+		// Create multiple instances of the map operator
+		rxgo.WithPool(pool),
+		// Serialize the items emitted by their Customer.ID
+		rxgo.Serialize(func(item interface{}) int {
+			customer := item.(Customer)
+			return customer.ID
+		}), rxgo.WithBufferedChannel(1))
+``` 
 
-In this example, the Observable does produce zero or one item. This is what we would expect from a basic `Reduce` operator. 
-
-An Observable that produces exactly one item is a Single (e.g. `Count`, `FirstOrDefault`, etc.). An Observable that produces zero or one item is called an OptionalSingle (e.g. `Reduce`, `Max`, etc.).
-
-The operators producing a Single or OptionalSingle emit an item (or no item in the case of an OptionalSingle) when the stream is closed. In this example, the action that triggers the closure of the stream is when the `input` channel will be closed (most likely by the producer).
+In the end, we consume the items using `ForEach()` or `Observe()` for example. `Observe()` returns a `<-chan Item`:
+```go
+for customer := range observable.Observe() {
+	if customer.Error() {
+		return err
+	}
+	fmt.Println(customer)
+}
+```
 
 ## Observable Types
 
@@ -263,7 +282,132 @@ observable.Map(transform, rxgo.WithPool(32))
 
 In this example, we create a pool of 32 goroutines that consume items concurrently from the same channel. If the operation is CPU-bound, we can use the `WithCPUPool()` option that creates a pool based on the number of logical CPUs.
 
-## Supported Operators in RxGo
+### Connectable Observable
+
+A Connectable Observable resembles an ordinary Observable, except that it does not begin emitting items when it is subscribed to, but only when its connect() method is called. In this way, you can wait for all intended Subscribers to subscribe to the Observable before the Observable begins emitting items.
+
+Let's create a Connectable Observable using `rxgo.WithPublishStrategy`:
+
+```go
+ch := make(chan rxgo.Item)
+go func() {
+	ch <- rxgo.Of(1)
+	ch <- rxgo.Of(2)
+	ch <- rxgo.Of(3)
+	close(ch)
+}()
+observable := rxgo.FromChannel(ch, rxgo.WithPublishStrategy())
+```
+
+Then, we create two Observers:
+
+```go
+observable.Map(func(_ context.Context, i interface{}) (interface{}, error) {
+	return i.(int) + 1, nil
+}).DoOnNext(func(i interface{}) {
+	fmt.Printf("First observer: %d\n", i)
+})
+
+observable.Map(func(_ context.Context, i interface{}) (interface{}, error) {
+	return i.(int) * 2, nil
+}).DoOnNext(func(i interface{}) {
+	fmt.Printf("Second observer: %d\n", i)
+})
+```
+
+If `observable` was not a Connectable Observable, as `DoOnNext` creates an Observer, the source Observable would have begun emitting items. Yet, in the case of a Connectable Observable, we have to call `Connect()`:
+
+```go
+observable.Connect()
+``` 
+
+Once `Connect()` is called, the Connectable Observable begin to emit items.
+
+There is another important change with a regular Observable. A Connectable Observable publishes its items. It means, all the Observers receive a copy of the items.
+
+Here is an example with a regular Observable:
+
+```go
+ch := make(chan rxgo.Item)
+go func() {
+	ch <- rxgo.Of(1)
+	ch <- rxgo.Of(2)
+	ch <- rxgo.Of(3)
+	close(ch)
+}()
+// Create a regular Observable
+observable := rxgo.FromChannel(ch)
+
+// Create the first Observer
+observable.DoOnNext(func(i interface{}) {
+	fmt.Printf("First observer: %d\n", i)
+})
+
+// Create the second Observer
+observable.DoOnNext(func(i interface{}) {
+	fmt.Printf("Second observer: %d\n", i)
+})
+```
+
+```
+First observer: 1
+First observer: 2
+First observer: 3
+```
+
+Now, with a Connectable Observable:
+
+```go
+ch := make(chan rxgo.Item)
+go func() {
+	ch <- rxgo.Of(1)
+	ch <- rxgo.Of(2)
+	ch <- rxgo.Of(3)
+	close(ch)
+}()
+// Create a Connectable Observable
+observable := rxgo.FromChannel(ch, rxgo.WithPublishStrategy())
+
+// Create the first Observer
+observable.DoOnNext(func(i interface{}) {
+	fmt.Printf("First observer: %d\n", i)
+})
+
+// Create the second Observer
+observable.DoOnNext(func(i interface{}) {
+	fmt.Printf("Second observer: %d\n", i)
+})
+
+observable.Connect()
+```
+
+```
+Second observer: 1
+First observer: 1
+First observer: 2
+First observer: 3
+Second observer: 2
+Second observer: 3
+```
+
+### Observable, Single and Optional Single
+
+An Iterable is an object that can be observed using `Observe(opts ...Option) <-chan Item`.
+
+An Iterable can be either:
+* An Observable: emit 0 or multiple items
+* A Single: emit 1 item
+* An Optional Single: emit 0 or 1 item
+
+## Documentation
+
+### Assert API
+
+How to use the [assert API](doc/assert.md) to write unit tests while using RxGo.
+
+### Operator Options
+
+[Operator options](doc/options.md)
 
 ### Creating Observables
 * [Create](doc/create.md) — create an Observable from scratch by calling observer methods programmatically

@@ -39,3 +39,7 @@ Output: each item emitted by the Observable if not item has been emitted after 2
 ### WithCPUPool
 
 [Detail](options.md#withcpupool)
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)

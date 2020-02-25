@@ -9,7 +9,7 @@ Emit only those items from an Observable that pass a predicate test.
 ## Example
 
 ```go
-observable := rxgo.Just([]interface{}{1, 2, 3}).
+observable := rxgo.Just(1, 2, 3)().
 	Filter(func(i interface{}) bool {
 		return i != 2
 	})
@@ -47,3 +47,11 @@ Output:
 ### WithCPUPool
 
 [Detail](options.md#withcpupool)
+
+### Serialize
+
+[Detail](options.md#serialize)
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)

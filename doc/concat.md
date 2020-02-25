@@ -10,8 +10,8 @@ Emit the emissions from two or more Observables without interleaving them.
 
 ```go
 observable := rxgo.Concat([]rxgo.Observable{
-	rxgo.Just([]interface{}{1, 2, 3}),
-	rxgo.Just([]interface{}{4, 5, 6}),
+	rxgo.Just(1, 2, 3)(),
+	rxgo.Just(4, 5, 6)(),
 })
 ```
 
@@ -43,3 +43,7 @@ Output:
 ### WithErrorStrategy
 
 [Detail](options.md#witherrorstrategy)
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)

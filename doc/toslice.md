@@ -7,7 +7,7 @@ Transform the Observable items into a slice. It accepts a capacity that will be 
 ## Example
 
 ```go
-s, err := rxgo.Just([]interface{}{1, 2, 3}).ToSlice(3)
+s, err := rxgo.Just(1, 2, 3)().ToSlice(3)
 if err != nil {
 	return err
 }

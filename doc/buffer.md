@@ -13,7 +13,7 @@ Periodically gather items emitted by an Observable into bundles and emit these b
 ![](http://reactivex.io/documentation/operators/images/bufferWithCount3.png)
 
 ```go
-observable := rxgo.Just([]interface{}{1, 2, 3, 4}).BufferWithCount(3)
+observable := rxgo.Just(1, 2, 3, 4)().BufferWithCount(3)
 ```
 
 Output:
@@ -96,3 +96,7 @@ Output:
 ### WithErrorStrategy
 
 [Detail](options.md#witherrorstrategy)
+
+### WithPublishStrategy
+
+[Detail](options.md#withpublishstrategy)

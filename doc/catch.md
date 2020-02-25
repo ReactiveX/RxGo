@@ -15,9 +15,9 @@ Recover from an error by continuing the sequence without error.
 ### OnErrorResumeNext
 
 ```go
-observable := rxgo.Just([]interface{}{1, 2, errors.New("foo")}).
+observable := rxgo.Just(1, 2, errors.New("foo"))().
 	OnErrorResumeNext(func(e error) rxgo.Observable {
-		return rxgo.Just([]interface{}{3, 4})
+		return rxgo.Just(3, 4)()
 	})
 ```
 
@@ -33,7 +33,7 @@ Output:
 ### OnErrorReturn
 
 ```go
-observable := rxgo.Just([]interface{}{1, errors.New("2"), 3, errors.New("4"), 5}).
+observable := rxgo.Just(1, errors.New("2"), 3, errors.New("4"), 5)().
 	OnErrorReturn(func(err error) interface{} {
 		return err.Error()
 	})
@@ -52,7 +52,7 @@ Output:
 ### OnErrorReturnItem
 
 ```go
-observable := rxgo.Just([]interface{}{1, errors.New("2"), 3, errors.New("4"), 5}).
+observable := rxgo.Just(1, errors.New("2"), 3, errors.New("4"), 5)().
 	OnErrorReturnItem("foo")
 ```
 
