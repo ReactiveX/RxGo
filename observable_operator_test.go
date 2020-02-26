@@ -656,7 +656,7 @@ func joinTest(t *testing.T, left, right []interface{}, window Duration, expected
 	},
 		rightObs,
 		func(i interface{}) time.Time {
-			return time.Unix(i.(map[string]int64)["tt"], 0)
+			return time.Unix(0, i.(map[string]int64)["tt"]*1000000)
 		},
 		window,
 	)
@@ -683,7 +683,7 @@ func Test_Observable_Join1(t *testing.T) {
 		map[string]int64{"tt": 3, "V": 6},
 		map[string]int64{"tt": 5, "V": 7},
 	}
-	window := WithDuration(2)
+	window := WithDuration(2 * time.Millisecond)
 	expected := []int64{
 		1, 5,
 		1, 6,
@@ -708,11 +708,36 @@ func Test_Observable_Join2(t *testing.T) {
 		map[string]int64{"tt": 7, "V": 2},
 		map[string]int64{"tt": 10, "V": 3},
 	}
-	window := WithDuration(3)
+	window := WithDuration(2 * time.Millisecond)
 	expected := []int64{
 		1, 1,
 		2, 1,
 		3, 2,
+		4, 2,
+		4, 3,
+	}
+
+	joinTest(t, left, right, window, expected)
+}
+
+func Test_Observable_Join3(t *testing.T) {
+	left := []interface{}{
+		map[string]int64{"tt": 1, "V": 1},
+		map[string]int64{"tt": 2, "V": 2},
+		map[string]int64{"tt": 3, "V": 3},
+		map[string]int64{"tt": 4, "V": 4},
+	}
+	right := []interface{}{
+		map[string]int64{"tt": 5, "V": 1},
+		map[string]int64{"tt": 6, "V": 2},
+		map[string]int64{"tt": 7, "V": 3},
+	}
+	window := WithDuration(3 * time.Millisecond)
+	expected := []int64{
+		2, 1,
+		3, 1,
+		3, 2,
+		4, 1,
 		4, 2,
 		4, 3,
 	}
@@ -732,7 +757,7 @@ func Test_Observable_Join_Error_OnLeft(t *testing.T) {
 		map[string]int64{"tt": 7, "V": 2},
 		map[string]int64{"tt": 10, "V": 3},
 	}
-	window := WithDuration(3)
+	window := WithDuration(3 * time.Millisecond)
 	expected := []int64{
 		1, 1,
 		2, 1,
@@ -753,7 +778,7 @@ func Test_Observable_Join_Error_OnRight(t *testing.T) {
 		errFoo,
 		map[string]int64{"tt": 10, "V": 3},
 	}
-	window := WithDuration(3)
+	window := WithDuration(3 * time.Millisecond)
 	expected := []int64{
 		1, 1,
 	}

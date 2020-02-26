@@ -1123,6 +1123,12 @@ func (op *ignoreElementsOperator) end(_ context.Context, _ chan<- Item) {
 func (op *ignoreElementsOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
+// Returns absolute value for int64
+func abs(n int64) int64 {
+	y := n >> 63
+	return (n ^ y) - y
+}
+
 // Join combines items emitted by two Observables whenever an item from one Observable is emitted during
 // a time window defined according to an item emitted by the other Observable.
 // The time is extracted using a timeExtractor function.
@@ -1134,6 +1140,7 @@ func (o *ObservableImpl) Join(joiner Func2, right Observable, timeExtractor func
 
 		lObserve := o.Observe()
 		rObserve := right.Observe()
+	lLoop:
 		for {
 			select {
 			case <-ctx.Done():
@@ -1149,11 +1156,11 @@ func (o *ObservableImpl) Join(joiner Func2, right Observable, timeExtractor func
 					}
 					continue
 				}
-				lTime := timeExtractor(lItem.V).Unix()
+				lTime := timeExtractor(lItem.V).UnixNano()
 				cutPoint := 0
 				for i, rItem := range rBuf {
-					rTime := timeExtractor(rItem.V).Unix()
-					if (lTime <= rTime && rTime <= lTime+windowDuration) || (rTime <= lTime && lTime <= rTime+windowDuration) {
+					rTime := timeExtractor(rItem.V).UnixNano()
+					if abs(lTime-rTime) <= windowDuration {
 						i, err := joiner(ctx, lItem.V, rItem.V)
 						if err != nil {
 							Error(err).SendContext(ctx, next)
@@ -1164,21 +1171,20 @@ func (o *ObservableImpl) Join(joiner Func2, right Observable, timeExtractor func
 						}
 						Of(i).SendContext(ctx, next)
 					}
-					if lTime >= rTime {
+					if lTime > rTime+windowDuration {
 						cutPoint = i + 1
 					}
 				}
 
 				rBuf = rBuf[cutPoint:]
 
-			rLoop:
 				for {
 					select {
 					case <-ctx.Done():
 						return
 					case rItem, ok := <-rObserve:
 						if rItem.V == nil && !ok {
-							break rLoop
+							continue lLoop
 						}
 						if rItem.Error() {
 							rItem.SendContext(ctx, next)
@@ -1189,8 +1195,8 @@ func (o *ObservableImpl) Join(joiner Func2, right Observable, timeExtractor func
 						}
 
 						rBuf = append(rBuf, rItem)
-						rTime := timeExtractor(rItem.V).Unix()
-						if (lTime <= rTime && rTime <= lTime+windowDuration) || (rTime <= lTime && lTime <= rTime+windowDuration) {
+						rTime := timeExtractor(rItem.V).UnixNano()
+						if abs(lTime-rTime) <= windowDuration {
 							i, err := joiner(ctx, lItem.V, rItem.V)
 							if err != nil {
 								Error(err).SendContext(ctx, next)
@@ -1203,7 +1209,7 @@ func (o *ObservableImpl) Join(joiner Func2, right Observable, timeExtractor func
 
 							continue
 						}
-						break rLoop
+						continue lLoop
 					}
 				}
 			}
