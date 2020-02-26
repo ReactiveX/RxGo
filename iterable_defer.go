@@ -1,17 +1,13 @@
 package rxgo
 
-import (
-	"sync"
-)
-
 type deferIterable struct {
-	f    []Producer
+	fs   []Producer
 	opts []Option
 }
 
 func newDeferIterable(f []Producer, opts ...Option) Iterable {
 	return &deferIterable{
-		f:    f,
+		fs:   f,
 		opts: opts,
 	}
 }
@@ -21,18 +17,11 @@ func (i *deferIterable) Observe(opts ...Option) <-chan Item {
 	next := option.buildChannel()
 	ctx := option.buildContext()
 
-	wg := sync.WaitGroup{}
-	for _, f := range i.f {
-		f := f
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			f(ctx, next)
-		}()
-	}
 	go func() {
-		wg.Wait()
-		close(next)
+		defer close(next)
+		for _, f := range i.fs {
+			f(ctx, next)
+		}
 	}()
 
 	return next

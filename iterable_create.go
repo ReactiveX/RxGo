@@ -18,18 +18,11 @@ func newCreateIterable(fs []Producer, opts ...Option) Iterable {
 	next := option.buildChannel()
 	ctx := option.buildContext()
 
-	wg := sync.WaitGroup{}
-	for _, f := range fs {
-		f := f
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			f(ctx, next)
-		}()
-	}
 	go func() {
-		wg.Wait()
-		close(next)
+		defer close(next)
+		for _, f := range fs {
+			f(ctx, next)
+		}
 	}()
 
 	return &createIterable{
