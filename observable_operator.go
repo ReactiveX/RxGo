@@ -454,6 +454,30 @@ func (o *ObservableImpl) BufferWithTime(timespan Duration, opts ...Option) Obser
 		defer close(next)
 		observe := o.Observe(opts...)
 		buffer := make([]interface{}, 0)
+		mutex := sync.Mutex{}
+
+		sendBuffer := func() {
+			mutex.Lock()
+			defer mutex.Unlock()
+
+			if len(buffer) != 0 {
+				if !Of(buffer).SendContext(ctx, next) {
+					return
+				}
+				buffer = make([]interface{}, 0)
+			}
+		}
+
+		go func() {
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(timespan.duration()):
+					sendBuffer()
+				}
+			}
+		}()
 
 		for {
 			select {
@@ -461,9 +485,7 @@ func (o *ObservableImpl) BufferWithTime(timespan Duration, opts ...Option) Obser
 				return
 			case item, ok := <-observe:
 				if !ok {
-					if len(buffer) != 0 {
-						Of(buffer).SendContext(ctx, next)
-					}
+					sendBuffer()
 					return
 				}
 				if item.Error() {
@@ -471,16 +493,12 @@ func (o *ObservableImpl) BufferWithTime(timespan Duration, opts ...Option) Obser
 					if option.getErrorStrategy() == StopOnError {
 						return
 					}
-				} else {
-					buffer = append(buffer, item.V)
+					continue
 				}
-			case <-time.After(timespan.duration()):
-				if len(buffer) != 0 {
-					if !Of(buffer).SendContext(ctx, next) {
-						return
-					}
-					buffer = make([]interface{}, 0)
-				}
+
+				mutex.Lock()
+				buffer = append(buffer, item.V)
+				mutex.Unlock()
 			}
 		}
 	}
@@ -501,6 +519,29 @@ func (o *ObservableImpl) BufferWithTimeOrCount(timespan Duration, count int, opt
 		defer close(next)
 		observe := o.Observe(opts...)
 		buffer := make([]interface{}, 0)
+		mutex := sync.Mutex{}
+
+		sendBuffer := func(buf []interface{}) {
+			if len(buf) != 0 {
+				if !Of(buf).SendContext(ctx, next) {
+					return
+				}
+			}
+		}
+
+		go func() {
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(timespan.duration()):
+					mutex.Lock()
+					sendBuffer(buffer[:])
+					buffer = make([]interface{}, 0)
+					mutex.Unlock()
+				}
+			}
+		}()
 
 		for {
 			select {
@@ -508,9 +549,9 @@ func (o *ObservableImpl) BufferWithTimeOrCount(timespan Duration, count int, opt
 				return
 			case item, ok := <-observe:
 				if !ok {
-					if len(buffer) != 0 {
-						Of(buffer).SendContext(ctx, next)
-					}
+					mutex.Lock()
+					sendBuffer(buffer[:])
+					mutex.Unlock()
 					return
 				}
 				if item.Error() {
@@ -518,22 +559,16 @@ func (o *ObservableImpl) BufferWithTimeOrCount(timespan Duration, count int, opt
 					if option.getErrorStrategy() == StopOnError {
 						return
 					}
-				} else {
-					buffer = append(buffer, item.V)
-					if len(buffer) == count {
-						if !Of(buffer).SendContext(ctx, next) {
-							return
-						}
-						buffer = make([]interface{}, 0)
-					}
+					continue
 				}
-			case <-time.After(timespan.duration()):
-				if len(buffer) != 0 {
-					if !Of(buffer).SendContext(ctx, next) {
-						return
-					}
+
+				mutex.Lock()
+				buffer = append(buffer, item.V)
+				if len(buffer) >= count {
+					sendBuffer(buffer[:])
 					buffer = make([]interface{}, 0)
 				}
+				mutex.Unlock()
 			}
 		}
 	}
@@ -2684,39 +2719,66 @@ func (o *ObservableImpl) WindowWithTime(timespan Duration, opts ...Option) Obser
 			return
 		}
 
+		mutex := sync.Mutex{}
+
+		go func() {
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(timespan.duration()):
+					mutex.Lock()
+					if empty {
+						mutex.Unlock()
+						continue
+					}
+					close(ch)
+					ch = option.buildChannel()
+					empty = true
+					if !Of(FromChannel(ch)).SendContext(ctx, next) {
+						mutex.Unlock()
+						return
+					}
+					mutex.Unlock()
+				}
+			}
+		}()
+
 		for {
 			select {
 			case <-ctx.Done():
+				mutex.Lock()
 				close(ch)
+				empty = true // to prevent double close from timer
+				mutex.Unlock()
 				return
 			case item, ok := <-observe:
 				if !ok {
+					mutex.Lock()
 					close(ch)
+					empty = true // to prevent double close from timer
+					mutex.Unlock()
 					return
 				}
+
 				if item.Error() {
-					if !item.SendContext(ctx, ch) {
-						return
-					}
 					if option.getErrorStrategy() == StopOnError {
+						mutex.Lock()
+						item.SendContext(ctx, ch)
 						close(ch)
+						empty = true // to prevent double close from timer
+						mutex.Unlock()
 						return
 					}
 				}
+
+				mutex.Lock()
 				if !item.SendContext(ctx, ch) {
+					mutex.Unlock()
 					return
 				}
 				empty = false
-			case <-time.After(timespan.duration()):
-				if empty {
-					continue
-				}
-				close(ch)
-				ch = option.buildChannel()
-				empty = true
-				if !Of(FromChannel(ch)).SendContext(ctx, next) {
-					return
-				}
+				mutex.Unlock()
 			}
 		}
 	}
@@ -2743,26 +2805,59 @@ func (o *ObservableImpl) WindowWithTimeOrCount(timespan Duration, count int, opt
 			return
 		}
 
+		mutex := sync.Mutex{}
+
+		go func() {
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(timespan.duration()):
+					mutex.Lock()
+					if iCount == 0 {
+						mutex.Unlock()
+						continue
+					}
+					close(ch)
+					ch = option.buildChannel()
+					iCount = 0
+					if !Of(FromChannel(ch)).SendContext(ctx, next) {
+						mutex.Unlock()
+						return
+					}
+					mutex.Unlock()
+				}
+			}
+		}()
+
 		for {
 			select {
 			case <-ctx.Done():
+				mutex.Lock()
 				close(ch)
+				mutex.Unlock()
 				return
 			case item, ok := <-observe:
 				if !ok {
+					mutex.Lock()
 					close(ch)
+					mutex.Unlock()
 					return
 				}
+
 				if item.Error() {
-					if !item.SendContext(ctx, ch) {
-						return
-					}
 					if option.getErrorStrategy() == StopOnError {
+						mutex.Lock()
+						item.SendContext(ctx, ch)
 						close(ch)
+						mutex.Unlock()
 						return
 					}
 				}
+
+				mutex.Lock()
 				if !item.SendContext(ctx, ch) {
+					mutex.Unlock()
 					return
 				}
 				iCount++
@@ -2771,19 +2866,11 @@ func (o *ObservableImpl) WindowWithTimeOrCount(timespan Duration, count int, opt
 					ch = option.buildChannel()
 					iCount = 0
 					if !Of(FromChannel(ch)).SendContext(ctx, next) {
+						mutex.Unlock()
 						return
 					}
 				}
-			case <-time.After(timespan.duration()):
-				if iCount == 0 {
-					continue
-				}
-				close(ch)
-				ch = option.buildChannel()
-				iCount = 0
-				if !Of(FromChannel(ch)).SendContext(ctx, next) {
-					return
-				}
+				mutex.Unlock()
 			}
 		}
 	}
