@@ -184,13 +184,26 @@ func Test_Observable_BufferWithCount_InputError(t *testing.T) {
 	Assert(context.Background(), t, obs, HasAnError())
 }
 
-func Test_Observable_BufferWithTime(t *testing.T) {
-	ctx, obs, d := timeCausality(1, 2, 3, tick, tick, 4, tick, 5, 6, 7, tick)
-	obs = obs.BufferWithTime(d, WithContext(ctx))
+func Test_Observable_BufferWithTime_Single(t *testing.T) {
+	obs := Just(1, 2, 3)().BufferWithTime(WithDuration(30 * time.Millisecond))
 	Assert(context.Background(), t, obs, HasItems(
 		[]interface{}{1, 2, 3},
-		[]interface{}{4},
-		[]interface{}{5, 6, 7},
+	))
+}
+
+func Test_Observable_BufferWithTime_Multiple(t *testing.T) {
+	ch := make(chan Item, 1)
+	obs := FromChannel(ch)
+	ch <- Of(1)
+	obs = obs.BufferWithTime(WithDuration(time.Millisecond))
+	go func() {
+		time.Sleep(30 * time.Millisecond)
+		ch <- Of(2)
+		close(ch)
+	}()
+	Assert(context.Background(), t, obs, HasItems(
+		[]interface{}{1},
+		[]interface{}{2},
 	))
 }
 
