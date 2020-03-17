@@ -456,34 +456,30 @@ func (o *ObservableImpl) BufferWithTime(timespan Duration, opts ...Option) Obser
 		stop := make(chan struct{})
 		mutex := sync.Mutex{}
 
+		checkBuffer := func() {
+			mutex.Lock()
+			if len(buffer) != 0 {
+				if !Of(buffer).SendContext(ctx, next) {
+					mutex.Unlock()
+					return
+				}
+				buffer = make([]interface{}, 0)
+			}
+			mutex.Unlock()
+		}
+
 		go func() {
 			defer close(next)
 			duration := timespan.duration()
 			for {
 				select {
 				case <-stop:
-					mutex.Lock()
-					if len(buffer) != 0 {
-						if !Of(buffer).SendContext(ctx, next) {
-							mutex.Unlock()
-							return
-						}
-						buffer = make([]interface{}, 0)
-					}
-					mutex.Unlock()
+					checkBuffer()
 					return
 				case <-ctx.Done():
 					return
 				case <-time.After(duration):
-					mutex.Lock()
-					if len(buffer) != 0 {
-						if !Of(buffer).SendContext(ctx, next) {
-							mutex.Unlock()
-							return
-						}
-						buffer = make([]interface{}, 0)
-					}
-					mutex.Unlock()
+					checkBuffer()
 				}
 			}
 		}()
@@ -491,6 +487,7 @@ func (o *ObservableImpl) BufferWithTime(timespan Duration, opts ...Option) Obser
 		for {
 			select {
 			case <-ctx.Done():
+				close(stop)
 				return
 			case item, ok := <-observe:
 				if !ok {
@@ -511,6 +508,7 @@ func (o *ObservableImpl) BufferWithTime(timespan Duration, opts ...Option) Obser
 			}
 		}
 	}
+
 	return customObservableOperator(f, opts...)
 }
 
@@ -525,9 +523,41 @@ func (o *ObservableImpl) BufferWithTimeOrCount(timespan Duration, count int, opt
 	}
 
 	f := func(ctx context.Context, next chan Item, option Option, opts ...Option) {
-		defer close(next)
 		observe := o.Observe(opts...)
 		buffer := make([]interface{}, 0)
+		stop := make(chan struct{})
+		send := make(chan struct{})
+		mutex := sync.Mutex{}
+
+		checkBuffer := func() {
+			mutex.Lock()
+			if len(buffer) != 0 {
+				if !Of(buffer).SendContext(ctx, next) {
+					mutex.Unlock()
+					return
+				}
+				buffer = make([]interface{}, 0)
+			}
+			mutex.Unlock()
+		}
+
+		go func() {
+			defer close(next)
+			duration := timespan.duration()
+			for {
+				select {
+				case <-send:
+					checkBuffer()
+				case <-stop:
+					checkBuffer()
+					return
+				case <-ctx.Done():
+					return
+				case <-time.After(duration):
+					checkBuffer()
+				}
+			}
+		}()
 
 		for {
 			select {
@@ -535,31 +565,26 @@ func (o *ObservableImpl) BufferWithTimeOrCount(timespan Duration, count int, opt
 				return
 			case item, ok := <-observe:
 				if !ok {
-					if len(buffer) != 0 {
-						Of(buffer).SendContext(ctx, next)
-					}
+					close(stop)
+					close(send)
 					return
 				}
 				if item.Error() {
 					item.SendContext(ctx, next)
 					if option.getErrorStrategy() == StopOnError {
+						close(stop)
+						close(send)
 						return
 					}
 				} else {
+					mutex.Lock()
 					buffer = append(buffer, item.V)
 					if len(buffer) == count {
-						if !Of(buffer).SendContext(ctx, next) {
-							return
-						}
-						buffer = make([]interface{}, 0)
+						mutex.Unlock()
+						send <- struct{}{}
+					} else {
+						mutex.Unlock()
 					}
-				}
-			case <-time.After(timespan.duration()):
-				if len(buffer) != 0 {
-					if !Of(buffer).SendContext(ctx, next) {
-						return
-					}
-					buffer = make([]interface{}, 0)
 				}
 			}
 		}

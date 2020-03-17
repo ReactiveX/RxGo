@@ -194,29 +194,45 @@ func Test_Observable_BufferWithTime_Single(t *testing.T) {
 func Test_Observable_BufferWithTime_Multiple(t *testing.T) {
 	ch := make(chan Item, 1)
 	obs := FromChannel(ch)
-	ch <- Of(1)
-	obs = obs.BufferWithTime(WithDuration(time.Millisecond))
+	obs = obs.BufferWithTime(WithDuration(30 * time.Millisecond))
 	go func() {
-		time.Sleep(30 * time.Millisecond)
-		ch <- Of(2)
+		for i := 0; i < 10; i++ {
+			ch <- Of(i)
+		}
 		close(ch)
 	}()
-	Assert(context.Background(), t, obs, HasItems(
-		[]interface{}{1},
-		[]interface{}{2},
-	))
+	Assert(context.Background(), t, obs, CustomPredicate(func(items []interface{}) error {
+		if len(items) == 0 {
+			return errors.New("items should not be nil")
+		}
+		return nil
+	}))
 }
 
-func Test_Observable_BufferWithTimeOrCount(t *testing.T) {
-	ctx, obs, d := timeCausality(1, 2, 3, tick, tick, 4, 5, tick, 6, 7, 8, tick)
-	obs = obs.BufferWithTimeOrCount(d, 2, WithContext(ctx))
+func Test_Observable_BufferWithTimeOrCount_Single(t *testing.T) {
+	obs := Just(1, 2, 3)().BufferWithTimeOrCount(WithDuration(30*time.Millisecond), 2)
 	Assert(context.Background(), t, obs, HasItems(
 		[]interface{}{1, 2},
 		[]interface{}{3},
-		[]interface{}{4, 5},
-		[]interface{}{6, 7},
-		[]interface{}{8},
 	))
+}
+
+func Test_Observable_BufferWithTimeOrCount_Multiple(t *testing.T) {
+	ch := make(chan Item, 1)
+	obs := FromChannel(ch)
+	obs = obs.BufferWithTimeOrCount(WithDuration(30*time.Millisecond), 100)
+	go func() {
+		for i := 0; i < 10; i++ {
+			ch <- Of(i)
+		}
+		close(ch)
+	}()
+	Assert(context.Background(), t, obs, CustomPredicate(func(items []interface{}) error {
+		if len(items) == 0 {
+			return errors.New("items should not be nil")
+		}
+		return nil
+	}))
 }
 
 func Test_Observable_Contain(t *testing.T) {
