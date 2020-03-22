@@ -184,26 +184,47 @@ func Test_Observable_BufferWithCount_InputError(t *testing.T) {
 	Assert(context.Background(), t, obs, HasAnError())
 }
 
-func Test_Observable_BufferWithTime(t *testing.T) {
-	ctx, obs, d := timeCausality(1, 2, 3, tick, tick, 4, tick, 5, 6, 7, tick)
-	obs = obs.BufferWithTime(d, WithContext(ctx))
+func Test_Observable_BufferWithTime_Single(t *testing.T) {
+	obs := Just(1, 2, 3)().BufferWithTime(WithDuration(30 * time.Millisecond))
 	Assert(context.Background(), t, obs, HasItems(
 		[]interface{}{1, 2, 3},
-		[]interface{}{4},
-		[]interface{}{5, 6, 7},
 	))
 }
 
+func Test_Observable_BufferWithTime_Multiple(t *testing.T) {
+	ch := make(chan Item, 1)
+	obs := FromChannel(ch)
+	obs = obs.BufferWithTime(WithDuration(30 * time.Millisecond))
+	go func() {
+		for i := 0; i < 10; i++ {
+			ch <- Of(i)
+		}
+		close(ch)
+	}()
+	Assert(context.Background(), t, obs, CustomPredicate(func(items []interface{}) error {
+		if len(items) == 0 {
+			return errors.New("items should not be nil")
+		}
+		return nil
+	}))
+}
+
 func Test_Observable_BufferWithTimeOrCount(t *testing.T) {
-	ctx, obs, d := timeCausality(1, 2, 3, tick, tick, 4, 5, tick, 6, 7, 8, tick)
-	obs = obs.BufferWithTimeOrCount(d, 2, WithContext(ctx))
-	Assert(context.Background(), t, obs, HasItems(
-		[]interface{}{1, 2},
-		[]interface{}{3},
-		[]interface{}{4, 5},
-		[]interface{}{6, 7},
-		[]interface{}{8},
-	))
+	ch := make(chan Item, 1)
+	obs := FromChannel(ch)
+	obs = obs.BufferWithTimeOrCount(WithDuration(30*time.Millisecond), 100)
+	go func() {
+		for i := 0; i < 10; i++ {
+			ch <- Of(i)
+		}
+		close(ch)
+	}()
+	Assert(context.Background(), t, obs, CustomPredicate(func(items []interface{}) error {
+		if len(items) == 0 {
+			return errors.New("items should not be nil")
+		}
+		return nil
+	}))
 }
 
 func Test_Observable_Contain(t *testing.T) {
@@ -1632,69 +1653,36 @@ func Test_Observable_WindowWithCount_InputError(t *testing.T) {
 }
 
 func Test_Observable_WindowWithTime(t *testing.T) {
-	ctx, obs, d := timeCausality(1, 2, 3, tick, 4, tick)
-	observe := obs.WindowWithTime(d, WithContext(ctx), WithBufferedChannel(10)).Observe()
-	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(1, 2, 3))
-	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(4))
-}
+	ch := make(chan Item, 10)
+	ch <- Of(1)
+	ch <- Of(2)
+	obs := FromChannel(ch)
+	go func() {
+		time.Sleep(30 * time.Millisecond)
+		ch <- Of(3)
+		close(ch)
+	}()
 
-func Test_Observable_WindowWithTime_Error(t *testing.T) {
-	ctx, obs, d := timeCausality(1, 2, errFoo, tick)
-	observe := obs.WindowWithTime(d, WithContext(ctx), WithBufferedChannel(10)).Observe()
-	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(1, 2), HasError(errFoo))
-}
-
-func Test_Observable_WindowWithTime_Eager(t *testing.T) {
-	ctx, obs, d := timeCausality(1, 2, 3, tick, 4, tick)
-	observe := obs.WindowWithTime(d, WithContext(ctx), WithBufferedChannel(10), WithObservationStrategy(Eager)).
-		Observe()
-	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(1, 2, 3))
-	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(4))
-}
-
-func Test_Observable_WindowWithTime_ContinueOnError(t *testing.T) {
-	ctx, obs, d := timeCausality(1, 2, errFoo, 3, tick, 4, tick)
-	observe := obs.WindowWithTime(d, WithContext(ctx), WithBufferedChannel(10), WithErrorStrategy(ContinueOnError)).
-		Observe()
-	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(1, 2, 3), HasError(errFoo))
-	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(4), HasNoError())
+	observe := obs.WindowWithTime(WithDuration(10*time.Millisecond), WithBufferedChannel(10)).Observe()
+	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(1, 2))
+	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(3))
 }
 
 func Test_Observable_WindowWithTimeOrCount(t *testing.T) {
-	ctx, obs, d := timeCausality(1, 2, 3, tick, 4, 5, 6, 7, tick, 8, tick)
-	observe := obs.WindowWithTimeOrCount(d, 2, WithContext(ctx), WithBufferedChannel(10)).Observe()
-	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(1, 2))
-	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(3))
-	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(4, 5))
-	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(6, 7))
-	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(8))
-}
+	ch := make(chan Item, 10)
+	ch <- Of(1)
+	ch <- Of(2)
+	obs := FromChannel(ch)
+	go func() {
+		time.Sleep(30 * time.Millisecond)
+		ch <- Of(3)
+		close(ch)
+	}()
 
-func Test_Observable_WindowWithTimeOrCount_Error(t *testing.T) {
-	ctx, obs, d := timeCausality(1, errFoo, 3, tick, 4, 5, 6, 7, tick, 8, tick)
-	observe := obs.WindowWithTimeOrCount(d, 2, WithContext(ctx), WithBufferedChannel(10)).Observe()
-	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(1), HasError(errFoo))
-}
-
-func Test_Observable_WindowWithTimeOrCount_Eager(t *testing.T) {
-	ctx, obs, d := timeCausality(1, 2, 3, tick, 4, 5, 6, 7, tick, 8, tick)
-	observe := obs.WindowWithTimeOrCount(d, 2, WithContext(ctx), WithBufferedChannel(10), WithObservationStrategy(Eager)).
-		Observe()
-	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(1, 2))
+	observe := obs.WindowWithTimeOrCount(WithDuration(10*time.Millisecond), 1, WithBufferedChannel(10)).Observe()
+	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(1))
+	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(2))
 	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(3))
-	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(4, 5))
-	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(6, 7))
-	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(8))
-}
-
-func Test_Observable_WindowWithTimeOrCount_ContinueOnError(t *testing.T) {
-	ctx, obs, d := timeCausality(1, 2, 3, tick, 4, 5, 6, 7, tick, 8, tick)
-	observe := obs.WindowWithTimeOrCount(d, 2, WithContext(ctx), WithErrorStrategy(ContinueOnError)).Observe()
-	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(1, 2))
-	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(3))
-	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(4, 5))
-	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(6, 7))
-	Assert(context.Background(), t, (<-observe).V.(Observable), HasItems(8))
 }
 
 func Test_Observable_ZipFromObservable(t *testing.T) {
