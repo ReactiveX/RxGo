@@ -2728,47 +2728,77 @@ func (o *ObservableImpl) WindowWithTime(timespan Duration, opts ...Option) Obser
 	}
 
 	f := func(ctx context.Context, next chan Item, option Option, opts ...Option) {
-		defer close(next)
 		observe := o.Observe(opts...)
 		ch := option.buildChannel()
+		done := make(chan struct{})
 		empty := true
+		mutex := sync.Mutex{}
 		if !Of(FromChannel(ch)).SendContext(ctx, next) {
 			return
 		}
 
+		go func() {
+			defer func() {
+				mutex.Lock()
+				close(ch)
+				mutex.Unlock()
+			}()
+			defer close(next)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-done:
+					return
+				case <-time.After(timespan.duration()):
+					mutex.Lock()
+					if empty {
+						mutex.Unlock()
+						continue
+					}
+					close(ch)
+					empty = true
+					ch = option.buildChannel()
+					if !Of(FromChannel(ch)).SendContext(ctx, next) {
+						close(done)
+						return
+					}
+					mutex.Unlock()
+				}
+			}
+		}()
+
 		for {
 			select {
 			case <-ctx.Done():
-				close(ch)
+				return
+			case <-done:
 				return
 			case item, ok := <-observe:
 				if !ok {
-					close(ch)
+					close(done)
 					return
 				}
 				if item.Error() {
+					mutex.Lock()
 					if !item.SendContext(ctx, ch) {
+						mutex.Unlock()
+						close(done)
 						return
 					}
+					mutex.Unlock()
 					if option.getErrorStrategy() == StopOnError {
-						close(ch)
+						close(done)
 						return
 					}
 				}
+				mutex.Lock()
 				if !item.SendContext(ctx, ch) {
+					mutex.Unlock()
 					return
 				}
 				empty = false
-			case <-time.After(timespan.duration()):
-				if empty {
-					continue
-				}
-				close(ch)
-				ch = option.buildChannel()
-				empty = true
-				if !Of(FromChannel(ch)).SendContext(ctx, next) {
-					return
-				}
+				mutex.Unlock()
 			}
 		}
 	}
@@ -2787,55 +2817,87 @@ func (o *ObservableImpl) WindowWithTimeOrCount(timespan Duration, count int, opt
 	}
 
 	f := func(ctx context.Context, next chan Item, option Option, opts ...Option) {
-		defer close(next)
 		observe := o.Observe(opts...)
 		ch := option.buildChannel()
+		done := make(chan struct{})
+		mutex := sync.Mutex{}
 		iCount := 0
 		if !Of(FromChannel(ch)).SendContext(ctx, next) {
 			return
 		}
 
+		go func() {
+			defer func() {
+				mutex.Lock()
+				close(ch)
+				mutex.Unlock()
+			}()
+			defer close(next)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-done:
+					return
+				case <-time.After(timespan.duration()):
+					mutex.Lock()
+					if iCount == 0 {
+						mutex.Unlock()
+						continue
+					}
+					close(ch)
+					iCount = 0
+					ch = option.buildChannel()
+					if !Of(FromChannel(ch)).SendContext(ctx, next) {
+						close(done)
+						return
+					}
+					mutex.Unlock()
+				}
+			}
+		}()
+
 		for {
 			select {
 			case <-ctx.Done():
-				close(ch)
+				return
+			case <-done:
 				return
 			case item, ok := <-observe:
 				if !ok {
-					close(ch)
+					close(done)
 					return
 				}
 				if item.Error() {
+					mutex.Lock()
 					if !item.SendContext(ctx, ch) {
+						mutex.Unlock()
+						close(done)
 						return
 					}
+					mutex.Unlock()
 					if option.getErrorStrategy() == StopOnError {
-						close(ch)
+						close(done)
 						return
 					}
 				}
+				mutex.Lock()
 				if !item.SendContext(ctx, ch) {
+					mutex.Unlock()
 					return
 				}
 				iCount++
 				if iCount == count {
 					close(ch)
-					ch = option.buildChannel()
 					iCount = 0
+					ch = option.buildChannel()
 					if !Of(FromChannel(ch)).SendContext(ctx, next) {
+						mutex.Unlock()
+						close(done)
 						return
 					}
 				}
-			case <-time.After(timespan.duration()):
-				if iCount == 0 {
-					continue
-				}
-				close(ch)
-				ch = option.buildChannel()
-				iCount = 0
-				if !Of(FromChannel(ch)).SendContext(ctx, next) {
-					return
-				}
+				mutex.Unlock()
 			}
 		}
 	}
