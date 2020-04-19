@@ -205,11 +205,10 @@ It means, the first Observer consumed already all the items.
 On the other hand, let's create a hot Observable using `Defer` operator:
 
 ```go
-observable := rxgo.Defer([]Producer{func(_ context.Context, ch chan<- rxgo.Item, done func()) {
+observable := rxgo.Defer([]rxgo.Producer{func(_ context.Context, ch chan<- rxgo.Item) {
     for i := 0; i < 3; i++ {
         ch <- rxgo.Of(i)
     }
-    done()
 }})
 
 // First Observer
