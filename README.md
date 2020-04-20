@@ -207,11 +207,10 @@ The main point here is the goroutine produced those items.
 On the other hand, let's create a **cold** Observable using `Defer` operator:
 
 ```go
-observable := rxgo.Defer([]Producer{func(_ context.Context, ch chan<- rxgo.Item, done func()) {
+observable := rxgo.Defer([]rxgo.Producer{func(_ context.Context, ch chan<- rxgo.Item) {
     for i := 0; i < 3; i++ {
         ch <- rxgo.Of(i)
     }
-    done()
 }})
 
 // First Observer
