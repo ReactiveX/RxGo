@@ -103,7 +103,7 @@ type Customer struct {
 	ID             int
 	Name, LastName string
 	Age            int
-	TaxNumber       string
+	TaxNumber      string
 }
 ```
 
@@ -165,11 +165,11 @@ for customer := range observable.Observe() {
 
 ### Hot vs Cold Observables
 
-In the Rx world, there is a distinction between hot and cold Observable. When the data is produced by the Observable itself, it is a cold Observable. When the data is produced outside the Observable, it is a hot Observable. Usually, when we don't want to create a producer over and over again, we favour a hot Observable.
+In the Rx world, there is a distinction between cold and hot Observables. When the data is produced by the Observable itself, it is a cold Observable. When the data is produced outside the Observable, it is a hot Observable. Usually, when we don't want to create a producer over and over again, we favour a hot Observable.
 
 In RxGo, there is a similar concept.
 
-First, let's create a cold Observable using `FromChannel` operator and see the implications:
+First, let's create a **hot** Observable using `FromChannel` operator and see the implications:
 
 ```go
 ch := make(chan rxgo.Item)
@@ -200,16 +200,17 @@ The result of this execution is:
 2
 ```
 
-It means, the first Observer consumed already all the items.
+It means, the first Observer already consumed all items. And nothing left for others.  
+Though this behavior can be altered with [Connectable](#connectable-observable) Observables.  
+The main point here is the goroutine produced those items.
 
-On the other hand, let's create a hot Observable using `Defer` operator:
+On the other hand, let's create a **cold** Observable using `Defer` operator:
 
 ```go
-observable := rxgo.Defer([]Producer{func(_ context.Context, ch chan<- rxgo.Item, done func()) {
+observable := rxgo.Defer([]rxgo.Producer{func(_ context.Context, ch chan<- rxgo.Item) {
     for i := 0; i < 3; i++ {
         ch <- rxgo.Of(i)
     }
-    done()
 }})
 
 // First Observer
@@ -234,7 +235,11 @@ Now, the result is:
 2
 ```
 
-In the case of a hot observable created with `Defer`, the stream is reproducible. Depending on our use case, we may favour one or the other approach.
+In the case of a cold observable, the stream was created independently for every observer.
+
+Again, **hot** vs **cold** Observables are not about how you consume items, it's about where data is produced.  
+Good example for hot Observable are price ticks from a trading exchange.  
+And if you teach an Observable to fetch products from a database, then yield them one by one, you will create the **cold** Observable.
 
 ### Backpressure
 

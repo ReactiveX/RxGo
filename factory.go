@@ -269,11 +269,9 @@ func Merge(observables []Observable, opts ...Option) Observable {
 		}
 	}
 
-	go func() {
-		for _, o := range observables {
-			f(o)
-		}
-	}()
+	for _, o := range observables {
+		go f(o)
+	}
 
 	go func() {
 		wg.Wait()
