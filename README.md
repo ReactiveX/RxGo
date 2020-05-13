@@ -379,7 +379,15 @@ observable.DoOnNext(func(i interface{}) {
 	fmt.Printf("Second observer: %d\n", i)
 })
 
-observable.Connect()
+disposed, cancel := observable.Connect()
+go func() {
+	// Do something
+	time.Sleep(time.Second)
+	// Then cancel the subscription
+	cancel()
+}()
+// Wait for the subscription to be disposed
+<-disposed
 ```
 
 ```
