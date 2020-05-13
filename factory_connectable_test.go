@@ -51,7 +51,8 @@ func Test_Connectable_IterableChannel_Disposed(t *testing.T) {
 	obs := &ObservableImpl{
 		iterable: newChannelIterable(ch, WithPublishStrategy()),
 	}
-	obs.Connect()()
+	_, disposable := obs.Connect()
+	disposable()
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 	time.Sleep(50 * time.Millisecond)
@@ -111,9 +112,9 @@ func Test_Connectable_IterableCreate_Disposed(t *testing.T) {
 			cancel()
 		}}, WithPublishStrategy(), WithContext(ctx)),
 	}
-	obs.Connect()()
-	ctx, cancel = context.WithTimeout(context.Background(), 550*time.Millisecond)
-	defer cancel()
+	obs.Connect()
+	_, cancel2 := context.WithTimeout(context.Background(), 550*time.Millisecond)
+	defer cancel2()
 	time.Sleep(50 * time.Millisecond)
 	Assert(ctx, t, obs, IsEmpty())
 }

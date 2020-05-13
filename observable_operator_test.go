@@ -1298,7 +1298,7 @@ func Test_Observable_Serialize_Duplicates(t *testing.T) {
 		Serialize(1, func(i interface{}) int {
 			return i.(int)
 		})
-	Assert(context.Background(), t, obs, HasItems(1, 2, 3, 4, 5))
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3, 4, 5, 6))
 }
 
 func Test_Observable_Serialize_Loop(t *testing.T) {

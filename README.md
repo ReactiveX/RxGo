@@ -361,25 +361,33 @@ Now, with a Connectable Observable:
 ```go
 ch := make(chan rxgo.Item)
 go func() {
-	ch <- rxgo.Of(1)
-	ch <- rxgo.Of(2)
-	ch <- rxgo.Of(3)
-	close(ch)
+    ch <- rxgo.Of(1)
+    ch <- rxgo.Of(2)
+    ch <- rxgo.Of(3)
+    close(ch)
 }()
 // Create a Connectable Observable
 observable := rxgo.FromChannel(ch, rxgo.WithPublishStrategy())
 
 // Create the first Observer
 observable.DoOnNext(func(i interface{}) {
-	fmt.Printf("First observer: %d\n", i)
+    fmt.Printf("First observer: %d\n", i)
 })
 
 // Create the second Observer
 observable.DoOnNext(func(i interface{}) {
-	fmt.Printf("Second observer: %d\n", i)
+    fmt.Printf("Second observer: %d\n", i)
 })
 
-observable.Connect()
+disposed, cancel := observable.Connect()
+go func() {
+    // Do something
+    time.Sleep(time.Second)
+    // Then cancel the subscription
+    cancel()
+}()
+// Wait for the subscription to be disposed
+<-disposed
 ```
 
 ```
