@@ -381,10 +381,10 @@ observable.DoOnNext(func(i interface{}) {
 
 disposed, cancel := observable.Connect()
 go func() {
-    // Do something
-    time.Sleep(time.Second)
-    // Then cancel the subscription
-    cancel()
+	// Do something
+	time.Sleep(time.Second)
+	// Then cancel the subscription
+	cancel()
 }()
 // Wait for the subscription to be disposed
 <-disposed
