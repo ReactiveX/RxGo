@@ -1285,7 +1285,7 @@ type message struct {
 	id int
 }
 
-func Test_Observable_Serialize(t *testing.T) {
+func Test_Observable_Serialize_Struct(t *testing.T) {
 	obs := testObservable(message{3}, message{5}, message{1}, message{2}, message{4}).
 		Serialize(1, func(i interface{}) int {
 			return i.(message).id
@@ -1293,7 +1293,15 @@ func Test_Observable_Serialize(t *testing.T) {
 	Assert(context.Background(), t, obs, HasItems(message{1}, message{2}, message{3}, message{4}, message{5}))
 }
 
-func Test_Observable_Serialize2(t *testing.T) {
+func Test_Observable_Serialize_Duplicates(t *testing.T) {
+	obs := testObservable(1, 3, 2, 4, 5, 6, 5, 7).
+		Serialize(1, func(i interface{}) int {
+			return i.(int)
+		})
+	Assert(context.Background(), t, obs, HasItems(1, 2, 3, 4, 5))
+}
+
+func Test_Observable_Serialize_Loop(t *testing.T) {
 	idx := 0
 	<-Range(1, 10000).
 		Serialize(0, func(i interface{}) int {
