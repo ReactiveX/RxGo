@@ -25,7 +25,7 @@ type Observable interface {
 	BufferWithCount(count int, opts ...Option) Observable
 	BufferWithTime(timespan Duration, opts ...Option) Observable
 	BufferWithTimeOrCount(timespan Duration, count int, opts ...Option) Observable
-	Connect() (Disposed, Disposable)
+	Connect() (context.Context, Disposable)
 	Contains(equal Predicate, opts ...Option) Single
 	Count(opts ...Option) Single
 	Debounce(timespan Duration, opts ...Option) Observable
