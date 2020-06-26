@@ -1,0 +1,27 @@
+package main
+
+import (
+	"fmt"
+	"github.com/reactivex/rxgo/v2"
+	"time"
+)
+
+func main() {
+	// Create the producer
+	ch := make(chan rxgo.Item(T), 1)
+	go func() {
+		i := 0
+		for range time.Tick(time.Second) {
+			ch <- rxgo.Of(i)
+			i++
+		}
+	}()
+
+	observable := rxgo.FromChannel(ch).
+		BufferWithTime(rxgo.WithDuration(3 * time.Second))
+	observable.DoOnNext(func(i interface{}) {
+		fmt.Printf("Second observer: %d\n", i)
+	})
+	time.Sleep(10 * time.Second)
+
+}

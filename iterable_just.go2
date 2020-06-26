@@ -1,11 +1,11 @@
 package rxgo
 
-type justIterable struct {
-	items []interface{}
-	opts  []Option
+type justIterable(type T) struct {
+	items [](T)
+	opts  []Option(T)
 }
 
-func newJustIterable(items ...interface{}) func(opts ...Option) Iterable {
+func newJustIterable(items ...interface{}) func(opts ...Option(T)) Iterable {
 	return func(opts ...Option) Iterable {
 		return &justIterable{
 			items: items,
@@ -14,7 +14,7 @@ func newJustIterable(items ...interface{}) func(opts ...Option) Iterable {
 	}
 }
 
-func (i *justIterable) Observe(opts ...Option) <-chan Item {
+func (i *justIterable) Observe(opts ...Option) <-chan(Item(T)) {
 	option := parseOptions(append(i.opts, opts...)...)
 	next := option.buildChannel()
 

@@ -29,7 +29,7 @@ Output:
 
 ```go
 // Create the producer
-ch := make(chan rxgo.Item, 1)
+ch := make(chan rxgo.Item(T), 1)
 go func() {
 	i := 0
 	for range time.Tick(time.Second) {
@@ -57,7 +57,7 @@ Output:
 
 ```go
 // Create the producer
-ch := make(chan rxgo.Item, 1)
+ch := make(chan rxgo.Item(T), 1)
 go func() {
 	i := 0
 	for range time.Tick(time.Second) {

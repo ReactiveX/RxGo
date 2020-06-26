@@ -3,45 +3,45 @@ package rxgo
 import "context"
 
 type (
-	operatorOptions struct {
+	operatorOptions(type T) struct {
 		stop          func()
-		resetIterable func(Iterable)
+		resetIterable func(Iterable(T))
 	}
 
 	// Comparator defines a func that returns an int:
 	// - 0 if two elements are equals
 	// - A negative value if the first argument is less than the second
 	// - A positive value if the first argument is greater than the second
-	Comparator func(interface{}, interface{}) int
+	Comparator(type T) func(T, T) int
 	// ItemToObservable defines a function that computes an observable from an item.
-	ItemToObservable func(Item) Observable
+	ItemToObservable(type T) func(Item(T)) Observable(T)
 	// ErrorToObservable defines a function that transforms an observable from an error.
-	ErrorToObservable func(error) Observable
+	ErrorToObservable func(error) Observable(T)
 	// Func defines a function that computes a value from an input value.
-	Func func(context.Context, interface{}) (interface{}, error)
+	Func(type T) func(context.Context, T) (T, error)
 	// Func2 defines a function that computes a value from two input values.
-	Func2 func(context.Context, interface{}, interface{}) (interface{}, error)
+	Func2(type T) func(context.Context, T, T) (T, error)
 	// FuncN defines a function that computes a value from N input values.
-	FuncN func(...interface{}) interface{}
+	FuncN(type T) func(...T) T
 	// ErrorFunc defines a function that computes a value from an error.
-	ErrorFunc func(error) interface{}
+	ErrorFunc(type T) func(error) T
 	// Predicate defines a func that returns a bool from an input value.
-	Predicate func(interface{}) bool
+	Predicate(type T) func(T) bool
 	// Marshaller defines a marshaller type (interface{} to []byte).
-	Marshaller func(interface{}) ([]byte, error)
+	Marshaller(type T) func(T) ([]byte, error)
 	// Unmarshaller defines an unmarshaller type ([]byte to interface).
-	Unmarshaller func([]byte, interface{}) error
+	Unmarshaller(type T) func([]byte, T) error
 	// Producer defines a producer implementation.
-	Producer func(ctx context.Context, next chan<- Item)
+	Producer(type T) func(ctx context.Context, next chan<- (Item(T)))
 	// Supplier defines a function that supplies a result from nothing.
-	Supplier func(ctx context.Context) Item
+	Supplier(type T) func(ctx context.Context) Item(T)
 	// Disposed is a notification channel indicating when an Observable is closed.
 	Disposed <-chan struct{}
 	// Disposable is a function to be called in order to dispose a subscription.
 	Disposable context.CancelFunc
 
 	// NextFunc handles a next item in a stream.
-	NextFunc func(interface{})
+	NextFunc(type T) func(T)
 	// ErrFunc handles an error in a stream.
 	ErrFunc func(error)
 	// CompletedFunc handles the end of a stream.

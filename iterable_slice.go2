@@ -1,18 +1,18 @@
 package rxgo
 
-type sliceIterable struct {
-	items []Item
-	opts  []Option
+type sliceIterable(type T) struct {
+	items [](Item(T))
+	opts  [](Option(T))
 }
 
-func newSliceIterable(items []Item, opts ...Option) Iterable {
+func newSliceIterable(items [](Item(T)), opts ...Option) Iterable {
 	return &sliceIterable{
 		items: items,
 		opts:  opts,
 	}
 }
 
-func (i *sliceIterable) Observe(opts ...Option) <-chan Item {
+func (i *sliceIterable) Observe(opts ...Option(T)) <-chan(Item(T)) {
 	option := parseOptions(append(i.opts, opts...)...)
 	next := option.buildChannel()
 

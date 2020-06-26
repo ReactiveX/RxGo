@@ -3,8 +3,6 @@ package rxgo
 import (
 	"context"
 	"time"
-
-	"github.com/stretchr/testify/mock"
 )
 
 // Infinite represents an infinite wait time
@@ -42,7 +40,7 @@ type execution struct {
 }
 
 func timeCausality(elems ...interface{}) (context.Context, Observable, Duration) {
-	ch := make(chan Item, 1)
+	ch := make(chan Item(T), 1)
 	fs := make([]execution, len(elems)+1)
 	ctx, cancel := context.WithCancel(context.Background())
 	for i, elem := range elems {
@@ -89,13 +87,4 @@ func (d *causalityDuration) duration() time.Duration {
 		return time.Nanosecond
 	}
 	return time.Minute
-}
-
-type mockDuration struct {
-	mock.Mock
-}
-
-func (m *mockDuration) duration() time.Duration {
-	args := m.Called()
-	return args.Get(0).(time.Duration)
 }

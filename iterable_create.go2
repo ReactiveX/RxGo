@@ -5,23 +5,33 @@ import (
 	"sync"
 )
 
-type channelIterable struct {
-	next                   <-chan Item
-	opts                   []Option
-	subscribers            []chan Item
+type createIterable(type T) struct {
+	next                   <-chan Item(T)
+	opts                   []Option(T)
+	subscribers            []chan Item(T)
 	mutex                  sync.RWMutex
 	producerAlreadyCreated bool
 }
 
-func newChannelIterable(next <-chan Item, opts ...Option) Iterable {
-	return &channelIterable{
-		next:        next,
-		subscribers: make([]chan Item, 0),
-		opts:        opts,
+func newCreateIterable(fs []Producer, opts ...Option) Iterable {
+	option := parseOptions(T)(opts...)
+	next := option.buildChannel()
+	ctx := option.buildContext()
+
+	go func() {
+		defer close(next)
+		for _, f := range fs {
+			f(ctx, next)
+		}
+	}()
+
+	return &createIterable{
+		opts: opts,
+		next: next,
 	}
 }
 
-func (i *channelIterable) Observe(opts ...Option) <-chan Item {
+func (i *createIterable) Observe(opts ...Option(T)) <-chan(Item(T)) {
 	mergedOptions := append(i.opts, opts...)
 	option := parseOptions(mergedOptions...)
 
@@ -41,7 +51,7 @@ func (i *channelIterable) Observe(opts ...Option) <-chan Item {
 	return ch
 }
 
-func (i *channelIterable) connect(ctx context.Context) {
+func (i *createIterable) connect(ctx context.Context) {
 	i.mutex.Lock()
 	if !i.producerAlreadyCreated {
 		go i.produce(ctx)
@@ -50,7 +60,7 @@ func (i *channelIterable) connect(ctx context.Context) {
 	i.mutex.Unlock()
 }
 
-func (i *channelIterable) produce(ctx context.Context) {
+func (i *createIterable) produce(ctx context.Context) {
 	defer func() {
 		i.mutex.RLock()
 		for _, subscriber := range i.subscribers {

@@ -5,16 +5,16 @@ import (
 	"sync"
 )
 
-type eventSourceIterable struct {
+type eventSourceIterable(type T) struct {
 	sync.RWMutex
-	observers []chan Item
+	observers []chan Item(T)
 	disposed  bool
-	opts      []Option
+	opts      []Option(T)
 }
 
-func newEventSourceIterable(ctx context.Context, next <-chan Item, strategy BackpressureStrategy, opts ...Option) Iterable {
+func newEventSourceIterable(ctx context.Context, next <-chan Item(T), strategy BackpressureStrategy, opts ...Option) Iterable {
 	it := &eventSourceIterable{
-		observers: make([]chan Item, 0),
+		observers: make([]chan Item(T), 0),
 		opts:      opts,
 	}
 
@@ -62,7 +62,7 @@ func (i *eventSourceIterable) closeAllObservers() {
 	i.Unlock()
 }
 
-func (i *eventSourceIterable) Observe(opts ...Option) <-chan Item {
+func (i *eventSourceIterable) Observe(opts ...Option(T)) <-chan(Item(T)) {
 	option := parseOptions(append(i.opts, opts...)...)
 	next := option.buildChannel()
 

@@ -1,8 +1,8 @@
 package rxgo
 
-type deferIterable struct {
+type deferIterable(type T) struct {
 	fs   []Producer
-	opts []Option
+	opts []Option(T)
 }
 
 func newDeferIterable(f []Producer, opts ...Option) Iterable {
@@ -12,7 +12,7 @@ func newDeferIterable(f []Producer, opts ...Option) Iterable {
 	}
 }
 
-func (i *deferIterable) Observe(opts ...Option) <-chan Item {
+func (i *deferIterable) Observe(opts ...Option(T)) <-chan(Item(T)) {
 	option := parseOptions(append(i.opts, opts...)...)
 	next := option.buildChannel()
 	ctx := option.buildContext()

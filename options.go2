@@ -6,12 +6,12 @@ import (
 )
 
 // Option handles configurable options.
-type Option interface {
+type Option(type T) interface {
 	apply(*funcOption)
 	toPropagate() bool
 	isEagerObservation() bool
 	getPool() (bool, int)
-	buildChannel() chan Item
+	buildChannel() chan Item(T)
 	buildContext() context.Context
 	getBackPressureStrategy() BackpressureStrategy
 	getErrorStrategy() OnErrorStrategy
@@ -20,7 +20,7 @@ type Option interface {
 	isSerialized() (bool, func(interface{}) int)
 }
 
-type funcOption struct {
+type funcOption(type T) struct {
 	f                    func(*funcOption)
 	isBuffer             bool
 	buffer               int
@@ -47,11 +47,11 @@ func (fdo *funcOption) getPool() (bool, int) {
 	return fdo.pool > 0, fdo.pool
 }
 
-func (fdo *funcOption) buildChannel() chan Item {
+func (fdo *funcOption(T)) buildChannel() chan(Item(T)) {
 	if fdo.isBuffer {
-		return make(chan Item, fdo.buffer)
+		return make(chan (Item(T)), fdo.buffer)
 	}
-	return make(chan Item)
+	return make(chan (Item(T)))
 }
 
 func (fdo *funcOption) buildContext() context.Context {
@@ -88,14 +88,14 @@ func (fdo *funcOption) isSerialized() (bool, func(interface{}) int) {
 	return true, fdo.serialized
 }
 
-func newFuncOption(f func(*funcOption)) *funcOption {
-	return &funcOption{
+func newFuncOption(type T)(f func(*funcOption)) *funcOption {
+	return &funcOption(T){
 		f: f,
 	}
 }
 
-func parseOptions(opts ...Option) Option {
-	o := new(funcOption)
+func parseOptions(type T)(opts ...Option) Option {
+	o := new(funcOption(T))
 	for _, opt := range opts {
 		opt.apply(o)
 	}
@@ -103,72 +103,72 @@ func parseOptions(opts ...Option) Option {
 }
 
 // WithBufferedChannel allows to configure the capacity of a buffered channel.
-func WithBufferedChannel(capacity int) Option {
-	return newFuncOption(func(options *funcOption) {
+func WithBufferedChannel(type T)(capacity int) Option {
+	return newFuncOption(T)(func(options *funcOption(T)) {
 		options.isBuffer = true
 		options.buffer = capacity
 	})
 }
 
 // WithContext allows to pass a context.
-func WithContext(ctx context.Context) Option {
-	return newFuncOption(func(options *funcOption) {
+func WithContext(type T)(ctx context.Context) Option {
+	return newFuncOption(T)(func(options *funcOption(T)) {
 		options.ctx = ctx
 	})
 }
 
 // WithObservationStrategy uses the eager observation mode meaning consuming the items even without subscription.
-func WithObservationStrategy(strategy ObservationStrategy) Option {
-	return newFuncOption(func(options *funcOption) {
+func WithObservationStrategy(type T)(strategy ObservationStrategy) Option {
+	return newFuncOption(T)(func(options *funcOption(T)) {
 		options.observation = strategy
 	})
 }
 
 // WithPool allows to specify an execution pool.
-func WithPool(pool int) Option {
-	return newFuncOption(func(options *funcOption) {
+func WithPool(type T)(pool int) Option {
+	return newFuncOption(T)(func(options *funcOption(T)) {
 		options.pool = pool
 	})
 }
 
 // WithCPUPool allows to specify an execution pool based on the number of logical CPUs.
-func WithCPUPool() Option {
-	return newFuncOption(func(options *funcOption) {
+func WithCPUPool(type T)() Option {
+	return newFuncOption(T)(func(options *funcOption(T)) {
 		options.pool = runtime.NumCPU()
 	})
 }
 
 // WithBackPressureStrategy sets the back pressure strategy: drop or block.
-func WithBackPressureStrategy(strategy BackpressureStrategy) Option {
-	return newFuncOption(func(options *funcOption) {
+func WithBackPressureStrategy(type T)(strategy BackpressureStrategy) Option {
+	return newFuncOption(T)(func(options *funcOption(T)) {
 		options.backPressureStrategy = strategy
 	})
 }
 
 // WithErrorStrategy defines how an observable should deal with error.
 // This strategy is propagated to the parent observable.
-func WithErrorStrategy(strategy OnErrorStrategy) Option {
-	return newFuncOption(func(options *funcOption) {
+func WithErrorStrategy(type T)(strategy OnErrorStrategy) Option {
+	return newFuncOption(T)(func(options *funcOption(T)) {
 		options.onErrorStrategy = strategy
 	})
 }
 
 // WithPublishStrategy converts an ordinary Observable into a connectable Observable.
-func WithPublishStrategy() Option {
-	return newFuncOption(func(options *funcOption) {
+func WithPublishStrategy(type T)() Option {
+	return newFuncOption(T)(func(options *funcOption(T)) {
 		options.connectable = true
 	})
 }
 
 // Serialize forces an Observable to make serialized calls and to be well-behaved.
-func Serialize(identifier func(interface{}) int) Option {
-	return newFuncOption(func(options *funcOption) {
+func Serialize(type T)(identifier func(interface{}) int) Option {
+	return newFuncOption(T)(func(options *funcOption(T)) {
 		options.serialized = identifier
 	})
 }
 
-func connect() Option {
-	return newFuncOption(func(options *funcOption) {
+func connect(type T)() Option {
+	return newFuncOption(T)(func(options *funcOption(T)) {
 		options.connectOperation = true
 	})
 }

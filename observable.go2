@@ -3,15 +3,15 @@ package rxgo
 import (
 	"context"
 	"sync"
-	"sync/atomic"
 	"time"
 
-	"github.com/cenkalti/backoff/v4"
-	"github.com/emirpasic/gods/trees/binaryheap"
+	// FIXME Import error
+	//"github.com/cenkalti/backoff/v4"
+	//"github.com/emirpasic/gods/trees/binaryheap"
 )
 
 // Observable is the standard interface for Observables.
-type Observable interface {
+type Observable(type T) interface {
 	Iterable
 	All(predicate Predicate, opts ...Option) Single
 	AverageFloat32(opts ...Option) Single
@@ -21,7 +21,7 @@ type Observable interface {
 	AverageInt16(opts ...Option) Single
 	AverageInt32(opts ...Option) Single
 	AverageInt64(opts ...Option) Single
-	BackOffRetry(backOffCfg backoff.BackOff, opts ...Option) Observable
+	//BackOffRetry(backOffCfg backoff.BackOff, opts ...Option) Observable
 	BufferWithCount(count int, opts ...Option) Observable
 	BufferWithTime(timespan Duration, opts ...Option) Observable
 	BufferWithTimeOrCount(timespan Duration, count int, opts ...Option) Observable
@@ -62,7 +62,7 @@ type Observable interface {
 	Sample(iterable Iterable, opts ...Option) Observable
 	Scan(apply Func2, opts ...Option) Observable
 	SequenceEqual(iterable Iterable, opts ...Option) Single
-	Send(output chan<- Item, opts ...Option)
+	Send(output chan<- Item(T), opts ...Option)
 	Serialize(from int, identifier func(interface{}) int, opts ...Option) Observable
 	Skip(nth uint, opts ...Option) Observable
 	SkipLast(nth uint, opts ...Option) Observable
@@ -88,27 +88,27 @@ type Observable interface {
 }
 
 // ObservableImpl implements Observable.
-type ObservableImpl struct {
-	iterable Iterable
+type ObservableImpl(type T) struct {
+	iterable Iterable(T)
 }
 
-func defaultErrorFuncOperator(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func defaultErrorFuncOperator(ctx context.Context, item Item(T), dst chan<- Item(T), operatorOptions operatorOptions) {
 	item.SendContext(ctx, dst)
 	operatorOptions.stop()
 }
 
-func customObservableOperator(f func(ctx context.Context, next chan Item, option Option, opts ...Option), opts ...Option) Observable {
-	option := parseOptions(opts...)
+func customObservableOperator(f func(ctx context.Context, next chan Item(T), option Option, opts ...Option), opts ...Option) Observable {
+	option := parseOptions(T)(opts...)
 
 	if option.isEagerObservation() {
 		next := option.buildChannel()
 		ctx := option.buildContext()
 		go f(ctx, next, option, opts...)
-		return &ObservableImpl{iterable: newChannelIterable(next)}
+		return &ObservableImpl(T){iterable: newChannelIterable(next)}
 	}
 
-	return &ObservableImpl{
-		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
+	return &ObservableImpl(T){
+		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan(Item(T)) {
 			mergedOptions := append(opts, propagatedOptions...)
 			option := parseOptions(mergedOptions...)
 			next := option.buildChannel()
@@ -119,15 +119,15 @@ func customObservableOperator(f func(ctx context.Context, next chan Item, option
 	}
 }
 
-type operator interface {
-	next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions)
-	err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions)
-	end(ctx context.Context, dst chan<- Item)
-	gatherNext(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions)
+type operator(type T) interface {
+	next(ctx context.Context, item Item(T), dst chan<- Item(T), operatorOptions operatorOptions(T))
+	err(ctx context.Context, item Item(T), dst chan<- Item(T), operatorOptions operatorOptions(T))
+	end(ctx context.Context, dst chan<- (Item(T)))
+	gatherNext(ctx context.Context, item Item(T), dst chan<- (Item(T)), operatorOptions operatorOptions(T))
 }
 
-func observable(iterable Iterable, operatorFactory func() operator, forceSeq, bypassGather bool, opts ...Option) Observable {
-	option := parseOptions(opts...)
+func observable(type T)(iterable Iterable, operatorFactory func() operator, forceSeq, bypassGather bool, opts ...Option) Observable {
+	option := parseOptions(T)(opts...)
 	parallel, _ := option.getPool()
 
 	if option.isEagerObservation() {
@@ -138,12 +138,12 @@ func observable(iterable Iterable, operatorFactory func() operator, forceSeq, by
 		} else {
 			runParallel(ctx, next, iterable.Observe(opts...), operatorFactory, bypassGather, option, opts...)
 		}
-		return &ObservableImpl{iterable: newChannelIterable(next)}
+		return &ObservableImpl(T){iterable: newChannelIterable(next)}
 	}
 
 	if forceSeq || !parallel {
-		return &ObservableImpl{
-			iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
+		return &ObservableImpl(T){
+			iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan(Item(T)) {
 				mergedOptions := append(opts, propagatedOptions...)
 				option := parseOptions(mergedOptions...)
 
@@ -156,10 +156,10 @@ func observable(iterable Iterable, operatorFactory func() operator, forceSeq, by
 	}
 
 	if serialized, f := option.isSerialized(); serialized {
-		firstItemIDCh := make(chan Item, 1)
-		fromCh := make(chan Item, 1)
-		obs := &ObservableImpl{
-			iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
+		firstItemIDCh := make(chan Item(T), 1)
+		fromCh := make(chan Item(T), 1)
+		obs := &ObservableImpl(T){
+			iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan(Item(T)) {
 				mergedOptions := append(opts, propagatedOptions...)
 				option := parseOptions(mergedOptions...)
 
@@ -186,8 +186,8 @@ func observable(iterable Iterable, operatorFactory func() operator, forceSeq, by
 		return obs.serialize(fromCh, f)
 	}
 
-	return &ObservableImpl{
-		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
+	return &ObservableImpl(T){
+		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan(Item(T)) {
 			mergedOptions := append(opts, propagatedOptions...)
 			option := parseOptions(mergedOptions...)
 
@@ -199,8 +199,8 @@ func observable(iterable Iterable, operatorFactory func() operator, forceSeq, by
 	}
 }
 
-func single(iterable Iterable, operatorFactory func() operator, forceSeq, bypassGather bool, opts ...Option) Single {
-	option := parseOptions(opts...)
+func single(type T)(iterable Iterable, operatorFactory func() operator(T), forceSeq, bypassGather bool, opts ...Option(T)) Single(T) {
+	option := parseOptions(T)(opts...)
 	parallel, _ := option.getPool()
 
 	if option.isEagerObservation() {
@@ -215,7 +215,7 @@ func single(iterable Iterable, operatorFactory func() operator, forceSeq, bypass
 	}
 
 	return &SingleImpl{
-		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
+		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan(Item(T)) {
 			mergedOptions := append(opts, propagatedOptions...)
 			option = parseOptions(mergedOptions...)
 
@@ -231,8 +231,8 @@ func single(iterable Iterable, operatorFactory func() operator, forceSeq, bypass
 	}
 }
 
-func optionalSingle(iterable Iterable, operatorFactory func() operator, forceSeq, bypassGather bool, opts ...Option) OptionalSingle {
-	option := parseOptions(opts...)
+func optionalSingle(type T)(iterable Iterable, operatorFactory func() operator, forceSeq, bypassGather bool, opts ...Option) OptionalSingle(T) {
+	option := parseOptions(T)(opts...)
 	parallel, _ := option.getPool()
 
 	if option.isEagerObservation() {
@@ -247,7 +247,7 @@ func optionalSingle(iterable Iterable, operatorFactory func() operator, forceSeq
 	}
 
 	return &OptionalSingleImpl{
-		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
+		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan(Item(T)) {
 			mergedOptions := append(opts, propagatedOptions...)
 			option = parseOptions(mergedOptions...)
 
@@ -263,7 +263,7 @@ func optionalSingle(iterable Iterable, operatorFactory func() operator, forceSeq
 	}
 }
 
-func runSequential(ctx context.Context, next chan Item, iterable Iterable, operatorFactory func() operator, option Option, opts ...Option) {
+func runSequential(type T)(ctx context.Context, next chan Item(T), iterable Iterable, operatorFactory func() operator, option Option, opts ...Option) {
 	observe := iterable.Observe(opts...)
 	go func() {
 		op := operatorFactory()
@@ -274,7 +274,7 @@ func runSequential(ctx context.Context, next chan Item, iterable Iterable, opera
 					stopped = true
 				}
 			},
-			resetIterable: func(newIterable Iterable) {
+			resetIterable: func(newIterable Iterable(T)) {
 				observe = newIterable.Observe(opts...)
 			},
 		}
@@ -300,7 +300,7 @@ func runSequential(ctx context.Context, next chan Item, iterable Iterable, opera
 	}()
 }
 
-func runParallel(ctx context.Context, next chan Item, observe <-chan Item, operatorFactory func() operator, bypassGather bool, option Option, opts ...Option) {
+func runParallel(type T)(ctx context.Context, next chan Item(T), observe <-chan Item(T), operatorFactory func() operator, bypassGather bool, option Option, opts ...Option) {
 	wg := sync.WaitGroup{}
 	_, pool := option.getPool()
 	wg.Add(pool)
@@ -309,7 +309,7 @@ func runParallel(ctx context.Context, next chan Item, observe <-chan Item, opera
 	if bypassGather {
 		gather = next
 	} else {
-		gather = make(chan Item, 1)
+		gather = make(chan Item(T), 1)
 
 		// Gather
 		go func() {
@@ -321,7 +321,7 @@ func runParallel(ctx context.Context, next chan Item, observe <-chan Item, opera
 						stopped = true
 					}
 				},
-				resetIterable: func(newIterable Iterable) {
+				resetIterable: func(newIterable Iterable(T)) {
 					observe = newIterable.Observe(opts...)
 				},
 			}
@@ -351,7 +351,7 @@ func runParallel(ctx context.Context, next chan Item, observe <-chan Item, opera
 						stopped = true
 					}
 				},
-				resetIterable: func(newIterable Iterable) {
+				resetIterable: func(newIterable Iterable(T)) {
 					observe = newIterable.Observe(opts...)
 				},
 			}
@@ -383,7 +383,7 @@ func runParallel(ctx context.Context, next chan Item, observe <-chan Item, opera
 	}()
 }
 
-func runFirstItem(ctx context.Context, f func(interface{}) int, notif chan Item, observe <-chan Item, next chan Item, operatorFactory func() operator, bypassGather bool, option Option, opts ...Option) {
+func runFirstItem(type T)(ctx context.Context, f func(interface{}) int, notif chan Item(T), observe <-chan Item(T), next chan Item(T), operatorFactory func() operator, bypassGather bool, option Option, opts ...Option) {
 	go func() {
 		op := operatorFactory()
 		stopped := false
@@ -393,7 +393,7 @@ func runFirstItem(ctx context.Context, f func(interface{}) int, notif chan Item,
 					stopped = true
 				}
 			},
-			resetIterable: func(newIterable Iterable) {
+			resetIterable: func(newIterable Iterable(T)) {
 				observe = newIterable.Observe(opts...)
 			},
 		}
@@ -420,107 +420,109 @@ func runFirstItem(ctx context.Context, f func(interface{}) int, notif chan Item,
 	}()
 }
 
-func (o *ObservableImpl) serialize(fromCh chan Item, identifier func(interface{}) int, opts ...Option) Observable {
-	option := parseOptions(opts...)
-	next := option.buildChannel()
-
-	ctx := option.buildContext()
-	mutex := sync.Mutex{}
-	minHeap := binaryheap.NewWith(func(a, b interface{}) int {
-		return a.(int) - b.(int)
-	})
-	status := make(map[int]interface{})
-	notif := make(chan struct{})
-
-	var from int
-	var counter int64
-	src := o.Observe(opts...)
-	go func() {
-		select {
-		case <-ctx.Done():
-			close(next)
-			return
-		case item := <-fromCh:
-			if item.Error() {
-				item.SendContext(ctx, next)
-				close(next)
-				return
-			}
-			from = item.V.(int)
-			minHeap.Push(from)
-			counter = int64(from)
-
-			// Scatter
-			go func() {
-				defer close(notif)
-
-				for {
-					select {
-					case <-ctx.Done():
-						return
-					case item, ok := <-src:
-						if !ok {
-							return
-						}
-						if item.Error() {
-							next <- item
-							return
-						}
-
-						id := identifier(item.V)
-						mutex.Lock()
-						if id != from {
-							minHeap.Push(id)
-						}
-						status[id] = item.V
-						mutex.Unlock()
-						select {
-						case <-ctx.Done():
-							return
-						case notif <- struct{}{}:
-						}
-					}
-				}
-			}()
-
-			// Gather
-			go func() {
-				defer close(next)
-
-				for {
-					select {
-					case <-ctx.Done():
-						return
-					case _, ok := <-notif:
-						if !ok {
-							return
-						}
-
-						mutex.Lock()
-						for !minHeap.Empty() {
-							v, _ := minHeap.Peek()
-							id := v.(int)
-							if atomic.LoadInt64(&counter) == int64(id) {
-								if itemValue, contains := status[id]; contains {
-									minHeap.Pop()
-									delete(status, id)
-									mutex.Unlock()
-									Of(itemValue).SendContext(ctx, next)
-									mutex.Lock()
-									atomic.AddInt64(&counter, 1)
-									continue
-								}
-							}
-							break
-						}
-						mutex.Unlock()
-					}
-				}
-			}()
-		}
-	}()
-
-	return &ObservableImpl{
-		iterable: newChannelIterable(next),
-	}
+func (o *ObservableImpl) serialize(fromCh chan Item(T), identifier func(interface{}) int, opts ...Option) Observable {
+	// FIXME Unable to import binary heap library
+	//option := parseOptions(T)(opts...)
+	//next := option.buildChannel()
+	//
+	//ctx := option.buildContext()
+	//mutex := sync.Mutex{}
+	//minHeap := binaryheap.NewWith(func(a, b interface{}) int {
+	//	return a.(int) - b.(int)
+	//})
+	//status := make(map[int]interface{})
+	//notif := make(chan struct{})
+	//
+	//var from int
+	//var counter int64
+	//src := o.Observe(opts...)
+	//go func() {
+	//	select {
+	//	case <-ctx.Done():
+	//		close(next)
+	//		return
+	//	case item := <-fromCh:
+	//		if item.Error() {
+	//			item.SendContext(ctx, next)
+	//			close(next)
+	//			return
+	//		}
+	//		from = item.V.(int)
+	//		minHeap.Push(from)
+	//		counter = int64(from)
+	//
+	//		// Scatter
+	//		go func() {
+	//			defer close(notif)
+	//
+	//			for {
+	//				select {
+	//				case <-ctx.Done():
+	//					return
+	//				case item, ok := <-src:
+	//					if !ok {
+	//						return
+	//					}
+	//					if item.Error() {
+	//						next <- item
+	//						return
+	//					}
+	//
+	//					id := identifier(item.V)
+	//					mutex.Lock()
+	//					if id != from {
+	//						minHeap.Push(id)
+	//					}
+	//					status[id] = item.V
+	//					mutex.Unlock()
+	//					select {
+	//					case <-ctx.Done():
+	//						return
+	//					case notif <- struct{}{}:
+	//					}
+	//				}
+	//			}
+	//		}()
+	//
+	//		// Gather
+	//		go func() {
+	//			defer close(next)
+	//
+	//			for {
+	//				select {
+	//				case <-ctx.Done():
+	//					return
+	//				case _, ok := <-notif:
+	//					if !ok {
+	//						return
+	//					}
+	//
+	//					mutex.Lock()
+	//					for !minHeap.Empty() {
+	//						v, _ := minHeap.Peek()
+	//						id := v.(int)
+	//						if atomic.LoadInt64(&counter) == int64(id) {
+	//							if itemValue, contains := status[id]; contains {
+	//								minHeap.Pop()
+	//								delete(status, id)
+	//								mutex.Unlock()
+	//								Of(itemValue).SendContext(ctx, next)
+	//								mutex.Lock()
+	//								atomic.AddInt64(&counter, 1)
+	//								continue
+	//							}
+	//						}
+	//						break
+	//					}
+	//					mutex.Unlock()
+	//				}
+	//			}
+	//		}()
+	//	}
+	//}()
+	//
+	//return &ObservableImpl(T){
+	//	iterable: newChannelIterable(next),
+	//}
+	return nil
 }

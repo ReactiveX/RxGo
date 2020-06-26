@@ -1,8 +1,8 @@
 package rxgo
 
-type rangeIterable struct {
+type rangeIterable(type T) struct {
 	start, count int
-	opts         []Option
+	opts         [](Option(T))
 }
 
 func newRangeIterable(start, count int, opts ...Option) Iterable {
@@ -13,7 +13,7 @@ func newRangeIterable(start, count int, opts ...Option) Iterable {
 	}
 }
 
-func (i *rangeIterable) Observe(opts ...Option) <-chan Item {
+func (i *rangeIterable) Observe(opts ...Option(T)) <-chan(Item(T)) {
 	option := parseOptions(append(i.opts, opts...)...)
 	ctx := option.buildContext()
 	next := option.buildChannel()

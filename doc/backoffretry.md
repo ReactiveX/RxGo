@@ -15,7 +15,7 @@ The backoff configuration relies on [github.com/cenkalti/backoff/v4](github.com/
 backOffCfg := backoff.NewExponentialBackOff()
 backOffCfg.InitialInterval = 10 * time.Millisecond
 
-observable := rxgo.Defer([]rxgo.Producer{func(ctx context.Context, next chan<- rxgo.Item, done func()) {
+observable := rxgo.Defer([]rxgo.Producer{func(ctx context.Context, next chan<- rxgo.Item(T), done func()) {
 	next <- rxgo.Of(1)
 	next <- rxgo.Of(2)
 	next <- rxgo.Error(errors.New("foo"))
