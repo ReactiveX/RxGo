@@ -3,7 +3,7 @@ module github.com/reactivex/rxgo/v2
 go 1.13
 
 require (
-	github.com/bhbosman/goprotoextra v0.0.0-20200917144956-218e832ea17f
+	github.com/bhbosman/goprotoextra v0.0.1
 	github.com/cenkalti/backoff/v4 v4.0.2
 	github.com/emirpasic/gods v1.12.0
 	github.com/stretchr/testify v1.6.1
