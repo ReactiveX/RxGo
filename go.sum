@@ -1,5 +1,5 @@
-github.com/bhbosman/goprotoextra v0.0.0-20200917144956-218e832ea17f h1:AJa/7rn2Wy2b5VDdGPIczWi7veLntswg0cPR3CoaN7o=
-github.com/bhbosman/goprotoextra v0.0.0-20200917144956-218e832ea17f/go.mod h1:8KtYuUDuRrZU4VOpB9r2YKWJtuThaB2ep3OtJdsF+zU=
+github.com/bhbosman/goprotoextra v0.0.1 h1:CoIa6MSq9A3CMqrpStgpgh/Q731HSDyGoa0bzVFUbSQ=
+github.com/bhbosman/goprotoextra v0.0.1/go.mod h1:8KtYuUDuRrZU4VOpB9r2YKWJtuThaB2ep3OtJdsF+zU=
 github.com/cenkalti/backoff/v4 v4.0.2 h1:JIufpQLbh4DkbQoii76ItQIUFzevQSqOLZca4eamEDs=
 github.com/cenkalti/backoff/v4 v4.0.2/go.mod h1:eEew/i+1Q6OrCDZh3WiXYv3+nJwBASZ8Bog/87DQnVg=
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
