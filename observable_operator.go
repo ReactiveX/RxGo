@@ -886,7 +886,9 @@ func (o *ObservableImpl) DoOnError(errFunc ErrFunc, opts ...Option) Disposed {
 func (o *ObservableImpl) DoOnNext(nextFunc NextFunc, opts ...Option) Disposed {
 	dispose := make(chan struct{})
 	handler := func(ctx context.Context, src <-chan Item) {
-		defer close(dispose)
+		defer func() {
+			close(dispose)
+		}()
 		for {
 			select {
 			case <-ctx.Done():
