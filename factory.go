@@ -212,7 +212,9 @@ func Interval(interval Duration, opts ...Option) Observable {
 		for {
 			select {
 			case <-time.After(interval.duration()):
-				next <- Of(i)
+				if !Of(i).SendContext(ctx, next) {
+					return
+				}
 				i++
 			case <-ctx.Done():
 				close(next)

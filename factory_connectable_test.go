@@ -9,10 +9,12 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/goleak"
 	"golang.org/x/sync/errgroup"
 )
 
 func Test_Connectable_IterableChannel_Single(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	ch := make(chan Item, 10)
 	go func() {
 		ch <- Of(1)
@@ -27,6 +29,7 @@ func Test_Connectable_IterableChannel_Single(t *testing.T) {
 }
 
 func Test_Connectable_IterableChannel_Composed(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	ch := make(chan Item, 10)
 	go func() {
 		ch <- Of(1)
@@ -41,6 +44,7 @@ func Test_Connectable_IterableChannel_Composed(t *testing.T) {
 }
 
 func Test_Connectable_IterableChannel_Disposed(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	ch := make(chan Item, 10)
 	go func() {
 		ch <- Of(1)
@@ -51,15 +55,16 @@ func Test_Connectable_IterableChannel_Disposed(t *testing.T) {
 	obs := &ObservableImpl{
 		iterable: newChannelIterable(ch, WithPublishStrategy()),
 	}
-	_, disposable := obs.Connect()
-	disposable()
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
+	_, disposable := obs.Connect(ctx)
+	disposable()
 	time.Sleep(50 * time.Millisecond)
 	Assert(ctx, t, obs, IsEmpty())
 }
 
 func Test_Connectable_IterableChannel_WithoutConnect(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	ch := make(chan Item, 10)
 	go func() {
 		ch <- Of(1)
@@ -74,6 +79,7 @@ func Test_Connectable_IterableChannel_WithoutConnect(t *testing.T) {
 }
 
 func Test_Connectable_IterableCreate_Single(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	obs := &ObservableImpl{
@@ -88,6 +94,7 @@ func Test_Connectable_IterableCreate_Single(t *testing.T) {
 }
 
 func Test_Connectable_IterableCreate_Composed(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	obs := &ObservableImpl{
@@ -102,6 +109,7 @@ func Test_Connectable_IterableCreate_Composed(t *testing.T) {
 }
 
 func Test_Connectable_IterableCreate_Disposed(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	obs := &ObservableImpl{
@@ -112,7 +120,7 @@ func Test_Connectable_IterableCreate_Disposed(t *testing.T) {
 			cancel()
 		}}, WithPublishStrategy(), WithContext(ctx)),
 	}
-	obs.Connect()
+	obs.Connect(ctx)
 	_, cancel2 := context.WithTimeout(context.Background(), 550*time.Millisecond)
 	defer cancel2()
 	time.Sleep(50 * time.Millisecond)
@@ -120,6 +128,7 @@ func Test_Connectable_IterableCreate_Disposed(t *testing.T) {
 }
 
 func Test_Connectable_IterableCreate_WithoutConnect(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	obs := &ObservableImpl{
@@ -128,12 +137,13 @@ func Test_Connectable_IterableCreate_WithoutConnect(t *testing.T) {
 			ch <- Of(2)
 			ch <- Of(3)
 			cancel()
-		}}, WithPublishStrategy(), WithContext(ctx)),
+		}}, WithBufferedChannel(3), WithPublishStrategy(), WithContext(ctx)),
 	}
 	testConnectableWithoutConnect(t, obs)
 }
 
 func Test_Connectable_IterableDefer_Single(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	obs := &ObservableImpl{
@@ -142,12 +152,13 @@ func Test_Connectable_IterableDefer_Single(t *testing.T) {
 			ch <- Of(2)
 			ch <- Of(3)
 			cancel()
-		}}, WithPublishStrategy(), WithContext(ctx)),
+		}}, WithBufferedChannel(3), WithPublishStrategy(), WithContext(ctx)),
 	}
 	testConnectableSingle(t, obs)
 }
 
 func Test_Connectable_IterableDefer_Composed(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	obs := &ObservableImpl{
@@ -156,12 +167,13 @@ func Test_Connectable_IterableDefer_Composed(t *testing.T) {
 			ch <- Of(2)
 			ch <- Of(3)
 			cancel()
-		}}, WithPublishStrategy(), WithContext(ctx)),
+		}}, WithBufferedChannel(3), WithPublishStrategy(), WithContext(ctx)),
 	}
 	testConnectableComposed(t, obs)
 }
 
 func Test_Connectable_IterableJust_Single(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	obs := &ObservableImpl{
@@ -171,6 +183,7 @@ func Test_Connectable_IterableJust_Single(t *testing.T) {
 }
 
 func Test_Connectable_IterableJust_Composed(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	obs := &ObservableImpl{
@@ -180,6 +193,7 @@ func Test_Connectable_IterableJust_Composed(t *testing.T) {
 }
 
 func Test_Connectable_IterableRange_Single(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	obs := &ObservableImpl{
@@ -189,6 +203,7 @@ func Test_Connectable_IterableRange_Single(t *testing.T) {
 }
 
 func Test_Connectable_IterableRange_Composed(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	obs := &ObservableImpl{
@@ -198,6 +213,7 @@ func Test_Connectable_IterableRange_Composed(t *testing.T) {
 }
 
 func Test_Connectable_IterableSlice_Single(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	obs := &ObservableImpl{iterable: newSliceIterable([]Item{Of(1), Of(2), Of(3)},
@@ -206,6 +222,7 @@ func Test_Connectable_IterableSlice_Single(t *testing.T) {
 }
 
 func Test_Connectable_IterableSlice_Composed(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	obs := &ObservableImpl{iterable: newSliceIterable([]Item{Of(1), Of(2), Of(3)},
@@ -241,7 +258,7 @@ func testConnectableSingle(t *testing.T, obs Observable) {
 	}
 
 	wg.Wait()
-	obs.Connect()
+	obs.Connect(ctx)
 	assert.NoError(t, eg.Wait())
 }
 
@@ -278,7 +295,7 @@ func testConnectableComposed(t *testing.T, obs Observable) {
 	}
 
 	wg.Wait()
-	obs.Connect()
+	obs.Connect(ctx)
 	assert.NoError(t, eg.Wait())
 }
 
