@@ -1320,6 +1320,54 @@ func (o *ObservableImpl) GroupBy(length int, distribution func(Item) int, opts .
 	}
 }
 
+type GroupedObservable struct {
+	Observable
+	Key int
+}
+
+func (o *ObservableImpl) GroupByDynamic(distribution func(Item) int, opts ...Option) Observable {
+	option := parseOptions(opts...)
+	next := option.buildChannel()
+	ctx := option.buildContext()
+	chs := make(map[int]chan Item)
+
+	go func() {
+		observe := o.Observe(opts...)
+	loop:
+		for {
+			select {
+			case <-ctx.Done():
+				break loop
+			case i, ok := <-observe:
+				if !ok {
+					break loop
+				}
+				idx := distribution(i)
+				ch, contains := chs[idx]
+				if !contains {
+					ch = option.buildChannel()
+					chs[idx] = ch
+					Of(GroupedObservable{
+						Observable: &ObservableImpl{
+							iterable: newChannelIterable(ch),
+						},
+						Key: idx,
+					}).SendContext(ctx, next)
+				}
+				i.SendContext(ctx, ch)
+			}
+		}
+		for _, ch := range chs {
+			close(ch)
+		}
+		close(next)
+	}()
+
+	return &ObservableImpl{
+		iterable: newChannelIterable(next),
+	}
+}
+
 // Last returns a new Observable which emit only last item.
 // Cannot be run in parallel.
 func (o *ObservableImpl) Last(opts ...Option) OptionalSingle {
