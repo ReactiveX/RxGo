@@ -503,4 +503,4 @@ How to use the [assert API](doc/assert.md) to write unit tests while using RxGo.
 
 ## Contributions
 
-All contributions are very welcome! Be sure you check out the [Contributions](https://github.com/ReactiveX/RxGo/wiki/Contributions) and [Roadmap](https://github.com/ReactiveX/RxGo/wiki/Roadmap) pages first.
+All contributions are very welcome! Be sure you check out the [contributing guidelines](CONTRIBUTING.md) first.
