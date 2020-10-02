@@ -1320,6 +1320,57 @@ func (o *ObservableImpl) GroupBy(length int, distribution func(Item) int, opts .
 	}
 }
 
+// GroupedObservable is the observable type emitted by the GroupByDynamic operator.
+type GroupedObservable struct {
+	Observable
+	// Key is the distribution key
+	Key int
+}
+
+// GroupByDynamic divides an Observable into a dynamic set of Observables that each emit GroupedObservable from the original Observable, organized by key.
+func (o *ObservableImpl) GroupByDynamic(distribution func(Item) int, opts ...Option) Observable {
+	option := parseOptions(opts...)
+	next := option.buildChannel()
+	ctx := option.buildContext()
+	chs := make(map[int]chan Item)
+
+	go func() {
+		observe := o.Observe(opts...)
+	loop:
+		for {
+			select {
+			case <-ctx.Done():
+				break loop
+			case i, ok := <-observe:
+				if !ok {
+					break loop
+				}
+				idx := distribution(i)
+				ch, contains := chs[idx]
+				if !contains {
+					ch = option.buildChannel()
+					chs[idx] = ch
+					Of(GroupedObservable{
+						Observable: &ObservableImpl{
+							iterable: newChannelIterable(ch),
+						},
+						Key: idx,
+					}).SendContext(ctx, next)
+				}
+				i.SendContext(ctx, ch)
+			}
+		}
+		for _, ch := range chs {
+			close(ch)
+		}
+		close(next)
+	}()
+
+	return &ObservableImpl{
+		iterable: newChannelIterable(next),
+	}
+}
+
 // Last returns a new Observable which emit only last item.
 // Cannot be run in parallel.
 func (o *ObservableImpl) Last(opts ...Option) OptionalSingle {
@@ -1682,7 +1733,6 @@ func (op *repeatOperator) end(ctx context.Context, dst chan<- Item) {
 	for {
 		select {
 		default:
-			break
 		case <-ctx.Done():
 			return
 		}
@@ -2241,7 +2291,7 @@ func (o *ObservableImpl) StartWith(iterable Iterable, opts ...Option) Observable
 
 // SumFloat32 calculates the average of float32 emitted by an Observable and emits a float32.
 func (o *ObservableImpl) SumFloat32(opts ...Option) OptionalSingle {
-	return o.Reduce(func(_ context.Context, acc interface{}, elem interface{}) (interface{}, error) {
+	return o.Reduce(func(_ context.Context, acc, elem interface{}) (interface{}, error) {
 		if acc == nil {
 			acc = float32(0)
 		}
@@ -2267,7 +2317,7 @@ func (o *ObservableImpl) SumFloat32(opts ...Option) OptionalSingle {
 
 // SumFloat64 calculates the average of float64 emitted by an Observable and emits a float64.
 func (o *ObservableImpl) SumFloat64(opts ...Option) OptionalSingle {
-	return o.Reduce(func(_ context.Context, acc interface{}, elem interface{}) (interface{}, error) {
+	return o.Reduce(func(_ context.Context, acc, elem interface{}) (interface{}, error) {
 		if acc == nil {
 			acc = float64(0)
 		}
@@ -2295,7 +2345,7 @@ func (o *ObservableImpl) SumFloat64(opts ...Option) OptionalSingle {
 
 // SumInt64 calculates the average of integers emitted by an Observable and emits an int64.
 func (o *ObservableImpl) SumInt64(opts ...Option) OptionalSingle {
-	return o.Reduce(func(_ context.Context, acc interface{}, elem interface{}) (interface{}, error) {
+	return o.Reduce(func(_ context.Context, acc, elem interface{}) (interface{}, error) {
 		if acc == nil {
 			acc = int64(0)
 		}
