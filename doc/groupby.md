@@ -4,6 +4,8 @@
 
 Divide an Observable into a set of Observables that each emit a different group of items from the original Observable, organized by key.
 
+It requires to pass the length of the set. If we require a dynamic set, we need to use [GroupByDynamic](groupbydynamic.md) instead.
+
 ![](http://reactivex.io/documentation/operators/images/groupBy.c.png)
 
 ## Example
