@@ -16,7 +16,7 @@ An operator is a function that defines an Observable, how and when it should emi
 
 ## RxGo
 
-The RxGo implementation is based on the concept of [pipelines](https://blog.golang.org/pipelines). In a nutshell, a pipeline is a series of stages connected by channels, where each stage is a group of goroutines running the same function.
+The RxGo implementation is based on the concept of [pipelines](https://blog.golang.org/pipelines). A pipeline is a series of stages connected by channels, where each stage is a group of goroutines running the same function.
 
 ![](doc/rx.png)
 
