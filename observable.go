@@ -1,3 +1,4 @@
+// Package rxgo is the main RxGo package.
 package rxgo
 
 import (
@@ -180,7 +181,7 @@ func observable(iterable Iterable, operatorFactory func() operator, forceSeq, by
 						runParallel(ctx, next, observe, operatorFactory, bypassGather, option, mergedOptions...)
 					}
 				}()
-				runFirstItem(ctx, f, firstItemIDCh, observe, next, operatorFactory, bypassGather, option, mergedOptions...)
+				runFirstItem(ctx, f, firstItemIDCh, observe, next, operatorFactory, option, mergedOptions...)
 				return next
 			}),
 		}
@@ -384,7 +385,7 @@ func runParallel(ctx context.Context, next chan Item, observe <-chan Item, opera
 	}()
 }
 
-func runFirstItem(ctx context.Context, f func(interface{}) int, notif chan Item, observe <-chan Item, next chan Item, operatorFactory func() operator, bypassGather bool, option Option, opts ...Option) {
+func runFirstItem(ctx context.Context, f func(interface{}) int, notif chan Item, observe <-chan Item, next chan Item, operatorFactory func() operator, option Option, opts ...Option) {
 	go func() {
 		op := operatorFactory()
 		stopped := false

@@ -63,7 +63,7 @@ func Benchmark_Reduce_Sequential(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
 		obs := Range(0, benchNumberOfElementsSmall, WithBufferedChannel(benchChannelCap)).
-			Reduce(func(_ context.Context, acc interface{}, elem interface{}) (interface{}, error) {
+			Reduce(func(_ context.Context, acc, elem interface{}) (interface{}, error) {
 				// Simulate a blocking IO call
 				time.Sleep(5 * time.Millisecond)
 				if a, ok := acc.(int); ok {
@@ -84,7 +84,7 @@ func Benchmark_Reduce_Parallel(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
 		obs := Range(0, benchNumberOfElementsSmall, WithBufferedChannel(benchChannelCap)).
-			Reduce(func(_ context.Context, acc interface{}, elem interface{}) (interface{}, error) {
+			Reduce(func(_ context.Context, acc, elem interface{}) (interface{}, error) {
 				// Simulate a blocking IO call
 				time.Sleep(5 * time.Millisecond)
 				if a, ok := acc.(int); ok {

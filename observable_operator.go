@@ -1320,11 +1320,14 @@ func (o *ObservableImpl) GroupBy(length int, distribution func(Item) int, opts .
 	}
 }
 
+// GroupedObservable is the observable type emitted by the GroupByDynamic operator.
 type GroupedObservable struct {
 	Observable
+	// Key is the distribution key
 	Key int
 }
 
+// GroupByDynamic divides an Observable into a dynamic set of Observables that each emit GroupedObservable from the original Observable, organized by key.
 func (o *ObservableImpl) GroupByDynamic(distribution func(Item) int, opts ...Option) Observable {
 	option := parseOptions(opts...)
 	next := option.buildChannel()
@@ -1730,7 +1733,6 @@ func (op *repeatOperator) end(ctx context.Context, dst chan<- Item) {
 	for {
 		select {
 		default:
-			break
 		case <-ctx.Done():
 			return
 		}
@@ -2289,7 +2291,7 @@ func (o *ObservableImpl) StartWith(iterable Iterable, opts ...Option) Observable
 
 // SumFloat32 calculates the average of float32 emitted by an Observable and emits a float32.
 func (o *ObservableImpl) SumFloat32(opts ...Option) OptionalSingle {
-	return o.Reduce(func(_ context.Context, acc interface{}, elem interface{}) (interface{}, error) {
+	return o.Reduce(func(_ context.Context, acc, elem interface{}) (interface{}, error) {
 		if acc == nil {
 			acc = float32(0)
 		}
@@ -2315,7 +2317,7 @@ func (o *ObservableImpl) SumFloat32(opts ...Option) OptionalSingle {
 
 // SumFloat64 calculates the average of float64 emitted by an Observable and emits a float64.
 func (o *ObservableImpl) SumFloat64(opts ...Option) OptionalSingle {
-	return o.Reduce(func(_ context.Context, acc interface{}, elem interface{}) (interface{}, error) {
+	return o.Reduce(func(_ context.Context, acc, elem interface{}) (interface{}, error) {
 		if acc == nil {
 			acc = float64(0)
 		}
@@ -2343,7 +2345,7 @@ func (o *ObservableImpl) SumFloat64(opts ...Option) OptionalSingle {
 
 // SumInt64 calculates the average of integers emitted by an Observable and emits an int64.
 func (o *ObservableImpl) SumInt64(opts ...Option) OptionalSingle {
-	return o.Reduce(func(_ context.Context, acc interface{}, elem interface{}) (interface{}, error) {
+	return o.Reduce(func(_ context.Context, acc, elem interface{}) (interface{}, error) {
 		if acc == nil {
 			acc = int64(0)
 		}

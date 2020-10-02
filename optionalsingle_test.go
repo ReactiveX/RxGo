@@ -43,7 +43,7 @@ func Test_OptionalSingle_Get_ContextCanceled(t *testing.T) {
 
 func Test_OptionalSingle_Map(t *testing.T) {
 	defer goleak.VerifyNone(t)
-	single := Just(1)().Max(func(_ interface{}, _ interface{}) int {
+	single := Just(1)().Max(func(_, _ interface{}) int {
 		return 1
 	}).Map(func(_ context.Context, i interface{}) (interface{}, error) {
 		return i.(int) + 1, nil
