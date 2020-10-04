@@ -450,6 +450,7 @@ How to use the [assert API](doc/assert.md) to write unit tests while using RxGo.
 * [Distinct](doc/distinct.md)/[DistinctUntilChanged](doc/distinctuntilchanged.md) — suppress duplicate items emitted by an Observable
 * [ElementAt](doc/elementat.md) — emit only item n emitted by an Observable
 * [Filter](doc/filter.md) — emit only those items from an Observable that pass a predicate test
+* [Find](doc/find.md) — emit the first item passing a predicate then complete
 * [First](doc/first.md)/[FirstOrDefault](doc/firstordefault.md) — emit only the first item or the first item that meets a condition, from an Observable
 * [IgnoreElements](doc/ignoreelements.md) — do not emit any items from an Observable but mirror its termination notification
 * [Last](doc/last.md)/[LastOrDefault](doc/lastordefault.md) — emit only the last item emitted by an Observable
