@@ -1020,6 +1020,36 @@ func (op *filterOperator) end(_ context.Context, _ chan<- Item) {
 func (op *filterOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
+// Find emits the first item passing a predicate then complete.
+func (o *ObservableImpl) Find(find Predicate, opts ...Option) OptionalSingle {
+	return optionalSingle(o, func() operator {
+		return &findOperator{
+			find: find,
+		}
+	}, true, true, opts...)
+}
+
+type findOperator struct {
+	find Predicate
+}
+
+func (op *findOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	if op.find(item.V) {
+		item.SendContext(ctx, dst)
+		operatorOptions.stop()
+	}
+}
+
+func (op *findOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+}
+
+func (op *findOperator) end(_ context.Context, _ chan<- Item) {
+}
+
+func (op *findOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
+}
+
 // First returns new Observable which emit only first item.
 // Cannot be run in parallel.
 func (o *ObservableImpl) First(opts ...Option) OptionalSingle {

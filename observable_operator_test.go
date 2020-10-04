@@ -676,6 +676,26 @@ func Test_Observable_Filter_Parallel(t *testing.T) {
 	Assert(ctx, t, obs, HasItemsNoOrder(2, 4), HasNoError())
 }
 
+func Test_Observable_Find_NotEmpty(t *testing.T) {
+	defer goleak.VerifyNone(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	obs := testObservable(ctx, 1, 2, 3).Find(func(i interface{}) bool {
+		return i == 2
+	})
+	Assert(ctx, t, obs, HasItem(2))
+}
+
+func Test_Observable_Find_Empty(t *testing.T) {
+	defer goleak.VerifyNone(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	obs := Empty().Find(func(_ interface{}) bool {
+		return true
+	})
+	Assert(ctx, t, obs, IsEmpty())
+}
+
 func Test_Observable_First_NotEmpty(t *testing.T) {
 	defer goleak.VerifyNone(t)
 	ctx, cancel := context.WithCancel(context.Background())

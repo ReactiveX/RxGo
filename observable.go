@@ -40,6 +40,7 @@ type Observable interface {
 	Error(opts ...Option) error
 	Errors(opts ...Option) []error
 	Filter(apply Predicate, opts ...Option) Observable
+	Find(find Predicate, opts ...Option) OptionalSingle
 	First(opts ...Option) OptionalSingle
 	FirstOrDefault(defaultValue interface{}, opts ...Option) Single
 	FlatMap(apply ItemToObservable, opts ...Option) Observable
