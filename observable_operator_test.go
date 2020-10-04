@@ -1756,7 +1756,6 @@ func Test_Observable_Serialize_Struct(t *testing.T) {
 	Assert(ctx, t, obs, HasItems(message{1}, message{2}, message{3}, message{4}, message{5}))
 }
 
-// FIXME
 func Test_Observable_Serialize_Duplicates(t *testing.T) {
 	defer goleak.VerifyNone(t)
 	ctx, cancel := context.WithCancel(context.Background())
