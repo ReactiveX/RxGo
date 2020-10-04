@@ -2051,19 +2051,15 @@ func (o *ObservableImpl) Serialize(from int, identifier func(interface{}) int, o
 	next := option.buildChannel()
 
 	ctx := option.buildContext()
-	mutex := sync.Mutex{}
 	minHeap := binaryheap.NewWith(func(a, b interface{}) int {
 		return a.(int) - b.(int)
 	})
-	minHeap.Push(from)
 	counter := int64(from)
-	status := make(map[int]interface{})
-	notif := make(chan struct{})
+	items := make(map[int]interface{})
 
-	// Scatter
 	go func() {
-		defer close(notif)
 		src := o.Observe(opts...)
+		defer close(next)
 
 		for {
 			select {
@@ -2079,52 +2075,23 @@ func (o *ObservableImpl) Serialize(from int, identifier func(interface{}) int, o
 				}
 
 				id := identifier(item.V)
-				mutex.Lock()
-				if id != from {
-					minHeap.Push(id)
-				}
-				status[id] = item.V
-				mutex.Unlock()
-				select {
-				case <-ctx.Done():
-					return
-				case notif <- struct{}{}:
-				}
-			}
-		}
-	}()
+				minHeap.Push(id)
+				items[id] = item.V
 
-	// Gather
-	go func() {
-		defer close(next)
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case _, ok := <-notif:
-				if !ok {
-					return
-				}
-
-				mutex.Lock()
 				for !minHeap.Empty() {
 					v, _ := minHeap.Peek()
 					id := v.(int)
 					if atomic.LoadInt64(&counter) == int64(id) {
-						if itemValue, contains := status[id]; contains {
+						if itemValue, contains := items[id]; contains {
 							minHeap.Pop()
-							delete(status, id)
-							mutex.Unlock()
+							delete(items, id)
 							Of(itemValue).SendContext(ctx, next)
-							mutex.Lock()
-							atomic.AddInt64(&counter, 1)
+							counter++
 							continue
 						}
 					}
 					break
 				}
-				mutex.Unlock()
 			}
 		}
 	}()

@@ -1757,16 +1757,16 @@ func Test_Observable_Serialize_Struct(t *testing.T) {
 }
 
 // FIXME
-//func Test_Observable_Serialize_Duplicates(t *testing.T) {
-//	defer goleak.VerifyNone(t)
-//	ctx, cancel := context.WithCancel(context.Background())
-//	defer cancel()
-//	obs := testObservable(ctx, 1, 3, 2, 4, 5, 6, 5, 7).
-//		Serialize(1, func(i interface{}) int {
-//			return i.(int)
-//		})
-//	Assert(ctx, t, obs, HasItems(1, 2, 3, 4, 5, 6))
-//}
+func Test_Observable_Serialize_Duplicates(t *testing.T) {
+	defer goleak.VerifyNone(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	obs := testObservable(ctx, 1, 3, 2, 6, 4, 5).
+		Serialize(1, func(i interface{}) int {
+			return i.(int)
+		})
+	Assert(ctx, t, obs, HasItems(1, 2, 3, 4, 5, 6))
+}
 
 func Test_Observable_Serialize_Loop(t *testing.T) {
 	defer goleak.VerifyNone(t)
