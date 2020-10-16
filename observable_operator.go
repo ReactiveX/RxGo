@@ -754,6 +754,7 @@ func (o *ObservableImpl) Distinct(apply Func, opts ...Option) Observable {
 
 type distinctOperator struct {
 	apply  Func
+	m      sync.RWMutex
 	keyset map[interface{}]interface{}
 }
 
@@ -768,7 +769,9 @@ func (op *distinctOperator) next(ctx context.Context, item Item, dst chan<- Item
 	if !ok {
 		item.SendContext(ctx, dst)
 	}
+	op.m.Lock()
 	op.keyset[key] = nil
+	op.m.Unlock()
 }
 
 func (op *distinctOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
@@ -786,7 +789,9 @@ func (op *distinctOperator) gatherNext(ctx context.Context, item Item, dst chan<
 
 	if _, contains := op.keyset[item.V]; !contains {
 		Of(item.V).SendContext(ctx, dst)
+		op.m.Lock()
 		op.keyset[item.V] = nil
+		op.m.Unlock()
 	}
 }
 
@@ -2555,7 +2560,7 @@ func (o *ObservableImpl) Timestamp(opts ...Option) Observable {
 type timestampOperator struct {
 }
 
-func (op *timestampOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+func (op *timestampOperator) next(ctx context.Context, item Item, dst chan<- Item, _ operatorOptions) {
 	Of(TimestampItem{
 		Timestamp: time.Now().UTC(),
 		V:         item.V,
