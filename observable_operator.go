@@ -657,7 +657,6 @@ func (op *countOperator) next(_ context.Context, _ Item, _ chan<- Item, _ operat
 }
 
 func (op *countOperator) err(_ context.Context, _ Item, _ chan<- Item, operatorOptions operatorOptions) {
-	op.count++
 	operatorOptions.stop()
 }
 
