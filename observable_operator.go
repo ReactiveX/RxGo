@@ -2378,11 +2378,14 @@ type takeOperator struct {
 	takeCount int
 }
 
-func (op *takeOperator) next(ctx context.Context, item Item, dst chan<- Item, _ operatorOptions) {
-	if op.takeCount < int(op.nth) {
-		op.takeCount++
-		item.SendContext(ctx, dst)
+func (op *takeOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	if op.takeCount >= int(op.nth) {
+		operatorOptions.stop()
+		return
 	}
+
+	op.takeCount++
+	item.SendContext(ctx, dst)
 }
 
 func (op *takeOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
