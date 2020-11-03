@@ -2,7 +2,7 @@
 
 ## Overview
 
-Determine whether all items emitted by an Observable meet some criteria.
+Attach a timestamp to each item emitted by an Observable.
 
 ![](http://reactivex.io/documentation/operators/images/timestamp.c.png)
 
