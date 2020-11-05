@@ -46,7 +46,7 @@ type Observable interface {
 	FlatMap(apply ItemToObservable, opts ...Option) Observable
 	ForEach(nextFunc NextFunc, errFunc ErrFunc, completedFunc CompletedFunc, opts ...Option) Disposed
 	GroupBy(length int, distribution func(Item) int, opts ...Option) Observable
-	GroupByDynamic(distribution func(Item) int, opts ...Option) Observable
+	GroupByDynamic(distribution func(Item) string, opts ...Option) Observable
 	IgnoreElements(opts ...Option) Observable
 	Join(joiner Func2, right Observable, timeExtractor func(interface{}) time.Time, window Duration, opts ...Option) Observable
 	Last(opts ...Option) OptionalSingle

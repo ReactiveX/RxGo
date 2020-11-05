@@ -4,7 +4,9 @@
 
 Divides an Observable into a dynamic set of Observables that each emit GroupedObservable from the original Observable, organized by key.
 
-`GroupByDyDynamic` differs from [GroupBy](groupby.md) in the sense that it does not require to pass the set length. 
+`GroupByDyDynamic` differs from [GroupBy](groupby.md) for two reasons:
+ * We don't need to pass a fixed set length.
+ * The distribution function is a `func(rxgo.Item) string` instead of a `func(rxgo.Item) int`. The rationale is because of possible collisions. For example, if our distribution function produces 128-bit UUIDs, there is a collision risk if such a UUID has to be casted into an int.   
 
 ![](http://reactivex.io/documentation/operators/images/groupBy.c.png)
 
@@ -12,8 +14,8 @@ Divides an Observable into a dynamic set of Observables that each emit GroupedOb
 
 ```go
 count := 3
-observable := rxgo.Range(0, 10).GroupByDynamic(func(item rxgo.Item) int {
-    return item.V.(int) % count
+observable := rxgo.Range(0, 10).GroupByDynamic(func(item rxgo.Item) string {
+    return strconv.Itoa(item.V.(int) % count)
 }, rxgo.WithBufferedChannel(10))
 
 for i := range observable.Observe() {
