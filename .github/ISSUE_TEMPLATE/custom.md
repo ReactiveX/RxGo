@@ -1,6 +1,6 @@
 ---
-name: Custom issue template
-about: Describe this issue template's purpose here.
+name: Other
+about: Neither a bug report nor a feature request.
 title: ''
 labels: ''
 assignees: teivah
