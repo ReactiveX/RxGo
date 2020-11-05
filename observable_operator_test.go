@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"testing"
 	"time"
 
@@ -960,11 +961,11 @@ func Test_Observable_GroupByDynamic(t *testing.T) {
 	count := 3
 	max := 10
 
-	obs := Range(0, max).GroupByDynamic(func(item Item) int {
+	obs := Range(0, max).GroupByDynamic(func(item Item) string {
 		if item.V == 10 {
-			return 10
+			return "10"
 		}
-		return item.V.(int) % count
+		return strconv.Itoa(item.V.(int) % count)
 	}, WithBufferedChannel(max))
 	s, err := obs.ToSlice(0)
 	if err != nil {
@@ -975,13 +976,13 @@ func Test_Observable_GroupByDynamic(t *testing.T) {
 	}
 
 	Assert(ctx, t, s[0].(GroupedObservable), HasItems(0, 3, 6, 9), HasNoError())
-	assert.Equal(t, 0, s[0].(GroupedObservable).Key)
+	assert.Equal(t, "0", s[0].(GroupedObservable).Key)
 	Assert(ctx, t, s[1].(GroupedObservable), HasItems(1, 4, 7), HasNoError())
-	assert.Equal(t, 1, s[1].(GroupedObservable).Key)
+	assert.Equal(t, "1", s[1].(GroupedObservable).Key)
 	Assert(ctx, t, s[2].(GroupedObservable), HasItems(2, 5, 8), HasNoError())
-	assert.Equal(t, 2, s[2].(GroupedObservable).Key)
+	assert.Equal(t, "2", s[2].(GroupedObservable).Key)
 	Assert(ctx, t, s[3].(GroupedObservable), HasItems(10), HasNoError())
-	assert.Equal(t, 10, s[3].(GroupedObservable).Key)
+	assert.Equal(t, "10", s[3].(GroupedObservable).Key)
 }
 
 func joinTest(ctx context.Context, t *testing.T, left, right []interface{}, window Duration, expected []int64) {

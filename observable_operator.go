@@ -1353,15 +1353,15 @@ func (o *ObservableImpl) GroupBy(length int, distribution func(Item) int, opts .
 type GroupedObservable struct {
 	Observable
 	// Key is the distribution key
-	Key int
+	Key string
 }
 
 // GroupByDynamic divides an Observable into a dynamic set of Observables that each emit GroupedObservable from the original Observable, organized by key.
-func (o *ObservableImpl) GroupByDynamic(distribution func(Item) int, opts ...Option) Observable {
+func (o *ObservableImpl) GroupByDynamic(distribution func(Item) string, opts ...Option) Observable {
 	option := parseOptions(opts...)
 	next := option.buildChannel()
 	ctx := option.buildContext()
-	chs := make(map[int]chan Item)
+	chs := make(map[string]chan Item)
 
 	go func() {
 		observe := o.Observe(opts...)
