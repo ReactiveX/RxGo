@@ -2,7 +2,7 @@
 name: Feature request
 about: Suggest an idea for RxGo.
 title: ''
-labels: discussing
+labels: enhancement
 assignees: teivah
 
 ---
