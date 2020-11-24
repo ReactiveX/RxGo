@@ -2,7 +2,7 @@
 
 ## Overview
 
-Return the eventual Observable error. 
+Return the first error thrown by an Observable.
 
 This method is blocking.
 

@@ -499,7 +499,8 @@ How to use the [assert API](doc/assert.md) to write unit tests while using RxGo.
 * [Sum](doc/sum.md) — calculate the sum of numbers emitted by an Observable and emit this sum
 
 ### Operators to Convert Observables
-* [Error](doc/error.md)/[Errors](doc/errors.md) — convert an observable into an eventual error or list of errors
+* [Error](doc/error.md) — return the first error thrown by an observable
+* [Errors](doc/errors.md) — return all the errors thrown by an observable
 * [ToMap](doc/tomap.md)/[ToMapWithValueSelector](doc/tomapwithvalueselector.md)/[ToSlice](doc/toslice.md) — convert an Observable into another object or data structure
 
 ## Contributions
