@@ -268,7 +268,7 @@ Each operator has an `opts ...Option` parameter allowing to pass such options.
 The default observation strategy is lazy. It means the items emitted by an Observable are processed by an operator once we start observing it. We can change this behaviour this way:
 
 ```go
-observable := rxgo.FromChannel(ch).Map(transform, rxgo.WithObservation(rxgo.Eager))
+observable := rxgo.FromChannel(ch).Map(transform, rxgo.WithObservationStrategy(rxgo.Eager))
 ```
 
 In this case, the `Map` operator is triggered whenever an item is produced even without any Observer.
