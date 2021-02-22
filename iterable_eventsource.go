@@ -35,12 +35,16 @@ func newEventSourceIterable(ctx context.Context, next <-chan Item, strategy Back
 					fallthrough
 				case Block:
 					for _, observer := range it.observers {
-						observer <- item
+						if !item.SendContext(ctx, observer) {
+							return
+						}
 					}
 				case Drop:
 					for _, observer := range it.observers {
 						select {
 						default:
+						case <-ctx.Done():
+							return
 						case observer <- item:
 						}
 					}

@@ -5,9 +5,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/goleak"
 )
 
 func Test_OptionalSingle_Get_Item(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	var os OptionalSingle = &OptionalSingleImpl{iterable: Just(1)()}
 	get, err := os.Get()
 	assert.NoError(t, err)
@@ -15,6 +17,7 @@ func Test_OptionalSingle_Get_Item(t *testing.T) {
 }
 
 func Test_OptionalSingle_Get_Empty(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	var os OptionalSingle = &OptionalSingleImpl{iterable: Empty()}
 	get, err := os.Get()
 	assert.NoError(t, err)
@@ -22,6 +25,7 @@ func Test_OptionalSingle_Get_Empty(t *testing.T) {
 }
 
 func Test_OptionalSingle_Get_Error(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	var os OptionalSingle = &OptionalSingleImpl{iterable: Just(errFoo)()}
 	get, err := os.Get()
 	assert.NoError(t, err)
@@ -29,6 +33,7 @@ func Test_OptionalSingle_Get_Error(t *testing.T) {
 }
 
 func Test_OptionalSingle_Get_ContextCanceled(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	var os OptionalSingle = &OptionalSingleImpl{iterable: Never()}
 	cancel()
@@ -37,7 +42,8 @@ func Test_OptionalSingle_Get_ContextCanceled(t *testing.T) {
 }
 
 func Test_OptionalSingle_Map(t *testing.T) {
-	single := Just(1)().Max(func(_ interface{}, _ interface{}) int {
+	defer goleak.VerifyNone(t)
+	single := Just(1)().Max(func(_, _ interface{}) int {
 		return 1
 	}).Map(func(_ context.Context, i interface{}) (interface{}, error) {
 		return i.(int) + 1, nil
@@ -46,6 +52,7 @@ func Test_OptionalSingle_Map(t *testing.T) {
 }
 
 func Test_OptionalSingle_Observe(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	os := JustItem(1).Filter(func(i interface{}) bool {
 		return i == 1
 	})

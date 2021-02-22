@@ -1,6 +1,7 @@
 package rxgo
 
 import (
+	"context"
 	"errors"
 )
 
@@ -13,15 +14,15 @@ var (
 	errBar = errors.New("bar")
 )
 
-func channelValue(items ...interface{}) chan Item {
+func channelValue(ctx context.Context, items ...interface{}) chan Item {
 	next := make(chan Item)
 	go func() {
 		for _, item := range items {
 			switch item := item.(type) {
 			default:
-				next <- Of(item)
+				Of(item).SendContext(ctx, next)
 			case error:
-				next <- Error(item)
+				Error(item).SendContext(ctx, next)
 			}
 		}
 		close(next)
@@ -29,6 +30,6 @@ func channelValue(items ...interface{}) chan Item {
 	return next
 }
 
-func testObservable(items ...interface{}) Observable {
-	return FromChannel(channelValue(items...))
+func testObservable(ctx context.Context, items ...interface{}) Observable {
+	return FromChannel(channelValue(ctx, items...))
 }

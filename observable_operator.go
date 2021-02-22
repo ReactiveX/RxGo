@@ -594,8 +594,8 @@ func (o *ObservableImpl) BufferWithTimeOrCount(timespan Duration, count int, opt
 }
 
 // Connect instructs a connectable Observable to begin emitting items to its subscribers.
-func (o *ObservableImpl) Connect() (context.Context, Disposable) {
-	ctx, cancel := context.WithCancel(context.Background())
+func (o *ObservableImpl) Connect(ctx context.Context) (context.Context, Disposable) {
+	ctx, cancel := context.WithCancel(ctx)
 	o.Observe(WithContext(ctx), connect())
 	return ctx, Disposable(cancel)
 }
@@ -657,7 +657,6 @@ func (op *countOperator) next(_ context.Context, _ Item, _ chan<- Item, _ operat
 }
 
 func (op *countOperator) err(_ context.Context, _ Item, _ chan<- Item, operatorOptions operatorOptions) {
-	op.count++
 	operatorOptions.stop()
 }
 
@@ -1022,6 +1021,36 @@ func (op *filterOperator) end(_ context.Context, _ chan<- Item) {
 func (op *filterOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
 }
 
+// Find emits the first item passing a predicate then complete.
+func (o *ObservableImpl) Find(find Predicate, opts ...Option) OptionalSingle {
+	return optionalSingle(o, func() operator {
+		return &findOperator{
+			find: find,
+		}
+	}, true, true, opts...)
+}
+
+type findOperator struct {
+	find Predicate
+}
+
+func (op *findOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	if op.find(item.V) {
+		item.SendContext(ctx, dst)
+		operatorOptions.stop()
+	}
+}
+
+func (op *findOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	defaultErrorFuncOperator(ctx, item, dst, operatorOptions)
+}
+
+func (op *findOperator) end(_ context.Context, _ chan<- Item) {
+}
+
+func (op *findOperator) gatherNext(_ context.Context, _ Item, _ chan<- Item, _ operatorOptions) {
+}
+
 // First returns new Observable which emit only first item.
 // Cannot be run in parallel.
 func (o *ObservableImpl) First(opts ...Option) OptionalSingle {
@@ -1319,6 +1348,57 @@ func (o *ObservableImpl) GroupBy(length int, distribution func(Item) int, opts .
 
 	return &ObservableImpl{
 		iterable: newSliceIterable(s, opts...),
+	}
+}
+
+// GroupedObservable is the observable type emitted by the GroupByDynamic operator.
+type GroupedObservable struct {
+	Observable
+	// Key is the distribution key
+	Key string
+}
+
+// GroupByDynamic divides an Observable into a dynamic set of Observables that each emit GroupedObservable from the original Observable, organized by key.
+func (o *ObservableImpl) GroupByDynamic(distribution func(Item) string, opts ...Option) Observable {
+	option := parseOptions(opts...)
+	next := option.buildChannel()
+	ctx := option.buildContext()
+	chs := make(map[string]chan Item)
+
+	go func() {
+		observe := o.Observe(opts...)
+	loop:
+		for {
+			select {
+			case <-ctx.Done():
+				break loop
+			case i, ok := <-observe:
+				if !ok {
+					break loop
+				}
+				idx := distribution(i)
+				ch, contains := chs[idx]
+				if !contains {
+					ch = option.buildChannel()
+					chs[idx] = ch
+					Of(GroupedObservable{
+						Observable: &ObservableImpl{
+							iterable: newChannelIterable(ch),
+						},
+						Key: idx,
+					}).SendContext(ctx, next)
+				}
+				i.SendContext(ctx, ch)
+			}
+		}
+		for _, ch := range chs {
+			close(ch)
+		}
+		close(next)
+	}()
+
+	return &ObservableImpl{
+		iterable: newChannelIterable(next),
 	}
 }
 
@@ -1684,7 +1764,6 @@ func (op *repeatOperator) end(ctx context.Context, dst chan<- Item) {
 	for {
 		select {
 		default:
-			break
 		case <-ctx.Done():
 			return
 		}
@@ -2003,19 +2082,15 @@ func (o *ObservableImpl) Serialize(from int, identifier func(interface{}) int, o
 	next := option.buildChannel()
 
 	ctx := option.buildContext()
-	mutex := sync.Mutex{}
 	minHeap := binaryheap.NewWith(func(a, b interface{}) int {
 		return a.(int) - b.(int)
 	})
-	minHeap.Push(from)
 	counter := int64(from)
-	status := make(map[int]interface{})
-	notif := make(chan struct{})
+	items := make(map[int]interface{})
 
-	// Scatter
 	go func() {
-		defer close(notif)
 		src := o.Observe(opts...)
+		defer close(next)
 
 		for {
 			select {
@@ -2031,52 +2106,23 @@ func (o *ObservableImpl) Serialize(from int, identifier func(interface{}) int, o
 				}
 
 				id := identifier(item.V)
-				mutex.Lock()
-				if id != from {
-					minHeap.Push(id)
-				}
-				status[id] = item.V
-				mutex.Unlock()
-				select {
-				case <-ctx.Done():
-					return
-				case notif <- struct{}{}:
-				}
-			}
-		}
-	}()
+				minHeap.Push(id)
+				items[id] = item.V
 
-	// Gather
-	go func() {
-		defer close(next)
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case _, ok := <-notif:
-				if !ok {
-					return
-				}
-
-				mutex.Lock()
 				for !minHeap.Empty() {
 					v, _ := minHeap.Peek()
 					id := v.(int)
 					if atomic.LoadInt64(&counter) == int64(id) {
-						if itemValue, contains := status[id]; contains {
+						if itemValue, contains := items[id]; contains {
 							minHeap.Pop()
-							delete(status, id)
-							mutex.Unlock()
+							delete(items, id)
 							Of(itemValue).SendContext(ctx, next)
-							mutex.Lock()
-							atomic.AddInt64(&counter, 1)
+							counter++
 							continue
 						}
 					}
 					break
 				}
-				mutex.Unlock()
 			}
 		}
 	}()
@@ -2243,7 +2289,7 @@ func (o *ObservableImpl) StartWith(iterable Iterable, opts ...Option) Observable
 
 // SumFloat32 calculates the average of float32 emitted by an Observable and emits a float32.
 func (o *ObservableImpl) SumFloat32(opts ...Option) OptionalSingle {
-	return o.Reduce(func(_ context.Context, acc interface{}, elem interface{}) (interface{}, error) {
+	return o.Reduce(func(_ context.Context, acc, elem interface{}) (interface{}, error) {
 		if acc == nil {
 			acc = float32(0)
 		}
@@ -2269,7 +2315,7 @@ func (o *ObservableImpl) SumFloat32(opts ...Option) OptionalSingle {
 
 // SumFloat64 calculates the average of float64 emitted by an Observable and emits a float64.
 func (o *ObservableImpl) SumFloat64(opts ...Option) OptionalSingle {
-	return o.Reduce(func(_ context.Context, acc interface{}, elem interface{}) (interface{}, error) {
+	return o.Reduce(func(_ context.Context, acc, elem interface{}) (interface{}, error) {
 		if acc == nil {
 			acc = float64(0)
 		}
@@ -2297,7 +2343,7 @@ func (o *ObservableImpl) SumFloat64(opts ...Option) OptionalSingle {
 
 // SumInt64 calculates the average of integers emitted by an Observable and emits an int64.
 func (o *ObservableImpl) SumInt64(opts ...Option) OptionalSingle {
-	return o.Reduce(func(_ context.Context, acc interface{}, elem interface{}) (interface{}, error) {
+	return o.Reduce(func(_ context.Context, acc, elem interface{}) (interface{}, error) {
 		if acc == nil {
 			acc = int64(0)
 		}
@@ -2334,11 +2380,14 @@ type takeOperator struct {
 	takeCount int
 }
 
-func (op *takeOperator) next(ctx context.Context, item Item, dst chan<- Item, _ operatorOptions) {
-	if op.takeCount < int(op.nth) {
-		op.takeCount++
-		item.SendContext(ctx, dst)
+func (op *takeOperator) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
+	if op.takeCount >= int(op.nth) {
+		operatorOptions.stop()
+		return
 	}
+
+	op.takeCount++
+	item.SendContext(ctx, dst)
 }
 
 func (op *takeOperator) err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {

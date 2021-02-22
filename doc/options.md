@@ -9,7 +9,7 @@ observable.Map(func(_ context.Context, i interface{}) (interface{}, error) {
 	return i.(int) * 10, nil
 }, rxgo.WithContext(),
    rxgo.WithCPUPool(),
-   rxgo.WihtBufferedChannel(1))
+   rxgo.WithBufferedChannel(1))
 ```
 
 ## WithBufferedChannel

@@ -1,3 +1,4 @@
+// Package rxgo is the main RxGo package.
 package rxgo
 
 import (
@@ -25,7 +26,7 @@ type Observable interface {
 	BufferWithCount(count int, opts ...Option) Observable
 	BufferWithTime(timespan Duration, opts ...Option) Observable
 	BufferWithTimeOrCount(timespan Duration, count int, opts ...Option) Observable
-	Connect() (context.Context, Disposable)
+	Connect(ctx context.Context) (context.Context, Disposable)
 	Contains(equal Predicate, opts ...Option) Single
 	Count(opts ...Option) Single
 	Debounce(timespan Duration, opts ...Option) Observable
@@ -39,11 +40,13 @@ type Observable interface {
 	Error(opts ...Option) error
 	Errors(opts ...Option) []error
 	Filter(apply Predicate, opts ...Option) Observable
+	Find(find Predicate, opts ...Option) OptionalSingle
 	First(opts ...Option) OptionalSingle
 	FirstOrDefault(defaultValue interface{}, opts ...Option) Single
 	FlatMap(apply ItemToObservable, opts ...Option) Observable
 	ForEach(nextFunc NextFunc, errFunc ErrFunc, completedFunc CompletedFunc, opts ...Option) Disposed
 	GroupBy(length int, distribution func(Item) int, opts ...Option) Observable
+	GroupByDynamic(distribution func(Item) string, opts ...Option) Observable
 	IgnoreElements(opts ...Option) Observable
 	Join(joiner Func2, right Observable, timeExtractor func(interface{}) time.Time, window Duration, opts ...Option) Observable
 	Last(opts ...Option) OptionalSingle
@@ -179,7 +182,7 @@ func observable(iterable Iterable, operatorFactory func() operator, forceSeq, by
 						runParallel(ctx, next, observe, operatorFactory, bypassGather, option, mergedOptions...)
 					}
 				}()
-				runFirstItem(ctx, f, firstItemIDCh, observe, next, operatorFactory, bypassGather, option, mergedOptions...)
+				runFirstItem(ctx, f, firstItemIDCh, observe, next, operatorFactory, option, mergedOptions...)
 				return next
 			}),
 		}
@@ -383,7 +386,7 @@ func runParallel(ctx context.Context, next chan Item, observe <-chan Item, opera
 	}()
 }
 
-func runFirstItem(ctx context.Context, f func(interface{}) int, notif chan Item, observe <-chan Item, next chan Item, operatorFactory func() operator, bypassGather bool, option Option, opts ...Option) {
+func runFirstItem(ctx context.Context, f func(interface{}) int, notif chan Item, observe <-chan Item, next chan Item, operatorFactory func() operator, option Option, opts ...Option) {
 	go func() {
 		op := operatorFactory()
 		stopped := false
@@ -425,12 +428,10 @@ func (o *ObservableImpl) serialize(fromCh chan Item, identifier func(interface{}
 	next := option.buildChannel()
 
 	ctx := option.buildContext()
-	mutex := sync.Mutex{}
 	minHeap := binaryheap.NewWith(func(a, b interface{}) int {
 		return a.(int) - b.(int)
 	})
-	status := make(map[int]interface{})
-	notif := make(chan struct{})
+	items := make(map[int]interface{})
 
 	var from int
 	var counter int64
@@ -447,12 +448,10 @@ func (o *ObservableImpl) serialize(fromCh chan Item, identifier func(interface{}
 				return
 			}
 			from = item.V.(int)
-			minHeap.Push(from)
 			counter = int64(from)
 
-			// Scatter
 			go func() {
-				defer close(notif)
+				defer close(next)
 
 				for {
 					select {
@@ -468,52 +467,23 @@ func (o *ObservableImpl) serialize(fromCh chan Item, identifier func(interface{}
 						}
 
 						id := identifier(item.V)
-						mutex.Lock()
-						if id != from {
-							minHeap.Push(id)
-						}
-						status[id] = item.V
-						mutex.Unlock()
-						select {
-						case <-ctx.Done():
-							return
-						case notif <- struct{}{}:
-						}
-					}
-				}
-			}()
+						minHeap.Push(id)
+						items[id] = item.V
 
-			// Gather
-			go func() {
-				defer close(next)
-
-				for {
-					select {
-					case <-ctx.Done():
-						return
-					case _, ok := <-notif:
-						if !ok {
-							return
-						}
-
-						mutex.Lock()
 						for !minHeap.Empty() {
 							v, _ := minHeap.Peek()
 							id := v.(int)
 							if atomic.LoadInt64(&counter) == int64(id) {
-								if itemValue, contains := status[id]; contains {
+								if itemValue, contains := items[id]; contains {
 									minHeap.Pop()
-									delete(status, id)
-									mutex.Unlock()
+									delete(items, id)
 									Of(itemValue).SendContext(ctx, next)
-									mutex.Lock()
-									atomic.AddInt64(&counter, 1)
+									counter++
 									continue
 								}
 							}
 							break
 						}
-						mutex.Unlock()
 					}
 				}
 			}()

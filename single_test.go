@@ -5,9 +5,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/goleak"
 )
 
 func Test_Single_Get_Item(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	var s Single = &SingleImpl{iterable: Just(1)()}
 	get, err := s.Get()
 	assert.NoError(t, err)
@@ -15,6 +17,7 @@ func Test_Single_Get_Item(t *testing.T) {
 }
 
 func Test_Single_Get_Error(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	var s Single = &SingleImpl{iterable: Just(errFoo)()}
 	get, err := s.Get()
 	assert.NoError(t, err)
@@ -22,6 +25,7 @@ func Test_Single_Get_Error(t *testing.T) {
 }
 
 func Test_Single_Get_ContextCanceled(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	ch := make(chan Item)
 	defer close(ch)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -32,6 +36,7 @@ func Test_Single_Get_ContextCanceled(t *testing.T) {
 }
 
 func Test_Single_Filter_True(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	os := JustItem(1).Filter(func(i interface{}) bool {
 		return i == 1
 	})
@@ -39,6 +44,7 @@ func Test_Single_Filter_True(t *testing.T) {
 }
 
 func Test_Single_Filter_False(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	os := JustItem(1).Filter(func(i interface{}) bool {
 		return i == 0
 	})
@@ -46,6 +52,7 @@ func Test_Single_Filter_False(t *testing.T) {
 }
 
 func Test_Single_Map(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	single := JustItem(1).Map(func(_ context.Context, i interface{}) (interface{}, error) {
 		return i.(int) + 1, nil
 	})
