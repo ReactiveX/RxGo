@@ -102,11 +102,14 @@ func (o *ObservableImpl) DoOnNextInOutBound(index int, connectionId string, stac
 		messageCount := 0
 		byteCount := 0
 		for {
-			now := time.Now()
-			if now.Sub(lastUpdate) >= time.Second {
-				lastUpdate = now
-				connectionManager.PublishStackData(index, connectionId, stackName, streamDirection, messageCount, byteCount)
+			if ctx.Err() == nil {
+				now := time.Now()
+				if now.Sub(lastUpdate) >= time.Second {
+					lastUpdate = now
+					connectionManager.PublishStackData(index, connectionId, stackName, streamDirection, messageCount, byteCount)
+				}
 			}
+
 			select {
 			case <-ctx.Done():
 				return
@@ -169,10 +172,12 @@ func (self *mapOperatorWithCounters) end(ctx context.Context, dst chan<- Item) {
 }
 
 func (self *mapOperatorWithCounters) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	now := time.Now()
-	if now.Sub(self.lastUpdate) >= time.Second {
-		self.lastUpdate = now
-		self.connectionManager.PublishStackData(self.index, self.connectionId, self.stackName, self.streamDirection, self.messageCount, self.byteCount)
+	if ctx.Err() == nil{
+		now := time.Now()
+		if now.Sub(self.lastUpdate) >= time.Second {
+			self.lastUpdate = now
+			self.connectionManager.PublishStackData(self.index, self.connectionId, self.stackName, self.streamDirection, self.messageCount, self.byteCount)
+		}
 	}
 
 	self.messageCount++

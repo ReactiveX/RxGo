@@ -1,4 +1,4 @@
-module github.com/bhbosman/rxgo/v2.1.2
+module github.com/bhbosman/rxgo/v2
 
 go 1.13
 
