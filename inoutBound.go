@@ -172,7 +172,7 @@ func (self *mapOperatorWithCounters) end(ctx context.Context, dst chan<- Item) {
 }
 
 func (self *mapOperatorWithCounters) next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	if ctx.Err() == nil{
+	if ctx.Err() == nil {
 		now := time.Now()
 		if now.Sub(self.lastUpdate) >= time.Second {
 			self.lastUpdate = now
