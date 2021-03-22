@@ -19,7 +19,7 @@ func (i *rangeIterable) Observe(opts ...Option) <-chan Item {
 	next := option.buildChannel()
 
 	go func() {
-		for idx := i.start; idx <= i.start+i.count; idx++ {
+		for idx := i.start; idx <= i.start+i.count-1; idx++ {
 			select {
 			case <-ctx.Done():
 				return

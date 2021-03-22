@@ -465,9 +465,9 @@ func Test_Merge_Interval(t *testing.T) {
 func Test_Range(t *testing.T) {
 	defer goleak.VerifyNone(t)
 	obs := Range(5, 3)
-	Assert(context.Background(), t, obs, HasItems(5, 6, 7, 8))
+	Assert(context.Background(), t, obs, HasItems(5, 6, 7))
 	// Test whether the observable is reproducible
-	Assert(context.Background(), t, obs, HasItems(5, 6, 7, 8))
+	Assert(context.Background(), t, obs, HasItems(5, 6, 7))
 }
 
 func Test_Range_NegativeCount(t *testing.T) {
