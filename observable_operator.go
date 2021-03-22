@@ -511,8 +511,10 @@ func (o *ObservableImpl) BufferWithTime(timespan Duration, opts ...Option) Obser
 	return customObservableOperator(o.parent, f, opts...)
 }
 
-// BufferWithTimeOrCount returns an Observable that emits buffers of items it collects from the source
-// Observable either from a given count or at a given time interval.
+// BufferWithTimeOrCount returns an Observable that emits buffers, of max size
+// count, of items it collects from the source Observable, or if the timespan
+// has elapsed, whatever was collected in the buffer since the last emitted
+// buffer.
 func (o *ObservableImpl) BufferWithTimeOrCount(timespan Duration, count int, opts ...Option) Observable {
 	if timespan == nil {
 		return Thrown(IllegalInputError{error: "timespan must no be nil"})
@@ -528,16 +530,37 @@ func (o *ObservableImpl) BufferWithTimeOrCount(timespan Duration, count int, opt
 		send := make(chan struct{})
 		mutex := sync.Mutex{}
 
-		checkBuffer := func() {
+		// checkBuffer will send buffered units of at most size count, unless
+		// flush is true.
+		checkBuffer := func(flush bool) {
 			mutex.Lock()
-			if len(buffer) != 0 {
-				if !Of(buffer).SendContext(ctx, next) {
-					mutex.Unlock()
-					return
+			defer mutex.Unlock()
+
+			length := len(buffer)
+			if length != 0 {
+				var last int
+				defer func() {
+					// create a copy of buffer, less whatever was already sent
+					t := make([]interface{}, length-(last+1))
+					copy(t, buffer[last+1:length])
+					buffer = t
+				}()
+
+				for i := 0; i < length; i += count {
+					high := i + count
+					if high > length {
+						if flush {
+							high = length
+						} else {
+							return
+						}
+					}
+					if !Of(buffer[i:high]).SendContext(ctx, next) {
+						return
+					}
+					last = high - 1
 				}
-				buffer = make([]interface{}, 0)
 			}
-			mutex.Unlock()
 		}
 
 		go func() {
@@ -546,14 +569,14 @@ func (o *ObservableImpl) BufferWithTimeOrCount(timespan Duration, count int, opt
 			for {
 				select {
 				case <-send:
-					checkBuffer()
+					checkBuffer(false)
 				case <-stop:
-					checkBuffer()
+					checkBuffer(true)
 					return
 				case <-ctx.Done():
 					return
 				case <-time.After(duration):
-					checkBuffer()
+					checkBuffer(true)
 				}
 			}
 		}()
