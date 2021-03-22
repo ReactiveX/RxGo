@@ -197,7 +197,7 @@ func Test_Connectable_IterableRange_Single(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	obs := &ObservableImpl{
-		iterable: newRangeIterable(1, 2, WithPublishStrategy(), WithContext(ctx)),
+		iterable: newRangeIterable(1, 3, WithPublishStrategy(), WithContext(ctx)),
 	}
 	testConnectableSingle(t, obs)
 }
@@ -207,7 +207,7 @@ func Test_Connectable_IterableRange_Composed(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	obs := &ObservableImpl{
-		iterable: newRangeIterable(1, 2, WithPublishStrategy(), WithContext(ctx)),
+		iterable: newRangeIterable(1, 3, WithPublishStrategy(), WithContext(ctx)),
 	}
 	testConnectableComposed(t, obs)
 }

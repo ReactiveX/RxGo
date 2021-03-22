@@ -292,7 +292,8 @@ func Never() Observable {
 	}
 }
 
-// Range creates an Observable that emits a particular range of sequential integers.
+// Range creates an Observable that emits count sequential integers beginning
+// at start.
 func Range(start, count int, opts ...Option) Observable {
 	if count < 0 {
 		return Thrown(IllegalInputError{error: "count must be positive"})
