@@ -6,12 +6,7 @@
 
 Reactive Extensions for the Go Language
 
----
-**Important**
-
-This version is deprecated, please upgrade to v2 (`github.com/reactivex/rxgo/v2` module).
-
----
+**Important**: This version is deprecated, please upgrade to v2 (`github.com/reactivex/rxgo/v2` module).
 
 
 ## Call for Maintainers
