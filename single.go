@@ -13,12 +13,13 @@ type Single interface {
 
 // SingleImpl implements Single.
 type SingleImpl struct {
+	parent   context.Context
 	iterable Iterable
 }
 
 // Filter emits only those items from an Observable that pass a predicate test.
 func (s *SingleImpl) Filter(apply Predicate, opts ...Option) OptionalSingle {
-	return optionalSingle(s, func() operator {
+	return optionalSingle(s.parent, s, func() operator {
 		return &filterOperatorSingle{apply: apply}
 	}, true, true, opts...)
 }
@@ -27,7 +28,7 @@ func (s *SingleImpl) Filter(apply Predicate, opts ...Option) OptionalSingle {
 // This method is blocking.
 func (s *SingleImpl) Get(opts ...Option) (Item, error) {
 	option := parseOptions(opts...)
-	ctx := option.buildContext()
+	ctx := option.buildContext(s.parent)
 
 	observe := s.Observe(opts...)
 	for {
@@ -42,7 +43,7 @@ func (s *SingleImpl) Get(opts ...Option) (Item, error) {
 
 // Map transforms the items emitted by a Single by applying a function to each item.
 func (s *SingleImpl) Map(apply Func, opts ...Option) Single {
-	return single(s, func() operator {
+	return single(s.parent, s, func() operator {
 		return &mapOperatorSingle{apply: apply}
 	}, false, true, opts...)
 }
@@ -105,7 +106,7 @@ func (op *filterOperatorSingle) gatherNext(_ context.Context, _ Item, _ chan<- I
 func (s *SingleImpl) Run(opts ...Option) Disposed {
 	dispose := make(chan struct{})
 	option := parseOptions(opts...)
-	ctx := option.buildContext()
+	ctx := option.buildContext(s.parent)
 
 	go func() {
 		defer close(dispose)

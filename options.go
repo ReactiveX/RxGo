@@ -3,7 +3,11 @@ package rxgo
 import (
 	"context"
 	"runtime"
+
+	"github.com/teivah/onecontext"
 )
+
+var emptyContext context.Context
 
 // Option handles configurable options.
 type Option interface {
@@ -12,7 +16,7 @@ type Option interface {
 	isEagerObservation() bool
 	getPool() (bool, int)
 	buildChannel() chan Item
-	buildContext() context.Context
+	buildContext(parent context.Context) context.Context
 	getBackPressureStrategy() BackpressureStrategy
 	getErrorStrategy() OnErrorStrategy
 	isConnectable() bool
@@ -54,11 +58,19 @@ func (fdo *funcOption) buildChannel() chan Item {
 	return make(chan Item)
 }
 
-func (fdo *funcOption) buildContext() context.Context {
-	if fdo.ctx == nil {
-		return context.Background()
+func (fdo *funcOption) buildContext(parent context.Context) context.Context {
+	if fdo.ctx != nil && parent != nil {
+		ctx, _ := onecontext.Merge(fdo.ctx, parent)
+		return ctx
 	}
-	return fdo.ctx
+
+	if fdo.ctx != nil {
+		return fdo.ctx
+	}
+	if parent != nil {
+		return parent
+	}
+	return context.Background()
 }
 
 func (fdo *funcOption) getBackPressureStrategy() BackpressureStrategy {

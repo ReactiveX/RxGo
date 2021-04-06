@@ -15,7 +15,7 @@ func newSliceIterable(items []Item, opts ...Option) Iterable {
 func (i *sliceIterable) Observe(opts ...Option) <-chan Item {
 	option := parseOptions(append(i.opts, opts...)...)
 	next := option.buildChannel()
-	ctx := option.buildContext()
+	ctx := option.buildContext(emptyContext)
 
 	go func() {
 		for _, item := range i.items {

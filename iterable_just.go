@@ -18,6 +18,6 @@ func (i *justIterable) Observe(opts ...Option) <-chan Item {
 	option := parseOptions(append(i.opts, opts...)...)
 	next := option.buildChannel()
 
-	go SendItems(option.buildContext(), next, CloseChannel, i.items)
+	go SendItems(option.buildContext(emptyContext), next, CloseChannel, i.items)
 	return next
 }

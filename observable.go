@@ -92,6 +92,7 @@ type Observable interface {
 
 // ObservableImpl implements Observable.
 type ObservableImpl struct {
+	parent   context.Context
 	iterable Iterable
 }
 
@@ -100,12 +101,12 @@ func defaultErrorFuncOperator(ctx context.Context, item Item, dst chan<- Item, o
 	operatorOptions.stop()
 }
 
-func customObservableOperator(f func(ctx context.Context, next chan Item, option Option, opts ...Option), opts ...Option) Observable {
+func customObservableOperator(parent context.Context, f func(ctx context.Context, next chan Item, option Option, opts ...Option), opts ...Option) Observable {
 	option := parseOptions(opts...)
+	next := option.buildChannel()
+	ctx := option.buildContext(parent)
 
 	if option.isEagerObservation() {
-		next := option.buildChannel()
-		ctx := option.buildContext()
 		go f(ctx, next, option, opts...)
 		return &ObservableImpl{iterable: newChannelIterable(next)}
 	}
@@ -113,9 +114,6 @@ func customObservableOperator(f func(ctx context.Context, next chan Item, option
 	return &ObservableImpl{
 		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
 			mergedOptions := append(opts, propagatedOptions...)
-			option := parseOptions(mergedOptions...)
-			next := option.buildChannel()
-			ctx := option.buildContext()
 			go f(ctx, next, option, mergedOptions...)
 			return next
 		}),
@@ -129,13 +127,13 @@ type operator interface {
 	gatherNext(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions)
 }
 
-func observable(iterable Iterable, operatorFactory func() operator, forceSeq, bypassGather bool, opts ...Option) Observable {
+func observable(parent context.Context, iterable Iterable, operatorFactory func() operator, forceSeq, bypassGather bool, opts ...Option) Observable {
 	option := parseOptions(opts...)
 	parallel, _ := option.getPool()
 
 	if option.isEagerObservation() {
 		next := option.buildChannel()
-		ctx := option.buildContext()
+		ctx := option.buildContext(parent)
 		if forceSeq || !parallel {
 			runSequential(ctx, next, iterable, operatorFactory, option, opts...)
 		} else {
@@ -151,7 +149,7 @@ func observable(iterable Iterable, operatorFactory func() operator, forceSeq, by
 				option := parseOptions(mergedOptions...)
 
 				next := option.buildChannel()
-				ctx := option.buildContext()
+				ctx := option.buildContext(parent)
 				runSequential(ctx, next, iterable, operatorFactory, option, mergedOptions...)
 				return next
 			}),
@@ -167,7 +165,7 @@ func observable(iterable Iterable, operatorFactory func() operator, forceSeq, by
 				option := parseOptions(mergedOptions...)
 
 				next := option.buildChannel()
-				ctx := option.buildContext()
+				ctx := option.buildContext(parent)
 				observe := iterable.Observe(opts...)
 				go func() {
 					select {
@@ -186,7 +184,7 @@ func observable(iterable Iterable, operatorFactory func() operator, forceSeq, by
 				return next
 			}),
 		}
-		return obs.serialize(fromCh, f)
+		return obs.serialize(parent, fromCh, f)
 	}
 
 	return &ObservableImpl{
@@ -195,20 +193,20 @@ func observable(iterable Iterable, operatorFactory func() operator, forceSeq, by
 			option := parseOptions(mergedOptions...)
 
 			next := option.buildChannel()
-			ctx := option.buildContext()
+			ctx := option.buildContext(parent)
 			runParallel(ctx, next, iterable.Observe(mergedOptions...), operatorFactory, bypassGather, option, mergedOptions...)
 			return next
 		}),
 	}
 }
 
-func single(iterable Iterable, operatorFactory func() operator, forceSeq, bypassGather bool, opts ...Option) Single {
+func single(parent context.Context, iterable Iterable, operatorFactory func() operator, forceSeq, bypassGather bool, opts ...Option) Single {
 	option := parseOptions(opts...)
 	parallel, _ := option.getPool()
+	next := option.buildChannel()
+	ctx := option.buildContext(parent)
 
 	if option.isEagerObservation() {
-		next := option.buildChannel()
-		ctx := option.buildContext()
 		if forceSeq || !parallel {
 			runSequential(ctx, next, iterable, operatorFactory, option, opts...)
 		} else {
@@ -222,8 +220,6 @@ func single(iterable Iterable, operatorFactory func() operator, forceSeq, bypass
 			mergedOptions := append(opts, propagatedOptions...)
 			option = parseOptions(mergedOptions...)
 
-			next := option.buildChannel()
-			ctx := option.buildContext()
 			if forceSeq || !parallel {
 				runSequential(ctx, next, iterable, operatorFactory, option, mergedOptions...)
 			} else {
@@ -234,13 +230,13 @@ func single(iterable Iterable, operatorFactory func() operator, forceSeq, bypass
 	}
 }
 
-func optionalSingle(iterable Iterable, operatorFactory func() operator, forceSeq, bypassGather bool, opts ...Option) OptionalSingle {
+func optionalSingle(parent context.Context, iterable Iterable, operatorFactory func() operator, forceSeq, bypassGather bool, opts ...Option) OptionalSingle {
 	option := parseOptions(opts...)
+	ctx := option.buildContext(parent)
 	parallel, _ := option.getPool()
 
 	if option.isEagerObservation() {
 		next := option.buildChannel()
-		ctx := option.buildContext()
 		if forceSeq || !parallel {
 			runSequential(ctx, next, iterable, operatorFactory, option, opts...)
 		} else {
@@ -250,12 +246,13 @@ func optionalSingle(iterable Iterable, operatorFactory func() operator, forceSeq
 	}
 
 	return &OptionalSingleImpl{
+		parent: ctx,
 		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
 			mergedOptions := append(opts, propagatedOptions...)
 			option = parseOptions(mergedOptions...)
 
 			next := option.buildChannel()
-			ctx := option.buildContext()
+			ctx := option.buildContext(parent)
 			if forceSeq || !parallel {
 				runSequential(ctx, next, iterable, operatorFactory, option, mergedOptions...)
 			} else {
@@ -423,11 +420,11 @@ func runFirstItem(ctx context.Context, f func(interface{}) int, notif chan Item,
 	}()
 }
 
-func (o *ObservableImpl) serialize(fromCh chan Item, identifier func(interface{}) int, opts ...Option) Observable {
+func (o *ObservableImpl) serialize(parent context.Context, fromCh chan Item, identifier func(interface{}) int, opts ...Option) Observable {
 	option := parseOptions(opts...)
 	next := option.buildChannel()
 
-	ctx := option.buildContext()
+	ctx := option.buildContext(parent)
 	minHeap := binaryheap.NewWith(func(a, b interface{}) int {
 		return a.(int) - b.(int)
 	})

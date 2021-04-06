@@ -16,7 +16,7 @@ type createIterable struct {
 func newCreateIterable(fs []Producer, opts ...Option) Iterable {
 	option := parseOptions(opts...)
 	next := option.buildChannel()
-	ctx := option.buildContext()
+	ctx := option.buildContext(emptyContext)
 
 	go func() {
 		defer close(next)
@@ -40,7 +40,7 @@ func (i *createIterable) Observe(opts ...Option) <-chan Item {
 	}
 
 	if option.isConnectOperation() {
-		i.connect(option.buildContext())
+		i.connect(option.buildContext(emptyContext))
 		return nil
 	}
 

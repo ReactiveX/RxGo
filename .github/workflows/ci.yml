@@ -18,5 +18,5 @@ jobs:
         uses: golangci/golangci-lint-action@v2.5.2
         with:
           version: v1.29
-      - name: Test
-        run: go clean -testcache ./... && go test -race -timeout 10s ./...
+      - name: test
+        run: make test

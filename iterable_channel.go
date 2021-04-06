@@ -30,7 +30,7 @@ func (i *channelIterable) Observe(opts ...Option) <-chan Item {
 	}
 
 	if option.isConnectOperation() {
-		i.connect(option.buildContext())
+		i.connect(option.buildContext(emptyContext))
 		return nil
 	}
 

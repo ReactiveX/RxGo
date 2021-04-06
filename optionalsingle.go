@@ -15,6 +15,7 @@ type OptionalSingle interface {
 
 // OptionalSingleImpl implements OptionalSingle.
 type OptionalSingleImpl struct {
+	parent   context.Context
 	iterable Iterable
 }
 
@@ -22,7 +23,7 @@ type OptionalSingleImpl struct {
 // This method is blocking.
 func (o *OptionalSingleImpl) Get(opts ...Option) (Item, error) {
 	option := parseOptions(opts...)
-	ctx := option.buildContext()
+	ctx := option.buildContext(o.parent)
 
 	observe := o.Observe(opts...)
 	for {
@@ -40,7 +41,7 @@ func (o *OptionalSingleImpl) Get(opts ...Option) (Item, error) {
 
 // Map transforms the items emitted by an OptionalSingle by applying a function to each item.
 func (o *OptionalSingleImpl) Map(apply Func, opts ...Option) OptionalSingle {
-	return optionalSingle(o, func() operator {
+	return optionalSingle(o.parent, o, func() operator {
 		return &mapOperatorOptionalSingle{apply: apply}
 	}, false, true, opts...)
 }
@@ -83,7 +84,7 @@ func (op *mapOperatorOptionalSingle) gatherNext(_ context.Context, item Item, ds
 func (o *OptionalSingleImpl) Run(opts ...Option) Disposed {
 	dispose := make(chan struct{})
 	option := parseOptions(opts...)
-	ctx := option.buildContext()
+	ctx := option.buildContext(o.parent)
 
 	go func() {
 		defer close(dispose)

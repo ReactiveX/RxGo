@@ -33,9 +33,6 @@ func NewTicker(b BackOff) *Ticker {
 // NewTickerWithTimer returns a new Ticker with a custom timer.
 // A default timer that uses system timer is used when nil is passed.
 func NewTickerWithTimer(b BackOff, timer Timer) *Ticker {
-	if timer == nil {
-		timer = &defaultTimer{}
-	}
 	c := make(chan time.Time)
 	t := &Ticker{
 		C:     c,

@@ -12,7 +12,7 @@ import (
 // to emit an item or notification.
 func Amb(observables []Observable, opts ...Option) Observable {
 	option := parseOptions(opts...)
-	ctx := option.buildContext()
+	ctx := option.buildContext(emptyContext)
 	next := option.buildChannel()
 	once := sync.Once{}
 
@@ -65,7 +65,7 @@ func Amb(observables []Observable, opts ...Option) Observable {
 // and emit items based on the results of this function.
 func CombineLatest(f FuncN, observables []Observable, opts ...Option) Observable {
 	option := parseOptions(opts...)
-	ctx := option.buildContext()
+	ctx := option.buildContext(emptyContext)
 	next := option.buildChannel()
 
 	go func() {
@@ -130,7 +130,7 @@ func CombineLatest(f FuncN, observables []Observable, opts ...Option) Observable
 // Concat emits the emissions from two or more Observables without interleaving them.
 func Concat(observables []Observable, opts ...Option) Observable {
 	option := parseOptions(opts...)
-	ctx := option.buildContext()
+	ctx := option.buildContext(emptyContext)
 	next := option.buildChannel()
 
 	go func() {
@@ -186,7 +186,10 @@ func Empty() Observable {
 
 // FromChannel creates a cold observable from a channel.
 func FromChannel(next <-chan Item, opts ...Option) Observable {
+	option := parseOptions(opts...)
+	ctx := option.buildContext(emptyContext)
 	return &ObservableImpl{
+		parent:   ctx,
 		iterable: newChannelIterable(next, opts...),
 	}
 }
@@ -196,7 +199,7 @@ func FromEventSource(next <-chan Item, opts ...Option) Observable {
 	option := parseOptions(opts...)
 
 	return &ObservableImpl{
-		iterable: newEventSourceIterable(option.buildContext(), next, option.getBackPressureStrategy()),
+		iterable: newEventSourceIterable(option.buildContext(emptyContext), next, option.getBackPressureStrategy()),
 	}
 }
 
@@ -205,7 +208,7 @@ func FromEventSource(next <-chan Item, opts ...Option) Observable {
 func Interval(interval Duration, opts ...Option) Observable {
 	option := parseOptions(opts...)
 	next := option.buildChannel()
-	ctx := option.buildContext()
+	ctx := option.buildContext(emptyContext)
 
 	go func() {
 		i := 0
@@ -246,7 +249,7 @@ func JustItem(item interface{}, opts ...Option) Single {
 // Merge combines multiple Observables into one by merging their emissions
 func Merge(observables []Observable, opts ...Option) Observable {
 	option := parseOptions(opts...)
-	ctx := option.buildContext()
+	ctx := option.buildContext(emptyContext)
 	next := option.buildChannel()
 	wg := sync.WaitGroup{}
 	wg.Add(len(observables))
@@ -311,7 +314,7 @@ func Range(start, count int, opts ...Option) Observable {
 func Start(fs []Supplier, opts ...Option) Observable {
 	option := parseOptions(opts...)
 	next := option.buildChannel()
-	ctx := option.buildContext()
+	ctx := option.buildContext(emptyContext)
 
 	go func() {
 		defer close(next)
@@ -343,7 +346,7 @@ func Thrown(err error) Observable {
 func Timer(d Duration, opts ...Option) Observable {
 	option := parseOptions(opts...)
 	next := make(chan Item, 1)
-	ctx := option.buildContext()
+	ctx := option.buildContext(emptyContext)
 
 	go func() {
 		defer close(next)
