@@ -7,7 +7,7 @@ import (
 	"github.com/teivah/onecontext"
 )
 
-var emptyContext context.Context = nil
+var emptyContext context.Context
 
 // Option handles configurable options.
 type Option interface {
