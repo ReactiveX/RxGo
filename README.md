@@ -504,4 +504,12 @@ How to use the [assert API](doc/assert.md) to write unit tests while using RxGo.
 
 ## Contributions
 
-All contributions are very welcome! Be sure you check out the [contributing guidelines](CONTRIBUTING.md) first.
+All contributions are very welcome! Be sure you check out the [contributing guidelines](CONTRIBUTING.md) first. Also, if you publish a post about RxGo, please let us know. We would be glad to include it in the [External Resources](#external-resources) section.
+
+## External Resources
+
+* [Announcing RxGo v2](https://teivah.medium.com/introducing-rxgo-v2-e7e369faa99a)
+* [Writing PizzaScript Lexer with RxGo](https://korzio.medium.com/writing-pizzascript-lexer-with-rxgo-a-saga-in-iii-slices-3790dc6099e7)
+* [Writing PizzaScript Parser with RxGo](https://korzio.medium.com/pizzascript-parser-with-rxgo-the-pyramid-of-doom-36e574f129dc)
+* [Programación reactiva en Go (Spanish)](https://blog.friendsofgo.tech/posts/programacion-reactiva-en-go/)
+* [Go 每日一库之 RxGo (Chinese)](https://darjun.github.io/2020/10/11/godailylib/rxgo/)

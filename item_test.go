@@ -53,6 +53,15 @@ func Test_Item_SendContext_True(t *testing.T) {
 	assert.True(t, Of(5).SendContext(ctx, ch))
 }
 
+func Test_Item_SendContext_False(t *testing.T) {
+	defer goleak.VerifyNone(t)
+	ch := make(chan Item, 1)
+	defer close(ch)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	assert.False(t, Of(5).SendContext(ctx, ch))
+}
+
 func Test_Item_SendNonBlocking(t *testing.T) {
 	defer goleak.VerifyNone(t)
 	ch := make(chan Item, 1)

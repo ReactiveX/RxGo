@@ -98,10 +98,15 @@ func (i Item) SendBlocking(ch chan<- Item) {
 // It returns a boolean to indicate whether the item was sent.
 func (i Item) SendContext(ctx context.Context, ch chan<- Item) bool {
 	select {
-	case <-ctx.Done():
+	case <-ctx.Done(): // Context's done channel has the highest priority
 		return false
-	case ch <- i:
-		return true
+	default:
+		select {
+		case <-ctx.Done():
+			return false
+		case ch <- i:
+			return true
+		}
 	}
 }
 
