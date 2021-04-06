@@ -517,6 +517,8 @@ All contributions are very welcome! Be sure you check out the [contributing guid
 * [Programación reactiva en Go (Spanish)](https://blog.friendsofgo.tech/posts/programacion-reactiva-en-go/)
 * [Go 每日一库之 RxGo (Chinese)](https://darjun.github.io/2020/10/11/godailylib/rxgo/)
 
+## Contributors
+
 <a href="https://github.com/ReactiveX/RxGo/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=ReactiveX/RxGo" />
 </a>
