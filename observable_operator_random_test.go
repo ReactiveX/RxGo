@@ -15,6 +15,7 @@ import (
 
 const maxSleepNs = 10_000_000 // 10 ms
 
+// TODO Keep enriching tests
 func TestLeak(t *testing.T) {
 	var (
 		count  = 100
@@ -67,10 +68,6 @@ func TestLeak(t *testing.T) {
 		"BufferWithTime": func(ctx context.Context, obs Observable) {
 			obs.BufferWithTime(WithDuration(time.Millisecond), WithContext(ctx))
 		},
-		// TODO
-		//"Catch": func(ctx context.Context, obs Observable) {
-		//	obs.OnErrorReturnItem()
-		//},
 		"Connect": func(ctx context.Context, obs Observable) {
 			obs.Connect(ctx)
 		},
