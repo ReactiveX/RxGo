@@ -11,7 +11,8 @@ The retries exponentially increase and stop increasing when a certain threshold 
 
 Import path is `github.com/cenkalti/backoff/v4`. Please note the version part at the end.
 
-Use https://pkg.go.dev/github.com/cenkalti/backoff/v4 to view the documentation.
+godoc.org does not support modules yet,
+so you can use https://godoc.org/gopkg.in/cenkalti/backoff.v4 to view the documentation.
 
 ## Contributing
 
@@ -19,7 +20,7 @@ Use https://pkg.go.dev/github.com/cenkalti/backoff/v4 to view the documentation.
 * Please don't send a PR without opening an issue and discussing it first.
 * If proposed change is not a common use case, I will probably not accept it.
 
-[godoc]: https://pkg.go.dev/github.com/cenkalti/backoff/v4
+[godoc]: https://godoc.org/github.com/cenkalti/backoff
 [godoc image]: https://godoc.org/github.com/cenkalti/backoff?status.png
 [travis]: https://travis-ci.org/cenkalti/backoff
 [travis image]: https://travis-ci.org/cenkalti/backoff.png?branch=master
@@ -29,4 +30,4 @@ Use https://pkg.go.dev/github.com/cenkalti/backoff/v4 to view the documentation.
 [google-http-java-client]: https://github.com/google/google-http-java-client/blob/da1aa993e90285ec18579f1553339b00e19b3ab5/google-http-client/src/main/java/com/google/api/client/util/ExponentialBackOff.java
 [exponential backoff wiki]: http://en.wikipedia.org/wiki/Exponential_backoff
 
-[advanced example]: https://pkg.go.dev/github.com/cenkalti/backoff/v4?tab=doc#pkg-examples
+[advanced example]: https://godoc.org/github.com/cenkalti/backoff#example_
