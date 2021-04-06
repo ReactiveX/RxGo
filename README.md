@@ -509,7 +509,10 @@ All contributions are very welcome! Be sure you check out the [contributing guid
 ## External Resources
 
 * [Announcing RxGo v2](https://teivah.medium.com/introducing-rxgo-v2-e7e369faa99a)
+* [Why YoMo (an open-source streaming serverless framework for building low-latency edge computing applications) uses RxGo](https://yomo.run/rx)
+* [Go Cookbook from Packt - Reactive programming with RxGo (based on v1)](https://subscription.packtpub.com/book/application_development/9781783286836/11/ch11lvl1sec87/reactive-programming-with-rxgo)
 * [Writing PizzaScript Lexer with RxGo](https://korzio.medium.com/writing-pizzascript-lexer-with-rxgo-a-saga-in-iii-slices-3790dc6099e7)
 * [Writing PizzaScript Parser with RxGo](https://korzio.medium.com/pizzascript-parser-with-rxgo-the-pyramid-of-doom-36e574f129dc)
+* [Reactive programming in Go](https://prakharsrivastav.com/posts/reactive-programming-in-go/)
 * [Programación reactiva en Go (Spanish)](https://blog.friendsofgo.tech/posts/programacion-reactiva-en-go/)
 * [Go 每日一库之 RxGo (Chinese)](https://darjun.github.io/2020/10/11/godailylib/rxgo/)
