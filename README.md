@@ -502,11 +502,11 @@ How to use the [assert API](doc/assert.md) to write unit tests while using RxGo.
 * [Errors](doc/errors.md) — return all the errors thrown by an observable
 * [ToMap](doc/tomap.md)/[ToMapWithValueSelector](doc/tomapwithvalueselector.md)/[ToSlice](doc/toslice.md) — convert an Observable into another object or data structure
 
-## Contributions
+## Contributing
 
 All contributions are very welcome! Be sure you check out the [contributing guidelines](CONTRIBUTING.md) first. Also, if you publish a post about RxGo, please let us know. We would be glad to include it in the [External Resources](#external-resources) section.
 
-## Contributors
+Thanks to all the people who already contributed to RxGo!
 
 <a href="https://github.com/ReactiveX/RxGo/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=ReactiveX/RxGo" />
