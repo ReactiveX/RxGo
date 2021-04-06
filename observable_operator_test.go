@@ -308,19 +308,14 @@ func Test_Observable_BufferWithTimeOrCount(t *testing.T) {
 	defer cancel()
 	ch := make(chan Item, 1)
 	obs := FromChannel(ch)
-	obs = obs.BufferWithTimeOrCount(WithDuration(30*time.Millisecond), 100)
+	obs = obs.BufferWithTimeOrCount(WithDuration(time.Second), 2)
 	go func() {
-		for i := 0; i < 10; i++ {
+		for i := 0; i < 5; i++ {
 			ch <- Of(i)
 		}
 		close(ch)
 	}()
-	Assert(ctx, t, obs, CustomPredicate(func(items []interface{}) error {
-		if len(items) == 0 {
-			return errors.New("items should not be nil")
-		}
-		return nil
-	}))
+	Assert(ctx, t, obs, HasItems([]interface{}{0, 1}, []interface{}{2, 3}, []interface{}{4}))
 }
 
 func Test_Observable_Contain(t *testing.T) {
