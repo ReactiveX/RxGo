@@ -502,10 +502,6 @@ How to use the [assert API](doc/assert.md) to write unit tests while using RxGo.
 * [Errors](doc/errors.md) — return all the errors thrown by an observable
 * [ToMap](doc/tomap.md)/[ToMapWithValueSelector](doc/tomapwithvalueselector.md)/[ToSlice](doc/toslice.md) — convert an Observable into another object or data structure
 
-## Contributions
-
-All contributions are very welcome! Be sure you check out the [contributing guidelines](CONTRIBUTING.md) first. Also, if you publish a post about RxGo, please let us know. We would be glad to include it in the [External Resources](#external-resources) section.
-
 ## External Resources
 
 * [Announcing RxGo v2](https://teivah.medium.com/introducing-rxgo-v2-e7e369faa99a)
@@ -516,6 +512,10 @@ All contributions are very welcome! Be sure you check out the [contributing guid
 * [Reactive programming in Go](https://prakharsrivastav.com/posts/reactive-programming-in-go/)
 * [Programación reactiva en Go (Spanish)](https://blog.friendsofgo.tech/posts/programacion-reactiva-en-go/)
 * [Go 每日一库之 RxGo (Chinese)](https://darjun.github.io/2020/10/11/godailylib/rxgo/)
+
+## Contributions
+
+All contributions are very welcome! Be sure you check out the [contributing guidelines](CONTRIBUTING.md) first. Also, if you publish a post about RxGo, please let us know. We would be glad to include it in the [External Resources](#external-resources) section.
 
 ## Contributors
 
