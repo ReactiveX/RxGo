@@ -504,7 +504,9 @@ How to use the [assert API](doc/assert.md) to write unit tests while using RxGo.
 
 ## Contributing
 
-All contributions are very welcome! Be sure you check out the [contributing guidelines](CONTRIBUTING.md) first. Also, if you publish a post about RxGo, please let us know. We would be glad to include it in the [External Resources](#external-resources) section.
+All contributions are very welcome! Be sure you check out the [contributing guidelines](CONTRIBUTING.md) first. Newcomers can take a look at ongoing issues and check for the `help needed` label. 
+
+Also, if you publish a post about RxGo, please let us know. We would be glad to include it in the [External Resources](#external-resources) section.
 
 Thanks to all the people who already contributed to RxGo!
 
