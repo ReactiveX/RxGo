@@ -1,4 +1,4 @@
-# github.com/cenkalti/backoff/v4 v4.0.0
+# github.com/cenkalti/backoff/v4 v4.1.0
 github.com/cenkalti/backoff/v4
 # github.com/davecgh/go-spew v1.1.0
 github.com/davecgh/go-spew/spew
