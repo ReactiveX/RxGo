@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"go.uber.org/goleak"
 )
 
@@ -22,12 +24,12 @@ func TestLeak(t *testing.T) {
 		fooErr = errors.New("")
 	)
 
-	observables := map[string]func(context.Context) Observable{
-		"Amb": func(ctx context.Context) Observable {
+	observables := map[string]func(context.Context) (obs Observable, postAction func()){
+		"Amb": func(ctx context.Context) (Observable, func()) {
 			obs := FromChannel(make(chan Item), WithContext(ctx))
-			return Amb([]Observable{obs}, WithContext(ctx))
+			return Amb([]Observable{obs}, WithContext(ctx)), nil
 		},
-		"CombineLatest": func(ctx context.Context) Observable {
+		"CombineLatest": func(ctx context.Context) (Observable, func()) {
 			return CombineLatest(func(i ...interface{}) interface{} {
 				sum := 0
 				for _, v := range i {
@@ -40,19 +42,26 @@ func TestLeak(t *testing.T) {
 			}, []Observable{
 				Just(1, 2)(),
 				Just(10, 11)(),
-			})
+			}), nil
 		},
-		"Concat": func(ctx context.Context) Observable {
+		"Concat": func(ctx context.Context) (Observable, func()) {
 			return Concat([]Observable{
 				Just(1, 2, 3)(),
 				Just(4, 5, 6)(),
-			})
+			}), nil
 		},
-		"FromChannel": func(ctx context.Context) Observable {
-			return FromChannel(getChannel(ctx), WithContext(ctx))
+		"FromChannel": func(ctx context.Context) (Observable, func()) {
+			return FromChannel(getChannel(ctx), WithContext(ctx)), nil
 		},
-		"FromEventSource": func(ctx context.Context) Observable {
-			return FromEventSource(getChannel(ctx), WithContext(ctx))
+		"FromEventSource": func(ctx context.Context) (Observable, func()) {
+			return FromEventSource(getChannel(ctx), WithContext(ctx)), nil
+		},
+		"FromEventSource - Blocking backpressure": func(ctx context.Context) (Observable, func()) {
+			obs := FromEventSource(getChannel(ctx), WithContext(ctx), WithBackPressureStrategy(Block))
+			return obs,
+				func() {
+					assert.Equal(t, 0, len(obs.(*ObservableImpl).iterable.(*eventSourceIterable).observers))
+				}
 		},
 	}
 
@@ -92,30 +101,46 @@ func TestLeak(t *testing.T) {
 					t.Parallel()
 					ctx, cancel := context.WithTimeout(context.Background(), waitTime)
 					defer cancel()
-					action(ctx, factory(ctx))
+					obs, postAction := factory(ctx)
+					action(ctx, obs)
+					if postAction != nil {
+						postAction()
+					}
 				})
 				t.Run(fmt.Sprintf("%s - %s - %v - composed", testObservable, testAction, waitTime), func(t *testing.T) {
 					t.Parallel()
 					ctx, cancel := context.WithTimeout(context.Background(), waitTime)
 					defer cancel()
-					action(ctx, factory(ctx).Map(func(_ context.Context, i interface{}) (interface{}, error) {
+					obs, postAction := factory(ctx)
+					action(ctx, obs.Map(func(_ context.Context, i interface{}) (interface{}, error) {
 						return i, nil
 					}))
+					if postAction != nil {
+						postAction()
+					}
 				})
 				t.Run(fmt.Sprintf("%s - %s - %v - erritem", testObservable, testAction, waitTime), func(t *testing.T) {
 					t.Parallel()
 					ctx, cancel := context.WithTimeout(context.Background(), waitTime)
 					defer cancel()
-					action(ctx, factory(ctx).Map(func(_ context.Context, i interface{}) (interface{}, error) {
+					obs, postAction := factory(ctx)
+					action(ctx, obs.Map(func(_ context.Context, i interface{}) (interface{}, error) {
 						return nil, fooErr
 					}))
+					if postAction != nil {
+						postAction()
+					}
 				})
 			}
 			t.Run(fmt.Sprintf("%s - %s - already cancelled", testObservable, testAction), func(t *testing.T) {
 				t.Parallel()
 				ctx, cancel := context.WithCancel(context.Background())
 				cancel()
-				action(ctx, factory(ctx))
+				obs, postAction := factory(ctx)
+				action(ctx, obs)
+				if postAction != nil {
+					postAction()
+				}
 			})
 		}
 	}
