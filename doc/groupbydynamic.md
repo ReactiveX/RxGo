@@ -4,7 +4,7 @@
 
 Divides an Observable into a dynamic set of Observables that each emit GroupedObservable from the original Observable, organized by key.
 
-`GroupByDyDynamic` differs from [GroupBy](groupby.md) for two reasons:
+`GroupByDynamic` differs from [GroupBy](groupby.md) for two reasons:
  * We don't need to pass a fixed set length.
  * The distribution function is a `func(rxgo.Item) string` instead of a `func(rxgo.Item) int`. The rationale is because of possible collisions. For example, if our distribution function produces 128-bit UUIDs, there is a collision risk if such a UUID has to be casted into an int.   
 
