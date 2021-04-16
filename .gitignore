@@ -3,6 +3,10 @@
 *.a
 *.so
 
+# code coverage files
+coverage.out
+coverage.lcov
+
 # Folders
 _obj
 _test
