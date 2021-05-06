@@ -33,13 +33,13 @@ rxgo.WithContext(ctx)
 * Lazy (default): consume when an Observer starts to subscribe.
 
 ```go
-rxgo.WithObservation(rxgo.Lazy)
+rxgo.WithObservationStrategy(rxgo.Lazy)
 ```
 
 * Eager: consumer when the Observable is created:
 
 ```go
-rxgo.WithObservation(rxgo.Eager)
+rxgo.WithObservationStrategy(rxgo.Eager)
 ```
 
 ## WithErrorStrategy
