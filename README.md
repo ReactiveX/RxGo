@@ -524,3 +524,4 @@ Thanks to all the people who already contributed to RxGo!
 * [Reactive programming in Go](https://prakharsrivastav.com/posts/reactive-programming-in-go/)
 * [Programación reactiva en Go (Spanish)](https://blog.friendsofgo.tech/posts/programacion-reactiva-en-go/)
 * [Go 每日一库之 RxGo (Chinese)](https://darjun.github.io/2020/10/11/godailylib/rxgo/)
+* [RxGo入门 · 语雀 (Chinese)](https://www.yuque.com/yaozj/go/rxgo-get-started?language=en-us)
