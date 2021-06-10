@@ -854,6 +854,92 @@ func Test_Observable_ForEach_Error(t *testing.T) {
 	assert.Equal(t, errFoo, gotErr)
 }
 
+func Test_Observable_ForEach_ContinueOnError(t *testing.T) {
+	defer goleak.VerifyNone(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	count := 0
+	var gotErr error
+	done := make(chan struct{})
+
+	obs := testObservable(ctx, 1, 2, 3, errFoo, 4)
+	var strategy OnErrorStrategy = ContinueOnError
+
+	obs.ForEach(func(i interface{}) {
+		switch v := i.(type) {
+		case int:
+			count += v
+		case error:
+			// do nothing
+		default:
+		}
+	}, func(err error) {
+		gotErr = err
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			if strategy == StopOnError {
+				done <- struct{}{}
+			}
+		}
+	}, func() {
+		select {
+		case <-ctx.Done():
+			return
+		case done <- struct{}{}:
+		}
+	}, WithContext(ctx), WithErrorStrategy(strategy))
+
+	// We avoid using the assertion API on purpose
+	<-done
+	assert.Equal(t, 10, count)
+	assert.Equal(t, errFoo, gotErr)
+}
+
+func Test_Observable_ForEach_StopOnError(t *testing.T) {
+	defer goleak.VerifyNone(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	count := 0
+	var gotErr error
+	done := make(chan struct{})
+
+	obs := testObservable(ctx, 1, 2, 3, errFoo, 4)
+	var strategy OnErrorStrategy = StopOnError
+
+	obs.ForEach(func(i interface{}) {
+		switch v := i.(type) {
+		case int:
+			count += v
+		case error:
+			// do nothing
+		default:
+		}
+	}, func(err error) {
+		gotErr = err
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			if strategy == StopOnError {
+				done <- struct{}{}
+			}
+		}
+	}, func() {
+		select {
+		case <-ctx.Done():
+			return
+		case done <- struct{}{}:
+		}
+	}, WithContext(ctx), WithErrorStrategy(strategy))
+
+	// We avoid using the assertion API on purpose
+	<-done
+	assert.Equal(t, 6, count)
+	assert.Equal(t, errFoo, gotErr)
+}
+
 func Test_Observable_ForEach_Done(t *testing.T) {
 	defer goleak.VerifyNone(t)
 	ctx, cancel := context.WithCancel(context.Background())
