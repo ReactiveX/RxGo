@@ -323,6 +323,186 @@ func Test_Observable_BufferWithTimeOrCount(t *testing.T) {
 	}))
 }
 
+func Test_Observable_BufferWithTimeOrCount_DoesNotExceedBufferSize(t *testing.T) {
+	observable := Range(1, 5)
+	buffers := observable.BufferWithTimeOrCount(WithDuration(time.Millisecond*500), 2)
+	var seen int
+	Assert(context.Background(), t, buffers, CustomPredicate(func(items []interface{}) error {
+		for _, item := range items {
+			buffer := item.([]interface{})
+			if len(buffer) > 2 {
+				return errors.New("items should not be greater than two")
+			}
+			for _, entry := range buffer {
+				value := entry.(int)
+				if value-1 != seen {
+					return fmt.Errorf("items should consecutive, %d does not follow %d", value, seen)
+				}
+				seen = value
+			}
+		}
+		return nil
+	}))
+}
+
+func delayItem(ctx context.Context, item interface{}) (interface{}, error) {
+	entry := item.(struct {
+		name    string
+		msDelay int
+	})
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-time.After(time.Duration(entry.msDelay) * time.Millisecond):
+		return entry.name, nil
+	}
+}
+
+func Test_Observable_BufferWithTimeOrCount_ElapsedCapturesPartial(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*100)
+	defer cancel()
+
+	observable := Just([]struct {
+		name    string
+		msDelay int
+	}{
+		{"a", 5},
+		{"b", 1000},
+	})().Map(delayItem, WithContext(ctx))
+
+	buffers := observable.BufferWithTimeOrCount(WithDuration(time.Millisecond*10), 2, WithContext(ctx))
+
+	Assert(ctx, t, buffers, CustomPredicate(func(items []interface{}) error {
+		partialEncountered := false
+		for _, item := range items {
+			buffer := item.([]interface{})
+			if len(buffer) == 1 {
+				partialEncountered = true
+			}
+		}
+		if !partialEncountered {
+			return errors.New("at least one partial observation should have occurred")
+		}
+		return nil
+	}))
+}
+
+func Test_Observable_BufferWithTimeOrCount_EmitsCompleteBuffers(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	ctx, cancel1 := context.WithTimeout(context.Background(), time.Millisecond*100)
+	defer cancel1()
+
+	// straggler not emitted before context timeout
+	observable := Just([]struct {
+		name    string
+		msDelay int
+	}{
+		{"a", 1},
+		{"b", 1},
+		{"c", 1},
+		{"d", 1},
+		{"e", 1000},
+	})().Map(delayItem, WithContext(ctx))
+
+	buffers := observable.BufferWithTimeOrCount(WithDuration(time.Millisecond*20), 2, WithContext(ctx))
+
+	ctx, cancel2 := context.WithTimeout(context.Background(), time.Millisecond*200)
+	defer cancel2()
+
+	Assert(ctx, t, buffers, CustomPredicate(func(items []interface{}) error {
+		for _, item := range items {
+			buffer := item.([]interface{})
+			if len(buffer) != 2 {
+				return errors.New("items should be bundles of two")
+			}
+		}
+		return nil
+	}))
+}
+
+func Test_Observable_BufferWithTimeOrCount_CapturesStraggler(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	ctx, cancel1 := context.WithTimeout(context.Background(), time.Millisecond*50)
+	defer cancel1()
+
+	// straggler will stay in buffer until buffer timeout
+	observable := Just([]struct {
+		name    string
+		msDelay int
+	}{
+		{"a", 1},
+		{"b", 1},
+		{"c", 1},
+		{"d", 1},
+		{"straggler", 1},
+	})().Map(delayItem, WithContext(ctx))
+
+	buffers := observable.BufferWithTimeOrCount(WithDuration(time.Millisecond*10), 2, WithContext(ctx))
+
+	ctx, cancel2 := context.WithTimeout(context.Background(), time.Millisecond*100)
+	defer cancel2()
+
+	Assert(ctx, t, buffers, CustomPredicate(func(items []interface{}) error {
+		seen := false
+		for _, item := range items {
+			buffer := item.([]interface{})
+			for _, b := range buffer {
+				if b.(string) == "straggler" {
+					seen = true
+				}
+			}
+		}
+		if !seen {
+			return errors.New("straggler item not emitted")
+		}
+		return nil
+	}))
+}
+
+func Test_Observable_BufferWithTimeOrCount_DoneEmitsStraggler(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	ctx, cancel1 := context.WithTimeout(context.Background(), time.Millisecond*50)
+	defer cancel1()
+
+	// straggler will stay in buffer until context times out
+	observable := Just([]struct {
+		name    string
+		msDelay int
+	}{
+		{"a", 1},
+		{"b", 1},
+		{"c", 1},
+		{"d", 1},
+		{"straggler", 1},
+	})().Map(delayItem, WithContext(ctx))
+
+	buffers := observable.BufferWithTimeOrCount(WithDuration(time.Second*10), 2, WithContext(ctx))
+
+	ctx, cancel2 := context.WithTimeout(context.Background(), time.Millisecond*100)
+	defer cancel2()
+
+	Assert(ctx, t, buffers, CustomPredicate(func(items []interface{}) error {
+		seen := false
+		for _, item := range items {
+			buffer := item.([]interface{})
+			for _, b := range buffer {
+				if b.(string) == "straggler" {
+					seen = true
+				}
+			}
+		}
+		if !seen {
+			return errors.New("straggler item not emitted")
+		}
+		return nil
+	}))
+}
+
 func Test_Observable_Contain(t *testing.T) {
 	defer goleak.VerifyNone(t)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -382,12 +562,12 @@ func Test_Observable_Count_Parallel(t *testing.T) {
 }
 
 // FIXME
-//func Test_Observable_Debounce(t *testing.T) {
+// func Test_Observable_Debounce(t *testing.T) {
 //	defer goleak.VerifyNone(t)
 //	ctx, obs, d := timeCausality(1, tick, 2, tick, 3, 4, 5, tick, 6, tick)
 //	Assert(ctx, t, obs.Debounce(d, WithBufferedChannel(10), WithContext(ctx)),
 //		HasItems(1, 2, 5, 6))
-//}
+// }
 
 func Test_Observable_Debounce_Error(t *testing.T) {
 	defer goleak.VerifyNone(t)
@@ -2300,7 +2480,7 @@ func Test_Observable_WindowWithCount_InputError(t *testing.T) {
 }
 
 // FIXME
-//func Test_Observable_WindowWithTime(t *testing.T) {
+// func Test_Observable_WindowWithTime(t *testing.T) {
 //	defer goleak.VerifyNone(t)
 //	ctx, cancel := context.WithCancel(context.Background())
 //	defer cancel()
@@ -2317,7 +2497,7 @@ func Test_Observable_WindowWithCount_InputError(t *testing.T) {
 //	observe := obs.WindowWithTime(WithDuration(10*time.Millisecond), WithBufferedChannel(10)).Observe()
 //	Assert(ctx, t, (<-observe).V.(Observable), HasItems(1, 2))
 //	Assert(ctx, t, (<-observe).V.(Observable), HasItems(3))
-//}
+// }
 
 func Test_Observable_WindowWithTimeOrCount(t *testing.T) {
 	defer goleak.VerifyNone(t)
