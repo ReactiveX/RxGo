@@ -2,7 +2,7 @@
 github.com/cenkalti/backoff/v4
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
-# github.com/emirpasic/gods v1.12.0
+# github.com/emirpasic/gods v1.18.1
 github.com/emirpasic/gods/containers
 github.com/emirpasic/gods/lists
 github.com/emirpasic/gods/lists/arraylist
