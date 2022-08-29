@@ -2,7 +2,6 @@ package rxgo
 
 import (
 	"context"
-	"math"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -297,17 +296,17 @@ func Never() Observable {
 
 // Range creates an Observable that emits count sequential integers beginning
 // at start.
-func Range(start, count int, opts ...Option) Observable {
-	if count < 0 {
-		return Thrown(IllegalInputError{error: "count must be positive"})
-	}
-	if start+count-1 > math.MaxInt32 {
-		return Thrown(IllegalInputError{error: "max value is bigger than math.MaxInt32"})
-	}
-	return &ObservableImpl{
-		iterable: newRangeIterable(start, count, opts...),
-	}
-}
+// func Range(start, count int, opts ...Option) Observable {
+// 	if count < 0 {
+// 		return Thrown(IllegalInputError{error: "count must be positive"})
+// 	}
+// 	if start+count-1 > math.MaxInt32 {
+// 		return Thrown(IllegalInputError{error: "max value is bigger than math.MaxInt32"})
+// 	}
+// 	return &ObservableImpl{
+// 		iterable: newRangeIterable(start, count, opts...),
+// 	}
+// }
 
 // Start creates an Observable from one or more directive-like Supplier
 // and emits the result of each operation asynchronously on a new Observable.

@@ -132,12 +132,12 @@ func IsNotEmpty() RxAssert {
 	})
 }
 
-// IsEmpty checks that the observable has not produce any item.
-func IsEmpty() RxAssert {
-	return newAssertion(func(a *rxAssert) {
-		a.checkHasNoItems = true
-	})
-}
+// // IsEmpty checks that the observable has not produce any item.
+// func IsEmpty() RxAssert {
+// 	return newAssertion(func(a *rxAssert) {
+// 		a.checkHasNoItems = true
+// 	})
+// }
 
 // HasError checks that the observable has produce a specific error.
 func HasError(err error) RxAssert {

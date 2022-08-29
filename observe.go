@@ -48,6 +48,7 @@ observe:
 			}
 
 			if err := item.Err(); err != nil {
+				sub.dst.Error(err)
 				break observe
 			}
 			sub.dst.Next(item.Value())

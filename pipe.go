@@ -46,3 +46,24 @@ func Pipe3[S any, O1 any, O2 any, O3 any](
 ) IObservable[O3] {
 	return f3(f2(f1(stream)))
 }
+
+func Pipe4[S any, O1 any, O2 any, O3 any, O4 any](
+	stream IObservable[S],
+	f1 OperatorFunc[S, O1],
+	f2 OperatorFunc[O1, O2],
+	f3 OperatorFunc[O2, O3],
+	f4 OperatorFunc[O3, O4],
+) IObservable[O4] {
+	return f4(f3(f2(f1(stream))))
+}
+
+func Pipe5[S any, O1 any, O2 any, O3 any, O4 any, O5 any](
+	stream IObservable[S],
+	f1 OperatorFunc[S, O1],
+	f2 OperatorFunc[O1, O2],
+	f3 OperatorFunc[O2, O3],
+	f4 OperatorFunc[O3, O4],
+	f5 OperatorFunc[O4, O5],
+) IObservable[O5] {
+	return f5(f4(f3(f2(f1(stream)))))
+}

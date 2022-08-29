@@ -1,14 +1,33 @@
 package rxgo
 
-import "time"
+import (
+	"time"
+)
+
+type Number interface {
+	~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64
+}
 
 func NEVER[T any]() IObservable[T] {
 	return newObservable(func(obs Subscriber[T]) {})
 }
 
+// A simple Observable that emits no items to the Observer and immediately emits a complete notification.
 func EMPTY[T any]() IObservable[T] {
 	return newObservable(func(obs Subscriber[T]) {
 		obs.Complete()
+	})
+}
+
+// Creates an Observable that emits a sequence of numbers within a specified range.
+func Range[T Number](start, count T) IObservable[T] {
+	end := start + count
+	return newObservable(func(obs Subscriber[T]) {
+		index := uint(0)
+		for i := start; i < end; i++ {
+			obs.Next(i)
+			index++
+		}
 	})
 }
 
