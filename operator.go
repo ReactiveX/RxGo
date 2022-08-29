@@ -1,18 +1,29 @@
 package rxgo
 
 import (
+	"fmt"
 	"time"
+
+	"golang.org/x/exp/constraints"
 )
 
+var (
+	ErrEmpty    = fmt.Errorf("rxgo: empty value")
+	ErrNotFound = fmt.Errorf("rxgo: no values match")
+	ErrSequence = fmt.Errorf("rxgo: too many values match")
+)
+
+func noop[T any](v T) {}
+
 // Emits only the first count values emitted by the source Observable.
-func Take[T any, N Number](count N) OperatorFunc[T, T] {
+func Take[T any, N constraints.Unsigned](count N) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
 		if count == 0 {
 			return EMPTY[T]()
 		}
 
-		seen := N(0)
 		return newObservable(func(subscriber Subscriber[T]) {
+			seen := N(0)
 			source.SubscribeSync(
 				func(v T) {
 					seen++
@@ -34,8 +45,8 @@ func Take[T any, N Number](count N) OperatorFunc[T, T] {
 // and then completes as soon as this predicate is not satisfied.
 func TakeWhile[T any](predicate func(value T, index uint) bool) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
-		index := uint(0)
 		return newObservable(func(subscriber Subscriber[T]) {
+			var index uint
 			source.SubscribeSync(
 				func(v T) {
 					if predicate(v, index) {
@@ -52,10 +63,10 @@ func TakeWhile[T any](predicate func(value T, index uint) bool) OperatorFunc[T, 
 
 // Waits for the source to complete, then emits the last N values from the source,
 // as specified by the count argument.
-func TakeLast[T any, N Number](count N) OperatorFunc[T, T] {
+func TakeLast[T any, N constraints.Unsigned](count N) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
-		values := make([]T, count)
 		return newObservable(func(subscriber Subscriber[T]) {
+			values := make([]T, count)
 			source.SubscribeSync(
 				func(v T) {
 					if N(len(values)) >= count {
@@ -79,8 +90,8 @@ func TakeLast[T any, N Number](count N) OperatorFunc[T, T] {
 // Emits only the first value emitted by the source Observable that meets some condition.
 func Find[T any](predicate func(T, uint) bool) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
-		index := uint(0)
 		return newObservable(func(subscriber Subscriber[T]) {
+			var index uint
 			source.SubscribeSync(
 				func(v T) {
 					if predicate(v, index) {
@@ -99,9 +110,9 @@ func Find[T any](predicate func(T, uint) bool) OperatorFunc[T, T] {
 // Emits false if the input Observable emits any values,
 // or emits true if the input Observable completes without emitting any values.
 func IsEmpty[T any]() OperatorFunc[T, bool] {
-	var isEmpty = true
 	return func(source IObservable[T]) IObservable[bool] {
 		return newObservable(func(subscriber Subscriber[bool]) {
+			var isEmpty = true
 			source.SubscribeSync(
 				func(t T) {
 					isEmpty = false
@@ -120,12 +131,12 @@ func IsEmpty[T any]() OperatorFunc[T, bool] {
 // (or items that can be compared with a provided function),
 // and when source Observable completes it emits a single item: the item with the smallest value.
 func Min[T any](comparer func(a T, b T) int8) OperatorFunc[T, T] {
-	var (
-		lastValue T
-		first     = true
-	)
 	return func(source IObservable[T]) IObservable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {
+			var (
+				lastValue T
+				first     = true
+			)
 			source.SubscribeSync(
 				func(v T) {
 					if first {
@@ -155,12 +166,12 @@ func Min[T any](comparer func(a T, b T) int8) OperatorFunc[T, T] {
 // (or items that can be compared with a provided function),
 // and when source Observable completes it emits a single item: the item with the largest value.
 func Max[T any](comparer func(a T, b T) int8) OperatorFunc[T, T] {
-	var (
-		lastValue T
-		first     = true
-	)
 	return func(source IObservable[T]) IObservable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {
+			var (
+				lastValue T
+				first     = true
+			)
 			source.SubscribeSync(
 				func(v T) {
 					if first {
@@ -186,18 +197,31 @@ func Max[T any](comparer func(a T, b T) int8) OperatorFunc[T, T] {
 	}
 }
 
+// Ignores all items emitted by the source Observable and only passes calls of complete or error.
+func IgnoreElements[T any]() OperatorFunc[T, T] {
+	return func(source IObservable[T]) IObservable[T] {
+		return newObservable(func(subscriber Subscriber[T]) {
+			source.SubscribeSync(
+				noop[T],
+				subscriber.Error,
+				subscriber.Complete,
+			)
+		})
+	}
+}
+
 // Returns an Observable that emits whether or not every item of the
 // source satisfies the condition specified.
-func Every[T any](cb func(value T, count uint) bool) OperatorFunc[T, bool] {
-	var (
-		allOk = true
-		index uint
-	)
+func Every[T any](predicate func(value T, count uint) bool) OperatorFunc[T, bool] {
 	return func(source IObservable[T]) IObservable[bool] {
 		return newObservable(func(subscriber Subscriber[bool]) {
+			var (
+				allOk = true
+				index uint
+			)
 			source.SubscribeSync(
 				func(t T) {
-					allOk = allOk && cb(t, index)
+					allOk = allOk && predicate(t, index)
 				},
 				subscriber.Error,
 				func() {
@@ -211,7 +235,7 @@ func Every[T any](cb func(value T, count uint) bool) OperatorFunc[T, bool] {
 
 // Returns an Observable that will resubscribe to the source
 // stream when the source stream completes.
-func Repeat[T any, N Number](count N) OperatorFunc[T, T] {
+func Repeat[T any, N constraints.Unsigned](count N) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {
 			source.SubscribeSync(
@@ -230,9 +254,9 @@ func Repeat[T any, N Number](count N) OperatorFunc[T, T] {
 // Emits a given value if the source Observable completes without emitting any
 // next value, otherwise mirrors the source Observable.
 func DefaultIfEmpty[T any](defaultValue T) OperatorFunc[T, T] {
-	hasValue := false
 	return func(source IObservable[T]) IObservable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {
+			hasValue := false
 			source.SubscribeSync(
 				func(t T) {
 					hasValue = true
@@ -298,11 +322,11 @@ func Last[T any]() OperatorFunc[T, T] {
 // if they are distinct in comparison to the last value the result observable emitted.
 func DistinctUntilChanged[T any](comparator func(prev T, current T) bool) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
-		var (
-			lastValue T
-			first     = true
-		)
 		return newObservable(func(subscriber Subscriber[T]) {
+			var (
+				lastValue T
+				first     = true
+			)
 			source.SubscribeSync(
 				func(v T) {
 					if first || !comparator(lastValue, v) {
@@ -318,29 +342,11 @@ func DistinctUntilChanged[T any](comparator func(prev T, current T) bool) Operat
 	}
 }
 
-func ExhaustMap[T any, R any](project func(value T, index uint) R) OperatorFunc[T, T] {
-	return func(source IObservable[T]) IObservable[T] {
-		index := uint(0)
-		return newObservable(func(subscriber Subscriber[T]) {
-			source.SubscribeSync(
-				func(v T) {
-					// if filter(v, index) {
-					// 	subscriber.Next(v)
-					// }
-					index++
-				},
-				subscriber.Error,
-				subscriber.Complete,
-			)
-		})
-	}
-}
-
 // Filter emits only those items from an Observable that pass a predicate test.
 func Filter[T any](filter func(T, uint) bool) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
-		index := uint(0)
 		return newObservable(func(subscriber Subscriber[T]) {
+			var index uint
 			source.SubscribeSync(
 				func(v T) {
 					if filter(v, index) {
@@ -358,8 +364,8 @@ func Filter[T any](filter func(T, uint) bool) OperatorFunc[T, T] {
 // Map transforms the items emitted by an Observable by applying a function to each item.
 func Map[T any, R any](mapper func(T, uint) (R, error)) OperatorFunc[T, R] {
 	return func(source IObservable[T]) IObservable[R] {
-		index := uint(0)
 		return newObservable(func(subscriber Subscriber[R]) {
+			var index uint
 			source.SubscribeSync(
 				func(v T) {
 					output, err := mapper(v, index)
@@ -373,6 +379,93 @@ func Map[T any, R any](mapper func(T, uint) (R, error)) OperatorFunc[T, R] {
 				subscriber.Error,
 				subscriber.Complete,
 			)
+		})
+	}
+}
+
+// Returns an observable that asserts that only one value is emitted from the observable
+// that matches the predicate. If no predicate is provided, then it will assert that the
+// observable only emits one value.
+func Single2[T any](predicate func(v T, index uint) bool) OperatorFunc[T, T] {
+	return func(source IObservable[T]) IObservable[T] {
+		return newObservable(func(subscriber Subscriber[T]) {
+			var (
+				index    uint
+				found    bool
+				matches  uint
+				hasValue bool
+			)
+			source.SubscribeSync(
+				func(v T) {
+					result := predicate(v, index)
+					if result {
+						found = result
+						matches++
+					}
+					hasValue = true
+					index++
+				},
+				subscriber.Error,
+				func() {
+					if !hasValue {
+						subscriber.Error(ErrEmpty)
+					} else if !found {
+						subscriber.Error(ErrNotFound)
+					} else if matches > 1 {
+						subscriber.Error(ErrSequence)
+					}
+					subscriber.Complete()
+				},
+			)
+		})
+	}
+}
+
+// Returns an Observable that skips all items emitted by the source Observable
+// as long as a specified condition holds true, but emits all further source items
+// as soon as the condition becomes false.
+func SkipWhile[T any](predicate func(v T, index uint) bool) OperatorFunc[T, T] {
+	return func(source IObservable[T]) IObservable[T] {
+		return newObservable(func(subscriber Subscriber[T]) {
+			var (
+				index uint
+				skip  = true
+			)
+			source.SubscribeSync(
+				func(v T) {
+					if predicate(v, index) {
+						skip = false
+					}
+					if !skip {
+						subscriber.Next(v)
+					}
+					index++
+				},
+				subscriber.Error,
+				subscriber.Complete,
+			)
+		})
+	}
+}
+
+func ExhaustMap[T any, R any](project func(value T, index uint) IObservable[R]) OperatorFunc[T, R] {
+	return func(source IObservable[T]) IObservable[R] {
+		return newObservable(func(subscriber Subscriber[R]) {
+			var index uint
+			source.SubscribeSync(
+				func(v T) {
+					project(v, index).SubscribeSync(
+						subscriber.Next,
+						subscriber.Error,
+						subscriber.Complete,
+					)
+					index++
+				},
+				subscriber.Error,
+				subscriber.Complete,
+			)
+
+			// after collect the source
 		})
 	}
 }

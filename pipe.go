@@ -23,6 +23,18 @@ type Subscriber[T any] interface {
 
 type OperatorFunc[I any, O any] func(IObservable[I]) IObservable[O]
 
+func Pipe[S any, O1 any](
+	stream IObservable[S],
+	f1 OperatorFunc[S, any],
+	f ...OperatorFunc[any, any],
+) IObservable[any] {
+	result := f1(stream)
+	for _, cb := range f {
+		result = cb(result)
+	}
+	return result
+}
+
 func Pipe1[S any, O1 any](
 	stream IObservable[S],
 	f1 OperatorFunc[S, O1],
@@ -66,4 +78,58 @@ func Pipe5[S any, O1 any, O2 any, O3 any, O4 any, O5 any](
 	f5 OperatorFunc[O4, O5],
 ) IObservable[O5] {
 	return f5(f4(f3(f2(f1(stream)))))
+}
+
+func Pipe6[S any, O1 any, O2 any, O3 any, O4 any, O5 any, O6 any](
+	stream IObservable[S],
+	f1 OperatorFunc[S, O1],
+	f2 OperatorFunc[O1, O2],
+	f3 OperatorFunc[O2, O3],
+	f4 OperatorFunc[O3, O4],
+	f5 OperatorFunc[O4, O5],
+	f6 OperatorFunc[O5, O6],
+) IObservable[O6] {
+	return f6(f5(f4(f3(f2(f1(stream))))))
+}
+
+func Pipe7[S any, O1 any, O2 any, O3 any, O4 any, O5 any, O6 any, O7 any](
+	stream IObservable[S],
+	f1 OperatorFunc[S, O1],
+	f2 OperatorFunc[O1, O2],
+	f3 OperatorFunc[O2, O3],
+	f4 OperatorFunc[O3, O4],
+	f5 OperatorFunc[O4, O5],
+	f6 OperatorFunc[O5, O6],
+	f7 OperatorFunc[O6, O7],
+) IObservable[O7] {
+	return f7(f6(f5(f4(f3(f2(f1(stream)))))))
+}
+
+func Pipe8[S any, O1 any, O2 any, O3 any, O4 any, O5 any, O6 any, O7 any, O8 any](
+	stream IObservable[S],
+	f1 OperatorFunc[S, O1],
+	f2 OperatorFunc[O1, O2],
+	f3 OperatorFunc[O2, O3],
+	f4 OperatorFunc[O3, O4],
+	f5 OperatorFunc[O4, O5],
+	f6 OperatorFunc[O5, O6],
+	f7 OperatorFunc[O6, O7],
+	f8 OperatorFunc[O7, O8],
+) IObservable[O8] {
+	return f8(f7(f6(f5(f4(f3(f2(f1(stream))))))))
+}
+
+func Pipe9[S any, O1 any, O2 any, O3 any, O4 any, O5 any, O6 any, O7 any, O8 any, O9 any](
+	stream IObservable[S],
+	f1 OperatorFunc[S, O1],
+	f2 OperatorFunc[O1, O2],
+	f3 OperatorFunc[O2, O3],
+	f4 OperatorFunc[O3, O4],
+	f5 OperatorFunc[O4, O5],
+	f6 OperatorFunc[O5, O6],
+	f7 OperatorFunc[O6, O7],
+	f8 OperatorFunc[O7, O8],
+	f9 OperatorFunc[O8, O9],
+) IObservable[O9] {
+	return f9(f8(f7(f6(f5(f4(f3(f2(f1(stream)))))))))
 }

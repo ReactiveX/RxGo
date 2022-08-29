@@ -2,6 +2,8 @@ package rxgo
 
 import (
 	"time"
+
+	"golang.org/x/exp/constraints"
 )
 
 type Number interface {
@@ -20,7 +22,7 @@ func EMPTY[T any]() IObservable[T] {
 }
 
 // Creates an Observable that emits a sequence of numbers within a specified range.
-func Range[T Number](start, count T) IObservable[T] {
+func Range[T constraints.Unsigned](start, count T) IObservable[T] {
 	end := start + count
 	return newObservable(func(obs Subscriber[T]) {
 		index := uint(0)
