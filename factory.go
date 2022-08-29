@@ -205,30 +205,30 @@ func FromEventSource(next <-chan Item, opts ...Option) Observable {
 
 // Interval creates an Observable emitting incremental integers infinitely between
 // each given time interval.
-func Interval(interval Duration, opts ...Option) Observable {
-	option := parseOptions(opts...)
-	next := option.buildChannel()
-	ctx := option.buildContext(emptyContext)
+// func Interval(interval Duration, opts ...Option) Observable {
+// 	option := parseOptions(opts...)
+// 	next := option.buildChannel()
+// 	ctx := option.buildContext(emptyContext)
 
-	go func() {
-		i := 0
-		for {
-			select {
-			case <-time.After(interval.duration()):
-				if !Of(i).SendContext(ctx, next) {
-					return
-				}
-				i++
-			case <-ctx.Done():
-				close(next)
-				return
-			}
-		}
-	}()
-	return &ObservableImpl{
-		iterable: newEventSourceIterable(ctx, next, option.getBackPressureStrategy()),
-	}
-}
+// 	go func() {
+// 		i := 0
+// 		for {
+// 			select {
+// 			case <-time.After(interval.duration()):
+// 				if !Of(i).SendContext(ctx, next) {
+// 					return
+// 				}
+// 				i++
+// 			case <-ctx.Done():
+// 				close(next)
+// 				return
+// 			}
+// 		}
+// 	}()
+// 	return &ObservableImpl{
+// 		iterable: newEventSourceIterable(ctx, next, option.getBackPressureStrategy()),
+// 	}
+// }
 
 // Just creates an Observable with the provided items.
 func Just(items ...interface{}) func(opts ...Option) Observable {

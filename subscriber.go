@@ -6,10 +6,10 @@ import (
 
 type safeSubscriber[T any] struct {
 	// prevent concurrent race on unsubscribe
-	mu sync.Mutex
+	mu sync.RWMutex
 
 	// signal to indicate the subscribe has ended
-	dispose <-chan struct{}
+	// dispose <-chan struct{}
 
 	ch chan DataValuer[T]
 
@@ -19,10 +19,9 @@ type safeSubscriber[T any] struct {
 	dst Observer[T]
 }
 
-func NewSafeSubscriber[T any](dispose <-chan struct{}, onNext func(T), onError func(error), onComplete func()) *safeSubscriber[T] {
+func NewSafeSubscriber[T any](onNext func(T), onError func(error), onComplete func()) *safeSubscriber[T] {
 	sub := &safeSubscriber[T]{
-		dispose: dispose,
-		ch:      make(chan DataValuer[T]),
+		ch: make(chan DataValuer[T]),
 		dst: &consumerObserver[T]{
 			onNext:     onNext,
 			onError:    onError,
@@ -36,22 +35,22 @@ func (s *safeSubscriber[T]) Closed() bool {
 	return s.closed
 }
 
-func (s *safeSubscriber[T]) Done() <-chan struct{} {
-	return s.dispose
+func (s *safeSubscriber[T]) ForEach() <-chan DataValuer[T] {
+	return s.ch
 }
 
 func (s *safeSubscriber[T]) Next(v T) {
 	if s.closed {
 		return
 	}
-	s.ch <- Data[T]{v: v}
+	emitData(v, s.ch)
 }
 
 func (s *safeSubscriber[T]) Error(err error) {
 	if s.closed {
 		return
 	}
-	s.ch <- Data[T]{err: err}
+	emitError(err, s.ch)
 	s.closeChannel()
 }
 

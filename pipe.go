@@ -1,13 +1,13 @@
 package rxgo
 
 type IObservable[T any] interface {
-	Subscribe(onNext func(T), onError func(error), onComplete func(), opts ...any) Subscription
-	SubscribeSync(onNext func(T), onError func(error), onComplete func()) Disposed
+	// Subscribe(onNext func(T), onError func(error), onComplete func(), opts ...any) Subscription
+	SubscribeSync(onNext func(T), onError func(error), onComplete func())
 }
 
 type Subscription interface {
 	Unsubscribe()
-	Done() <-chan struct{}
+	// Done() <-chan struct{}
 }
 
 type Observer[T any] interface {

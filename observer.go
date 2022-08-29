@@ -1,5 +1,7 @@
 package rxgo
 
+import "time"
+
 func NEVER[T any]() IObservable[T] {
 	return newObservable(func(obs Subscriber[T]) {})
 }
@@ -7,6 +9,19 @@ func NEVER[T any]() IObservable[T] {
 func EMPTY[T any]() IObservable[T] {
 	return newObservable(func(obs Subscriber[T]) {
 		obs.Complete()
+	})
+}
+
+// Interval creates an Observable emitting incremental integers infinitely between
+// each given time interval.
+func Interval(duration time.Duration) IObservable[uint] {
+	return newObservable(func(obs Subscriber[uint]) {
+		index := uint(0)
+		for {
+			time.Sleep(duration)
+			obs.Next(index)
+			index++
+		}
 	})
 }
 
