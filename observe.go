@@ -4,7 +4,7 @@ import (
 	"context"
 )
 
-type ObservableFunc[T any] func(obs Subscriber[T])
+type ObservableFunc[T any] func(subscriber Subscriber[T])
 
 func newObservable[T any](obs ObservableFunc[T]) IObservable[T] {
 	return &observableWrapper[T]{source: obs}
@@ -31,12 +31,15 @@ func consumeStreamUntil[T any](ctx context.Context, dispose chan struct{}, sub *
 	defer close(dispose)
 	defer sub.Unsubscribe()
 
+observe:
 	for {
 		select {
+		// If context cancelled, shut down everything
 		case <-ctx.Done():
 			if err := ctx.Err(); err != nil {
 				sub.dst.Error(ctx.Err())
 			}
+			break observe
 		case item, ok := <-sub.ForEach():
 			if !ok {
 				sub.dst.Complete()
