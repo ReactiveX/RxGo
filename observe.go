@@ -29,12 +29,8 @@ func (o *observableWrapper[T]) SubscribeSync(
 
 func consumeStreamUntil[T any](ctx context.Context, dispose chan struct{}, sub *safeSubscriber[T]) {
 	defer close(dispose)
-	// defer func() {
-	// 	sub.Unsubscribe()
-	// 	log.Println("Unsubscribe!")
-	// }()
+	defer sub.Unsubscribe()
 
-observe:
 	for {
 		select {
 		case <-ctx.Done():
@@ -49,9 +45,9 @@ observe:
 
 			if err := item.Err(); err != nil {
 				sub.dst.Error(err)
-				break observe
+			} else {
+				sub.dst.Next(item.Value())
 			}
-			sub.dst.Next(item.Value())
 		}
 	}
 }
