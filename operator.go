@@ -5,13 +5,13 @@ import (
 )
 
 // Emits only the first count values emitted by the source Observable.
-func Take[T any](count uint) OperatorFunc[T, T] {
+func Take[T any, N Number](count N) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
 		if count == 0 {
 			return EMPTY[T]()
 		}
 
-		seen := uint(0)
+		seen := N(0)
 		return newObservable(func(subscriber Subscriber[T]) {
 			source.SubscribeSync(
 				func(v T) {
@@ -25,6 +25,52 @@ func Take[T any](count uint) OperatorFunc[T, T] {
 				},
 				subscriber.Error,
 				subscriber.Complete,
+			)
+		})
+	}
+}
+
+// Emits values emitted by the source Observable so long as each value satisfies the given predicate,
+// and then completes as soon as this predicate is not satisfied.
+func TakeWhile[T any](predicate func(value T, index uint) bool) OperatorFunc[T, T] {
+	return func(source IObservable[T]) IObservable[T] {
+		index := uint(0)
+		return newObservable(func(subscriber Subscriber[T]) {
+			source.SubscribeSync(
+				func(v T) {
+					if predicate(v, index) {
+						subscriber.Next(v)
+					}
+					index++
+				},
+				subscriber.Error,
+				subscriber.Complete,
+			)
+		})
+	}
+}
+
+// Waits for the source to complete, then emits the last N values from the source,
+// as specified by the count argument.
+func TakeLast[T any, N Number](count N) OperatorFunc[T, T] {
+	return func(source IObservable[T]) IObservable[T] {
+		values := make([]T, count)
+		return newObservable(func(subscriber Subscriber[T]) {
+			source.SubscribeSync(
+				func(v T) {
+					if N(len(values)) >= count {
+						// shift the item from queue
+						values = values[1:]
+					}
+					values = append(values, v)
+				},
+				subscriber.Error,
+				func() {
+					for _, v := range values {
+						subscriber.Next(v)
+					}
+					subscriber.Complete()
+				},
 			)
 		})
 	}
@@ -213,7 +259,7 @@ func ElementAt[T any](index uint, defaultValue ...T) OperatorFunc[T, T] {
 				Filter(func(_ T, i uint) bool {
 					return i == index
 				}),
-				Take[T](1),
+				Take[T, uint](1),
 				DefaultIfEmpty(defaultValue[0]),
 			)
 		}
@@ -224,7 +270,7 @@ func ElementAt[T any](index uint, defaultValue ...T) OperatorFunc[T, T] {
 			Filter(func(_ T, i uint) bool {
 				return i == index
 			}),
-			Take[T](1),
+			Take[T, uint](1),
 		)
 	}
 }
@@ -233,7 +279,18 @@ func ElementAt[T any](index uint, defaultValue ...T) OperatorFunc[T, T] {
 // emitted by the source Observable.
 func First[T any]() OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
-		return Pipe1(source, Take[T](1))
+		return Pipe1(source, Take[T, uint](1))
+	}
+}
+
+// Returns an Observable that emits only the last item emitted by the source Observable.
+// It optionally takes a predicate function as a parameter, in which case,
+// rather than emitting the last item from the source Observable,
+// the resulting Observable will emit the last item from the source Observable
+// that satisfies the predicate.
+func Last[T any]() OperatorFunc[T, T] {
+	return func(source IObservable[T]) IObservable[T] {
+		return Pipe1(source, TakeLast[T, uint](1))
 	}
 }
 
