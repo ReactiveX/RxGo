@@ -14,6 +14,18 @@ type observableWrapper[T any] struct {
 	source ObservableFunc[T]
 }
 
+func (o *observableWrapper[T]) Subscribe(
+	onNext func(T),
+	onError func(error),
+	onComplete func(),
+) Subscription {
+	ctx := context.Background()
+	subcriber := NewSafeSubscriber(onNext, onError, onComplete)
+	go o.source(subcriber)
+	go consumeStreamUntil(ctx, subcriber, func() {})
+	return subcriber
+}
+
 func (o *observableWrapper[T]) SubscribeSync(
 	onNext func(T),
 	onError func(error),
@@ -23,12 +35,12 @@ func (o *observableWrapper[T]) SubscribeSync(
 	dispose := make(chan struct{})
 	subcriber := NewSafeSubscriber(onNext, onError, onComplete)
 	go o.source(subcriber)
-	go consumeStreamUntil(ctx, dispose, subcriber)
+	go consumeStreamUntil(ctx, subcriber, func() { close(dispose) })
 	<-dispose
 }
 
-func consumeStreamUntil[T any](ctx context.Context, dispose chan struct{}, sub *safeSubscriber[T]) {
-	defer close(dispose)
+func consumeStreamUntil[T any](ctx context.Context, sub *safeSubscriber[T], finalizer func()) {
+	defer finalizer()
 	defer sub.Unsubscribe()
 
 observe:

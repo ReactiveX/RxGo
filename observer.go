@@ -10,37 +10,46 @@ type Number interface {
 	~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64
 }
 
+// An Observable that emits no items to the Observer and never completes.
 func NEVER[T any]() IObservable[T] {
-	return newObservable(func(obs Subscriber[T]) {})
+	return newObservable(func(sub Subscriber[T]) {})
 }
 
-// A simple Observable that emits no items to the Observer and immediately emits a complete notification.
+// A simple Observable that emits no items to the Observer and immediately
+// emits a complete notification.
 func EMPTY[T any]() IObservable[T] {
-	return newObservable(func(obs Subscriber[T]) {
-		obs.Complete()
+	return newObservable(func(sub Subscriber[T]) {
+		sub.Complete()
+	})
+}
+
+func ThrownError[T any](factory func() error) IObservable[T] {
+	return newObservable(func(sub Subscriber[T]) {
+		sub.Error(factory())
 	})
 }
 
 // Creates an Observable that emits a sequence of numbers within a specified range.
 func Range[T constraints.Unsigned](start, count T) IObservable[T] {
 	end := start + count
-	return newObservable(func(obs Subscriber[T]) {
-		index := uint(0)
+	return newObservable(func(sub Subscriber[T]) {
+		var index uint
 		for i := start; i < end; i++ {
-			obs.Next(i)
+			sub.Next(i)
 			index++
 		}
+		sub.Complete()
 	})
 }
 
 // Interval creates an Observable emitting incremental integers infinitely between
 // each given time interval.
 func Interval(duration time.Duration) IObservable[uint] {
-	return newObservable(func(obs Subscriber[uint]) {
-		index := uint(0)
+	return newObservable(func(sub Subscriber[uint]) {
+		var index uint
 		for {
 			time.Sleep(duration)
-			obs.Next(index)
+			sub.Next(index)
 			index++
 		}
 	})
@@ -48,11 +57,22 @@ func Interval(duration time.Duration) IObservable[uint] {
 
 func Scheduled[T any](item T, items ...T) IObservable[T] {
 	items = append([]T{item}, items...)
-	return newObservable(func(obs Subscriber[T]) {
+	return newObservable(func(sub Subscriber[T]) {
 		for _, item := range items {
-			nextOrError(obs, item)
+			nextOrError(sub, item)
 		}
-		obs.Complete()
+		sub.Complete()
+	})
+}
+
+func Timer[T any, N constraints.Unsigned](start, due N) IObservable[N] {
+	return newObservable(func(sub Subscriber[N]) {
+		end := start + due
+		for i := N(0); i < end; i++ {
+			sub.Next(end)
+			time.Sleep(time.Duration(due))
+		}
+		// sub.Complete()
 	})
 }
 

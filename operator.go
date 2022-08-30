@@ -2,6 +2,7 @@ package rxgo
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"golang.org/x/exp/constraints"
@@ -16,7 +17,7 @@ var (
 func noop[T any](v T) {}
 
 // Emits only the first count values emitted by the source Observable.
-func Take[T any, N constraints.Unsigned](count N) OperatorFunc[T, T] {
+func Take[N constraints.Unsigned, T any](count N) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
 		if count == 0 {
 			return EMPTY[T]()
@@ -283,7 +284,7 @@ func ElementAt[T any](index uint, defaultValue ...T) OperatorFunc[T, T] {
 				Filter(func(_ T, i uint) bool {
 					return i == index
 				}),
-				Take[T, uint](1),
+				Take[uint, T](1),
 				DefaultIfEmpty(defaultValue[0]),
 			)
 		}
@@ -294,7 +295,7 @@ func ElementAt[T any](index uint, defaultValue ...T) OperatorFunc[T, T] {
 			Filter(func(_ T, i uint) bool {
 				return i == index
 			}),
-			Take[T, uint](1),
+			Take[uint, T](1),
 		)
 	}
 }
@@ -303,7 +304,7 @@ func ElementAt[T any](index uint, defaultValue ...T) OperatorFunc[T, T] {
 // emitted by the source Observable.
 func First[T any]() OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
-		return Pipe1(source, Take[T, uint](1))
+		return Pipe1(source, Take[uint, T](1))
 	}
 }
 
@@ -448,21 +449,106 @@ func SkipWhile[T any](predicate func(v T, index uint) bool) OperatorFunc[T, T] {
 	}
 }
 
+// Projects each source value to an Observable which is merged in the output Observable,
+// in a serialized fashion waiting for each one to complete before merging the next.
+func ConcatMap[T any, R any](project func(value T, index uint) IObservable[R]) OperatorFunc[T, R] {
+	return func(source IObservable[T]) IObservable[R] {
+		return newObservable(func(subscriber Subscriber[R]) {
+			var (
+				index              uint
+				buffer             = make([]T, 0)
+				concurrent         = uint(1)
+				isComplete         bool
+				activeSubscription uint
+			)
+
+			checkComplete := func() {
+				if isComplete && len(buffer) <= 0 {
+					subscriber.Complete()
+				}
+			}
+
+			var innerNext func(T)
+			innerNext = func(outerV T) {
+				activeSubscription++
+
+				stream := project(outerV, index)
+				index++
+
+				// var subscription Subscription
+				stream.SubscribeSync(
+					func(innerV R) {
+						subscriber.Next(innerV)
+					},
+					subscriber.Error,
+					func() {
+						activeSubscription--
+						for len(buffer) > 0 {
+							innerNext(buffer[0])
+							buffer = buffer[1:]
+						}
+						checkComplete()
+					},
+				)
+			}
+
+			source.SubscribeSync(
+				func(v T) {
+					if activeSubscription >= concurrent {
+						buffer = append(buffer, v)
+						return
+					}
+					innerNext(v)
+				},
+				subscriber.Error,
+				func() {
+					isComplete = true
+					checkComplete()
+				},
+			)
+		})
+	}
+}
+
+// Projects each source value to an Observable which is merged in the output
+// Observable only if the previous projected Observable has completed.
 func ExhaustMap[T any, R any](project func(value T, index uint) IObservable[R]) OperatorFunc[T, R] {
 	return func(source IObservable[T]) IObservable[R] {
 		return newObservable(func(subscriber Subscriber[R]) {
-			var index uint
+			var (
+				index        uint
+				isComplete   bool
+				subscription Subscription
+			)
 			source.SubscribeSync(
 				func(v T) {
-					project(v, index).SubscribeSync(
-						subscriber.Next,
-						subscriber.Error,
-						subscriber.Complete,
-					)
+					if subscription == nil {
+						wg := new(sync.WaitGroup)
+						subscription = project(v, index).Subscribe(
+							func(v R) {
+								subscriber.Next(v)
+							},
+							func(error) {},
+							func() {
+								defer wg.Done()
+								subscription.Unsubscribe()
+								subscription = nil
+								if isComplete {
+									subscriber.Complete()
+								}
+							},
+						)
+						wg.Wait()
+					}
 					index++
 				},
 				subscriber.Error,
-				subscriber.Complete,
+				func() {
+					isComplete = true
+					if subscription == nil {
+						subscriber.Complete()
+					}
+				},
 			)
 
 			// after collect the source

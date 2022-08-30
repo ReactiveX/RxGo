@@ -4,7 +4,6 @@ import (
 	"context"
 	"sync"
 	"sync/atomic"
-	"time"
 )
 
 // Amb takes several Observables, emit all of the items from only the first of these Observables
@@ -342,21 +341,21 @@ func Thrown(err error) Observable {
 }
 
 // Timer returns an Observable that completes after a specified delay.
-func Timer(d Duration, opts ...Option) Observable {
-	option := parseOptions(opts...)
-	next := make(chan Item, 1)
-	ctx := option.buildContext(emptyContext)
+// func Timer(d Duration, opts ...Option) Observable {
+// 	option := parseOptions(opts...)
+// 	next := make(chan Item, 1)
+// 	ctx := option.buildContext(emptyContext)
 
-	go func() {
-		defer close(next)
-		select {
-		case <-ctx.Done():
-			return
-		case <-time.After(d.duration()):
-			return
-		}
-	}()
-	return &ObservableImpl{
-		iterable: newChannelIterable(next),
-	}
-}
+// 	go func() {
+// 		defer close(next)
+// 		select {
+// 		case <-ctx.Done():
+// 			return
+// 		case <-time.After(d.duration()):
+// 			return
+// 		}
+// 	}()
+// 	return &ObservableImpl{
+// 		iterable: newChannelIterable(next),
+// 	}
+// }

@@ -1,7 +1,7 @@
 package rxgo
 
 type IObservable[T any] interface {
-	// Subscribe(onNext func(T), onError func(error), onComplete func(), opts ...any) Subscription
+	Subscribe(onNext func(T), onError func(error), onComplete func()) Subscription
 	SubscribeSync(onNext func(T), onError func(error), onComplete func())
 }
 
