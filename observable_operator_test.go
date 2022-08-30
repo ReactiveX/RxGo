@@ -380,23 +380,23 @@ func Test_Observable_Count_Parallel(t *testing.T) {
 	// 	HasItem(int64(10000)))
 }
 
-func Test_Observable_Debounce(t *testing.T) {
-	defer goleak.VerifyNone(t)
-	ctx, obs, d := timeCausality(1, tick, 2, tick, 3, 4, 5, tick, 6, tick)
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	Assert(ctx, t, obs.Debounce(d, WithBufferedChannel(10), WithContext(ctx)),
-		HasItems(1, 2, 5, 6))
-}
+// func Test_Observable_Debounce(t *testing.T) {
+// 	defer goleak.VerifyNone(t)
+// 	ctx, obs, d := timeCausality(1, tick, 2, tick, 3, 4, 5, tick, 6, tick)
+// 	ctx, cancel := context.WithCancel(ctx)
+// 	defer cancel()
+// 	Assert(ctx, t, obs.Debounce(d, WithBufferedChannel(10), WithContext(ctx)),
+// 		HasItems(1, 2, 5, 6))
+// }
 
-func Test_Observable_Debounce_Error(t *testing.T) {
-	defer goleak.VerifyNone(t)
-	ctx, obs, d := timeCausality(1, tick, 2, tick, 3, errFoo, 5, tick, 6, tick)
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	Assert(ctx, t, obs.Debounce(d, WithBufferedChannel(10), WithContext(ctx)),
-		HasItems(1, 2), HasError(errFoo))
-}
+// func Test_Observable_Debounce_Error(t *testing.T) {
+// 	defer goleak.VerifyNone(t)
+// 	ctx, obs, d := timeCausality(1, tick, 2, tick, 3, errFoo, 5, tick, 6, tick)
+// 	ctx, cancel := context.WithCancel(ctx)
+// 	defer cancel()
+// 	Assert(ctx, t, obs.Debounce(d, WithBufferedChannel(10), WithContext(ctx)),
+// 		HasItems(1, 2), HasError(errFoo))
+// }
 
 func Test_Observable_DefaultIfEmpty_Empty(t *testing.T) {
 	defer goleak.VerifyNone(t)
