@@ -1,7 +1,9 @@
 package rxgo
 
-import "testing"
+import (
+	"testing"
+)
 
-func TestEmpty(t *testing.T) {
+func TestTake(t *testing.T) {
 
 }
