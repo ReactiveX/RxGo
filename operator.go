@@ -14,7 +14,8 @@ var (
 	ErrSequence = fmt.Errorf("rxgo: too many values match")
 )
 
-func noop[T any](v T) {}
+func skip[T any](v T) {}
+func noop()           {}
 
 // Emits only the first count values emitted by the source Observable.
 func Take[N constraints.Unsigned, T any](count N) OperatorFunc[T, T] {
@@ -38,6 +39,36 @@ func Take[N constraints.Unsigned, T any](count N) OperatorFunc[T, T] {
 				subscriber.Error,
 				subscriber.Complete,
 			)
+		})
+	}
+}
+
+// Emits the values emitted by the source Observable until a notifier Observable emits a value.
+func TakeUntil[T any, R any](notifier IObservable[R]) OperatorFunc[T, T] {
+	return func(source IObservable[T]) IObservable[T] {
+		return newObservable(func(subscriber Subscriber[T]) {
+			var isComplete bool
+
+			subscription := source.Subscribe(
+				func(v T) {
+					subscriber.Next(v)
+				},
+				subscriber.Error,
+				func() {
+					isComplete = true
+					subscriber.Complete()
+				},
+			)
+
+			notifier.SubscribeSync(func(v R) {
+				if !isComplete {
+					subscription.Unsubscribe()
+				}
+			}, func(err error) {
+				subscription.Unsubscribe()
+			}, func() {
+				subscription.Unsubscribe()
+			})
 		})
 	}
 }
@@ -88,6 +119,50 @@ func TakeLast[T any, N constraints.Unsigned](count N) OperatorFunc[T, T] {
 	}
 }
 
+// Emits the single value at the specified index in a sequence of emissions
+// from the source Observable.
+func ElementAt[T any](index uint, defaultValue ...T) OperatorFunc[T, T] {
+	if len(defaultValue) > 0 {
+		return func(source IObservable[T]) IObservable[T] {
+			return Pipe3(source,
+				Filter(func(_ T, i uint) bool {
+					return i == index
+				}),
+				Take[uint, T](1),
+				DefaultIfEmpty(defaultValue[0]),
+			)
+		}
+	}
+
+	return func(source IObservable[T]) IObservable[T] {
+		return Pipe2(source,
+			Filter(func(_ T, i uint) bool {
+				return i == index
+			}),
+			Take[uint, T](1),
+		)
+	}
+}
+
+// Emits only the first value (or the first value that meets some condition)
+// emitted by the source Observable.
+func First[T any]() OperatorFunc[T, T] {
+	return func(source IObservable[T]) IObservable[T] {
+		return Pipe1(source, Take[uint, T](1))
+	}
+}
+
+// Returns an Observable that emits only the last item emitted by the source Observable.
+// It optionally takes a predicate function as a parameter, in which case,
+// rather than emitting the last item from the source Observable,
+// the resulting Observable will emit the last item from the source Observable
+// that satisfies the predicate.
+func Last[T any]() OperatorFunc[T, T] {
+	return func(source IObservable[T]) IObservable[T] {
+		return Pipe1(source, TakeLast[T, uint](1))
+	}
+}
+
 // Emits only the first value emitted by the source Observable that meets some condition.
 func Find[T any](predicate func(T, uint) bool) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
@@ -108,19 +183,28 @@ func Find[T any](predicate func(T, uint) bool) OperatorFunc[T, T] {
 	}
 }
 
-// Emits false if the input Observable emits any values,
-// or emits true if the input Observable completes without emitting any values.
-func IsEmpty[T any]() OperatorFunc[T, bool] {
-	return func(source IObservable[T]) IObservable[bool] {
-		return newObservable(func(subscriber Subscriber[bool]) {
-			var isEmpty = true
+// Emits only the index of the first value emitted by the source Observable that meets some condition.
+func FindIndex[T any](predicate func(T, uint) bool) OperatorFunc[T, int] {
+	return func(source IObservable[T]) IObservable[int] {
+		return newObservable(func(subscriber Subscriber[int]) {
+			var (
+				index uint
+				ok    bool
+			)
 			source.SubscribeSync(
-				func(t T) {
-					isEmpty = false
+				func(v T) {
+					if predicate(v, index) {
+						ok = true
+						subscriber.Next(int(index))
+						subscriber.Complete()
+					}
+					index++
 				},
 				subscriber.Error,
 				func() {
-					subscriber.Next(isEmpty)
+					if !ok {
+						subscriber.Next(-1)
+					}
 					subscriber.Complete()
 				},
 			)
@@ -203,7 +287,7 @@ func IgnoreElements[T any]() OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {
 			source.SubscribeSync(
-				noop[T],
+				skip[T],
 				subscriber.Error,
 				subscriber.Complete,
 			)
@@ -252,6 +336,26 @@ func Repeat[T any, N constraints.Unsigned](count N) OperatorFunc[T, T] {
 	}
 }
 
+// Emits false if the input Observable emits any values,
+// or emits true if the input Observable completes without emitting any values.
+func IsEmpty[T any]() OperatorFunc[T, bool] {
+	return func(source IObservable[T]) IObservable[bool] {
+		return newObservable(func(subscriber Subscriber[bool]) {
+			var isEmpty = true
+			source.SubscribeSync(
+				func(t T) {
+					isEmpty = false
+				},
+				subscriber.Error,
+				func() {
+					subscriber.Next(isEmpty)
+					subscriber.Complete()
+				},
+			)
+		})
+	}
+}
+
 // Emits a given value if the source Observable completes without emitting any
 // next value, otherwise mirrors the source Observable.
 func DefaultIfEmpty[T any](defaultValue T) OperatorFunc[T, T] {
@@ -272,50 +376,6 @@ func DefaultIfEmpty[T any](defaultValue T) OperatorFunc[T, T] {
 				},
 			)
 		})
-	}
-}
-
-// Emits the single value at the specified index in a sequence of emissions
-// from the source Observable.
-func ElementAt[T any](index uint, defaultValue ...T) OperatorFunc[T, T] {
-	if len(defaultValue) > 0 {
-		return func(source IObservable[T]) IObservable[T] {
-			return Pipe3(source,
-				Filter(func(_ T, i uint) bool {
-					return i == index
-				}),
-				Take[uint, T](1),
-				DefaultIfEmpty(defaultValue[0]),
-			)
-		}
-	}
-
-	return func(source IObservable[T]) IObservable[T] {
-		return Pipe2(source,
-			Filter(func(_ T, i uint) bool {
-				return i == index
-			}),
-			Take[uint, T](1),
-		)
-	}
-}
-
-// Emits only the first value (or the first value that meets some condition)
-// emitted by the source Observable.
-func First[T any]() OperatorFunc[T, T] {
-	return func(source IObservable[T]) IObservable[T] {
-		return Pipe1(source, Take[uint, T](1))
-	}
-}
-
-// Returns an Observable that emits only the last item emitted by the source Observable.
-// It optionally takes a predicate function as a parameter, in which case,
-// rather than emitting the last item from the source Observable,
-// the resulting Observable will emit the last item from the source Observable
-// that satisfies the predicate.
-func Last[T any]() OperatorFunc[T, T] {
-	return func(source IObservable[T]) IObservable[T] {
-		return Pipe1(source, TakeLast[T, uint](1))
 	}
 }
 
@@ -387,6 +447,7 @@ func Map[T any, R any](mapper func(T, uint) (R, error)) OperatorFunc[T, R] {
 // Returns an observable that asserts that only one value is emitted from the observable
 // that matches the predicate. If no predicate is provided, then it will assert that the
 // observable only emits one value.
+// FIXME: should rename `Single2` to `Single`
 func Single2[T any](predicate func(v T, index uint) bool) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {
@@ -556,14 +617,78 @@ func ExhaustMap[T any, R any](project func(value T, index uint) IObservable[R]) 
 	}
 }
 
-func CatchError[T any](catch func(error) IObservable[T]) OperatorFunc[T, T] {
+// Useful for encapsulating and managing state. Applies an accumulator (or "reducer function")
+// to each value from the source after an initial state is established --
+// either via a seed value (second argument), or from the first value from the source.
+func Scan[V any, A any](accumulator func(acc A, v V, index uint) A, seed A) OperatorFunc[V, A] {
+	return func(source IObservable[V]) IObservable[A] {
+		return newObservable(func(subscriber Subscriber[A]) {
+			var (
+				index uint
+			)
+			source.SubscribeSync(
+				func(v V) {
+					seed = accumulator(seed, v, index)
+					subscriber.Next(seed)
+					index++
+				},
+				subscriber.Error,
+				subscriber.Complete,
+			)
+		})
+	}
+}
+
+// Applies an accumulator function over the source Observable, and returns
+// the accumulated result when the source completes, given an optional seed value.
+func Reduce[V any, A any](accumulator func(acc A, v V, index uint) A, seed A) OperatorFunc[V, A] {
+	return func(source IObservable[V]) IObservable[A] {
+		return newObservable(func(subscriber Subscriber[A]) {
+			var (
+				index uint
+			)
+			source.SubscribeSync(
+				func(v V) {
+					seed = accumulator(seed, v, index)
+					index++
+				},
+				subscriber.Error,
+				func() {
+					subscriber.Next(seed)
+					subscriber.Complete()
+				},
+			)
+		})
+	}
+}
+
+// Delays the emission of items from the source Observable by a given timeout.
+func Delay[T any](duration time.Duration) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {
 			source.SubscribeSync(
-				subscriber.Next,
-				func(err error) {
-					catch(err)
+				func(v T) {
+					time.Sleep(duration)
+					subscriber.Next(v)
 				},
+				subscriber.Error,
+				subscriber.Complete,
+			)
+		})
+	}
+}
+
+// Emits a value from the source Observable, then ignores subsequent source values
+// for duration milliseconds, then repeats this process.
+func Throttle[T any, R any](durationSelector func(v T) IObservable[R]) OperatorFunc[T, T] {
+	return func(source IObservable[T]) IObservable[T] {
+		return newObservable(func(subscriber Subscriber[T]) {
+			source.SubscribeSync(
+				func(v T) {
+					durationSelector(v)
+					subscriber.Next(v)
+				},
+				subscriber.Error,
 				subscriber.Complete,
 			)
 		})
@@ -584,6 +709,20 @@ func DebounceTime[T any](duration time.Duration) OperatorFunc[T, T] {
 					subscriber.Next(v)
 				},
 				subscriber.Error,
+				subscriber.Complete,
+			)
+		})
+	}
+}
+
+func CatchError[T any](catch func(error) IObservable[T]) OperatorFunc[T, T] {
+	return func(source IObservable[T]) IObservable[T] {
+		return newObservable(func(subscriber Subscriber[T]) {
+			source.SubscribeSync(
+				subscriber.Next,
+				func(err error) {
+					catch(err)
+				},
 				subscriber.Complete,
 			)
 		})

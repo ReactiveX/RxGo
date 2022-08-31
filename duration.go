@@ -1,7 +1,6 @@
 package rxgo
 
 import (
-	"context"
 	"time"
 
 	"github.com/stretchr/testify/mock"
@@ -30,66 +29,66 @@ func WithDuration(d time.Duration) Duration {
 	}
 }
 
-var tick = struct{}{}
+// var tick = struct{}{}
 
-type causalityDuration struct {
-	fs []execution
-}
+// type causalityDuration struct {
+// 	fs []execution
+// }
 
-type execution struct {
-	f      func()
-	isTick bool
-}
+// type execution struct {
+// 	f      func()
+// 	isTick bool
+// }
 
-func timeCausality(elems ...interface{}) (context.Context, Observable, Duration) {
-	ch := make(chan Item, 1)
-	fs := make([]execution, len(elems)+1)
-	ctx, cancel := context.WithCancel(context.Background())
-	for i, elem := range elems {
-		i := i
-		elem := elem
-		if elem == tick {
-			fs[i] = execution{
-				f:      func() {},
-				isTick: true,
-			}
-		} else {
-			switch elem := elem.(type) {
-			default:
-				fs[i] = execution{
-					f: func() {
-						ch <- Of(elem)
-					},
-					isTick: false,
-				}
-			case error:
-				fs[i] = execution{
-					f: func() {
-						ch <- Error(elem)
-					},
-					isTick: false,
-				}
-			}
-		}
-	}
-	fs[len(elems)] = execution{
-		f: func() {
-			cancel()
-		},
-		isTick: false,
-	}
-	return ctx, FromChannel(ch), &causalityDuration{fs: fs}
-}
+// func timeCausality(elems ...interface{}) (context.Context, Observable, Duration) {
+// 	ch := make(chan Item, 1)
+// 	fs := make([]execution, len(elems)+1)
+// 	ctx, cancel := context.WithCancel(context.Background())
+// 	for i, elem := range elems {
+// 		i := i
+// 		elem := elem
+// 		if elem == tick {
+// 			fs[i] = execution{
+// 				f:      func() {},
+// 				isTick: true,
+// 			}
+// 		} else {
+// 			switch elem := elem.(type) {
+// 			default:
+// 				fs[i] = execution{
+// 					f: func() {
+// 						ch <- Of(elem)
+// 					},
+// 					isTick: false,
+// 				}
+// 			case error:
+// 				fs[i] = execution{
+// 					f: func() {
+// 						ch <- Error(elem)
+// 					},
+// 					isTick: false,
+// 				}
+// 			}
+// 		}
+// 	}
+// 	fs[len(elems)] = execution{
+// 		f: func() {
+// 			cancel()
+// 		},
+// 		isTick: false,
+// 	}
+// 	return ctx, FromChannel(ch), &causalityDuration{fs: fs}
+// }
 
-func (d *causalityDuration) duration() time.Duration {
-	pop := d.fs[0]
-	pop.f()
-	d.fs = d.fs[1:]
-	if pop.isTick {
-		return time.Nanosecond
-	}
-	return time.Minute
-}
+// func (d *causalityDuration) duration() time.Duration {
+// 	pop := d.fs[0]
+// 	pop.f()
+// 	d.fs = d.fs[1:]
+// 	if pop.isTick {
+// 		return time.Nanosecond
+// 	}
+// 	return time.Minute
+// }
 
 type mockDuration struct {
 	mock.Mock

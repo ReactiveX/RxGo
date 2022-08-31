@@ -1,6 +1,7 @@
 package rxgo
 
 type IObservable[T any] interface {
+	subscribeOn(onNext func(T), onError func(error), onComplete, finalizer func()) Subscription
 	Subscribe(onNext func(T), onError func(error), onComplete func()) Subscription
 	SubscribeSync(onNext func(T), onError func(error), onComplete func())
 }
@@ -132,4 +133,20 @@ func Pipe9[S any, O1 any, O2 any, O3 any, O4 any, O5 any, O6 any, O7 any, O8 any
 	f9 OperatorFunc[O8, O9],
 ) IObservable[O9] {
 	return f9(f8(f7(f6(f5(f4(f3(f2(f1(stream)))))))))
+}
+
+func Pipe10[S any, O1 any, O2 any, O3 any, O4 any, O5 any, O6 any, O7 any, O8 any, O9 any, O10 any](
+	stream IObservable[S],
+	f1 OperatorFunc[S, O1],
+	f2 OperatorFunc[O1, O2],
+	f3 OperatorFunc[O2, O3],
+	f4 OperatorFunc[O3, O4],
+	f5 OperatorFunc[O4, O5],
+	f6 OperatorFunc[O5, O6],
+	f7 OperatorFunc[O6, O7],
+	f8 OperatorFunc[O7, O8],
+	f9 OperatorFunc[O8, O9],
+	f10 OperatorFunc[O9, O10],
+) IObservable[O10] {
+	return f10(f9(f8(f7(f6(f5(f4(f3(f2(f1(stream))))))))))
 }

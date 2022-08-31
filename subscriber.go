@@ -40,6 +40,8 @@ func (s *safeSubscriber[T]) ForEach() <-chan DataValuer[T] {
 }
 
 func (s *safeSubscriber[T]) Next(v T) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.closed {
 		return
 	}
@@ -47,11 +49,16 @@ func (s *safeSubscriber[T]) Next(v T) {
 }
 
 func (s *safeSubscriber[T]) Error(err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.closed {
 		return
 	}
 	emitError(err, s.ch)
-	s.closeChannel()
+	if !s.closed {
+		s.closed = true
+		close(s.ch)
+	}
 }
 
 func (s *safeSubscriber[T]) Complete() {

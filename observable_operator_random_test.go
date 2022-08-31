@@ -1,3 +1,4 @@
+//go:build !all
 // +build !all
 
 package rxgo
@@ -27,21 +28,21 @@ func TestLeak(t *testing.T) {
 			obs := FromChannel(make(chan Item), WithContext(ctx))
 			return Amb([]Observable{obs}, WithContext(ctx))
 		},
-		"CombineLatest": func(ctx context.Context) Observable {
-			return CombineLatest(func(i ...interface{}) interface{} {
-				sum := 0
-				for _, v := range i {
-					if v == nil {
-						continue
-					}
-					sum += v.(int)
-				}
-				return sum
-			}, []Observable{
-				Just(1, 2)(),
-				Just(10, 11)(),
-			})
-		},
+		// "CombineLatest": func(ctx context.Context) Observable {
+		// 	return CombineLatest(func(i ...interface{}) interface{} {
+		// 		sum := 0
+		// 		for _, v := range i {
+		// 			if v == nil {
+		// 				continue
+		// 			}
+		// 			sum += v.(int)
+		// 		}
+		// 		return sum
+		// 	}, []Observable{
+		// 		Just(1, 2)(),
+		// 		Just(10, 11)(),
+		// 	})
+		// },
 		"Concat": func(ctx context.Context) Observable {
 			return Concat([]Observable{
 				Just(1, 2, 3)(),

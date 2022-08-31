@@ -2,6 +2,7 @@ package rxgo
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"golang.org/x/exp/constraints"
@@ -13,8 +14,39 @@ func newObservable[T any](obs ObservableFunc[T]) IObservable[T] {
 	return &observableWrapper[T]{source: obs}
 }
 
+type Tuple[A any, B any] interface {
+	First() A
+	Second() B
+}
+
+type pair[A any, B any] struct {
+	first  A
+	second B
+}
+
+func (p pair[A, B]) First() A {
+	return p.first
+}
+
+func (p pair[A, B]) Second() B {
+	return p.second
+}
+
 type observableWrapper[T any] struct {
 	source ObservableFunc[T]
+}
+
+func (o *observableWrapper[T]) subscribeOn(
+	onNext func(T),
+	onError func(error),
+	onComplete func(),
+	finalizer func(),
+) Subscription {
+	ctx := context.Background()
+	subcriber := NewSafeSubscriber(onNext, onError, onComplete)
+	go o.source(subcriber)
+	go consumeStreamUntil(ctx, subcriber, finalizer)
+	return subcriber
 }
 
 func (o *observableWrapper[T]) Subscribe(
@@ -83,6 +115,12 @@ func EMPTY[T any]() IObservable[T] {
 	})
 }
 
+// Creates an Observable that, on subscribe, calls an Observable
+// factory to make an Observable for each new Observer.
+func Defer[T any](factory func() IObservable[T]) IObservable[T] {
+	return factory()
+}
+
 func ThrownError[T any](factory func() error) IObservable[T] {
 	return newObservable(func(sub Subscriber[T]) {
 		sub.Error(factory())
@@ -105,11 +143,11 @@ func Range[T constraints.Unsigned](start, count T) IObservable[T] {
 // Interval creates an Observable emitting incremental integers infinitely between
 // each given time interval.
 func Interval(duration time.Duration) IObservable[uint] {
-	return newObservable(func(sub Subscriber[uint]) {
+	return newObservable(func(subscriber Subscriber[uint]) {
 		var index uint
 		for {
 			time.Sleep(duration)
-			sub.Next(index)
+			subscriber.Next(index)
 			index++
 		}
 	})
@@ -117,22 +155,64 @@ func Interval(duration time.Duration) IObservable[uint] {
 
 func Scheduled[T any](item T, items ...T) IObservable[T] {
 	items = append([]T{item}, items...)
-	return newObservable(func(sub Subscriber[T]) {
+	return newObservable(func(subscriber Subscriber[T]) {
 		for _, item := range items {
-			nextOrError(sub, item)
+			nextOrError(subscriber, item)
 		}
-		sub.Complete()
+		subscriber.Complete()
 	})
 }
 
-func Timer[T any, N constraints.Unsigned](start, due N) IObservable[N] {
-	return newObservable(func(sub Subscriber[N]) {
-		end := start + due
-		for i := N(0); i < end; i++ {
-			sub.Next(end)
-			time.Sleep(time.Duration(due))
+func Timer[T any, N constraints.Unsigned](start, interval N) IObservable[N] {
+	return newObservable(func(subscriber Subscriber[N]) {
+		latest := start
+
+		for {
+			subscriber.Next(latest)
+			time.Sleep(time.Duration(latest))
+			latest = latest + interval
 		}
-		// sub.Complete()
+	})
+}
+
+func CombineLatest[A any, B any](first IObservable[A], second IObservable[B]) IObservable[Tuple[A, B]] {
+	return newObservable(func(sub Subscriber[Tuple[A, B]]) {
+		var (
+			latestA A
+			latestB B
+		)
+		hasValue := [2]bool{}
+		allOk := [2]bool{}
+		nextValue := func() {
+			if hasValue[0] && hasValue[1] {
+				sub.Next(pair[A, B]{latestA, latestB})
+			}
+		}
+		checkComplete := func() {
+			if allOk[0] && allOk[1] {
+				sub.Complete()
+			}
+		}
+
+		wg := new(sync.WaitGroup)
+		wg.Add(2)
+		first.subscribeOn(func(a A) {
+			latestA = a
+			hasValue[0] = true
+			nextValue()
+		}, sub.Error, func() {
+			allOk[0] = true
+			checkComplete()
+		}, wg.Done)
+		second.subscribeOn(func(b B) {
+			latestB = b
+			hasValue[1] = true
+			nextValue()
+		}, sub.Error, func() {
+			allOk[1] = true
+			checkComplete()
+		}, wg.Done)
+		wg.Wait()
 	})
 }
 

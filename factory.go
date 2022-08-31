@@ -1,9 +1,7 @@
 package rxgo
 
 import (
-	"context"
 	"sync"
-	"sync/atomic"
 )
 
 // Amb takes several Observables, emit all of the items from only the first of these Observables
@@ -61,69 +59,69 @@ func Amb(observables []Observable, opts ...Option) Observable {
 
 // CombineLatest combines the latest item emitted by each Observable via a specified function
 // and emit items based on the results of this function.
-func CombineLatest(f FuncN, observables []Observable, opts ...Option) Observable {
-	option := parseOptions(opts...)
-	ctx := option.buildContext(emptyContext)
-	next := option.buildChannel()
+// func CombineLatest(f FuncN, observables []Observable, opts ...Option) Observable {
+// 	option := parseOptions(opts...)
+// 	ctx := option.buildContext(emptyContext)
+// 	next := option.buildChannel()
 
-	go func() {
-		size := uint32(len(observables))
-		var counter uint32
-		s := make([]interface{}, size)
-		mutex := sync.Mutex{}
-		wg := sync.WaitGroup{}
-		wg.Add(int(size))
-		errCh := make(chan struct{})
+// 	go func() {
+// 		size := uint32(len(observables))
+// 		var counter uint32
+// 		s := make([]interface{}, size)
+// 		mutex := sync.Mutex{}
+// 		wg := sync.WaitGroup{}
+// 		wg.Add(int(size))
+// 		errCh := make(chan struct{})
 
-		handler := func(ctx context.Context, it Iterable, i int) {
-			defer wg.Done()
-			observe := it.Observe(opts...)
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case item, ok := <-observe:
-					if !ok {
-						return
-					}
-					if item.Error() {
-						next <- item
-						errCh <- struct{}{}
-						return
-					}
-					if s[i] == nil {
-						atomic.AddUint32(&counter, 1)
-					}
-					mutex.Lock()
-					s[i] = item.V
-					if atomic.LoadUint32(&counter) == size {
-						next <- Of(f(s...))
-					}
-					mutex.Unlock()
-				}
-			}
-		}
+// 		handler := func(ctx context.Context, it Iterable, i int) {
+// 			defer wg.Done()
+// 			observe := it.Observe(opts...)
+// 			for {
+// 				select {
+// 				case <-ctx.Done():
+// 					return
+// 				case item, ok := <-observe:
+// 					if !ok {
+// 						return
+// 					}
+// 					if item.Error() {
+// 						next <- item
+// 						errCh <- struct{}{}
+// 						return
+// 					}
+// 					if s[i] == nil {
+// 						atomic.AddUint32(&counter, 1)
+// 					}
+// 					mutex.Lock()
+// 					s[i] = item.V
+// 					if atomic.LoadUint32(&counter) == size {
+// 						next <- Of(f(s...))
+// 					}
+// 					mutex.Unlock()
+// 				}
+// 			}
+// 		}
 
-		ctx, cancel := context.WithCancel(ctx)
-		for i, o := range observables {
-			go handler(ctx, o, i)
-		}
+// 		ctx, cancel := context.WithCancel(ctx)
+// 		for i, o := range observables {
+// 			go handler(ctx, o, i)
+// 		}
 
-		go func() {
-			for range errCh {
-				cancel()
-			}
-		}()
+// 		go func() {
+// 			for range errCh {
+// 				cancel()
+// 			}
+// 		}()
 
-		wg.Wait()
-		close(next)
-		close(errCh)
-	}()
+// 		wg.Wait()
+// 		close(next)
+// 		close(errCh)
+// 	}()
 
-	return &ObservableImpl{
-		iterable: newChannelIterable(next),
-	}
-}
+// 	return &ObservableImpl{
+// 		iterable: newChannelIterable(next),
+// 	}
+// }
 
 // Concat emits the emissions from two or more Observables without interleaving them.
 func Concat(observables []Observable, opts ...Option) Observable {
@@ -165,13 +163,13 @@ func Create(f []Producer, opts ...Option) Observable {
 	}
 }
 
-// Defer does not create the Observable until the observer subscribes,
-// and creates a fresh Observable for each observer.
-func Defer(f []Producer, opts ...Option) Observable {
-	return &ObservableImpl{
-		iterable: newDeferIterable(f, opts...),
-	}
-}
+// // Defer does not create the Observable until the observer subscribes,
+// // and creates a fresh Observable for each observer.
+// func Defer(f []Producer, opts ...Option) Observable {
+// 	return &ObservableImpl{
+// 		iterable: newDeferIterable(f, opts...),
+// 	}
+// }
 
 // Empty creates an Observable with no item and terminate immediately.
 func Empty() Observable {
