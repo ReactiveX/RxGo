@@ -21,12 +21,12 @@ func TestNever(t *testing.T) {
 }
 
 func TestEmpty(t *testing.T) {
-	checkObservable(t, EMPTY[any](), []any{}, nil, true)
+	checkObservableResults(t, EMPTY[any](), []any{}, nil, true)
 }
 
 func TestThrownError(t *testing.T) {
 	var v = fmt.Errorf("uncaught error")
-	checkObservable(t, ThrownError[string](func() error {
+	checkObservableResults(t, ThrownError[string](func() error {
 		return v
 	}), []string{}, v, true)
 }
@@ -41,15 +41,15 @@ func TestDefer(t *testing.T) {
 			subscriber.Complete()
 		})
 	})
-	checkObservable(t, obs, values, nil, true)
+	checkObservableResults(t, obs, values, nil, true)
 }
 
 func TestRange(t *testing.T) {
 	t.Run("Range from 1 to 10", func(t *testing.T) {
-		checkObservable(t, Range[uint](1, 10), []uint{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, nil, true)
+		checkObservableResults(t, Range[uint](1, 10), []uint{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, nil, true)
 	})
 	t.Run("Range from 0 to 3", func(t *testing.T) {
-		checkObservable(t, Range[uint](0, 3), []uint{0, 1, 2}, nil, true)
+		checkObservableResults(t, Range[uint](0, 3), []uint{0, 1, 2}, nil, true)
 	})
 }
 
@@ -65,7 +65,25 @@ func TestTimer(t *testing.T) {
 
 }
 
-func checkObservable[T any](t *testing.T, obs IObservable[T], result []T, err error, isCompleted bool) {
+func checkObservableResult[T any](t *testing.T, obs IObservable[T], result T, err error, isCompleted bool) {
+	var (
+		hasCompleted  bool
+		collectedErr  error
+		collectedData T
+	)
+	obs.SubscribeSync(func(v T) {
+		collectedData = v
+	}, func(err error) {
+		collectedErr = err
+	}, func() {
+		hasCompleted = true
+	})
+	require.Equal(t, collectedData, result)
+	require.Equal(t, hasCompleted, isCompleted)
+	require.Equal(t, collectedErr, err)
+}
+
+func checkObservableResults[T any](t *testing.T, obs IObservable[T], result []T, err error, isCompleted bool) {
 	var (
 		hasCompleted  bool
 		collectedErr  error

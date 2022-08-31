@@ -178,7 +178,7 @@ func Timer[T any, N constraints.Unsigned](start, interval N) IObservable[N] {
 }
 
 func CombineLatest[A any, B any](first IObservable[A], second IObservable[B]) IObservable[Tuple[A, B]] {
-	return newObservable(func(sub Subscriber[Tuple[A, B]]) {
+	return newObservable(func(subscriber Subscriber[Tuple[A, B]]) {
 		var (
 			latestA  A
 			latestB  B
@@ -188,12 +188,12 @@ func CombineLatest[A any, B any](first IObservable[A], second IObservable[B]) IO
 
 		nextValue := func() {
 			if hasValue[0] && hasValue[1] {
-				sub.Next(pair[A, B]{latestA, latestB})
+				subscriber.Next(pair[A, B]{latestA, latestB})
 			}
 		}
 		checkComplete := func() {
 			if allOk[0] && allOk[1] {
-				sub.Complete()
+				subscriber.Complete()
 			}
 		}
 
@@ -203,7 +203,7 @@ func CombineLatest[A any, B any](first IObservable[A], second IObservable[B]) IO
 			latestA = a
 			hasValue[0] = true
 			nextValue()
-		}, sub.Error, func() {
+		}, subscriber.Error, func() {
 			allOk[0] = true
 			checkComplete()
 		}, wg.Done)
@@ -211,7 +211,7 @@ func CombineLatest[A any, B any](first IObservable[A], second IObservable[B]) IO
 			latestB = b
 			hasValue[1] = true
 			nextValue()
-		}, sub.Error, func() {
+		}, subscriber.Error, func() {
 			allOk[1] = true
 			checkComplete()
 		}, wg.Done)

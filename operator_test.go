@@ -48,8 +48,17 @@ func TestMax(t *testing.T) {
 
 }
 
-func TestIgnoreElements(t *testing.T) {
+func TestCount(t *testing.T) {
+	checkObservableResult(t, Pipe1(Range[uint](1, 7), Count(func(i uint, _ uint) bool {
+		return i%2 == 1
+	})), uint(4), nil, true)
+}
 
+func TestIgnoreElements(t *testing.T) {
+	checkObservableResult(t, Pipe1(
+		Range[uint](1, 7),
+		IgnoreElements[uint](),
+	), uint(0), nil, true)
 }
 
 func TestEvery(t *testing.T) {
@@ -61,7 +70,8 @@ func TestRepeat(t *testing.T) {
 }
 
 func TestIsEmpty(t *testing.T) {
-
+	checkObservableResult(t, Pipe1(EMPTY[any](), IsEmpty[any]()), true, nil, true)
+	checkObservableResult(t, Pipe1(Range[uint](1, 3), IsEmpty[uint]()), false, nil, true)
 }
 
 func TestDefaultIfEmpty(t *testing.T) {

@@ -283,6 +283,38 @@ func Max[T any](comparer func(a T, b T) int8) OperatorFunc[T, T] {
 	}
 }
 
+// Counts the number of emissions on the source and emits that number when the source completes.
+func Count[T any](predicate ...func(v T, index uint) bool) OperatorFunc[T, uint] {
+	cb := func(T, uint) bool {
+		return true
+	}
+	if len(predicate) > 0 {
+		cb = predicate[0]
+	}
+
+	return func(source IObservable[T]) IObservable[uint] {
+		return newObservable(func(subscriber Subscriber[uint]) {
+			var (
+				count uint
+				index uint
+			)
+			source.SubscribeSync(
+				func(v T) {
+					if cb(v, index) {
+						count++
+					}
+					index++
+				},
+				subscriber.Error,
+				func() {
+					subscriber.Next(count)
+					subscriber.Complete()
+				},
+			)
+		})
+	}
+}
+
 // Ignores all items emitted by the source Observable and only passes calls of complete or error.
 func IgnoreElements[T any]() OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
@@ -617,6 +649,33 @@ func ExhaustMap[T any, R any](project func(value T, index uint) IObservable[R]) 
 		})
 	}
 }
+
+// // Merge the values from all observables to a single observable result.
+// func ConcatAll[A any, B any](concurrent uint64) OperatorFunc[A, B] {
+// 	return func(source IObservable[A]) IObservable[B] {
+// 		return newObservable(func(subscriber Subscriber[B]) {
+// 			source.SubscribeSync(func(a A) {}, func(err error) {}, func() {})
+// 		})
+// 	}
+// }
+
+// Merge the values from all observables to a single observable result.
+func MergeAll[A any, B any](concurrent uint64) OperatorFunc[A, B] {
+	return func(source IObservable[A]) IObservable[B] {
+		return newObservable(func(subscriber Subscriber[B]) {
+
+		})
+	}
+}
+
+// // Merge the values from all observables to a single observable result.
+// func MergeWith1[A any, B any](IObservable[B]) OperatorFunc[A, B] {
+// 	return func(source IObservable[A]) IObservable[B] {
+// 		return newObservable(func(subscriber Subscriber[B]) {
+
+// 		})
+// 	}
+// }
 
 // Useful for encapsulating and managing state. Applies an accumulator (or "reducer function")
 // to each value from the source after an initial state is established --

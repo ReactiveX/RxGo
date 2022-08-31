@@ -243,45 +243,45 @@ func JustItem(item interface{}, opts ...Option) Single {
 }
 
 // Merge combines multiple Observables into one by merging their emissions
-func Merge(observables []Observable, opts ...Option) Observable {
-	option := parseOptions(opts...)
-	ctx := option.buildContext(emptyContext)
-	next := option.buildChannel()
-	wg := sync.WaitGroup{}
-	wg.Add(len(observables))
+// func Merge(observables []Observable, opts ...Option) Observable {
+// 	option := parseOptions(opts...)
+// 	ctx := option.buildContext(emptyContext)
+// 	next := option.buildChannel()
+// 	wg := sync.WaitGroup{}
+// 	wg.Add(len(observables))
 
-	f := func(o Observable) {
-		defer wg.Done()
-		observe := o.Observe(opts...)
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case item, ok := <-observe:
-				if !ok {
-					return
-				}
-				if item.Error() {
-					next <- item
-					return
-				}
-				next <- item
-			}
-		}
-	}
+// 	f := func(o Observable) {
+// 		defer wg.Done()
+// 		observe := o.Observe(opts...)
+// 		for {
+// 			select {
+// 			case <-ctx.Done():
+// 				return
+// 			case item, ok := <-observe:
+// 				if !ok {
+// 					return
+// 				}
+// 				if item.Error() {
+// 					next <- item
+// 					return
+// 				}
+// 				next <- item
+// 			}
+// 		}
+// 	}
 
-	for _, o := range observables {
-		go f(o)
-	}
+// 	for _, o := range observables {
+// 		go f(o)
+// 	}
 
-	go func() {
-		wg.Wait()
-		close(next)
-	}()
-	return &ObservableImpl{
-		iterable: newChannelIterable(next),
-	}
-}
+// 	go func() {
+// 		wg.Wait()
+// 		close(next)
+// 	}()
+// 	return &ObservableImpl{
+// 		iterable: newChannelIterable(next),
+// 	}
+// }
 
 // Never creates an Observable that emits no items and does not terminate.
 func Never() Observable {
