@@ -180,11 +180,12 @@ func Timer[T any, N constraints.Unsigned](start, interval N) IObservable[N] {
 func CombineLatest[A any, B any](first IObservable[A], second IObservable[B]) IObservable[Tuple[A, B]] {
 	return newObservable(func(sub Subscriber[Tuple[A, B]]) {
 		var (
-			latestA A
-			latestB B
+			latestA  A
+			latestB  B
+			hasValue = [2]bool{}
+			allOk    = [2]bool{}
 		)
-		hasValue := [2]bool{}
-		allOk := [2]bool{}
+
 		nextValue := func() {
 			if hasValue[0] && hasValue[1] {
 				sub.Next(pair[A, B]{latestA, latestB})
