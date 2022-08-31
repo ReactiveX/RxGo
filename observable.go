@@ -36,6 +36,8 @@ type observableWrapper[T any] struct {
 	source ObservableFunc[T]
 }
 
+var _ IObservable[any] = (*observableWrapper[any])(nil)
+
 func (o *observableWrapper[T]) subscribeOn(
 	onNext func(T),
 	onError func(error),

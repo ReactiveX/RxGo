@@ -8,6 +8,7 @@ type IObservable[T any] interface {
 }
 
 type Subscription interface {
+	Closed() bool
 	Unsubscribe()
 }
 

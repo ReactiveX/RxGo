@@ -15,7 +15,8 @@ var (
 )
 
 func skip[T any](v T) {}
-func noop()           {}
+
+// func noop()           {}
 
 // Emits only the first count values emitted by the source Observable.
 func Take[T any, N constraints.Unsigned](count N) OperatorFunc[T, T] {
