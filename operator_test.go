@@ -111,3 +111,7 @@ func TestDelay(t *testing.T) {
 func TestThrottle(t *testing.T) {
 
 }
+
+func TestToArray(t *testing.T) {
+
+}

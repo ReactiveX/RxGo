@@ -18,7 +18,7 @@ func skip[T any](v T) {}
 func noop()           {}
 
 // Emits only the first count values emitted by the source Observable.
-func Take[N constraints.Unsigned, T any](count N) OperatorFunc[T, T] {
+func Take[T any, N constraints.Unsigned](count N) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
 		if count == 0 {
 			return EMPTY[T]()
@@ -128,7 +128,7 @@ func ElementAt[T any](index uint, defaultValue ...T) OperatorFunc[T, T] {
 				Filter(func(_ T, i uint) bool {
 					return i == index
 				}),
-				Take[uint, T](1),
+				Take[T, uint](1),
 				DefaultIfEmpty(defaultValue[0]),
 			)
 		}
@@ -139,7 +139,7 @@ func ElementAt[T any](index uint, defaultValue ...T) OperatorFunc[T, T] {
 			Filter(func(_ T, i uint) bool {
 				return i == index
 			}),
-			Take[uint, T](1),
+			Take[T, uint](1),
 		)
 	}
 }
@@ -148,7 +148,7 @@ func ElementAt[T any](index uint, defaultValue ...T) OperatorFunc[T, T] {
 // emitted by the source Observable.
 func First[T any]() OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
-		return Pipe1(source, Take[uint, T](1))
+		return Pipe1(source, Take[T, uint](1))
 	}
 }
 
@@ -724,6 +724,25 @@ func CatchError[T any](catch func(error) IObservable[T]) OperatorFunc[T, T] {
 					catch(err)
 				},
 				subscriber.Complete,
+			)
+		})
+	}
+}
+
+// Collects all source emissions and emits them as an array when the source completes.
+func ToArray[T any]() OperatorFunc[T, []T] {
+	return func(source IObservable[T]) IObservable[[]T] {
+		return newObservable(func(subscriber Subscriber[[]T]) {
+			result := make([]T, 0)
+			source.SubscribeSync(
+				func(v T) {
+					result = append(result, v)
+				},
+				subscriber.Error,
+				func() {
+					subscriber.Next(result)
+					subscriber.Complete()
+				},
 			)
 		})
 	}

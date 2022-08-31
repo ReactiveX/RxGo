@@ -1,5 +1,6 @@
 package rxgo
 
+// FIXME: please rename it to `Observable`
 type IObservable[T any] interface {
 	subscribeOn(onNext func(T), onError func(error), onComplete, finalizer func()) Subscription
 	Subscribe(onNext func(T), onError func(error), onComplete func()) Subscription
@@ -8,7 +9,6 @@ type IObservable[T any] interface {
 
 type Subscription interface {
 	Unsubscribe()
-	// Done() <-chan struct{}
 }
 
 type Observer[T any] interface {
