@@ -7,7 +7,7 @@ import (
 )
 
 // Infinite represents an infinite wait time
-var Infinite int64 = -1
+const Infinite int64 = -1
 
 // Duration represents a duration
 type Duration interface {

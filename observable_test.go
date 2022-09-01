@@ -5,7 +5,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 )
+
+func TestMain(m *testing.M) {
+	goleak.VerifyTestMain(m)
+}
 
 func TestObservable(t *testing.T) {
 	// obs := &observableWrapper[string]{}
@@ -54,7 +59,6 @@ func TestRange(t *testing.T) {
 }
 
 func TestInterval(t *testing.T) {
-
 }
 
 func TestScheduled(t *testing.T) {

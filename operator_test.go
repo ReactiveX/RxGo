@@ -6,6 +6,7 @@ import (
 
 func TestTake(t *testing.T) {
 
+	// checkObservableResults(t, Pipe1(Interval(time.Second), Take[uint, uint8](3)), []uint{0, 1, 2}, nil, true)
 }
 
 func TestTakeUntil(t *testing.T) {
@@ -13,15 +14,35 @@ func TestTakeUntil(t *testing.T) {
 }
 
 func TestTakeWhile(t *testing.T) {
-
+	result := make([]uint, 0)
+	for i := uint(50); i <= 100; i++ {
+		result = append(result, i)
+	}
+	checkObservableResults(t, Pipe1(Range[uint](1, 100), TakeWhile(func(v uint, _ uint) bool {
+		return v >= 50
+	})), result, nil, true)
 }
 
 func TestTakeLast(t *testing.T) {
+	checkObservableResults(t, Pipe1(Range[uint](1, 100), TakeLast[uint, uint](3)), []uint{98, 99, 100}, nil, true)
+}
 
+func TestSkip(t *testing.T) {
+	checkObservableResults(t, Pipe1(Range[uint](1, 10), Skip[uint](5)), []uint{6, 7, 8, 9, 10}, nil, true)
 }
 
 func TestElementAt(t *testing.T) {
+	t.Run("ElementAt with Default Value", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(EMPTY[any](), ElementAt[any](1, 10)), 10, nil, true)
+	})
 
+	t.Run("ElementAt position 2", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(Range[uint](1, 100), ElementAt[uint](2)), 3, nil, true)
+	})
+
+	t.Run("ElementAt with Error(ErrArgumentOutOfRange)", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(Range[uint](1, 10), ElementAt[uint](100)), 0, ErrArgumentOutOfRange, true)
+	})
 }
 
 func TestFirst(t *testing.T) {
