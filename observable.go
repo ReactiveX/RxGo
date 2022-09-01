@@ -14,30 +14,13 @@ func newObservable[T any](obs ObservableFunc[T]) IObservable[T] {
 	return &observableWrapper[T]{source: obs}
 }
 
-type Tuple[A any, B any] interface {
-	First() A
-	Second() B
-}
-
-type pair[A any, B any] struct {
-	first  A
-	second B
-}
-
-func (p pair[A, B]) First() A {
-	return p.first
-}
-
-func (p pair[A, B]) Second() B {
-	return p.second
-}
-
 type observableWrapper[T any] struct {
 	source ObservableFunc[T]
 }
 
 var _ IObservable[any] = (*observableWrapper[any])(nil)
 
+//nolint:golint,unused
 func (o *observableWrapper[T]) subscribeOn(
 	onNext func(T),
 	onError func(error),
@@ -188,7 +171,7 @@ func CombineLatest[A any, B any](first IObservable[A], second IObservable[B]) IO
 
 		nextValue := func() {
 			if hasValue[0] && hasValue[1] {
-				subscriber.Next(pair[A, B]{latestA, latestB})
+				subscriber.Next(NewTuple(latestA, latestB))
 			}
 		}
 		checkComplete := func() {

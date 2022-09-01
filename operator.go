@@ -502,6 +502,11 @@ func Map[T any, R any](mapper func(T, uint) (R, error)) OperatorFunc[T, R] {
 	}
 }
 
+// Used to perform side-effects for notifications from the source observable
+func Tap() {
+
+}
+
 // Returns an observable that asserts that only one value is emitted from the observable
 // that matches the predicate. If no predicate is provided, then it will assert that the
 // observable only emits one value.
@@ -809,6 +814,62 @@ func CatchError[T any](catch func(error) IObservable[T]) OperatorFunc[T, T] {
 					catch(err)
 				},
 				subscriber.Complete,
+			)
+		})
+	}
+}
+
+// Combines the source Observable with other Observables to create an Observable
+// whose values are calculated from the latest values of each, only when the source emits.
+func WithLatestFrom[A any, B any](input IObservable[B]) OperatorFunc[A, Tuple[A, B]] {
+	return func(source IObservable[A]) IObservable[Tuple[A, B]] {
+		return newObservable(func(subscriber Subscriber[Tuple[A, B]]) {
+			var (
+				allOk        [2]bool
+				latestA      A
+				latestB      B
+				subscription Subscription
+			)
+
+			subscription = input.subscribeOn(func(b B) {
+				latestB = b
+				allOk[1] = true
+			}, func(err error) {}, func() {
+				subscription.Unsubscribe()
+			}, func() {})
+
+			source.SubscribeSync(
+				func(a A) {
+					latestA = a
+					allOk[0] = true
+					if allOk[0] && allOk[1] {
+						subscriber.Next(NewTuple(latestA, latestB))
+					}
+				},
+				subscriber.Error,
+				func() {
+					subscription.Unsubscribe()
+					subscriber.Complete()
+				},
+			)
+		})
+	}
+}
+
+// Attaches a timestamp to each item emitted by an observable indicating when it was emitted
+func Timestamp[T any]() OperatorFunc[T, []T] {
+	return func(source IObservable[T]) IObservable[[]T] {
+		return newObservable(func(subscriber Subscriber[[]T]) {
+			result := make([]T, 0)
+			source.SubscribeSync(
+				func(v T) {
+					result = append(result, v)
+				},
+				subscriber.Error,
+				func() {
+					subscriber.Next(result)
+					subscriber.Complete()
+				},
 			)
 		})
 	}

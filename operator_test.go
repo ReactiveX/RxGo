@@ -1,6 +1,7 @@
 package rxgo
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -96,7 +97,14 @@ func TestIsEmpty(t *testing.T) {
 }
 
 func TestDefaultIfEmpty(t *testing.T) {
+	t.Run("DefaultIfEmpty with any", func(t *testing.T) {
+		str := "hello world"
+		checkObservableResult(t, Pipe1(EMPTY[any](), DefaultIfEmpty[any](str)), any(str), nil, true)
+	})
 
+	t.Run("DefaultIfEmpty with NonEmpty", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(Range[uint](1, 3), DefaultIfEmpty[uint](100)), []uint{1, 2, 3}, nil, true)
+	})
 }
 
 func TestDistinctUntilChanged(t *testing.T) {
@@ -108,6 +116,36 @@ func TestFilter(t *testing.T) {
 }
 
 func TestMap(t *testing.T) {
+	t.Run("Map with string", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			Range[uint](1, 5),
+			Map(func(v uint, _ uint) (string, error) {
+				return fmt.Sprintf("Number(%d)", v), nil
+			}),
+		), []string{
+			"Number(1)",
+			"Number(2)",
+			"Number(3)",
+			"Number(4)",
+			"Number(5)",
+		}, nil, true)
+	})
+
+	t.Run("Map with Error", func(t *testing.T) {
+		err := fmt.Errorf("omg")
+		checkObservableResults(t, Pipe1(
+			Range[uint](1, 5),
+			Map(func(v uint, _ uint) (string, error) {
+				if v == 3 {
+					return "", err
+				}
+				return fmt.Sprintf("Number(%d)", v), nil
+			}),
+		), []string{"Number(1)", "Number(2)"}, err, true)
+	})
+}
+
+func TestTap(t *testing.T) {
 
 }
 
@@ -143,6 +181,37 @@ func TestThrottle(t *testing.T) {
 
 }
 
-func TestToArray(t *testing.T) {
+func TestWithLatestFrom(t *testing.T) {
+	// timer := Interval(time.Millisecond * 1)
+	// Pipe2(
+	// 	rxgo.Pipe1(
+	// 		rxgo.Interval(time.Second*2),
+	// 		rxgo.Map(func(i uint, _ uint) (string, error) {
+	// 			return string(rune('A' + i)), nil
+	// 		}),
+	// 	),
+	// 	rxgo.WithLatestFrom[string](timer),
+	// 	rxgo.Take[rxgo.Tuple[string, uint], uint](10),
+	// ).SubscribeSync(func(f rxgo.Tuple[string, uint]) {
+	// 	log.Println("[", f.First(), f.Second(), "]")
+	// }, func(err error) {}, func() {})
+}
 
+func TestTimestamp(t *testing.T) {
+
+}
+
+func TestToArray(t *testing.T) {
+	t.Run("ToArray with Numbers", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(Range[uint](1, 5), ToArray[uint]()), []uint{1, 2, 3, 4, 5}, nil, true)
+	})
+
+	t.Run("ToArray with Numbers", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(newObservable(func(subscriber Subscriber[string]) {
+			for i := 1; i <= 5; i++ {
+				subscriber.Next(string(rune('A' - 1 + i)))
+			}
+			subscriber.Complete()
+		}), ToArray[string]()), []string{"A", "B", "C", "D", "E"}, nil, true)
+	})
 }
