@@ -503,8 +503,25 @@ func Map[T any, R any](mapper func(T, uint) (R, error)) OperatorFunc[T, R] {
 }
 
 // Used to perform side-effects for notifications from the source observable
-func Tap() {
-
+func Tap[T any](obs Observer[T]) OperatorFunc[T, T] {
+	return func(source IObservable[T]) IObservable[T] {
+		return newObservable(func(subscriber Subscriber[T]) {
+			source.SubscribeSync(
+				func(v T) {
+					obs.Next(v)
+					subscriber.Next(v)
+				},
+				func(err error) {
+					obs.Error(err)
+					subscriber.Error(err)
+				},
+				func() {
+					obs.Complete()
+					subscriber.Complete()
+				},
+			)
+		})
+	}
 }
 
 // Returns an observable that asserts that only one value is emitted from the observable
@@ -857,19 +874,15 @@ func WithLatestFrom[A any, B any](input IObservable[B]) OperatorFunc[A, Tuple[A,
 }
 
 // Attaches a timestamp to each item emitted by an observable indicating when it was emitted
-func Timestamp[T any]() OperatorFunc[T, []T] {
-	return func(source IObservable[T]) IObservable[[]T] {
-		return newObservable(func(subscriber Subscriber[[]T]) {
-			result := make([]T, 0)
+func Timestamp[T any]() OperatorFunc[T, Timestamper[T]] {
+	return func(source IObservable[T]) IObservable[Timestamper[T]] {
+		return newObservable(func(subscriber Subscriber[Timestamper[T]]) {
 			source.SubscribeSync(
 				func(v T) {
-					result = append(result, v)
+					subscriber.Next(NewTimestamp(v))
 				},
 				subscriber.Error,
-				func() {
-					subscriber.Next(result)
-					subscriber.Complete()
-				},
+				subscriber.Complete,
 			)
 		})
 	}
