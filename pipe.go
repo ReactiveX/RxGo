@@ -8,7 +8,10 @@ type IObservable[T any] interface {
 }
 
 type Subscription interface {
+	// determine whether the stream has closed or not
 	Closed() bool
+
+	// to unsubscribe the stream
 	Unsubscribe()
 }
 
@@ -23,8 +26,16 @@ type Subscriber[T any] interface {
 	Observer[T]
 }
 
-type OperatorFunc[I any, O any] func(IObservable[I]) IObservable[O]
+type (
+	OnNextFunc[T any] func(T)
+	// OnErrorFunc defines a function that computes a value from an error.
+	OnErrorFunc                func(error)
+	OnCompleteFunc             func()
+	FinalizeFunc               func()
+	OperatorFunc[I any, O any] func(IObservable[I]) IObservable[O]
+)
 
+// Pipe
 func Pipe[S any, O1 any](
 	stream IObservable[S],
 	f1 OperatorFunc[S, any],

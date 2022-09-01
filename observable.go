@@ -72,17 +72,19 @@ observe:
 				sub.dst.Error(ctx.Err())
 			}
 			break observe
+
 		case item, ok := <-sub.ForEach():
 			if !ok {
 				sub.dst.Complete()
-				return
+				break observe
 			}
 
 			if err := item.Err(); err != nil {
 				sub.dst.Error(err)
-			} else {
-				sub.dst.Next(item.Value())
+				break observe
 			}
+
+			sub.dst.Next(item.Value())
 		}
 	}
 }
