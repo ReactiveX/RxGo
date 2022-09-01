@@ -22,8 +22,8 @@ github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO
 github.com/teivah/onecontext v1.3.0 h1:tbikMhAlo6VhAuEGCvhc8HlTnpX4xTNPTOseWuhO1J0=
 github.com/teivah/onecontext v1.3.0/go.mod h1:hoW1nmdPVK/0jrvGtcx8sCKYs2PiS4z0zzfdeuEVyb0=
 go.uber.org/goleak v1.1.10/go.mod h1:8a7PlsEVH3e/a/GLqe5IIrQx6GzcnRmZEufDUTk4A7A=
-go.uber.org/goleak v1.1.13-0.20220818153657-4e045fd39b9e h1:p7ppAv1xsKUkZ7ehzsIxrA1QeCiYKK7hLhTOPnWXtVM=
-go.uber.org/goleak v1.1.13-0.20220818153657-4e045fd39b9e/go.mod h1:Lwb+k0kNlHXIkENoITDzbUq92PhTAYbwLPKAfOONLj0=
+go.uber.org/goleak v1.1.13-0.20220830000154-2dfebe88ddf1 h1:C8B13ybiygN/h8nz1l9ZdbCuDgqfARsXZHfjKvSbUl4=
+go.uber.org/goleak v1.1.13-0.20220830000154-2dfebe88ddf1/go.mod h1:Lwb+k0kNlHXIkENoITDzbUq92PhTAYbwLPKAfOONLj0=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/exp v0.0.0-20220827204233-334a2380cb91 h1:tnebWN09GYg9OLPss1KXj8txwZc6X6uMr6VFdcGNbHw=
 golang.org/x/exp v0.0.0-20220827204233-334a2380cb91/go.mod h1:cyybsKvd6eL0RnXn6p/Grxp8F5bW7iYuBgsNCOHpMYE=

@@ -7,7 +7,7 @@ require (
 	github.com/emirpasic/gods v1.12.0
 	github.com/stretchr/testify v1.8.0
 	github.com/teivah/onecontext v1.3.0
-	go.uber.org/goleak v1.1.13-0.20220818153657-4e045fd39b9e
+	go.uber.org/goleak v1.1.13-0.20220830000154-2dfebe88ddf1
 	golang.org/x/exp v0.0.0-20220827204233-334a2380cb91
 	golang.org/x/sync v0.0.0-20220819030929-7fc1605a5dde
 )

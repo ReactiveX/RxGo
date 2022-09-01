@@ -1,22 +1,13 @@
 package rxgo
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
 	"golang.org/x/exp/constraints"
 )
 
-var (
-	ErrEmpty    = fmt.Errorf("rxgo: empty value")
-	ErrNotFound = fmt.Errorf("rxgo: no values match")
-	ErrSequence = fmt.Errorf("rxgo: too many values match")
-)
-
 func skip[T any](v T) {}
-
-// func noop()           {}
 
 // Emits only the first count values emitted by the source Observable.
 func Take[T any, N constraints.Unsigned](count N) OperatorFunc[T, T] {
@@ -120,28 +111,62 @@ func TakeLast[T any, N constraints.Unsigned](count N) OperatorFunc[T, T] {
 	}
 }
 
-// Emits the single value at the specified index in a sequence of emissions
-// from the source Observable.
-func ElementAt[T any](index uint, defaultValue ...T) OperatorFunc[T, T] {
-	if len(defaultValue) > 0 {
-		return func(source IObservable[T]) IObservable[T] {
-			return Pipe3(source,
-				Filter(func(_ T, i uint) bool {
-					return i == index
-				}),
-				Take[T, uint](1),
-				DefaultIfEmpty(defaultValue[0]),
-			)
-		}
-	}
-
+// Returns an Observable that skips the first count items emitted by the source Observable.
+func Skip[T any](count uint) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
-		return Pipe2(source,
-			Filter(func(_ T, i uint) bool {
-				return i == index
-			}),
-			Take[T, uint](1),
-		)
+		return newObservable(func(subscriber Subscriber[T]) {
+			var (
+				index uint
+			)
+			source.SubscribeSync(
+				func(v T) {
+					index++
+					if count >= index {
+						return
+					}
+					subscriber.Next(v)
+				},
+				subscriber.Error,
+				subscriber.Complete,
+			)
+		})
+	}
+}
+
+// Emits the single value at the specified index in a sequence of emissions from the source Observable.
+func ElementAt[T any](index uint, defaultValue ...T) OperatorFunc[T, T] {
+	return func(source IObservable[T]) IObservable[T] {
+		return newObservable(func(subscriber Subscriber[T]) {
+			var (
+				i       uint
+				emitted bool
+			)
+			source.SubscribeSync(
+				func(v T) {
+					if index == i {
+						subscriber.Next(v)
+						subscriber.Complete()
+						emitted = true
+						return
+					}
+					i++
+				},
+				subscriber.Error,
+				func() {
+					defer subscriber.Complete()
+					if emitted {
+						return
+					}
+
+					if len(defaultValue) > 0 {
+						subscriber.Next(defaultValue[0])
+						return
+					}
+
+					subscriber.Error(ErrArgumentOutOfRange)
+				},
+			)
+		})
 	}
 }
 
