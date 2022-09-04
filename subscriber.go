@@ -4,42 +4,48 @@ import (
 	"sync"
 )
 
-type safeSubscriber[T any] struct {
-	// prevent concurrent race on unsubscribe
+type subscriber[T any] struct {
+	// prevent data race
 	mu sync.RWMutex
 
-	// signal to indicate the subscribe has ended
-	// dispose <-chan struct{}
-
+	// channel to transfer data
 	ch chan DataValuer[T]
+
+	// channel to indentify it has stopped
+	stop chan struct{}
+
+	isStopped bool
 
 	// determine the channel was closed
 	closed bool
-
-	dst Observer[T]
 }
 
-func NewSafeSubscriber[T any](onNext func(T), onError func(error), onComplete func()) *safeSubscriber[T] {
-	sub := &safeSubscriber[T]{
-		ch: make(chan DataValuer[T]),
-		dst: &consumerObserver[T]{
-			onNext:     onNext,
-			onError:    onError,
-			onComplete: onComplete,
-		},
+func NewSubscriber[T any]() *subscriber[T] {
+	return &subscriber[T]{
+		ch:   make(chan DataValuer[T]),
+		stop: make(chan struct{}, 1),
 	}
-	return sub
 }
 
-func (s *safeSubscriber[T]) Closed() bool {
-	return s.closed
+func (s *subscriber[T]) Stop() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.isStopped {
+		return
+	}
+	s.isStopped = true
+	close(s.stop)
 }
 
-func (s *safeSubscriber[T]) ForEach() <-chan DataValuer[T] {
+func (s *subscriber[T]) Closed() <-chan struct{} {
+	return s.stop
+}
+
+func (s *subscriber[T]) ForEach() <-chan DataValuer[T] {
 	return s.ch
 }
 
-func (s *safeSubscriber[T]) Next(v T) {
+func (s *subscriber[T]) Next(v T) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.closed {
@@ -48,35 +54,57 @@ func (s *safeSubscriber[T]) Next(v T) {
 	emitData(v, s.ch)
 }
 
-func (s *safeSubscriber[T]) Error(err error) {
+func (s *subscriber[T]) Error(err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.closed {
 		return
 	}
 	emitError(err, s.ch)
-	if !s.closed {
-		s.closed = true
-		close(s.ch)
-	}
+	s.closeChannel()
 }
 
-func (s *safeSubscriber[T]) Complete() {
+func (s *subscriber[T]) Complete() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed {
+		return
+	}
+	emitDone(s.ch)
 	s.closeChannel()
 }
 
 // this will close the stream and stop the emission of the stream data
-func (s *safeSubscriber[T]) Unsubscribe() {
+func (s *subscriber[T]) Unsubscribe() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed {
+		return
+	}
 	s.closeChannel()
 }
 
-func (s *safeSubscriber[T]) closeChannel() {
-	s.mu.Lock()
-	if !s.closed {
-		s.closed = true
-		close(s.ch)
+func (s *subscriber[T]) closeChannel() {
+	s.closed = true
+	close(s.ch)
+}
+
+type safeSubscriber[T any] struct {
+	*subscriber[T]
+
+	dst Observer[T]
+}
+
+func NewSafeSubscriber[T any](onNext OnNextFunc[T], onError OnErrorFunc, onComplete OnCompleteFunc) *safeSubscriber[T] {
+	sub := &safeSubscriber[T]{
+		subscriber: NewSubscriber[T](),
+		dst: &consumerObserver[T]{
+			onNext:     onNext,
+			onError:    onError,
+			onComplete: onComplete,
+		},
 	}
-	s.mu.Unlock()
+	return sub
 }
 
 type consumerObserver[T any] struct {
