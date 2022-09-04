@@ -31,3 +31,11 @@ func (o Optional[T]) Get() (T, bool) {
 
 	return o.v, true
 }
+
+func Some[T any](v T) Optional[T] {
+	return Optional[T]{v: v}
+}
+
+func None[T any]() Optional[T] {
+	return Optional[T]{none: true}
+}
