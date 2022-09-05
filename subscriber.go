@@ -23,7 +23,7 @@ type subscriber[T any] struct {
 func NewSubscriber[T any]() *subscriber[T] {
 	return &subscriber[T]{
 		ch:   make(chan DataValuer[T]),
-		stop: make(chan struct{}, 1),
+		stop: make(chan struct{}),
 	}
 }
 
@@ -45,34 +45,29 @@ func (s *subscriber[T]) ForEach() <-chan DataValuer[T] {
 	return s.ch
 }
 
-func (s *subscriber[T]) Next(v T) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.closed {
-		return
-	}
-	emitData(v, s.ch)
+func (s *subscriber[T]) Send() chan<- DataValuer[T] {
+	return s.ch
 }
 
-func (s *subscriber[T]) Error(err error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.closed {
-		return
-	}
-	emitError(err, s.ch)
-	s.closeChannel()
-}
+// func (s *subscriber[T]) Error(err error) {
+// 	s.mu.Lock()
+// 	defer s.mu.Unlock()
+// 	if s.closed {
+// 		return
+// 	}
+// 	emitError(err, s.ch)
+// 	s.closeChannel()
+// }
 
-func (s *subscriber[T]) Complete() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.closed {
-		return
-	}
-	emitDone(s.ch)
-	s.closeChannel()
-}
+// func (s *subscriber[T]) Complete() {
+// 	s.mu.Lock()
+// 	defer s.mu.Unlock()
+// 	if s.closed {
+// 		return
+// 	}
+// 	emitDone(s.ch)
+// 	s.closeChannel()
+// }
 
 // this will close the stream and stop the emission of the stream data
 func (s *subscriber[T]) Unsubscribe() {

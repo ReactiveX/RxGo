@@ -1,16 +1,22 @@
 package rxgo
 
+type (
+	OnNextFunc[T any] func(T)
+	// OnErrorFunc defines a function that computes a value from an error.
+	OnErrorFunc                func(error)
+	OnCompleteFunc             func()
+	FinalizerFunc              func()
+	OperatorFunc[I any, O any] func(IObservable[I]) IObservable[O]
+)
+
 // FIXME: please rename it to `Observable`
 type IObservable[T any] interface {
-	subscribeOn(onNext func(T), onError func(error), onComplete, finalizer func()) Subscription
-	Subscribe(onNext func(T), onError func(error), onComplete func()) Subscription
+	subscribeOn() Subscriber[T]
 	SubscribeSync(onNext func(T), onError func(error), onComplete func())
+	// Subscribe(onNext func(T), onError func(error), onComplete func()) Subscription
 }
 
 type Subscription interface {
-	// determine whether the stream has closed or not
-	Closed() bool
-
 	// to unsubscribe the stream
 	Unsubscribe()
 }
@@ -22,18 +28,13 @@ type Observer[T any] interface {
 }
 
 type Subscriber[T any] interface {
-	Closed() bool
-	Observer[T]
+	Stop()
+	Send() chan<- DataValuer[T]
+	ForEach() <-chan DataValuer[T]
+	Closed() <-chan struct{}
+	// Unsubscribe()
+	// Observer[T]
 }
-
-type (
-	OnNextFunc[T any] func(T)
-	// OnErrorFunc defines a function that computes a value from an error.
-	OnErrorFunc                func(error)
-	OnCompleteFunc             func()
-	FinalizeFunc               func()
-	OperatorFunc[I any, O any] func(IObservable[I]) IObservable[O]
-)
 
 // Pipe
 func Pipe[S any, O1 any](

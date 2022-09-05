@@ -26,14 +26,14 @@ func (d streamData[T]) Done() bool {
 	return d.done
 }
 
-func emitData[T any](v T, ch chan<- DataValuer[T]) {
-	ch <- &streamData[T]{v: v}
+func newData[T any](v T) DataValuer[T] {
+	return &streamData[T]{v: v}
 }
 
-func emitError[T any](err error, ch chan<- DataValuer[T]) {
-	ch <- &streamData[T]{err: err}
+func newError[T any](err error) DataValuer[T] {
+	return &streamData[T]{err: err}
 }
 
-func emitDone[T any](ch chan<- DataValuer[T]) {
-	ch <- &streamData[T]{done: true}
+func newComplete[T any]() DataValuer[T] {
+	return &streamData[T]{done: true}
 }

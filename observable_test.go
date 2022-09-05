@@ -3,6 +3,7 @@ package rxgo
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
@@ -18,11 +19,6 @@ func TestObservable(t *testing.T) {
 }
 
 func TestNever(t *testing.T) {
-	// ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	// defer cancel()
-	// NEVER[any]().SubscribeSync(func(a any) {}, func(err error) {}, func() {
-	// 	log.Println("Completed")
-	// })
 }
 
 func TestEmpty(t *testing.T) {
@@ -33,7 +29,7 @@ func TestThrownError(t *testing.T) {
 	var v = fmt.Errorf("uncaught error")
 	checkObservableResults(t, ThrownError[string](func() error {
 		return v
-	}), []string{}, v, true)
+	}), []string{}, v, false)
 }
 
 func TestDefer(t *testing.T) {
@@ -41,9 +37,9 @@ func TestDefer(t *testing.T) {
 	obs := Defer(func() IObservable[string] {
 		return newObservable(func(subscriber Subscriber[string]) {
 			for _, v := range values {
-				subscriber.Next(v)
+				subscriber.Send() <- newData(v)
 			}
-			subscriber.Complete()
+			subscriber.Send() <- newComplete[string]()
 		})
 	})
 	checkObservableResults(t, obs, values, nil, true)
@@ -58,7 +54,18 @@ func TestRange(t *testing.T) {
 	})
 }
 
+// func TestCombineLatest(t *testing.T) {
+// 	// checkObservableResults(t, CombineLatest(Range[uint](0, 3), Range[uint](0, 3)), []Tuple[uint, uint]{
+// 	// 	NewTuple[uint, uint](0, 0),
+// 	// 	NewTuple[uint, uint](0, 1),
+// 	// 	NewTuple[uint, uint](1, 1),
+// 	// 	NewTuple[uint, uint](2, 1),
+// 	// 	NewTuple[uint, uint](2, 2),
+// 	// }, nil, true)
+// }
+
 func TestInterval(t *testing.T) {
+	checkObservableResults(t, Pipe1(Interval(time.Millisecond), Take[uint](10)), []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, nil, true)
 }
 
 func TestScheduled(t *testing.T) {

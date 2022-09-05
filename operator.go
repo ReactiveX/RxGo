@@ -1,180 +1,83 @@
 package rxgo
 
 import (
-	"sync"
 	"time"
 
 	"golang.org/x/exp/constraints"
 )
 
-func skip[T any](v T) {}
-
-// Emits only the first count values emitted by the source Observable.
-func Take[T any, N constraints.Unsigned](count N) OperatorFunc[T, T] {
-	return func(source IObservable[T]) IObservable[T] {
-		if count == 0 {
-			return EMPTY[T]()
-		}
-
-		return newObservable(func(subscriber Subscriber[T]) {
-			seen := N(0)
-			source.SubscribeSync(
-				func(v T) {
-					seen++
-					if seen <= count {
-						subscriber.Next(v)
-						if count <= seen {
-							subscriber.Complete()
-						}
-					}
-				},
-				subscriber.Error,
-				subscriber.Complete,
-			)
-		})
-	}
-}
-
-// Emits the values emitted by the source Observable until a notifier Observable emits a value.
-func TakeUntil[T any, R any](notifier IObservable[R]) OperatorFunc[T, T] {
-	return func(source IObservable[T]) IObservable[T] {
-		return newObservable(func(subscriber Subscriber[T]) {
-			var isComplete bool
-
-			subscription := source.Subscribe(
-				func(v T) {
-					subscriber.Next(v)
-				},
-				subscriber.Error,
-				func() {
-					isComplete = true
-					subscriber.Complete()
-				},
-			)
-
-			notifier.SubscribeSync(func(v R) {
-				if !isComplete {
-					subscription.Unsubscribe()
-				}
-			}, func(err error) {
-				subscription.Unsubscribe()
-			}, func() {
-				subscription.Unsubscribe()
-			})
-		})
-	}
-}
-
-// Emits values emitted by the source Observable so long as each value satisfies the given predicate,
-// and then completes as soon as this predicate is not satisfied.
-func TakeWhile[T any](predicate func(value T, index uint) bool) OperatorFunc[T, T] {
-	return func(source IObservable[T]) IObservable[T] {
-		return newObservable(func(subscriber Subscriber[T]) {
-			var index uint
-			source.SubscribeSync(
-				func(v T) {
-					if predicate(v, index) {
-						subscriber.Next(v)
-					}
-					index++
-				},
-				subscriber.Error,
-				subscriber.Complete,
-			)
-		})
-	}
-}
-
-// Waits for the source to complete, then emits the last N values from the source,
-// as specified by the count argument.
-func TakeLast[T any, N constraints.Unsigned](count N) OperatorFunc[T, T] {
-	return func(source IObservable[T]) IObservable[T] {
-		return newObservable(func(subscriber Subscriber[T]) {
-			values := make([]T, count)
-			source.SubscribeSync(
-				func(v T) {
-					if N(len(values)) >= count {
-						// shift the item from queue
-						values = values[1:]
-					}
-					values = append(values, v)
-				},
-				subscriber.Error,
-				func() {
-					for _, v := range values {
-						subscriber.Next(v)
-					}
-					subscriber.Complete()
-				},
-			)
-		})
-	}
-}
-
-// Returns an Observable that skips the first count items emitted by the source Observable.
-func Skip[T any](count uint) OperatorFunc[T, T] {
-	return func(source IObservable[T]) IObservable[T] {
-		return newObservable(func(subscriber Subscriber[T]) {
-			var (
-				index uint
-			)
-			source.SubscribeSync(
-				func(v T) {
-					index++
-					if count >= index {
-						return
-					}
-					subscriber.Next(v)
-				},
-				subscriber.Error,
-				subscriber.Complete,
-			)
-		})
-	}
-}
-
 // Emits the single value at the specified index in a sequence of emissions from the source Observable.
-func ElementAt[T any](index uint, defaultValue ...T) OperatorFunc[T, T] {
+func ElementAt[T any](pos uint, defaultValue ...T) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
-		return newObservable(func(subscriber Subscriber[T]) {
-			var (
-				i       uint
-				emitted bool
-			)
-			source.SubscribeSync(
-				func(v T) {
-					if index == i {
-						subscriber.Next(v)
-						subscriber.Complete()
-						emitted = true
-						return
-					}
-					i++
-				},
-				subscriber.Error,
-				func() {
-					defer subscriber.Complete()
-					if emitted {
-						return
-					}
+		var (
+			index    uint
+			notEmpty bool
+		)
+		return createOperatorFunc(
+			source,
+			func(obs Observer[T], v T) {
+				if index == pos {
+					obs.Next(v)
+					obs.Complete()
+					notEmpty = true
+					return
+				}
+				index++
+			},
+			func(obs Observer[T], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[T]) {
+				if notEmpty {
+					return
+				}
 
-					if len(defaultValue) > 0 {
-						subscriber.Next(defaultValue[0])
-						return
-					}
+				if len(defaultValue) > 0 {
+					obs.Next(defaultValue[0])
+					obs.Complete()
+					return
+				}
 
-					subscriber.Error(ErrArgumentOutOfRange)
-				},
-			)
-		})
+				obs.Error(ErrArgumentOutOfRange)
+			},
+		)
 	}
 }
 
 // Emits only the first value (or the first value that meets some condition)
 // emitted by the source Observable.
-func First[T any]() OperatorFunc[T, T] {
+func First[T any](predicate func(value T, index uint) bool, defaultValue ...T) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
-		return Pipe1(source, Take[T, uint](1))
+		var (
+			index    uint
+			hasValue bool
+		)
+		return createOperatorFunc(
+			source,
+			func(obs Observer[T], v T) {
+				if !hasValue && predicate != nil && predicate(v, index) {
+					hasValue = true
+					obs.Next(v)
+					obs.Complete()
+					return
+				}
+				index++
+			},
+			func(obs Observer[T], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[T]) {
+				if !hasValue {
+					if len(defaultValue) == 0 {
+						obs.Error(ErrEmpty)
+						return
+					}
+
+					obs.Next(defaultValue[0])
+				}
+				obs.Complete()
+			},
+		)
 	}
 }
 
@@ -185,56 +88,68 @@ func First[T any]() OperatorFunc[T, T] {
 // that satisfies the predicate.
 func Last[T any]() OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
-		return Pipe1(source, TakeLast[T, uint](1))
+		return Pipe1(source, TakeLast[T](1))
 	}
 }
 
 // Emits only the first value emitted by the source Observable that meets some condition.
-func Find[T any](predicate func(T, uint) bool) OperatorFunc[T, T] {
-	return func(source IObservable[T]) IObservable[T] {
-		return newObservable(func(subscriber Subscriber[T]) {
-			var index uint
-			source.SubscribeSync(
-				func(v T) {
-					if predicate(v, index) {
-						subscriber.Next(v)
-						subscriber.Complete()
-					}
-					index++
-				},
-				subscriber.Error,
-				subscriber.Complete,
-			)
-		})
+func Find[T any](predicate func(T, uint) bool) OperatorFunc[T, Optional[T]] {
+	return func(source IObservable[T]) IObservable[Optional[T]] {
+		var (
+			found bool
+			index uint
+		)
+		return createOperatorFunc(
+			source,
+			func(obs Observer[Optional[T]], v T) {
+				if predicate(v, index) {
+					found = true
+					obs.Next(Some(v))
+					obs.Complete()
+					return
+				}
+				index++
+			},
+			func(obs Observer[Optional[T]], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[Optional[T]]) {
+				if !found {
+					obs.Next(None[T]())
+				}
+				obs.Complete()
+			},
+		)
 	}
 }
 
 // Emits only the index of the first value emitted by the source Observable that meets some condition.
 func FindIndex[T any](predicate func(T, uint) bool) OperatorFunc[T, int] {
+	var (
+		index uint
+		found bool
+	)
 	return func(source IObservable[T]) IObservable[int] {
-		return newObservable(func(subscriber Subscriber[int]) {
-			var (
-				index uint
-				ok    bool
-			)
-			source.SubscribeSync(
-				func(v T) {
-					if predicate(v, index) {
-						ok = true
-						subscriber.Next(int(index))
-						subscriber.Complete()
-					}
-					index++
-				},
-				subscriber.Error,
-				func() {
-					if !ok {
-						subscriber.Next(-1)
-					}
-					subscriber.Complete()
-				},
-			)
-		})
+		return createOperatorFunc(
+			source,
+			func(obs Observer[int], v T) {
+				if predicate(v, index) {
+					found = true
+					obs.Next(int(index))
+					obs.Complete()
+				}
+				index++
+			},
+			func(obs Observer[int], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[int]) {
+				if !found {
+					obs.Next(-1)
+				}
+				obs.Complete()
+			},
+		)
 	}
 }
 
@@ -243,33 +158,33 @@ func FindIndex[T any](predicate func(T, uint) bool) OperatorFunc[T, int] {
 // and when source Observable completes it emits a single item: the item with the smallest value.
 func Min[T any](comparer func(a T, b T) int8) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
-		return newObservable(func(subscriber Subscriber[T]) {
-			var (
-				lastValue T
-				first     = true
-			)
-			source.SubscribeSync(
-				func(v T) {
-					if first {
-						lastValue = v
-						first = false
-						return
-					}
+		var (
+			lastValue T
+			first     = true
+		)
+		return createOperatorFunc(
+			source,
+			func(obs Observer[T], v T) {
+				if first {
+					lastValue = v
+					first = false
+					return
+				}
 
-					switch comparer(lastValue, v) {
-					case 1:
-						fallthrough
-					default:
-						lastValue = v
-					}
-				},
-				subscriber.Error,
-				func() {
-					subscriber.Next(lastValue)
-					subscriber.Complete()
-				},
-			)
-		})
+				switch comparer(lastValue, v) {
+				case 1:
+					lastValue = v
+				default:
+				}
+			},
+			func(obs Observer[T], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[T]) {
+				obs.Next(lastValue)
+				obs.Complete()
+			},
+		)
 	}
 }
 
@@ -278,33 +193,34 @@ func Min[T any](comparer func(a T, b T) int8) OperatorFunc[T, T] {
 // and when source Observable completes it emits a single item: the item with the largest value.
 func Max[T any](comparer func(a T, b T) int8) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
-		return newObservable(func(subscriber Subscriber[T]) {
-			var (
-				lastValue T
-				first     = true
-			)
-			source.SubscribeSync(
-				func(v T) {
-					if first {
-						lastValue = v
-						first = false
-						return
-					}
+		var (
+			lastValue T
+			first     = true
+		)
+		return createOperatorFunc(
+			source,
+			func(obs Observer[T], v T) {
+				if first {
+					lastValue = v
+					first = false
+					return
+				}
 
-					switch comparer(lastValue, v) {
-					case -1:
-						lastValue = v
-					default:
-						lastValue = v
-					}
-				},
-				subscriber.Error,
-				func() {
-					subscriber.Next(lastValue)
-					subscriber.Complete()
-				},
-			)
-		})
+				switch comparer(lastValue, v) {
+				case -1:
+					lastValue = v
+				default:
+					lastValue = v
+				}
+			},
+			func(obs Observer[T], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[T]) {
+				obs.Next(lastValue)
+				obs.Complete()
+			},
+		)
 	}
 }
 
@@ -318,38 +234,42 @@ func Count[T any](predicate ...func(v T, index uint) bool) OperatorFunc[T, uint]
 	}
 
 	return func(source IObservable[T]) IObservable[uint] {
-		return newObservable(func(subscriber Subscriber[uint]) {
-			var (
-				count uint
-				index uint
-			)
-			source.SubscribeSync(
-				func(v T) {
-					if cb(v, index) {
-						count++
-					}
-					index++
-				},
-				subscriber.Error,
-				func() {
-					subscriber.Next(count)
-					subscriber.Complete()
-				},
-			)
-		})
+		var (
+			count uint
+			index uint
+		)
+		return createOperatorFunc(
+			source,
+			func(obs Observer[uint], v T) {
+				if cb(v, index) {
+					count++
+				}
+				index++
+			},
+			func(obs Observer[uint], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[uint]) {
+				obs.Next(count)
+				obs.Complete()
+			},
+		)
 	}
 }
 
 // Ignores all items emitted by the source Observable and only passes calls of complete or error.
 func IgnoreElements[T any]() OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
-		return newObservable(func(subscriber Subscriber[T]) {
-			source.SubscribeSync(
-				skip[T],
-				subscriber.Error,
-				subscriber.Complete,
-			)
-		})
+		return createOperatorFunc(
+			source,
+			func(obs Observer[T], v T) {},
+			func(obs Observer[T], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[T]) {
+				obs.Complete()
+			},
+		)
 	}
 }
 
@@ -358,20 +278,20 @@ func IgnoreElements[T any]() OperatorFunc[T, T] {
 func Every[T any](predicate func(value T, count uint) bool) OperatorFunc[T, bool] {
 	return func(source IObservable[T]) IObservable[bool] {
 		return newObservable(func(subscriber Subscriber[bool]) {
-			var (
-				allOk = true
-				index uint
-			)
-			source.SubscribeSync(
-				func(t T) {
-					allOk = allOk && predicate(t, index)
-				},
-				subscriber.Error,
-				func() {
-					subscriber.Next(allOk)
-					subscriber.Complete()
-				},
-			)
+			// var (
+			// 	allOk = true
+			// 	index uint
+			// )
+			// source.SubscribeSync(
+			// 	func(t T) {
+			// 		allOk = allOk && predicate(t, index)
+			// 	},
+			// 	subscriber.Error,
+			// 	func() {
+			// 		subscriber.Next(allOk)
+			// 		subscriber.Complete()
+			// 	},
+			// )
 		})
 	}
 }
@@ -381,15 +301,15 @@ func Every[T any](predicate func(value T, count uint) bool) OperatorFunc[T, bool
 func Repeat[T any, N constraints.Unsigned](count N) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {
-			source.SubscribeSync(
-				func(t T) {
-					for i := N(0); i < count; i++ {
-						subscriber.Next(t)
-					}
-				},
-				subscriber.Error,
-				subscriber.Complete,
-			)
+			// source.SubscribeSync(
+			// 	func(t T) {
+			// 		for i := N(0); i < count; i++ {
+			// 			subscriber.Next(t)
+			// 		}
+			// 	},
+			// 	subscriber.Error,
+			// 	subscriber.Complete,
+			// )
 		})
 	}
 }
@@ -398,19 +318,22 @@ func Repeat[T any, N constraints.Unsigned](count N) OperatorFunc[T, T] {
 // or emits true if the input Observable completes without emitting any values.
 func IsEmpty[T any]() OperatorFunc[T, bool] {
 	return func(source IObservable[T]) IObservable[bool] {
-		return newObservable(func(subscriber Subscriber[bool]) {
-			var isEmpty = true
-			source.SubscribeSync(
-				func(t T) {
-					isEmpty = false
-				},
-				subscriber.Error,
-				func() {
-					subscriber.Next(isEmpty)
-					subscriber.Complete()
-				},
-			)
-		})
+		var (
+			empty = true
+		)
+		return createOperatorFunc(
+			source,
+			func(obs Observer[bool], v T) {
+				empty = false
+			},
+			func(obs Observer[bool], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[bool]) {
+				obs.Next(empty)
+				obs.Complete()
+			},
+		)
 	}
 }
 
@@ -418,22 +341,25 @@ func IsEmpty[T any]() OperatorFunc[T, bool] {
 // next value, otherwise mirrors the source Observable.
 func DefaultIfEmpty[T any](defaultValue T) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
-		return newObservable(func(subscriber Subscriber[T]) {
-			hasValue := false
-			source.SubscribeSync(
-				func(t T) {
-					hasValue = true
-					subscriber.Next(t)
-				},
-				subscriber.Error,
-				func() {
-					if !hasValue {
-						subscriber.Next(defaultValue)
-					}
-					subscriber.Complete()
-				},
-			)
-		})
+		var (
+			hasValue bool
+		)
+		return createOperatorFunc(
+			source,
+			func(obs Observer[T], v T) {
+				hasValue = true
+				obs.Next(v)
+			},
+			func(obs Observer[T], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[T]) {
+				if !hasValue {
+					obs.Next(defaultValue)
+				}
+				obs.Complete()
+			},
+		)
 	}
 }
 
@@ -441,86 +367,98 @@ func DefaultIfEmpty[T any](defaultValue T) OperatorFunc[T, T] {
 // if they are distinct in comparison to the last value the result observable emitted.
 func DistinctUntilChanged[T any](comparator func(prev T, current T) bool) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
-		return newObservable(func(subscriber Subscriber[T]) {
-			var (
-				lastValue T
-				first     = true
-			)
-			source.SubscribeSync(
-				func(v T) {
-					if first || !comparator(lastValue, v) {
-						subscriber.Next(v)
-						first = false
-					}
-					lastValue = v
-				},
-				subscriber.Error,
-				subscriber.Complete,
-			)
-		})
+		var (
+			lastValue T
+			first     = true
+		)
+		return createOperatorFunc(
+			source,
+			func(obs Observer[T], v T) {
+				if first || !comparator(lastValue, v) {
+					obs.Next(v)
+					first = false
+				}
+				lastValue = v
+			},
+			func(obs Observer[T], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[T]) {
+				obs.Complete()
+			},
+		)
 	}
 }
 
 // Filter emits only those items from an Observable that pass a predicate test.
 func Filter[T any](filter func(T, uint) bool) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
-		return newObservable(func(subscriber Subscriber[T]) {
-			var index uint
-			source.SubscribeSync(
-				func(v T) {
-					if filter(v, index) {
-						subscriber.Next(v)
-					}
-					index++
-				},
-				subscriber.Error,
-				subscriber.Complete,
-			)
-		})
+		var (
+			index uint
+		)
+		return createOperatorFunc(
+			source,
+			func(obs Observer[T], v T) {
+				if filter(v, index) {
+					obs.Next(v)
+				}
+				index++
+			},
+			func(obs Observer[T], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[T]) {
+				obs.Complete()
+			},
+		)
 	}
 }
 
 // Map transforms the items emitted by an Observable by applying a function to each item.
 func Map[T any, R any](mapper func(T, uint) (R, error)) OperatorFunc[T, R] {
 	return func(source IObservable[T]) IObservable[R] {
-		return newObservable(func(subscriber Subscriber[R]) {
-			var index uint
-			source.SubscribeSync(
-				func(v T) {
-					output, err := mapper(v, index)
-					index++
-					if err != nil {
-						subscriber.Error(err)
-						return
-					}
-					subscriber.Next(output)
-				},
-				subscriber.Error,
-				subscriber.Complete,
-			)
-		})
+		var (
+			index uint
+		)
+		return createOperatorFunc(
+			source,
+			func(obs Observer[R], v T) {
+				output, err := mapper(v, index)
+				index++
+				if err != nil {
+					obs.Error(err)
+					return
+				}
+				obs.Next(output)
+			},
+			func(obs Observer[R], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[R]) {
+				obs.Complete()
+			},
+		)
 	}
 }
 
 // Used to perform side-effects for notifications from the source observable
-func Tap[T any](obs Observer[T]) OperatorFunc[T, T] {
+func Tap[T any](cb Observer[T]) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
-		return newObservable(func(subscriber Subscriber[T]) {
-			source.SubscribeSync(
-				func(v T) {
-					obs.Next(v)
-					subscriber.Next(v)
-				},
-				func(err error) {
-					obs.Error(err)
-					subscriber.Error(err)
-				},
-				func() {
-					obs.Complete()
-					subscriber.Complete()
-				},
-			)
-		})
+		return createOperatorFunc(
+			source,
+			func(obs Observer[T], v T) {
+				obs.Next(v)
+				cb.Next(v)
+			},
+			func(obs Observer[T], err error) {
+				obs.Error(err)
+				cb.Error(err)
+			},
+			func(obs Observer[T]) {
+				obs.Complete()
+				cb.Complete()
+			},
+		)
 	}
 }
 
@@ -531,61 +469,34 @@ func Tap[T any](obs Observer[T]) OperatorFunc[T, T] {
 func Single2[T any](predicate func(v T, index uint) bool) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {
-			var (
-				index    uint
-				found    bool
-				matches  uint
-				hasValue bool
-			)
-			source.SubscribeSync(
-				func(v T) {
-					result := predicate(v, index)
-					if result {
-						found = result
-						matches++
-					}
-					hasValue = true
-					index++
-				},
-				subscriber.Error,
-				func() {
-					if !hasValue {
-						subscriber.Error(ErrEmpty)
-					} else if !found {
-						subscriber.Error(ErrNotFound)
-					} else if matches > 1 {
-						subscriber.Error(ErrSequence)
-					}
-					subscriber.Complete()
-				},
-			)
-		})
-	}
-}
-
-// Returns an Observable that skips all items emitted by the source Observable
-// as long as a specified condition holds true, but emits all further source items
-// as soon as the condition becomes false.
-func SkipWhile[T any](predicate func(v T, index uint) bool) OperatorFunc[T, T] {
-	return func(source IObservable[T]) IObservable[T] {
-		return newObservable(func(subscriber Subscriber[T]) {
-			var (
-				index uint
-				skip  = true
-			)
-			source.SubscribeSync(
-				func(v T) {
-					if predicate(v, index) {
-						skip = false
-					}
-					if !skip {
-						subscriber.Next(v)
-					}
-					index++
-				},
-				subscriber.Error,
-				subscriber.Complete,
-			)
+			// var (
+			// 	index    uint
+			// 	found    bool
+			// 	matches  uint
+			// 	hasValue bool
+			// )
+			// source.SubscribeSync(
+			// 	func(v T) {
+			// 		result := predicate(v, index)
+			// 		if result {
+			// 			found = result
+			// 			matches++
+			// 		}
+			// 		hasValue = true
+			// 		index++
+			// 	},
+			// 	subscriber.Error,
+			// 	func() {
+			// 		if !hasValue {
+			// 			subscriber.Error(ErrEmpty)
+			// 		} else if !found {
+			// 			subscriber.Error(ErrNotFound)
+			// 		} else if matches > 1 {
+			// 			subscriber.Error(ErrSequence)
+			// 		}
+			// 		subscriber.Complete()
+			// 	},
+			// )
 		})
 	}
 }
@@ -595,58 +506,58 @@ func SkipWhile[T any](predicate func(v T, index uint) bool) OperatorFunc[T, T] {
 func ConcatMap[T any, R any](project func(value T, index uint) IObservable[R]) OperatorFunc[T, R] {
 	return func(source IObservable[T]) IObservable[R] {
 		return newObservable(func(subscriber Subscriber[R]) {
-			var (
-				index              uint
-				buffer             = make([]T, 0)
-				concurrent         = uint(1)
-				isComplete         bool
-				activeSubscription uint
-			)
+			// var (
+			// 	index              uint
+			// 	buffer             = make([]T, 0)
+			// 	concurrent         = uint(1)
+			// 	isComplete         bool
+			// 	activeSubscription uint
+			// )
 
-			checkComplete := func() {
-				if isComplete && len(buffer) <= 0 {
-					subscriber.Complete()
-				}
-			}
+			// checkComplete := func() {
+			// 	if isComplete && len(buffer) <= 0 {
+			// 		subscriber.Complete()
+			// 	}
+			// }
 
-			var innerNext func(T)
-			innerNext = func(outerV T) {
-				activeSubscription++
+			// var innerNext func(T)
+			// innerNext = func(outerV T) {
+			// 	activeSubscription++
 
-				stream := project(outerV, index)
-				index++
+			// 	stream := project(outerV, index)
+			// 	index++
 
-				// var subscription Subscription
-				stream.SubscribeSync(
-					func(innerV R) {
-						subscriber.Next(innerV)
-					},
-					subscriber.Error,
-					func() {
-						activeSubscription--
-						for len(buffer) > 0 {
-							innerNext(buffer[0])
-							buffer = buffer[1:]
-						}
-						checkComplete()
-					},
-				)
-			}
+			// 	// var subscription Subscription
+			// 	stream.SubscribeSync(
+			// 		func(innerV R) {
+			// 			subscriber.Next(innerV)
+			// 		},
+			// 		subscriber.Error,
+			// 		func() {
+			// 			activeSubscription--
+			// 			for len(buffer) > 0 {
+			// 				innerNext(buffer[0])
+			// 				buffer = buffer[1:]
+			// 			}
+			// 			checkComplete()
+			// 		},
+			// 	)
+			// }
 
-			source.SubscribeSync(
-				func(v T) {
-					if activeSubscription >= concurrent {
-						buffer = append(buffer, v)
-						return
-					}
-					innerNext(v)
-				},
-				subscriber.Error,
-				func() {
-					isComplete = true
-					checkComplete()
-				},
-			)
+			// source.SubscribeSync(
+			// 	func(v T) {
+			// 		if activeSubscription >= concurrent {
+			// 			buffer = append(buffer, v)
+			// 			return
+			// 		}
+			// 		innerNext(v)
+			// 	},
+			// 	subscriber.Error,
+			// 	func() {
+			// 		isComplete = true
+			// 		checkComplete()
+			// 	},
+			// )
 		})
 	}
 }
@@ -656,41 +567,41 @@ func ConcatMap[T any, R any](project func(value T, index uint) IObservable[R]) O
 func ExhaustMap[T any, R any](project func(value T, index uint) IObservable[R]) OperatorFunc[T, R] {
 	return func(source IObservable[T]) IObservable[R] {
 		return newObservable(func(subscriber Subscriber[R]) {
-			var (
-				index        uint
-				isComplete   bool
-				subscription Subscription
-			)
-			source.SubscribeSync(
-				func(v T) {
-					if subscription == nil {
-						wg := new(sync.WaitGroup)
-						subscription = project(v, index).Subscribe(
-							func(v R) {
-								subscriber.Next(v)
-							},
-							func(error) {},
-							func() {
-								defer wg.Done()
-								subscription.Unsubscribe()
-								subscription = nil
-								if isComplete {
-									subscriber.Complete()
-								}
-							},
-						)
-						wg.Wait()
-					}
-					index++
-				},
-				subscriber.Error,
-				func() {
-					isComplete = true
-					if subscription == nil {
-						subscriber.Complete()
-					}
-				},
-			)
+			// var (
+			// 	index        uint
+			// 	isComplete   bool
+			// 	subscription Subscription
+			// )
+			// source.SubscribeSync(
+			// 	func(v T) {
+			// 		if subscription == nil {
+			// 			wg := new(sync.WaitGroup)
+			// 			subscription = project(v, index).Subscribe(
+			// 				func(v R) {
+			// 					subscriber.Next(v)
+			// 				},
+			// 				func(error) {},
+			// 				func() {
+			// 					defer wg.Done()
+			// 					subscription.Unsubscribe()
+			// 					subscription = nil
+			// 					if isComplete {
+			// 						subscriber.Complete()
+			// 					}
+			// 				},
+			// 			)
+			// 			wg.Wait()
+			// 		}
+			// 		index++
+			// 	},
+			// 	subscriber.Error,
+			// 	func() {
+			// 		isComplete = true
+			// 		if subscription == nil {
+			// 			subscriber.Complete()
+			// 		}
+			// 	},
+			// )
 
 			// after collect the source
 		})
@@ -729,20 +640,24 @@ func MergeAll[A any, B any](concurrent uint64) OperatorFunc[A, B] {
 // either via a seed value (second argument), or from the first value from the source.
 func Scan[V any, A any](accumulator func(acc A, v V, index uint) A, seed A) OperatorFunc[V, A] {
 	return func(source IObservable[V]) IObservable[A] {
-		return newObservable(func(subscriber Subscriber[A]) {
-			var (
-				index uint
-			)
-			source.SubscribeSync(
-				func(v V) {
-					seed = accumulator(seed, v, index)
-					subscriber.Next(seed)
-					index++
-				},
-				subscriber.Error,
-				subscriber.Complete,
-			)
-		})
+		var (
+			index  uint
+			result = seed
+		)
+		return createOperatorFunc(
+			source,
+			func(obs Observer[A], v V) {
+				result = accumulator(result, v, index)
+				obs.Next(seed)
+				index++
+			},
+			func(obs Observer[A], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[A]) {
+				obs.Complete()
+			},
+		)
 	}
 }
 
@@ -750,38 +665,43 @@ func Scan[V any, A any](accumulator func(acc A, v V, index uint) A, seed A) Oper
 // the accumulated result when the source completes, given an optional seed value.
 func Reduce[V any, A any](accumulator func(acc A, v V, index uint) A, seed A) OperatorFunc[V, A] {
 	return func(source IObservable[V]) IObservable[A] {
-		return newObservable(func(subscriber Subscriber[A]) {
-			var (
-				index uint
-			)
-			source.SubscribeSync(
-				func(v V) {
-					seed = accumulator(seed, v, index)
-					index++
-				},
-				subscriber.Error,
-				func() {
-					subscriber.Next(seed)
-					subscriber.Complete()
-				},
-			)
-		})
+		var (
+			index  uint
+			result = seed
+		)
+		return createOperatorFunc(
+			source,
+			func(obs Observer[A], v V) {
+				result = accumulator(result, v, index)
+				index++
+			},
+			func(obs Observer[A], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[A]) {
+				obs.Next(result)
+				obs.Complete()
+			},
+		)
 	}
 }
 
 // Delays the emission of items from the source Observable by a given timeout.
 func Delay[T any](duration time.Duration) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
-		return newObservable(func(subscriber Subscriber[T]) {
-			source.SubscribeSync(
-				func(v T) {
-					time.Sleep(duration)
-					subscriber.Next(v)
-				},
-				subscriber.Error,
-				subscriber.Complete,
-			)
-		})
+		return createOperatorFunc(
+			source,
+			func(obs Observer[T], v T) {
+				time.Sleep(duration)
+				obs.Next(v)
+			},
+			func(obs Observer[T], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[T]) {
+				obs.Complete()
+			},
+		)
 	}
 }
 
@@ -789,16 +709,19 @@ func Delay[T any](duration time.Duration) OperatorFunc[T, T] {
 // for duration milliseconds, then repeats this process.
 func Throttle[T any, R any](durationSelector func(v T) IObservable[R]) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
-		return newObservable(func(subscriber Subscriber[T]) {
-			source.SubscribeSync(
-				func(v T) {
-					durationSelector(v)
-					subscriber.Next(v)
-				},
-				subscriber.Error,
-				subscriber.Complete,
-			)
-		})
+		return createOperatorFunc(
+			source,
+			func(obs Observer[T], v T) {
+				durationSelector(v)
+				obs.Next(v)
+			},
+			func(obs Observer[T], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[T]) {
+				obs.Complete()
+			},
+		)
 	}
 }
 
@@ -809,29 +732,127 @@ func DebounceTime[T any](duration time.Duration) OperatorFunc[T, T] {
 		// 	lastValue T
 		// )
 		return newObservable(func(subscriber Subscriber[T]) {
-			source.SubscribeSync(
-				func(v T) {
-					// lastValue = v
-					// lastTime = time.Now()
-					subscriber.Next(v)
-				},
-				subscriber.Error,
-				subscriber.Complete,
-			)
+			// source.SubscribeSync(
+			// 	func(v T) {
+			// 		// lastValue = v
+			// 		// lastTime = time.Now()
+			// 		subscriber.Next(v)
+			// 	},
+			// 	subscriber.Error,
+			// 	subscriber.Complete,
+			// )
 		})
 	}
 }
 
-func CatchError[T any](catch func(error) IObservable[T]) OperatorFunc[T, T] {
+// Catches errors on the observable to be handled by returning a new observable or throwing an error.
+func CatchError[T any](catch func(error, IObservable[T]) IObservable[T]) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {
-			source.SubscribeSync(
-				subscriber.Next,
-				func(err error) {
-					catch(err)
-				},
-				subscriber.Complete,
-			)
+			// var (
+			// 	wg           = new(sync.WaitGroup)
+			// 	subscription Subscription
+			// 	subscribe    func(IObservable[T])
+			// )
+
+			// unsubscribe := func() {
+			// 	if subscription != nil {
+			// 		subscription.Unsubscribe()
+			// 	}
+			// 	subscription = nil
+			// }
+
+			// subscribe = func(stream IObservable[T]) {
+			// 	subscription = stream.Subscribe(
+			// 		subscriber.Next,
+			// 		func(err error) {
+			// 			obs := catch(err, source)
+			// 			unsubscribe() // unsubscribe the previous stream and start another one
+			// 			subscribe(obs)
+			// 		},
+			// 		func() {
+			// 			unsubscribe()
+			// 			wg.Done()
+			// 		},
+			// 	)
+			// }
+
+			// wg.Add(1)
+			// subscribe(source)
+			// wg.Wait()
+
+			// subscriber.Complete()
+		})
+	}
+}
+
+// Creates an Observable that mirrors the first source Observable to emit a
+// next, error or complete notification from the combination of the Observable
+// to which the operator is applied and supplied Observables.
+func RaceWith[T any](input IObservable[T], inputs ...IObservable[T]) OperatorFunc[T, T] {
+	return func(source IObservable[T]) IObservable[T] {
+		inputs = append([]IObservable[T]{source, input}, inputs...)
+		return newObservable(func(subscriber Subscriber[T]) {
+			// var (
+			// 	noOfInputs = len(inputs)
+			// 	wg         = new(sync.WaitGroup)
+			// 	// mu                  = new(sync.Mutex)
+			// 	// activeSubscriptions = make([]Subscription, noOfInputs)
+			// 	// unsubscribe         bool
+			// )
+			// wg.Add(noOfInputs)
+
+			// // unsubscribeAll := func(index int) {
+			// // 	mu.Lock()
+			// // 	defer mu.Unlock()
+			// // 	if unsubscribe {
+			// // 		return
+			// // 	}
+
+			// // 	var subscription Subscription
+			// // 	// remove all subscriptions except the fastest one
+			// // 	for i, sub := range activeSubscriptions {
+			// // 		if i == index {
+			// // 			subscription = activeSubscriptions[i]
+			// // 			continue
+			// // 		}
+			// // 		sub.Unsubscribe()
+			// // 	}
+			// // 	activeSubscriptions = []Subscription{subscription}
+			// // 	unsubscribe = true
+			// // }
+
+			// // onNext := func(index int, v T) {
+			// // 	unsubscribeAll(index)
+			// // 	subscriber.Next(v)
+			// // }
+
+			// // onError := func(index int, err error) {
+			// // 	// defer wg.Done()
+			// // 	unsubscribeAll(index)
+			// // 	subscriber.Error(err)
+			// // }
+			// // onComplete := func(index int) {
+			// // 	// wg.Done()
+			// // 	unsubscribeAll(index)
+			// // }
+
+			// // for i, xs := range inputs {
+			// // 	activeSubscriptions[i] = xs.subscribeOn(
+			// // 		func(index int) (OnNextFunc[T], OnErrorFunc, OnCompleteFunc, FinalizerFunc) {
+			// // 			return func(v T) {
+			// // 					onNext(index, v)
+			// // 				}, func(err error) {
+			// // 					onError(index, err)
+			// // 				}, func() {
+			// // 					onComplete(index)
+			// // 				}, wg.Done
+			// // 		}(i),
+			// // 	)
+			// // }
+			// wg.Wait()
+
+			// subscriber.Complete()
 		})
 	}
 }
@@ -841,34 +862,34 @@ func CatchError[T any](catch func(error) IObservable[T]) OperatorFunc[T, T] {
 func WithLatestFrom[A any, B any](input IObservable[B]) OperatorFunc[A, Tuple[A, B]] {
 	return func(source IObservable[A]) IObservable[Tuple[A, B]] {
 		return newObservable(func(subscriber Subscriber[Tuple[A, B]]) {
-			var (
-				allOk        [2]bool
-				latestA      A
-				latestB      B
-				subscription Subscription
-			)
+			// var (
+			// 	allOk        [2]bool
+			// 	latestA      A
+			// 	latestB      B
+			// 	subscription Subscription
+			// )
 
-			subscription = input.subscribeOn(func(b B) {
-				latestB = b
-				allOk[1] = true
-			}, func(err error) {}, func() {
-				subscription.Unsubscribe()
-			}, func() {})
+			// // subscription = input.subscribeOn(func(b B) {
+			// // 	latestB = b
+			// // 	allOk[1] = true
+			// // }, func(err error) {}, func() {
+			// // 	subscription.Unsubscribe()
+			// // }, func() {})
 
-			source.SubscribeSync(
-				func(a A) {
-					latestA = a
-					allOk[0] = true
-					if allOk[0] && allOk[1] {
-						subscriber.Next(NewTuple(latestA, latestB))
-					}
-				},
-				subscriber.Error,
-				func() {
-					subscription.Unsubscribe()
-					subscriber.Complete()
-				},
-			)
+			// source.SubscribeSync(
+			// 	func(a A) {
+			// 		latestA = a
+			// 		allOk[0] = true
+			// 		if allOk[0] && allOk[1] {
+			// 			subscriber.Next(NewTuple(latestA, latestB))
+			// 		}
+			// 	},
+			// 	subscriber.Error,
+			// 	func() {
+			// 		subscription.Unsubscribe()
+			// 		subscriber.Complete()
+			// 	},
+			// )
 		})
 	}
 }
@@ -876,33 +897,39 @@ func WithLatestFrom[A any, B any](input IObservable[B]) OperatorFunc[A, Tuple[A,
 // Attaches a timestamp to each item emitted by an observable indicating when it was emitted
 func Timestamp[T any]() OperatorFunc[T, Timestamper[T]] {
 	return func(source IObservable[T]) IObservable[Timestamper[T]] {
-		return newObservable(func(subscriber Subscriber[Timestamper[T]]) {
-			source.SubscribeSync(
-				func(v T) {
-					subscriber.Next(NewTimestamp(v))
-				},
-				subscriber.Error,
-				subscriber.Complete,
-			)
-		})
+		return createOperatorFunc(
+			source,
+			func(obs Observer[Timestamper[T]], v T) {
+				obs.Next(NewTimestamp(v))
+			},
+			func(obs Observer[Timestamper[T]], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[Timestamper[T]]) {
+				obs.Complete()
+			},
+		)
 	}
 }
 
 // Collects all source emissions and emits them as an array when the source completes.
 func ToArray[T any]() OperatorFunc[T, []T] {
 	return func(source IObservable[T]) IObservable[[]T] {
-		return newObservable(func(subscriber Subscriber[[]T]) {
-			result := make([]T, 0)
-			source.SubscribeSync(
-				func(v T) {
-					result = append(result, v)
-				},
-				subscriber.Error,
-				func() {
-					subscriber.Next(result)
-					subscriber.Complete()
-				},
-			)
-		})
+		var (
+			result = make([]T, 0)
+		)
+		return createOperatorFunc(
+			source,
+			func(obs Observer[[]T], v T) {
+				result = append(result, v)
+			},
+			func(obs Observer[[]T], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[[]T]) {
+				obs.Next(result)
+				obs.Complete()
+			},
+		)
 	}
 }
