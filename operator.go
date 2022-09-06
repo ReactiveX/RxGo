@@ -2,6 +2,7 @@ package rxgo
 
 import (
 	"log"
+	"reflect"
 	"sync"
 	"time"
 
@@ -367,7 +368,13 @@ func DefaultIfEmpty[T any](defaultValue T) OperatorFunc[T, T] {
 
 // Returns a result Observable that emits all values pushed by the source observable
 // if they are distinct in comparison to the last value the result observable emitted.
-func DistinctUntilChanged[T any](comparator func(prev T, current T) bool) OperatorFunc[T, T] {
+func DistinctUntilChanged[T any](comparator ...func(prev T, current T) bool) OperatorFunc[T, T] {
+	cb := func(prev T, current T) bool {
+		return reflect.DeepEqual(prev, current)
+	}
+	if len(comparator) > 0 {
+		cb = comparator[0]
+	}
 	return func(source IObservable[T]) IObservable[T] {
 		var (
 			lastValue T
@@ -376,11 +383,11 @@ func DistinctUntilChanged[T any](comparator func(prev T, current T) bool) Operat
 		return createOperatorFunc(
 			source,
 			func(obs Observer[T], v T) {
-				if first || !comparator(lastValue, v) {
+				if first || !cb(lastValue, v) {
 					obs.Next(v)
 					first = false
+					lastValue = v
 				}
-				lastValue = v
 			},
 			func(obs Observer[T], err error) {
 				obs.Error(err)
