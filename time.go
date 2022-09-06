@@ -2,6 +2,51 @@ package rxgo
 
 import "time"
 
+// Emits an object containing the current value, and the time that has passed
+// between emitting the current value and the previous value, which is calculated by
+// using the provided scheduler's now() method to retrieve the current time at each
+// emission, then calculating the difference.
+func WithTimeInterval[T any]() OperatorFunc[T, TimeInterval[T]] {
+	return func(source IObservable[T]) IObservable[TimeInterval[T]] {
+		var (
+			pastTime = time.Now()
+		)
+		return createOperatorFunc(
+			source,
+			func(obs Observer[TimeInterval[T]], v T) {
+				now := time.Now()
+				obs.Next(NewTimeInterval(v, now.Sub(pastTime)))
+				pastTime = now
+			},
+			func(obs Observer[TimeInterval[T]], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[TimeInterval[T]]) {
+				obs.Complete()
+			},
+		)
+	}
+}
+
+// Attaches a timestamp to each item emitted by an observable indicating when
+// it was emitted
+func WithTimestamp[T any]() OperatorFunc[T, Timestamp[T]] {
+	return func(source IObservable[T]) IObservable[Timestamp[T]] {
+		return createOperatorFunc(
+			source,
+			func(obs Observer[Timestamp[T]], v T) {
+				obs.Next(NewTimestamp(v))
+			},
+			func(obs Observer[Timestamp[T]], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[Timestamp[T]]) {
+				obs.Complete()
+			},
+		)
+	}
+}
+
 type Timestamp[T any] interface {
 	Value() T
 	Time() time.Time

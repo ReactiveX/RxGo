@@ -289,6 +289,13 @@ func TestSingle(t *testing.T) {
 
 }
 
+func TestSample(t *testing.T) {
+	checkObservableResults(t, Pipe1(
+		Pipe1(Interval(time.Millisecond), Take[uint](10)),
+		Sample[uint](Interval(time.Millisecond*2)),
+	), []uint{0, 2, 4, 6, 8}, nil, true)
+}
+
 func TestConcatMap(t *testing.T) {
 
 }
@@ -392,27 +399,17 @@ func TestWithLatestFrom(t *testing.T) {
 	// // }, func(err error) {}, func() {})
 }
 
-func TestWithTimestamp(t *testing.T) {
-	t.Run("WithTimestamp with Numbers", func(t *testing.T) {
-		var (
-			now    = time.Now()
-			result = make([]Timestamp[uint], 0)
-			done   = true
-		)
-		Pipe1(Range[uint](1, 5), WithTimestamp[uint]()).
-			SubscribeSync(func(t Timestamp[uint]) {
-				result = append(result, t)
-			}, func(err error) {}, func() {
-				done = true
-			})
+// func TestOnErrorResumeNext(t *testing.T) {
+// 	// t.Run("OnErrorResumeNext with error", func(t *testing.T) {
+// 	// 	checkObservableResults(t, Pipe1(Scheduled[any](1, 2, 3, fmt.Errorf("error"), 5), OnErrorResumeNext[any]()),
+// 	// 		[]any{1, 2, 3, 5}, nil, true)
+// 	// })
 
-		for i, v := range result {
-			require.True(t, v.Time().After(now))
-			require.Equal(t, uint(i+1), v.Value())
-		}
-		require.True(t, done)
-	})
-}
+// 	t.Run("OnErrorResumeNext with no error", func(t *testing.T) {
+// 		checkObservableResults(t, Pipe1(Scheduled(1, 2, 3, 4, 5), OnErrorResumeNext[int]()),
+// 			[]int{1, 2, 3, 4, 5}, nil, true)
+// 	})
+// }
 
 func TestToArray(t *testing.T) {
 	t.Run("ToArray with Numbers", func(t *testing.T) {
@@ -422,9 +419,9 @@ func TestToArray(t *testing.T) {
 	t.Run("ToArray with Numbers", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(newObservable(func(subscriber Subscriber[string]) {
 			for i := 1; i <= 5; i++ {
-				subscriber.Send() <- newData(string(rune('A' - 1 + i)))
+				subscriber.Send() <- NextNotification(string(rune('A' - 1 + i)))
 			}
-			subscriber.Send() <- newComplete[string]()
+			subscriber.Send() <- CompleteNotification[string]()
 		}), ToArray[string]()), []string{"A", "B", "C", "D", "E"}, nil, true)
 	})
 }

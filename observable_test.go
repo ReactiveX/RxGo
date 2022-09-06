@@ -37,9 +37,9 @@ func TestDefer(t *testing.T) {
 	obs := Defer(func() IObservable[string] {
 		return newObservable(func(subscriber Subscriber[string]) {
 			for _, v := range values {
-				subscriber.Send() <- newData(v)
+				subscriber.Send() <- NextNotification(v)
 			}
-			subscriber.Send() <- newComplete[string]()
+			subscriber.Send() <- CompleteNotification[string]()
 		})
 	})
 	checkObservableResults(t, obs, values, nil, true)

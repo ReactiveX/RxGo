@@ -21,7 +21,7 @@ func createOperatorFunc[T any, R any](
 				case <-subscriber.Closed():
 					stop = true
 					return
-				case subscriber.Send() <- newData(v):
+				case subscriber.Send() <- NextNotification(v):
 				}
 			},
 			onError: func(err error) {
@@ -30,7 +30,7 @@ func createOperatorFunc[T any, R any](
 				select {
 				case <-subscriber.Closed():
 					return
-				case subscriber.Send() <- newError[R](err):
+				case subscriber.Send() <- ErrorNotification[R](err):
 				}
 			},
 			onComplete: func() {
@@ -40,7 +40,7 @@ func createOperatorFunc[T any, R any](
 				select {
 				case <-subscriber.Closed():
 					return
-				case subscriber.Send() <- newComplete[R]():
+				case subscriber.Send() <- CompleteNotification[R]():
 				}
 			},
 		}

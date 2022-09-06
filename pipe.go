@@ -29,8 +29,8 @@ type Observer[T any] interface {
 
 type Subscriber[T any] interface {
 	Stop()
-	Send() chan<- DataValuer[T]
-	ForEach() <-chan DataValuer[T]
+	Send() chan<- Notification[T]
+	ForEach() <-chan Notification[T]
 	Closed() <-chan struct{}
 	// Unsubscribe()
 	// Observer[T]

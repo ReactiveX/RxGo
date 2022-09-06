@@ -90,7 +90,7 @@ func TakeUntil[T any, R any](notifier IObservable[R]) OperatorFunc[T, T] {
 					// select {
 					// case <-subscriber.Closed():
 					// 	return
-					// case subscriber.Send() <- newComplete[T]():
+					// case subscriber.Send() <- CompleteNotification[T]():
 					// 	log.Println("SSS")
 					// 	// stop = true
 					// }

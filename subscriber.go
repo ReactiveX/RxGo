@@ -9,7 +9,7 @@ type subscriber[T any] struct {
 	mu sync.RWMutex
 
 	// channel to transfer data
-	ch chan DataValuer[T]
+	ch chan Notification[T]
 
 	// channel to indentify it has stopped
 	stop chan struct{}
@@ -22,7 +22,7 @@ type subscriber[T any] struct {
 
 func NewSubscriber[T any]() *subscriber[T] {
 	return &subscriber[T]{
-		ch:   make(chan DataValuer[T]),
+		ch:   make(chan Notification[T]),
 		stop: make(chan struct{}),
 	}
 }
@@ -41,11 +41,11 @@ func (s *subscriber[T]) Closed() <-chan struct{} {
 	return s.stop
 }
 
-func (s *subscriber[T]) ForEach() <-chan DataValuer[T] {
+func (s *subscriber[T]) ForEach() <-chan Notification[T] {
 	return s.ch
 }
 
-func (s *subscriber[T]) Send() chan<- DataValuer[T] {
+func (s *subscriber[T]) Send() chan<- Notification[T] {
 	return s.ch
 }
 

@@ -16,7 +16,7 @@ func NEVER[T any]() IObservable[T] {
 // emits a complete notification.
 func EMPTY[T any]() IObservable[T] {
 	return newObservable(func(subscriber Subscriber[T]) {
-		subscriber.Send() <- newComplete[T]()
+		subscriber.Send() <- CompleteNotification[T]()
 	})
 }
 
@@ -31,7 +31,7 @@ func ThrownError[T any](factory func() error) IObservable[T] {
 		select {
 		case <-subscriber.Closed():
 			return
-		case subscriber.Send() <- newError[T](factory()):
+		case subscriber.Send() <- ErrorNotification[T](factory()):
 		}
 	})
 }
@@ -47,11 +47,11 @@ func Range[T constraints.Unsigned](start, count T) IObservable[T] {
 			select {
 			case <-subscriber.Closed():
 				return
-			case subscriber.Send() <- newData(i):
+			case subscriber.Send() <- NextNotification(i):
 			}
 		}
 
-		subscriber.Send() <- newComplete[T]()
+		subscriber.Send() <- CompleteNotification[T]()
 	})
 }
 
@@ -70,7 +70,7 @@ func Interval(duration time.Duration) IObservable[uint] {
 			case <-subscriber.Closed():
 				break loop
 			case <-time.After(duration):
-				subscriber.Send() <- newData(index)
+				subscriber.Send() <- NextNotification(index)
 				index++
 			}
 		}
@@ -81,10 +81,10 @@ func Scheduled[T any](item T, items ...T) IObservable[T] {
 	items = append([]T{item}, items...)
 	return newObservable(func(subscriber Subscriber[T]) {
 		for _, item := range items {
-			data := newData(item)
+			data := NextNotification(item)
 			switch vi := any(item).(type) {
 			case error:
-				data = newError[T](vi)
+				data = ErrorNotification[T](vi)
 			}
 
 			select {
@@ -99,7 +99,7 @@ func Scheduled[T any](item T, items ...T) IObservable[T] {
 			}
 		}
 
-		subscriber.Send() <- newComplete[T]()
+		subscriber.Send() <- CompleteNotification[T]()
 	})
 }
 
@@ -114,7 +114,7 @@ func Timer[T any](start, interval time.Duration) IObservable[float64] {
 			case <-subscriber.Closed():
 				return
 			case <-time.After(interval):
-				subscriber.Send() <- newData(latest.Seconds())
+				subscriber.Send() <- NextNotification(latest.Seconds())
 				latest = latest + interval
 			}
 		}

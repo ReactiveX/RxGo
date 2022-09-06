@@ -511,6 +511,48 @@ func Single2[T any](predicate func(v T, index uint) bool) OperatorFunc[T, T] {
 	}
 }
 
+// Emits the most recently emitted value from the source Observable whenever
+// another Observable, the notifier, emits.
+func Sample[A any, B any](notifier IObservable[B]) OperatorFunc[A, A] {
+	return func(source IObservable[A]) IObservable[A] {
+		return newObservable(func(subscriber Subscriber[A]) {
+			var (
+				wg           = new(sync.WaitGroup)
+				upStream     = source.SubscribeOn(wg.Done)
+				notifyStream = notifier.SubscribeOn(wg.Done)
+				latestValue  = NextNotification(*new(A))
+			)
+
+			wg.Add(2)
+
+		observe:
+			for {
+				select {
+				case <-subscriber.Closed():
+					return
+				case item, ok := <-upStream.ForEach():
+					if !ok {
+						break observe
+					}
+
+					if item.Done() {
+						notifyStream.Stop()
+						subscriber.Send() <- item
+						break observe
+					}
+
+					latestValue = item
+				case <-notifyStream.ForEach():
+					subscriber.Send() <- latestValue
+				}
+			}
+
+			wg.Wait()
+			log.Println("ALL DONE")
+		})
+	}
+}
+
 // Projects each source value to an Observable which is merged in the output Observable,
 // in a serialized fashion waiting for each one to complete before merging the next.
 func ConcatMap[T any, R any](project func(value T, index uint) IObservable[R]) OperatorFunc[T, R] {
@@ -650,7 +692,7 @@ func Merge[T any](input IObservable[T]) OperatorFunc[T, T] {
 
 			wg.Add(2)
 
-			onNext := func(v DataValuer[T]) {
+			onNext := func(v Notification[T]) {
 				if v == nil {
 					return
 				}
@@ -686,9 +728,9 @@ func Merge[T any](input IObservable[T]) OperatorFunc[T, T] {
 			wg.Wait()
 
 			if err != nil {
-				subscriber.Send() <- newError[T](err)
+				subscriber.Send() <- ErrorNotification[T](err)
 			} else {
-				subscriber.Send() <- newComplete[T]()
+				subscriber.Send() <- CompleteNotification[T]()
 			}
 		})
 	}
@@ -857,7 +899,7 @@ func CatchError[T any](catch func(error, IObservable[T]) IObservable[T]) Operato
 			// subscribe(source)
 			wg.Wait()
 
-			subscriber.Send() <- newComplete[T]()
+			subscriber.Send() <- CompleteNotification[T]()
 		})
 	}
 }
@@ -886,7 +928,7 @@ func RaceWith[T any](input IObservable[T], inputs ...IObservable[T]) OperatorFun
 			// 	activeSubscriptions = []Subscriber[T]{subscription}
 			// }
 
-			// emit := func(index int, v DataValuer[T]) {
+			// emit := func(index int, v Notification[T]) {
 			// 	mu.RLock()
 			// 	if unsubscribed {
 			// 		mu.RUnlock()
@@ -947,7 +989,7 @@ func RaceWith[T any](input IObservable[T], inputs ...IObservable[T]) OperatorFun
 
 			log.Println("END")
 
-			subscriber.Send() <- newComplete[T]()
+			subscriber.Send() <- CompleteNotification[T]()
 		})
 	}
 }
@@ -986,50 +1028,6 @@ func WithLatestFrom[A any, B any](input IObservable[B]) OperatorFunc[A, Tuple[A,
 			// 	},
 			// )
 		})
-	}
-}
-
-// Emits an object containing the current value, and the time that has passed
-// between emitting the current value and the previous value, which is calculated by
-// using the provided scheduler's now() method to retrieve the current time at each
-// emission, then calculating the difference.
-func WithTimeInterval[T any]() OperatorFunc[T, TimeInterval[T]] {
-	return func(source IObservable[T]) IObservable[TimeInterval[T]] {
-		var (
-			pastTime = time.Now()
-		)
-		return createOperatorFunc(
-			source,
-			func(obs Observer[TimeInterval[T]], v T) {
-				now := time.Now()
-				obs.Next(NewTimeInterval(v, now.Sub(pastTime)))
-				pastTime = now
-			},
-			func(obs Observer[TimeInterval[T]], err error) {
-				obs.Error(err)
-			},
-			func(obs Observer[TimeInterval[T]]) {
-				obs.Complete()
-			},
-		)
-	}
-}
-
-// Attaches a timestamp to each item emitted by an observable indicating when it was emitted
-func WithTimestamp[T any]() OperatorFunc[T, Timestamp[T]] {
-	return func(source IObservable[T]) IObservable[Timestamp[T]] {
-		return createOperatorFunc(
-			source,
-			func(obs Observer[Timestamp[T]], v T) {
-				obs.Next(NewTimestamp(v))
-			},
-			func(obs Observer[Timestamp[T]], err error) {
-				obs.Error(err)
-			},
-			func(obs Observer[Timestamp[T]]) {
-				obs.Complete()
-			},
-		)
 	}
 }
 

@@ -7,23 +7,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestData(t *testing.T) {
-	t.Run("Data with value", func(t *testing.T) {
+func TestNotification(t *testing.T) {
+	t.Run("Next Notification", func(t *testing.T) {
 		value := "hello world"
-		data := streamData[string]{v: value}
+		data := NextNotification(value)
 		require.Equal(t, value, data.Value())
 		require.Nil(t, data.Err())
 	})
 
 	err := fmt.Errorf("uncaught error")
-	t.Run("Data with error[any]", func(t *testing.T) {
-		data := streamData[any]{err: err}
+	t.Run("Error Notification with any", func(t *testing.T) {
+		data := ErrorNotification[any](err)
 		require.Nil(t, data.Value())
 		require.Equal(t, err, data.Err())
 	})
 
-	t.Run("Data with error[string]", func(t *testing.T) {
-		data := streamData[string]{err: err}
+	t.Run("Error Notification with string", func(t *testing.T) {
+		data := ErrorNotification[string](err)
 		require.Equal(t, "", data.Value())
 		require.Equal(t, err, data.Err())
 	})
