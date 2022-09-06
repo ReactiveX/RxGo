@@ -102,6 +102,23 @@ func NewSafeSubscriber[T any](onNext OnNextFunc[T], onError OnErrorFunc, onCompl
 	return sub
 }
 
+func NewObserver[T any](onNext OnNextFunc[T], onError OnErrorFunc, onComplete OnCompleteFunc) Observer[T] {
+	if onNext == nil {
+		onNext = func(T) {}
+	}
+	if onError == nil {
+		onError = func(error) {}
+	}
+	if onComplete == nil {
+		onComplete = func() {}
+	}
+	return &consumerObserver[T]{
+		onNext:     onNext,
+		onError:    onError,
+		onComplete: onComplete,
+	}
+}
+
 type consumerObserver[T any] struct {
 	onNext     func(T)
 	onError    func(error)

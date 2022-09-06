@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestElementAt(t *testing.T) {
@@ -108,14 +110,21 @@ func TestCount(t *testing.T) {
 }
 
 func TestIgnoreElements(t *testing.T) {
-	checkObservableResult(t, Pipe1(
-		Range[uint](1, 7),
-		IgnoreElements[uint](),
-	), uint(0), nil, true)
+	checkObservableResult(t, Pipe1(Range[uint](1, 7), IgnoreElements[uint]()), uint(0), nil, true)
 }
 
 func TestEvery(t *testing.T) {
+	t.Run("Every with all value match the condition", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(Range[uint](1, 7), Every(func(value, index uint) bool {
+			return value < 10
+		})), true, nil, true)
+	})
 
+	t.Run("Every with not all value match the condition", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(Range[uint](1, 7), Every(func(value, index uint) bool {
+			return value < 5
+		})), false, nil, true)
+	})
 }
 
 func TestRepeat(t *testing.T) {
@@ -244,17 +253,35 @@ func TestMap(t *testing.T) {
 }
 
 func TestTap(t *testing.T) {
-	t.Run("Tap with", func(t *testing.T) {
-		// err := fmt.Errorf("omg")
-		// checkObservableResults(t, Pipe1(
-		// 	Range[uint](1, 5),
-		// 	Tap(func(v uint, _ uint) (string, error) {
-		// 		if v == 3 {
-		// 			return "", err
-		// 		}
-		// 		return fmt.Sprintf("Number(%d)", v), nil
-		// 	}),
-		// ), []string{"Number(1)", "Number(2)"}, err, false)
+	t.Run("Tap with Range(1, 5)", func(t *testing.T) {
+		result := make([]string, 0)
+		checkObservableResults(t, Pipe1(
+			Range[uint](1, 5),
+			Tap(NewObserver(func(v uint) {
+				result = append(result, fmt.Sprintf("Number(%v)", v))
+			}, nil, nil)),
+		), []uint{1, 2, 3, 4, 5}, nil, true)
+		require.ElementsMatch(t, []string{
+			"Number(1)",
+			"Number(2)",
+			"Number(3)",
+			"Number(4)",
+			"Number(5)",
+		}, result)
+	})
+
+	t.Run("Tap with Error", func(t *testing.T) {
+		var (
+			err    = fmt.Errorf("An error")
+			result = make([]string, 0)
+		)
+		checkObservableResults(t, Pipe1(
+			Scheduled[any](1, err),
+			Tap(NewObserver(func(v any) {
+				result = append(result, fmt.Sprintf("Number(%v)", v))
+			}, nil, nil)),
+		), []any{1}, err, false)
+		require.ElementsMatch(t, []string{"Number(1)"}, result)
 	})
 }
 
@@ -271,11 +298,34 @@ func TestExhaustMap(t *testing.T) {
 }
 
 func TestScan(t *testing.T) {
+	t.Run("Scan with initial value", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			Scheduled[uint](1, 2, 3),
+			Scan(func(acc, cur, _ uint) (uint, error) {
+				return acc + cur, nil
+			}, 10),
+		), []uint{11, 13, 16}, nil, true)
+	})
 
+	t.Run("Scan with zero default value", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			Scheduled[uint](1, 3, 5),
+			Scan(func(acc, cur, _ uint) (uint, error) {
+				return acc + cur, nil
+			}, 0),
+		), []uint{1, 4, 9}, nil, true)
+	})
 }
 
 func TestReduce(t *testing.T) {
-
+	t.Run("Reduce with zero default value", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			Scheduled[uint](1, 3, 5),
+			Reduce(func(acc, cur, _ uint) (uint, error) {
+				return acc + cur, nil
+			}, 0),
+		), []uint{9}, nil, true)
+	})
 }
 
 func TestDelay(t *testing.T) {
@@ -326,24 +376,42 @@ func TestRaceWith(t *testing.T) {
 	// })
 }
 
-// func TestWithLatestFrom(t *testing.T) {
-// 	// timer := Interval(time.Millisecond * 1)
-// 	// Pipe2(
-// 	// 	Pipe1(
-// 	// 		Interval(time.Second*2),
-// 	// 		Map(func(i uint, _ uint) (string, error) {
-// 	// 			return string(rune('A' + i)), nil
-// 	// 		}),
-// 	// 	),
-// 	// 	WithLatestFrom[string](timer),
-// 	// 	Take[Tuple[string, uint], uint](10),
-// 	// ).SubscribeSync(func(f Tuple[string, uint]) {
-// 	// 	log.Println("[", f.First(), f.Second(), "]")
-// 	// }, func(err error) {}, func() {})
-// }
+func TestWithLatestFrom(t *testing.T) {
+	// // timer := Interval(time.Millisecond * 1)
+	// // Pipe2(
+	// // 	Pipe1(
+	// // 		Interval(time.Second*2),
+	// // 		Map(func(i uint, _ uint) (string, error) {
+	// // 			return string(rune('A' + i)), nil
+	// // 		}),
+	// // 	),
+	// // 	WithLatestFrom[string](timer),
+	// // 	Take[Tuple[string, uint], uint](10),
+	// // ).SubscribeSync(func(f Tuple[string, uint]) {
+	// // 	log.Println("[", f.First(), f.Second(), "]")
+	// // }, func(err error) {}, func() {})
+}
 
-func TestTimestamp(t *testing.T) {
+func TestWithTimestamp(t *testing.T) {
+	t.Run("WithTimestamp with Numbers", func(t *testing.T) {
+		var (
+			now    = time.Now()
+			result = make([]Timestamp[uint], 0)
+			done   = true
+		)
+		Pipe1(Range[uint](1, 5), WithTimestamp[uint]()).
+			SubscribeSync(func(t Timestamp[uint]) {
+				result = append(result, t)
+			}, func(err error) {}, func() {
+				done = true
+			})
 
+		for i, v := range result {
+			require.True(t, v.Time().After(now))
+			require.Equal(t, uint(i+1), v.Value())
+		}
+		require.True(t, done)
+	})
 }
 
 func TestToArray(t *testing.T) {

@@ -278,24 +278,25 @@ func IgnoreElements[T any]() OperatorFunc[T, T] {
 
 // Returns an Observable that emits whether or not every item of the
 // source satisfies the condition specified.
-func Every[T any](predicate func(value T, count uint) bool) OperatorFunc[T, bool] {
+func Every[T any](predicate func(value T, index uint) bool) OperatorFunc[T, bool] {
 	return func(source IObservable[T]) IObservable[bool] {
-		return newObservable(func(subscriber Subscriber[bool]) {
-			// var (
-			// 	allOk = true
-			// 	index uint
-			// )
-			// source.SubscribeSync(
-			// 	func(t T) {
-			// 		allOk = allOk && predicate(t, index)
-			// 	},
-			// 	subscriber.Error,
-			// 	func() {
-			// 		subscriber.Next(allOk)
-			// 		subscriber.Complete()
-			// 	},
-			// )
-		})
+		var (
+			allOk = true
+			index uint
+		)
+		return createOperatorFunc(
+			source,
+			func(obs Observer[bool], v T) {
+				allOk = allOk && predicate(v, index)
+			},
+			func(obs Observer[bool], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[bool]) {
+				obs.Next(allOk)
+				obs.Complete()
+			},
+		)
 	}
 }
 
@@ -696,17 +697,22 @@ func Merge[T any](input IObservable[T]) OperatorFunc[T, T] {
 // Useful for encapsulating and managing state. Applies an accumulator (or "reducer function")
 // to each value from the source after an initial state is established --
 // either via a seed value (second argument), or from the first value from the source.
-func Scan[V any, A any](accumulator func(acc A, v V, index uint) A, seed A) OperatorFunc[V, A] {
+func Scan[V any, A any](accumulator func(acc A, v V, index uint) (A, error), seed A) OperatorFunc[V, A] {
 	return func(source IObservable[V]) IObservable[A] {
 		var (
 			index  uint
 			result = seed
+			err    error
 		)
 		return createOperatorFunc(
 			source,
 			func(obs Observer[A], v V) {
-				result = accumulator(result, v, index)
-				obs.Next(seed)
+				result, err = accumulator(result, v, index)
+				if err != nil {
+					obs.Error(err)
+					return
+				}
+				obs.Next(result)
 				index++
 			},
 			func(obs Observer[A], err error) {
@@ -721,16 +727,21 @@ func Scan[V any, A any](accumulator func(acc A, v V, index uint) A, seed A) Oper
 
 // Applies an accumulator function over the source Observable, and returns
 // the accumulated result when the source completes, given an optional seed value.
-func Reduce[V any, A any](accumulator func(acc A, v V, index uint) A, seed A) OperatorFunc[V, A] {
+func Reduce[V any, A any](accumulator func(acc A, v V, index uint) (A, error), seed A) OperatorFunc[V, A] {
 	return func(source IObservable[V]) IObservable[A] {
 		var (
 			index  uint
 			result = seed
+			err    error
 		)
 		return createOperatorFunc(
 			source,
 			func(obs Observer[A], v V) {
-				result = accumulator(result, v, index)
+				result, err = accumulator(result, v, index)
+				if err != nil {
+					obs.Error(err)
+					return
+				}
 				index++
 			},
 			func(obs Observer[A], err error) {
@@ -978,18 +989,44 @@ func WithLatestFrom[A any, B any](input IObservable[B]) OperatorFunc[A, Tuple[A,
 	}
 }
 
-// Attaches a timestamp to each item emitted by an observable indicating when it was emitted
-func Timestamp[T any]() OperatorFunc[T, Timestamper[T]] {
-	return func(source IObservable[T]) IObservable[Timestamper[T]] {
+// Emits an object containing the current value, and the time that has passed
+// between emitting the current value and the previous value, which is calculated by
+// using the provided scheduler's now() method to retrieve the current time at each
+// emission, then calculating the difference.
+func WithTimeInterval[T any]() OperatorFunc[T, TimeInterval[T]] {
+	return func(source IObservable[T]) IObservable[TimeInterval[T]] {
+		var (
+			pastTime = time.Now()
+		)
 		return createOperatorFunc(
 			source,
-			func(obs Observer[Timestamper[T]], v T) {
-				obs.Next(NewTimestamp(v))
+			func(obs Observer[TimeInterval[T]], v T) {
+				now := time.Now()
+				obs.Next(NewTimeInterval(v, now.Sub(pastTime)))
+				pastTime = now
 			},
-			func(obs Observer[Timestamper[T]], err error) {
+			func(obs Observer[TimeInterval[T]], err error) {
 				obs.Error(err)
 			},
-			func(obs Observer[Timestamper[T]]) {
+			func(obs Observer[TimeInterval[T]]) {
+				obs.Complete()
+			},
+		)
+	}
+}
+
+// Attaches a timestamp to each item emitted by an observable indicating when it was emitted
+func WithTimestamp[T any]() OperatorFunc[T, Timestamp[T]] {
+	return func(source IObservable[T]) IObservable[Timestamp[T]] {
+		return createOperatorFunc(
+			source,
+			func(obs Observer[Timestamp[T]], v T) {
+				obs.Next(NewTimestamp(v))
+			},
+			func(obs Observer[Timestamp[T]], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[Timestamp[T]]) {
 				obs.Complete()
 			},
 		)
