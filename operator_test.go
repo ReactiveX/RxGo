@@ -290,10 +290,24 @@ func TestSingle(t *testing.T) {
 }
 
 func TestSample(t *testing.T) {
-	checkObservableResults(t, Pipe1(
+	var (
+		result = make([]uint, 0)
+		err    error
+		done   bool
+	)
+	Pipe1(
 		Pipe1(Interval(time.Millisecond), Take[uint](10)),
-		Sample[uint](Interval(time.Millisecond*2)),
-	), []uint{0, 2, 4, 6, 8}, nil, true)
+		Sample[uint](Interval(time.Millisecond*2))).
+		SubscribeSync(func(u uint) {
+			result = append(result, u)
+		}, func(e error) {
+			err = e
+		}, func() {
+			done = true
+		})
+	require.True(t, len(result) == 5)
+	require.Nil(t, err)
+	require.True(t, done)
 }
 
 func TestConcatMap(t *testing.T) {
