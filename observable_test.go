@@ -15,7 +15,7 @@ func TestMain(m *testing.M) {
 
 func TestObservable(t *testing.T) {
 	// obs := &observableWrapper[string]{}
-	// obs.subscribeOn(func(s string) {}, func(err error) {}, func() {}, func() {})
+	// obs.SubscribeOn(func(s string) {}, func(err error) {}, func() {}, func() {})
 }
 
 func TestNever(t *testing.T) {

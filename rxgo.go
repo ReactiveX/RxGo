@@ -17,10 +17,15 @@ type observableWrapper[T any] struct {
 
 var _ IObservable[any] = (*observableWrapper[any])(nil)
 
-func (o *observableWrapper[T]) subscribeOn() Subscriber[T] {
+func (o *observableWrapper[T]) SubscribeOn(cb ...func()) Subscriber[T] {
 	subscriber := NewSubscriber[T]()
+	finalizer := func() {}
+	if len(cb) > 0 {
+		finalizer = cb[0]
+	}
 	go func() {
 		defer subscriber.Unsubscribe()
+		defer finalizer()
 		o.source(subscriber)
 	}()
 	return subscriber
@@ -57,8 +62,8 @@ observe:
 		// if err := ctx.Err(); err != nil {
 		// 	sub.dst.Error(ctx.Err())
 		// }
-		// case <-sub.Closed():
-		// 	break observe
+		case <-sub.Closed():
+			break observe
 
 		case item, ok := <-sub.ForEach():
 			if !ok {

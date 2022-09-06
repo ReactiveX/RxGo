@@ -67,9 +67,9 @@ func TakeUntil[T any, R any](notifier IObservable[R]) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {
 			var (
-				upStream     = source.subscribeOn()
+				upStream     = source.SubscribeOn()
 				recv         = upStream.ForEach()
-				notifyStream = notifier.subscribeOn()
+				notifyStream = notifier.SubscribeOn()
 				// stop         bool
 			)
 

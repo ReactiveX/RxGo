@@ -3,6 +3,7 @@ package rxgo
 import (
 	"fmt"
 	"testing"
+	"time"
 )
 
 func TestElementAt(t *testing.T) {
@@ -218,18 +219,58 @@ func TestThrottle(t *testing.T) {
 
 }
 
+func TestDebounceTime(t *testing.T) {
+
+}
+
+func TestMerge(t *testing.T) {
+	err := fmt.Errorf("some error")
+	checkObservableResults(t, Pipe1(
+		Scheduled[any](1, err),
+		Merge(Scheduled[any](1)),
+	), []any{1, 1}, err, false)
+
+	t.Run("Merge with Interval", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			Pipe1(Interval(time.Millisecond), Take[uint](3)),
+			Merge(Scheduled[uint](1)),
+		), []uint{1, 0, 1, 2}, nil, true)
+	})
+}
+
+func TestRaceWith(t *testing.T) {
+	// t.Run("RaceWith with Interval", func(t *testing.T) {
+	// 	checkObservableResults(t, Pipe2(
+	// 		Pipe1(Interval(time.Millisecond*7), Map(func(v uint, _ uint) (string, error) {
+	// 			return fmt.Sprintf("slowest -> %v", v), nil
+	// 		})),
+	// 		RaceWith(
+	// 			Pipe1(Interval(time.Millisecond*3), Map(func(v uint, _ uint) (string, error) {
+	// 				return fmt.Sprintf("fastest -> %v", v), nil
+	// 			})),
+	// 			Pipe1(Interval(time.Millisecond*5), Map(func(v uint, _ uint) (string, error) {
+	// 				return fmt.Sprintf("average -> %v", v), nil
+	// 			})),
+	// 		),
+	// 		Take[string](5),
+	// 	),
+	// 		[]string{"fastest -> 0"}, // "fastest -> 1", "fastest -> 2", "fastest -> 3", "fastest -> 4"
+	// 		nil, true)
+	// })
+}
+
 // func TestWithLatestFrom(t *testing.T) {
 // 	// timer := Interval(time.Millisecond * 1)
 // 	// Pipe2(
-// 	// 	rxgo.Pipe1(
-// 	// 		rxgo.Interval(time.Second*2),
-// 	// 		rxgo.Map(func(i uint, _ uint) (string, error) {
+// 	// 	Pipe1(
+// 	// 		Interval(time.Second*2),
+// 	// 		Map(func(i uint, _ uint) (string, error) {
 // 	// 			return string(rune('A' + i)), nil
 // 	// 		}),
 // 	// 	),
-// 	// 	rxgo.WithLatestFrom[string](timer),
-// 	// 	rxgo.Take[rxgo.Tuple[string, uint], uint](10),
-// 	// ).SubscribeSync(func(f rxgo.Tuple[string, uint]) {
+// 	// 	WithLatestFrom[string](timer),
+// 	// 	Take[Tuple[string, uint], uint](10),
+// 	// ).SubscribeSync(func(f Tuple[string, uint]) {
 // 	// 	log.Println("[", f.First(), f.Second(), "]")
 // 	// }, func(err error) {}, func() {})
 // }

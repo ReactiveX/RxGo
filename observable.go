@@ -81,11 +81,21 @@ func Scheduled[T any](item T, items ...T) IObservable[T] {
 	items = append([]T{item}, items...)
 	return newObservable(func(subscriber Subscriber[T]) {
 		for _, item := range items {
+			data := newData(item)
+			switch vi := any(item).(type) {
+			case error:
+				data = newError[T](vi)
+			}
+
 			select {
 			// If receiver tell sender to stop, we should terminate the send operation
 			case <-subscriber.Closed():
 				return
-			case subscriber.Send() <- newData(item):
+			case subscriber.Send() <- data:
+			}
+
+			if err := data.Err(); err != nil {
+				return
 			}
 		}
 
@@ -93,16 +103,18 @@ func Scheduled[T any](item T, items ...T) IObservable[T] {
 	})
 }
 
-func Timer[T any, N constraints.Unsigned](start, interval N) IObservable[N] {
-	return newObservable(func(subscriber Subscriber[N]) {
-		latest := start
+func Timer[T any](start, interval time.Duration) IObservable[float64] {
+	return newObservable(func(subscriber Subscriber[float64]) {
+		var (
+			latest = start
+		)
 
 		for {
 			select {
 			case <-subscriber.Closed():
 				return
-			case <-time.After(time.Duration(latest)):
-				subscriber.Send() <- newData(latest)
+			case <-time.After(interval):
+				subscriber.Send() <- newData(latest.Seconds())
 				latest = latest + interval
 			}
 		}
@@ -132,7 +144,7 @@ func CombineLatest[A any, B any](first IObservable[A], second IObservable[B]) IO
 
 		wg := new(sync.WaitGroup)
 		wg.Add(2)
-		// first.subscribeOn(func(a A) {
+		// first.SubscribeOn(func(a A) {
 		// 	mu.Lock()
 		// 	defer mu.Unlock()
 		// 	latestA = a
@@ -144,7 +156,7 @@ func CombineLatest[A any, B any](first IObservable[A], second IObservable[B]) IO
 		// 	allOk[0] = true
 		// 	checkComplete()
 		// }, wg.Done)
-		// second.subscribeOn(func(b B) {
+		// second.SubscribeOn(func(b B) {
 		// 	mu.Lock()
 		// 	defer mu.Unlock()
 		// 	latestB = b

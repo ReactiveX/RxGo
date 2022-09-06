@@ -12,13 +12,14 @@ func createOperatorFunc[T any, R any](
 			stop bool
 
 			// input stream
-			upStream = source.subscribeOn()
+			upStream = source.SubscribeOn()
 		)
 
 		obs := &consumerObserver[R]{
 			onNext: func(v R) {
 				select {
 				case <-subscriber.Closed():
+					stop = true
 					return
 				case subscriber.Send() <- newData(v):
 				}

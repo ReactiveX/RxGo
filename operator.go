@@ -1,6 +1,8 @@
 package rxgo
 
 import (
+	"log"
+	"sync"
 	"time"
 
 	"golang.org/x/exp/constraints"
@@ -626,14 +628,63 @@ func MergeAll[A any, B any](concurrent uint64) OperatorFunc[A, B] {
 	}
 }
 
-// // Merge the values from all observables to a single observable result.
-// func MergeWith1[A any, B any](IObservable[B]) OperatorFunc[A, B] {
-// 	return func(source IObservable[A]) IObservable[B] {
-// 		return newObservable(func(subscriber Subscriber[B]) {
+// Merge the values from all observables to a single observable result.
+func Merge[T any](input IObservable[T]) OperatorFunc[T, T] {
+	return func(source IObservable[T]) IObservable[T] {
+		return newObservable(func(subscriber Subscriber[T]) {
+			var (
+				activeSubscription = 2
+				wg                 = new(sync.WaitGroup)
+				p1                 = source.SubscribeOn(wg.Done)
+				p2                 = input.SubscribeOn(wg.Done)
+				err                error
+			)
 
-// 		})
-// 	}
-// }
+			wg.Add(2)
+
+			onNext := func(v DataValuer[T]) {
+				if v == nil {
+					return
+				}
+
+				// When any source errors, the resulting observable will error
+				if err = v.Err(); err != nil {
+					p1.Stop()
+					p2.Stop()
+					activeSubscription = 0
+					return
+				}
+
+				if v.Done() {
+					activeSubscription--
+					return
+				}
+
+				subscriber.Send() <- v
+			}
+
+			for activeSubscription > 0 {
+				select {
+				case <-subscriber.Closed():
+					return
+				case v1 := <-p1.ForEach():
+					onNext(v1)
+				case v2 := <-p2.ForEach():
+					onNext(v2)
+				}
+			}
+
+			// Wait for all input streams to unsubscribe
+			wg.Wait()
+
+			if err != nil {
+				subscriber.Send() <- newError[T](err)
+			} else {
+				subscriber.Send() <- newComplete[T]()
+			}
+		})
+	}
+}
 
 // Useful for encapsulating and managing state. Applies an accumulator (or "reducer function")
 // to each value from the source after an initial state is established --
@@ -725,23 +776,30 @@ func Throttle[T any, R any](durationSelector func(v T) IObservable[R]) OperatorF
 	}
 }
 
+// Emits a notification from the source Observable only after a particular time span
+// has passed without another source emission.
 func DebounceTime[T any](duration time.Duration) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
-		// var (
-		// 	lastTime  time.Time
-		// 	lastValue T
-		// )
-		return newObservable(func(subscriber Subscriber[T]) {
-			// source.SubscribeSync(
-			// 	func(v T) {
-			// 		// lastValue = v
-			// 		// lastTime = time.Now()
-			// 		subscriber.Next(v)
-			// 	},
-			// 	subscriber.Error,
-			// 	subscriber.Complete,
-			// )
-		})
+		var (
+			timer *time.Timer
+		)
+		return createOperatorFunc(
+			source,
+			func(obs Observer[T], v T) {
+				if timer != nil {
+					timer.Stop()
+				}
+				timer = time.AfterFunc(duration, func() {
+					obs.Next(v)
+				})
+			},
+			func(obs Observer[T], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[T]) {
+				obs.Complete()
+			},
+		)
 	}
 }
 
@@ -749,11 +807,11 @@ func DebounceTime[T any](duration time.Duration) OperatorFunc[T, T] {
 func CatchError[T any](catch func(error, IObservable[T]) IObservable[T]) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {
-			// var (
-			// 	wg           = new(sync.WaitGroup)
-			// 	subscription Subscription
-			// 	subscribe    func(IObservable[T])
-			// )
+			var (
+				wg = new(sync.WaitGroup)
+				// subscription Subscription
+				// subscribe func(IObservable[T])
+			)
 
 			// unsubscribe := func() {
 			// 	if subscription != nil {
@@ -777,11 +835,11 @@ func CatchError[T any](catch func(error, IObservable[T]) IObservable[T]) Operato
 			// 	)
 			// }
 
-			// wg.Add(1)
+			wg.Add(1)
 			// subscribe(source)
-			// wg.Wait()
+			wg.Wait()
 
-			// subscriber.Complete()
+			subscriber.Send() <- newComplete[T]()
 		})
 	}
 }
@@ -793,66 +851,85 @@ func RaceWith[T any](input IObservable[T], inputs ...IObservable[T]) OperatorFun
 	return func(source IObservable[T]) IObservable[T] {
 		inputs = append([]IObservable[T]{source, input}, inputs...)
 		return newObservable(func(subscriber Subscriber[T]) {
-			// var (
-			// 	noOfInputs = len(inputs)
-			// 	wg         = new(sync.WaitGroup)
-			// 	// mu                  = new(sync.Mutex)
-			// 	// activeSubscriptions = make([]Subscription, noOfInputs)
-			// 	// unsubscribe         bool
-			// )
-			// wg.Add(noOfInputs)
+			var (
+				noOfInputs = len(inputs)
+				// wg                  = new(sync.WaitGroup)
+				fastestCh           = make(chan int, 1)
+				activeSubscriptions = make([]Subscriber[T], noOfInputs)
+				mu                  = new(sync.RWMutex)
+				// unsubscribed        bool
+			)
+			// wg.Add(noOfInputs * 2)
 
-			// // unsubscribeAll := func(index int) {
-			// // 	mu.Lock()
-			// // 	defer mu.Unlock()
-			// // 	if unsubscribe {
-			// // 		return
-			// // 	}
+			// unsubscribeAll := func(index int) {
 
-			// // 	var subscription Subscription
-			// // 	// remove all subscriptions except the fastest one
-			// // 	for i, sub := range activeSubscriptions {
-			// // 		if i == index {
-			// // 			subscription = activeSubscriptions[i]
-			// // 			continue
-			// // 		}
-			// // 		sub.Unsubscribe()
-			// // 	}
-			// // 	activeSubscriptions = []Subscription{subscription}
-			// // 	unsubscribe = true
-			// // }
+			// 	var subscription Subscriber[T]
 
-			// // onNext := func(index int, v T) {
-			// // 	unsubscribeAll(index)
-			// // 	subscriber.Next(v)
-			// // }
+			// 	activeSubscriptions = []Subscriber[T]{subscription}
+			// }
 
-			// // onError := func(index int, err error) {
-			// // 	// defer wg.Done()
-			// // 	unsubscribeAll(index)
-			// // 	subscriber.Error(err)
-			// // }
-			// // onComplete := func(index int) {
-			// // 	// wg.Done()
-			// // 	unsubscribeAll(index)
-			// // }
+			// emit := func(index int, v DataValuer[T]) {
+			// 	mu.RLock()
+			// 	if unsubscribed {
+			// 		mu.RUnlock()
+			// 		return
+			// 	}
 
-			// // for i, xs := range inputs {
-			// // 	activeSubscriptions[i] = xs.subscribeOn(
-			// // 		func(index int) (OnNextFunc[T], OnErrorFunc, OnCompleteFunc, FinalizerFunc) {
-			// // 			return func(v T) {
-			// // 					onNext(index, v)
-			// // 				}, func(err error) {
-			// // 					onError(index, err)
-			// // 				}, func() {
-			// // 					onComplete(index)
-			// // 				}, wg.Done
-			// // 		}(i),
-			// // 	)
-			// // }
+			// 	log.Println("isThis", index)
+
+			// 	mu.RUnlock()
+			// 	mu.Lock()
+			// 	unsubscribed = true
+			// 	mu.Unlock()
+			// 	// 	unsubscribeAll(index)
+
+			// 	subscriber.Send() <- v
+			// }
+
+			for i, v := range inputs {
+				activeSubscriptions[i] = v.SubscribeOn(func() {
+					log.Println("DONE here")
+					// wg.Done()
+				})
+				go func(idx int, obs Subscriber[T]) {
+					// defer wg.Done()
+					defer log.Println("closing routine", idx)
+
+					for {
+						select {
+						case <-subscriber.Closed():
+							log.Println("downstream closing ", idx)
+							return
+						case <-obs.Closed():
+							log.Println("upstream closing ", idx)
+							return
+						case item := <-obs.ForEach():
+							// mu.Lock()
+							// defer mu.Unlock()
+							// for _, sub := range activeSubscriptions {
+							// 	sub.Stop()
+							// }
+							// activeSubscriptions = []Subscriber[T]{}
+							log.Println("ForEach ah", idx, item)
+							fastestCh <- idx
+							// obs.Stop()
+						}
+					}
+				}(i, activeSubscriptions[i])
+			}
+
+			log.Println("Fastest", <-fastestCh)
+			mu.Lock()
+			for _, v := range activeSubscriptions {
+				v.Stop()
+				log.Println(v)
+			}
+			mu.Unlock()
 			// wg.Wait()
 
-			// subscriber.Complete()
+			log.Println("END")
+
+			subscriber.Send() <- newComplete[T]()
 		})
 	}
 }
@@ -869,7 +946,7 @@ func WithLatestFrom[A any, B any](input IObservable[B]) OperatorFunc[A, Tuple[A,
 			// 	subscription Subscription
 			// )
 
-			// // subscription = input.subscribeOn(func(b B) {
+			// // subscription = input.SubscribeOn(func(b B) {
 			// // 	latestB = b
 			// // 	allOk[1] = true
 			// // }, func(err error) {}, func() {

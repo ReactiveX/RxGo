@@ -11,7 +11,7 @@ type (
 
 // FIXME: please rename it to `Observable`
 type IObservable[T any] interface {
-	subscribeOn() Subscriber[T]
+	SubscribeOn(...func()) Subscriber[T]
 	SubscribeSync(onNext func(T), onError func(error), onComplete func())
 	// Subscribe(onNext func(T), onError func(error), onComplete func()) Subscription
 }
