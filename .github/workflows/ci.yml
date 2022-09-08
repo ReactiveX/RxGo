@@ -19,7 +19,7 @@ jobs:
       - name: Linting
         uses: golangci/golangci-lint-action@v3
         with:
-          version: v1.49
+          version: master
 
       - name: test
         run: make test
