@@ -4,6 +4,18 @@ func skipPredicate[T any](T, uint) bool {
 	return true
 }
 
+func defaultComparer[T any](a T, b T) int8 {
+	switch any(a).(type) {
+	case string:
+		if any(a).(string) < any(b).(string) {
+			return -1
+		}
+		return 1
+	case nil:
+	}
+	return -1
+}
+
 func createOperatorFunc[T any, R any](
 	source IObservable[T],
 	onNext func(Observer[R], T),

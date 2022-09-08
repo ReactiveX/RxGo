@@ -1,15 +1,65 @@
 package rxgo
 
+import (
+	"sync"
+)
+
 // Represents all of the notifications from the source Observable as next emissions
 // marked with their original types within Notification objects.
-func Materialize[T any]() OperatorFunc[T, Notification[T]] {
-	return func(source IObservable[T]) IObservable[Notification[T]] {
-		return newObservable(func(subscriber Subscriber[Notification[T]]) {
+func Materialize[T any]() OperatorFunc[T, ObservableNotification[T]] {
+	return func(source IObservable[T]) IObservable[ObservableNotification[T]] {
+		return newObservable(func(subscriber Subscriber[ObservableNotification[T]]) {
+			var (
+				wg = new(sync.WaitGroup)
+			)
 
+			wg.Add(1)
+
+			var (
+				upStream  = source.SubscribeOn(wg.Done)
+				completed bool
+				notice    Notification[ObservableNotification[T]]
+			)
+
+		observe:
+			for {
+				select {
+				case <-subscriber.Closed():
+					upStream.Stop()
+					break observe
+
+				case item, ok := <-upStream.ForEach():
+					if !ok {
+						break observe
+					}
+
+					// When the source Observable emits complete,
+					// the output Observable will emit next as a Notification of type "complete",
+					// and then it will emit complete as well.
+					// When the source Observable emits error,
+					// the output will emit next as a Notification of type "error", and then complete.
+					completed = item.Err() != nil || item.Done()
+					notice = NextNotification(item.(ObservableNotification[T]))
+
+					if !notice.Send(subscriber) {
+						upStream.Stop()
+						break observe
+					}
+
+					if completed {
+						CompleteNotification[ObservableNotification[T]]().Send(subscriber)
+						upStream.Stop()
+						break observe
+					}
+				}
+			}
+
+			wg.Wait()
 		})
 	}
 }
 
+// NotificationKind
 type NotificationKind int
 
 const (
@@ -18,12 +68,16 @@ const (
 	CompleteKind
 )
 
-type Notification[T any] interface {
+type ObservableNotification[T any] interface {
 	Kind() NotificationKind
 	Value() T
 	Err() error
-	Done() bool
+}
+
+type Notification[T any] interface {
+	ObservableNotification[T]
 	Send(Subscriber[T]) bool
+	Done() bool
 }
 
 type notification[T any] struct {

@@ -93,48 +93,6 @@ func TestFindIndex(t *testing.T) {
 	})
 }
 
-func TestMin(t *testing.T) {
-	type human struct {
-		age  int
-		name string
-	}
-	checkObservableResult(t, Pipe1(Scheduled(
-		human{age: 7, name: "Foo"},
-		human{age: 5, name: "Bar"},
-		human{age: 9, name: "Beer"},
-	), Min(func(a, b human) int8 {
-		if a.age < b.age {
-			return -1
-		}
-		return 1
-	})), human{age: 5, name: "Bar"}, nil, true)
-}
-
-func TestMax(t *testing.T) {
-	// checkObservableResult(t, Pipe1(Range[uint](1, 7), Max(func(a, b uint) int8 {
-	// 	if a > b {
-	// 		return 1
-	// 	}
-	// 	return -1
-	// })), uint(7), nil, true)
-}
-
-func TestCount(t *testing.T) {
-	t.Run("Count with EMPTY", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(EMPTY[any](), Count[any]()), uint(0), nil, true)
-	})
-
-	t.Run("Count everything from Range(0,7)", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(Range[uint](0, 7), Count[uint]()), uint(7), nil, true)
-	})
-
-	t.Run("Count from Range(1,7) with condition", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(Range[uint](1, 7), Count(func(i uint, _ uint) bool {
-			return i%2 == 1
-		})), uint(4), nil, true)
-	})
-}
-
 func TestIgnoreElements(t *testing.T) {
 	t.Run("IgnoreElements with EMPTY", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(EMPTY[any](), IgnoreElements[any]()), nil, nil, true)
@@ -200,81 +158,6 @@ func TestDefaultIfEmpty(t *testing.T) {
 	t.Run("DefaultIfEmpty with NonEmpty", func(t *testing.T) {
 		checkObservableResults(t, Pipe1(Range[uint](1, 3), DefaultIfEmpty[uint](100)), []uint{1, 2, 3}, nil, true)
 	})
-}
-
-func TestDistinctUntilChanged(t *testing.T) {
-	t.Run("DistinctUntilChanged with empty", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(EMPTY[any](), DistinctUntilChanged[any]()), nil, nil, true)
-	})
-
-	t.Run("DistinctUntilChanged with String", func(t *testing.T) {
-		checkObservableResults(t,
-			Pipe1(Scheduled("a", "a", "b", "a", "c", "c", "d"), DistinctUntilChanged[string]()),
-			[]string{"a", "b", "a", "c", "d"}, nil, true)
-	})
-
-	t.Run("DistinctUntilChanged with Number", func(t *testing.T) {
-		checkObservableResults(t,
-			Pipe1(
-				Scheduled(30, 31, 20, 34, 33, 29, 35, 20),
-				DistinctUntilChanged(func(prev, current int) bool {
-					return current <= prev
-				}),
-			), []int{30, 31, 34, 35}, nil, true)
-	})
-
-	t.Run("DistinctUntilChanged with Struct", func(t *testing.T) {
-		type build struct {
-			engineVersion       string
-			transmissionVersion string
-		}
-		checkObservableResults(t,
-			Pipe1(
-				Scheduled(
-					build{engineVersion: "1.1.0", transmissionVersion: "1.2.0"},
-					build{engineVersion: "1.1.0", transmissionVersion: "1.4.0"},
-					build{engineVersion: "1.3.0", transmissionVersion: "1.4.0"},
-					build{engineVersion: "1.3.0", transmissionVersion: "1.5.0"},
-					build{engineVersion: "2.0.0", transmissionVersion: "1.5.0"},
-				),
-				DistinctUntilChanged(func(prev, curr build) bool {
-					return (prev.engineVersion == curr.engineVersion ||
-						prev.transmissionVersion == curr.transmissionVersion)
-				}),
-			),
-			[]build{
-				{engineVersion: "1.1.0", transmissionVersion: "1.2.0"},
-				{engineVersion: "1.3.0", transmissionVersion: "1.4.0"},
-				{engineVersion: "2.0.0", transmissionVersion: "1.5.0"},
-			}, nil, true)
-	})
-
-	t.Run("DistinctUntilChanged with Struct(complex)", func(t *testing.T) {
-		type account struct {
-			updatedBy string
-			data      []string
-		}
-		checkObservableResults(t,
-			Pipe1(
-				Scheduled(
-					account{updatedBy: "blesh", data: []string{}},
-					account{updatedBy: "blesh", data: []string{}},
-					account{updatedBy: "jamieson"},
-					account{updatedBy: "jamieson"},
-					account{updatedBy: "blesh"},
-				),
-				DistinctUntilChanged[account](),
-			),
-			[]account{
-				{updatedBy: "blesh", data: []string{}},
-				{updatedBy: "jamieson"},
-				{updatedBy: "blesh"},
-			}, nil, true)
-	})
-}
-
-func TestFilter(t *testing.T) {
-
 }
 
 func TestMap(t *testing.T) {
@@ -382,17 +265,6 @@ func TestScan(t *testing.T) {
 	})
 }
 
-func TestReduce(t *testing.T) {
-	t.Run("Reduce with zero default value", func(t *testing.T) {
-		checkObservableResults(t, Pipe1(
-			Scheduled[uint](1, 3, 5),
-			Reduce(func(acc, cur, _ uint) (uint, error) {
-				return acc + cur, nil
-			}, 0),
-		), []uint{9}, nil, true)
-	})
-}
-
 func TestDelay(t *testing.T) {
 
 }
@@ -495,7 +367,7 @@ func TestToArray(t *testing.T) {
 	t.Run("ToArray with error", func(t *testing.T) {
 		var err = errors.New("throw")
 		checkObservableResult(t, Pipe1(Scheduled[any]("a", "z", err), ToArray[any]()),
-			[]any{}, err, false)
+			nil, err, false)
 	})
 
 	t.Run("ToArray with numbers", func(t *testing.T) {

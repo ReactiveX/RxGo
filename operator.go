@@ -2,7 +2,6 @@ package rxgo
 
 import (
 	"log"
-	"reflect"
 	"sync"
 	"time"
 
@@ -201,108 +200,6 @@ func FindIndex[T any](predicate PredicateFunc[T]) OperatorFunc[T, int] {
 	}
 }
 
-// The Min operator operates on an Observable that emits numbers
-// (or items that can be compared with a provided function),
-// and when source Observable completes it emits a single item: the item with the smallest value.
-func Min[T any](comparer ComparerFunc[T, T]) OperatorFunc[T, T] {
-	return func(source IObservable[T]) IObservable[T] {
-		var (
-			lastValue T
-			first     = true
-		)
-		return createOperatorFunc(
-			source,
-			func(obs Observer[T], v T) {
-				if first {
-					lastValue = v
-					first = false
-					return
-				}
-
-				switch comparer(lastValue, v) {
-				case 1:
-					lastValue = v
-				default:
-				}
-			},
-			func(obs Observer[T], err error) {
-				obs.Error(err)
-			},
-			func(obs Observer[T]) {
-				obs.Next(lastValue)
-				obs.Complete()
-			},
-		)
-	}
-}
-
-// The Max operator operates on an Observable that emits numbers
-// (or items that can be compared with a provided function),
-// and when source Observable completes it emits a single item: the item with the largest value.
-func Max[T any](comparer ComparerFunc[T, T]) OperatorFunc[T, T] {
-	return func(source IObservable[T]) IObservable[T] {
-		var (
-			lastValue T
-			first     = true
-		)
-		return createOperatorFunc(
-			source,
-			func(obs Observer[T], v T) {
-				if first {
-					lastValue = v
-					first = false
-					return
-				}
-
-				switch comparer(lastValue, v) {
-				case -1:
-					lastValue = v
-				default:
-					lastValue = v
-				}
-			},
-			func(obs Observer[T], err error) {
-				obs.Error(err)
-			},
-			func(obs Observer[T]) {
-				obs.Next(lastValue)
-				obs.Complete()
-			},
-		)
-	}
-}
-
-// Counts the number of emissions on the source and emits that number when the source completes.
-func Count[T any](predicate ...PredicateFunc[T]) OperatorFunc[T, uint] {
-	cb := skipPredicate[T]
-	if len(predicate) > 0 {
-		cb = predicate[0]
-	}
-
-	return func(source IObservable[T]) IObservable[uint] {
-		var (
-			count uint
-			index uint
-		)
-		return createOperatorFunc(
-			source,
-			func(obs Observer[uint], v T) {
-				if cb(v, index) {
-					count++
-				}
-				index++
-			},
-			func(obs Observer[uint], err error) {
-				obs.Error(err)
-			},
-			func(obs Observer[uint]) {
-				obs.Next(count)
-				obs.Complete()
-			},
-		)
-	}
-}
-
 // Ignores all items emitted by the source Observable and only passes calls of complete or error.
 func IgnoreElements[T any]() OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
@@ -408,67 +305,6 @@ func DefaultIfEmpty[T any](defaultValue T) OperatorFunc[T, T] {
 				if !hasValue {
 					obs.Next(defaultValue)
 				}
-				obs.Complete()
-			},
-		)
-	}
-}
-
-// Returns a result Observable that emits all values pushed by the source observable
-// if they are distinct in comparison to the last value the result observable emitted.
-func DistinctUntilChanged[T any](comparator ...ComparatorFunc[T, T]) OperatorFunc[T, T] {
-	cb := func(prev T, current T) bool {
-		return reflect.DeepEqual(prev, current)
-	}
-	if len(comparator) > 0 {
-		cb = comparator[0]
-	}
-	return func(source IObservable[T]) IObservable[T] {
-		var (
-			lastValue T
-			first     = true
-		)
-		return createOperatorFunc(
-			source,
-			func(obs Observer[T], v T) {
-				if first || !cb(lastValue, v) {
-					obs.Next(v)
-					first = false
-					lastValue = v
-				}
-			},
-			func(obs Observer[T], err error) {
-				obs.Error(err)
-			},
-			func(obs Observer[T]) {
-				obs.Complete()
-			},
-		)
-	}
-}
-
-// Filter emits only those items from an Observable that pass a predicate test.
-func Filter[T any](predicate PredicateFunc[T]) OperatorFunc[T, T] {
-	return func(source IObservable[T]) IObservable[T] {
-		var (
-			index uint
-		)
-		cb := skipPredicate[T]
-		if predicate != nil {
-			cb = predicate
-		}
-		return createOperatorFunc(
-			source,
-			func(obs Observer[T], v T) {
-				if cb(v, index) {
-					obs.Next(v)
-				}
-				index++
-			},
-			func(obs Observer[T], err error) {
-				obs.Error(err)
-			},
-			func(obs Observer[T]) {
 				obs.Complete()
 			},
 		)
@@ -635,39 +471,6 @@ func Scan[V any, A any](accumulator AccumulatorFunc[A, V], seed A) OperatorFunc[
 				obs.Error(err)
 			},
 			func(obs Observer[A]) {
-				obs.Complete()
-			},
-		)
-	}
-}
-
-// Applies an accumulator function over the source Observable, and returns
-// the accumulated result when the source completes, given an optional seed value.
-func Reduce[V any, A any](accumulator AccumulatorFunc[A, V], seed A) OperatorFunc[V, A] {
-	if accumulator == nil {
-		panic(`rxgo: "Reduce" expected accumulator func`)
-	}
-	return func(source IObservable[V]) IObservable[A] {
-		var (
-			index  uint
-			result = seed
-			err    error
-		)
-		return createOperatorFunc(
-			source,
-			func(obs Observer[A], v V) {
-				result, err = accumulator(result, v, index)
-				if err != nil {
-					obs.Error(err)
-					return
-				}
-				index++
-			},
-			func(obs Observer[A], err error) {
-				obs.Error(err)
-			},
-			func(obs Observer[A]) {
-				obs.Next(result)
 				obs.Complete()
 			},
 		)
