@@ -7,6 +7,14 @@ type (
 	OnCompleteFunc             func()
 	FinalizerFunc              func()
 	OperatorFunc[I any, O any] func(IObservable[I]) IObservable[O]
+
+	PredicateFunc[T any] func(value T, index uint) bool
+
+	ComparerFunc[A any, B any] func(prev A, curr B) int8
+
+	ComparatorFunc[A any, B any] func(prev A, curr B) bool
+
+	AccumulatorFunc[A any, V any] func(acc A, value V, index uint) (A, error)
 )
 
 // FIXME: please rename it to `Observable`

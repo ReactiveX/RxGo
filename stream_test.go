@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestSwitchMap(t *testing.T) {
@@ -116,6 +118,71 @@ func TestConcatMap(t *testing.T) {
 			"x -> 4, y -> 2",
 		}, nil, true)
 	})
+}
+
+func TestMergeMap(t *testing.T) {
+
+	t.Run("MergeMap with complete", func(t *testing.T) {
+		var (
+			result = make([]Tuple[string, uint], 0)
+			err    error
+			done   bool
+		)
+		Pipe1(
+			Scheduled("a", "b", "v"),
+			MergeMap(func(x string, i uint) IObservable[Tuple[string, uint]] {
+				return Pipe2(
+					Interval(time.Millisecond),
+					Map(func(y, _ uint) (Tuple[string, uint], error) {
+						return NewTuple(x, y), nil
+					}),
+					Take[Tuple[string, uint]](5),
+				)
+			}),
+		).SubscribeSync(func(s Tuple[string, uint]) {
+			result = append(result, s)
+		}, func(e error) {
+			err = e
+		}, func() {
+			done = true
+		})
+		require.True(t, len(result) == 15)
+		require.Nil(t, err)
+		require.True(t, done)
+	})
+
+	// t.Run("MergeMap with error", func(t *testing.T) {
+	// 	var (
+	// 		result = make([]Tuple[string, uint], 0)
+	// 		failed = errors.New("failed")
+	// 		err    error
+	// 		done   bool
+	// 	)
+	// 	Pipe1(
+	// 		Scheduled("a", "b", "v"),
+	// 		MergeMap(func(x string, i uint) IObservable[Tuple[string, uint]] {
+	// 			return Pipe2(
+	// 				Interval(time.Millisecond),
+	// 				Map(func(y, idx uint) (Tuple[string, uint], error) {
+	// 					if idx > 3 {
+	// 						return nil, failed
+	// 					}
+	// 					return NewTuple(x, y), nil
+	// 				}),
+	// 				Take[Tuple[string, uint]](5),
+	// 			)
+	// 		}),
+	// 	).SubscribeSync(func(s Tuple[string, uint]) {
+	// 		result = append(result, s)
+	// 	}, func(e error) {
+	// 		err = e
+	// 	}, func() {
+	// 		done = true
+	// 	})
+	// 	require.True(t, len(result) == 9)
+	// 	require.Equal(t, failed, err)
+	// 	require.False(t, done)
+	// })
 }
 
 func TestExhaustMap(t *testing.T) {

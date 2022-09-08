@@ -1,5 +1,9 @@
 package rxgo
 
+func alwaysTrue[T any](T, uint) bool {
+	return true
+}
+
 func createOperatorFunc[T any, R any](
 	source IObservable[T],
 	onNext func(Observer[R], T),

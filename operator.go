@@ -49,16 +49,20 @@ func ElementAt[T any](pos uint, defaultValue ...T) OperatorFunc[T, T] {
 
 // Emits only the first value (or the first value that meets some condition)
 // emitted by the source Observable.
-func First[T any](predicate func(value T, index uint) bool, defaultValue ...T) OperatorFunc[T, T] {
+func First[T any](predicate PredicateFunc[T], defaultValue ...T) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
 		var (
 			index    uint
 			hasValue bool
 		)
+		cb := alwaysTrue[T]
+		if predicate != nil {
+			cb = predicate
+		}
 		return createOperatorFunc(
 			source,
 			func(obs Observer[T], v T) {
-				if !hasValue && predicate != nil && predicate(v, index) {
+				if !hasValue && cb(v, index) {
 					hasValue = true
 					obs.Next(v)
 					obs.Complete()
@@ -89,14 +93,55 @@ func First[T any](predicate func(value T, index uint) bool, defaultValue ...T) O
 // rather than emitting the last item from the source Observable,
 // the resulting Observable will emit the last item from the source Observable
 // that satisfies the predicate.
-func Last[T any]() OperatorFunc[T, T] {
+func Last[T any](predicate PredicateFunc[T], defaultValue ...T) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
-		return Pipe1(source, TakeLast[T](1))
+		var (
+			index       uint
+			hasValue    bool
+			latestValue T
+			found       bool
+		)
+		cb := alwaysTrue[T]
+		if predicate != nil {
+			cb = predicate
+		}
+		return createOperatorFunc(
+			source,
+			func(obs Observer[T], v T) {
+				hasValue = true
+				if cb(v, index) {
+					found = true
+					latestValue = v
+				}
+				index++
+			},
+			func(obs Observer[T], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[T]) {
+				if found {
+					obs.Next(latestValue)
+				} else {
+					if !hasValue {
+						if len(defaultValue) == 0 {
+							obs.Error(ErrEmpty)
+							return
+						}
+
+						obs.Next(defaultValue[0])
+					} else {
+						obs.Error(ErrNotFound)
+						return
+					}
+				}
+				obs.Complete()
+			},
+		)
 	}
 }
 
 // Emits only the first value emitted by the source Observable that meets some condition.
-func Find[T any](predicate func(T, uint) bool) OperatorFunc[T, Optional[T]] {
+func Find[T any](predicate PredicateFunc[T]) OperatorFunc[T, Optional[T]] {
 	return func(source IObservable[T]) IObservable[Optional[T]] {
 		var (
 			found bool
@@ -127,7 +172,7 @@ func Find[T any](predicate func(T, uint) bool) OperatorFunc[T, Optional[T]] {
 }
 
 // Emits only the index of the first value emitted by the source Observable that meets some condition.
-func FindIndex[T any](predicate func(T, uint) bool) OperatorFunc[T, int] {
+func FindIndex[T any](predicate PredicateFunc[T]) OperatorFunc[T, int] {
 	var (
 		index uint
 		found bool
@@ -159,7 +204,7 @@ func FindIndex[T any](predicate func(T, uint) bool) OperatorFunc[T, int] {
 // The Min operator operates on an Observable that emits numbers
 // (or items that can be compared with a provided function),
 // and when source Observable completes it emits a single item: the item with the smallest value.
-func Min[T any](comparer func(a T, b T) int8) OperatorFunc[T, T] {
+func Min[T any](comparer ComparerFunc[T, T]) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
 		var (
 			lastValue T
@@ -194,7 +239,7 @@ func Min[T any](comparer func(a T, b T) int8) OperatorFunc[T, T] {
 // The Max operator operates on an Observable that emits numbers
 // (or items that can be compared with a provided function),
 // and when source Observable completes it emits a single item: the item with the largest value.
-func Max[T any](comparer func(a T, b T) int8) OperatorFunc[T, T] {
+func Max[T any](comparer ComparerFunc[T, T]) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
 		var (
 			lastValue T
@@ -228,10 +273,8 @@ func Max[T any](comparer func(a T, b T) int8) OperatorFunc[T, T] {
 }
 
 // Counts the number of emissions on the source and emits that number when the source completes.
-func Count[T any](predicate ...func(v T, index uint) bool) OperatorFunc[T, uint] {
-	cb := func(T, uint) bool {
-		return true
-	}
+func Count[T any](predicate ...PredicateFunc[T]) OperatorFunc[T, uint] {
+	cb := alwaysTrue[T]
 	if len(predicate) > 0 {
 		cb = predicate[0]
 	}
@@ -278,16 +321,20 @@ func IgnoreElements[T any]() OperatorFunc[T, T] {
 
 // Returns an Observable that emits whether or not every item of the
 // source satisfies the condition specified.
-func Every[T any](predicate func(value T, index uint) bool) OperatorFunc[T, bool] {
+func Every[T any](predicate PredicateFunc[T]) OperatorFunc[T, bool] {
 	return func(source IObservable[T]) IObservable[bool] {
 		var (
 			allOk = true
 			index uint
 		)
+		cb := alwaysTrue[T]
+		if predicate != nil {
+			cb = predicate
+		}
 		return createOperatorFunc(
 			source,
 			func(obs Observer[bool], v T) {
-				allOk = allOk && predicate(v, index)
+				allOk = allOk && cb(v, index)
 			},
 			func(obs Observer[bool], err error) {
 				obs.Error(err)
@@ -369,7 +416,7 @@ func DefaultIfEmpty[T any](defaultValue T) OperatorFunc[T, T] {
 
 // Returns a result Observable that emits all values pushed by the source observable
 // if they are distinct in comparison to the last value the result observable emitted.
-func DistinctUntilChanged[T any](comparator ...func(prev T, current T) bool) OperatorFunc[T, T] {
+func DistinctUntilChanged[T any](comparator ...ComparatorFunc[T, T]) OperatorFunc[T, T] {
 	cb := func(prev T, current T) bool {
 		return reflect.DeepEqual(prev, current)
 	}
@@ -401,15 +448,19 @@ func DistinctUntilChanged[T any](comparator ...func(prev T, current T) bool) Ope
 }
 
 // Filter emits only those items from an Observable that pass a predicate test.
-func Filter[T any](filter func(T, uint) bool) OperatorFunc[T, T] {
+func Filter[T any](predicate PredicateFunc[T]) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
 		var (
 			index uint
 		)
+		cb := alwaysTrue[T]
+		if predicate != nil {
+			cb = predicate
+		}
 		return createOperatorFunc(
 			source,
 			func(obs Observer[T], v T) {
-				if filter(v, index) {
+				if cb(v, index) {
 					obs.Next(v)
 				}
 				index++
@@ -454,6 +505,9 @@ func Map[T any, R any](mapper func(T, uint) (R, error)) OperatorFunc[T, R] {
 // Used to perform side-effects for notifications from the source observable
 func Tap[T any](cb Observer[T]) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
+		if cb == nil {
+			cb = NewObserver[T](nil, nil, nil)
+		}
 		return createOperatorFunc(
 			source,
 			func(obs Observer[T], v T) {
@@ -553,19 +607,13 @@ func Sample[A any, B any](notifier IObservable[B]) OperatorFunc[A, A] {
 	}
 }
 
-// Merge the values from all observables to a single observable result.
-func MergeAll[A any, B any](concurrent uint64) OperatorFunc[A, B] {
-	return func(source IObservable[A]) IObservable[B] {
-		return newObservable(func(subscriber Subscriber[B]) {
-
-		})
-	}
-}
-
 // Useful for encapsulating and managing state. Applies an accumulator (or "reducer function")
 // to each value from the source after an initial state is established --
 // either via a seed value (second argument), or from the first value from the source.
-func Scan[V any, A any](accumulator func(acc A, v V, index uint) (A, error), seed A) OperatorFunc[V, A] {
+func Scan[V any, A any](accumulator AccumulatorFunc[A, V], seed A) OperatorFunc[V, A] {
+	if accumulator == nil {
+		panic(`rxgo: "Scan" expected accumulator func`)
+	}
 	return func(source IObservable[V]) IObservable[A] {
 		var (
 			index  uint
@@ -595,7 +643,10 @@ func Scan[V any, A any](accumulator func(acc A, v V, index uint) (A, error), see
 
 // Applies an accumulator function over the source Observable, and returns
 // the accumulated result when the source completes, given an optional seed value.
-func Reduce[V any, A any](accumulator func(acc A, v V, index uint) (A, error), seed A) OperatorFunc[V, A] {
+func Reduce[V any, A any](accumulator AccumulatorFunc[A, V], seed A) OperatorFunc[V, A] {
+	if accumulator == nil {
+		panic(`rxgo: "Reduce" expected accumulator func`)
+	}
 	return func(source IObservable[V]) IObservable[A] {
 		var (
 			index  uint

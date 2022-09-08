@@ -3,6 +3,7 @@ package rxgo
 import (
 	"log"
 	"sync"
+	"sync/atomic"
 )
 
 // Projects each source value to an Observable which is merged in the output Observable,
@@ -128,8 +129,7 @@ func ConcatMap[T any, R any](project func(value T, index uint) IObservable[R]) O
 
 					wg.Add(1)
 					// we should wait the projection to complete
-					obs := project(item.Value(), index)
-					stream := obs.SubscribeOn(wg.Done)
+					stream := project(item.Value(), index).SubscribeOn(wg.Done)
 				observeInner:
 					for {
 						select {
@@ -138,7 +138,7 @@ func ConcatMap[T any, R any](project func(value T, index uint) IObservable[R]) O
 							stream.Stop()
 							break observe
 
-						case item := <-stream.ForEach():
+						case item, ok := <-stream.ForEach():
 							if !ok {
 								upStream.Stop()
 								break observeInner
@@ -164,6 +164,101 @@ func ConcatMap[T any, R any](project func(value T, index uint) IObservable[R]) O
 				}
 			}
 			wg.Wait()
+		})
+	}
+}
+
+// Projects each source value to an Observable which is merged in the output Observable.
+func MergeMap[T any, R any](project func(value T, index uint) IObservable[R]) OperatorFunc[T, R] {
+	return func(source IObservable[T]) IObservable[R] {
+		return newObservable(func(subscriber Subscriber[R]) {
+			var (
+				wg       = new(sync.WaitGroup)
+				errCount uint32
+			)
+
+			wg.Add(1)
+
+			var (
+				index    uint
+				upStream = source.SubscribeOn(wg.Done)
+			)
+
+			runStream := func(v T, i uint) {
+				stream := project(v, i).SubscribeOn(wg.Done)
+
+			observeInner:
+				for {
+					select {
+					// If upstream closed, we should close this stream as well
+					case <-upStream.Closed():
+						stream.Stop()
+						break observeInner
+
+					case <-subscriber.Closed():
+						stream.Stop()
+						break observeInner
+
+					case item, ok := <-stream.ForEach():
+						if !ok {
+							break observeInner
+						}
+
+						if err := item.Err(); err != nil {
+							upStream.Stop()
+							stream.Stop()
+							atomic.AddUint32(&errCount, +1)
+							item.Send(subscriber)
+							break observeInner
+						}
+
+						if item.Done() {
+							stream.Stop()
+							break observeInner
+						}
+
+						item.Send(subscriber)
+					}
+				}
+			}
+
+		observe:
+			for {
+				select {
+				case <-subscriber.Closed():
+					upStream.Stop()
+					break observe
+
+				case item, ok := <-upStream.ForEach():
+					// If the upstream closed, we break
+					if !ok {
+						break observe
+					}
+
+					if err := item.Err(); err != nil {
+						upStream.Stop()
+						atomic.AddUint32(&errCount, +1)
+						ErrorNotification[R](err).Send(subscriber)
+						break observe
+					}
+
+					log.Println(item)
+
+					if item.Done() {
+						continue
+					}
+
+					wg.Add(1)
+					// we should wait the projection to complete
+					go runStream(item.Value(), index)
+					index++
+				}
+			}
+			wg.Wait()
+
+			if errCount < 1 {
+				CompleteNotification[R]().Send(subscriber)
+			}
 		})
 	}
 }

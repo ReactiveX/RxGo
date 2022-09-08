@@ -1,6 +1,7 @@
 package rxgo
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -39,17 +40,33 @@ func TestFirst(t *testing.T) {
 }
 
 func TestLast(t *testing.T) {
+	t.Run("Last with empty value", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(EMPTY[any](), Last[any](nil)), nil, ErrEmpty, false)
+	})
 
+	t.Run("Last with default value", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(EMPTY[any](), Last[any](nil, 88)), 88, nil, true)
+	})
+
+	t.Run("Last with value", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(Range[uint8](1, 72), Last[uint8](nil)), uint8(72), nil, true)
+	})
+
+	t.Run("Last with value but not matched", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(Range[uint8](1, 10), Last(func(value uint8, _ uint) bool {
+			return value > 10
+		})), uint8(0), ErrNotFound, false)
+	})
 }
 
 func TestFind(t *testing.T) {
-	t.Run("First with empty value", func(t *testing.T) {
+	t.Run("Find with empty value", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(EMPTY[any](), Find(func(a any, u uint) bool {
 			return a == nil
 		})), None[any](), nil, true)
 	})
 
-	t.Run("First with value", func(t *testing.T) {
+	t.Run("Find with value", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(
 			Scheduled("a", "b", "c", "d", "e"),
 			Find(func(v string, u uint) bool {
@@ -60,13 +77,13 @@ func TestFind(t *testing.T) {
 }
 
 func TestFindIndex(t *testing.T) {
-	t.Run("First with empty value", func(t *testing.T) {
+	t.Run("FindIndex with value that doesn't exist", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(EMPTY[any](), FindIndex(func(a any, u uint) bool {
 			return a == nil
 		})), -1, nil, true)
 	})
 
-	t.Run("First with value", func(t *testing.T) {
+	t.Run("FindIndex with value", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(
 			Scheduled("a", "b", "c", "d", "e"),
 			FindIndex(func(v string, u uint) bool {
@@ -103,17 +120,45 @@ func TestMax(t *testing.T) {
 }
 
 func TestCount(t *testing.T) {
-	checkObservableResult(t, Pipe1(Range[uint](0, 7), Count[uint]()), uint(7), nil, true)
-	checkObservableResult(t, Pipe1(Range[uint](1, 7), Count(func(i uint, _ uint) bool {
-		return i%2 == 1
-	})), uint(4), nil, true)
+	t.Run("Count with EMPTY", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(EMPTY[any](), Count[any]()), uint(0), nil, true)
+	})
+
+	t.Run("Count everything from Range(0,7)", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(Range[uint](0, 7), Count[uint]()), uint(7), nil, true)
+	})
+
+	t.Run("Count from Range(1,7) with condition", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(Range[uint](1, 7), Count(func(i uint, _ uint) bool {
+			return i%2 == 1
+		})), uint(4), nil, true)
+	})
 }
 
 func TestIgnoreElements(t *testing.T) {
-	checkObservableResult(t, Pipe1(Range[uint](1, 7), IgnoreElements[uint]()), uint(0), nil, true)
+	t.Run("IgnoreElements with EMPTY", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(EMPTY[any](), IgnoreElements[any]()), nil, nil, true)
+	})
+
+	t.Run("IgnoreElements with ThrownError", func(t *testing.T) {
+		var err = errors.New("throw")
+		checkObservableResult(t, Pipe1(ThrownError[error](func() error {
+			return err
+		}), IgnoreElements[error]()), nil, err, false)
+	})
+
+	t.Run("IgnoreElements with Range(1,7)", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(Range[uint](1, 7), IgnoreElements[uint]()), uint(0), nil, true)
+	})
 }
 
 func TestEvery(t *testing.T) {
+	t.Run("Every with EMPTY", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(EMPTY[uint](), Every(func(value, index uint) bool {
+			return value < 10
+		})), true, nil, true)
+	})
+
 	t.Run("Every with all value match the condition", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(Range[uint](1, 7), Every(func(value, index uint) bool {
 			return value < 10
@@ -132,8 +177,18 @@ func TestRepeat(t *testing.T) {
 }
 
 func TestIsEmpty(t *testing.T) {
-	checkObservableResult(t, Pipe1(EMPTY[any](), IsEmpty[any]()), true, nil, true)
-	checkObservableResult(t, Pipe1(Range[uint](1, 3), IsEmpty[uint]()), false, nil, true)
+	t.Run("IsEmpty with EMPTY", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(EMPTY[any](), IsEmpty[any]()), true, nil, true)
+	})
+
+	t.Run("IsEmpty with error", func(t *testing.T) {
+		var err = errors.New("something wrong")
+		checkObservableResult(t, Pipe1(Scheduled[any](err), IsEmpty[any]()), false, err, false)
+	})
+
+	t.Run("IsEmpty with value", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(Range[uint](1, 3), IsEmpty[uint]()), false, nil, true)
+	})
 }
 
 func TestDefaultIfEmpty(t *testing.T) {
