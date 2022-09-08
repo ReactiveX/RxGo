@@ -2,7 +2,6 @@ package rxgo
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -10,7 +9,6 @@ import (
 func TestWithTimestamp(t *testing.T) {
 	t.Run("WithTimestamp with Numbers", func(t *testing.T) {
 		var (
-			now    = time.Now().UTC()
 			result = make([]Timestamp[uint], 0)
 			done   = true
 		)
@@ -22,7 +20,7 @@ func TestWithTimestamp(t *testing.T) {
 			})
 
 		for i, v := range result {
-			require.True(t, v.Time().After(now))
+			require.False(t, v.Time().IsZero())
 			require.Equal(t, uint(i+1), v.Value())
 		}
 		require.True(t, done)

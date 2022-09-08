@@ -9,12 +9,12 @@ import "time"
 func WithTimeInterval[T any]() OperatorFunc[T, TimeInterval[T]] {
 	return func(source IObservable[T]) IObservable[TimeInterval[T]] {
 		var (
-			pastTime = time.Now()
+			pastTime = time.Now().UTC()
 		)
 		return createOperatorFunc(
 			source,
 			func(obs Observer[TimeInterval[T]], v T) {
-				now := time.Now()
+				now := time.Now().UTC()
 				obs.Next(NewTimeInterval(v, now.Sub(pastTime)))
 				pastTime = now
 			},
@@ -68,11 +68,11 @@ func NewTimestamp[T any](value T) Timestamp[T] {
 	return &ts[T]{v: value, t: time.Now().UTC()}
 }
 
-func (t *ts[T]) Value() T {
+func (t ts[T]) Value() T {
 	return t.v
 }
 
-func (t *ts[T]) Time() time.Time {
+func (t ts[T]) Time() time.Time {
 	return t.t
 }
 
@@ -87,10 +87,10 @@ func NewTimeInterval[T any](value T, elasped time.Duration) TimeInterval[T] {
 	return &ti[T]{v: value, elapsed: elasped}
 }
 
-func (t *ti[T]) Value() T {
+func (t ti[T]) Value() T {
 	return t.v
 }
 
-func (t *ti[T]) Elapsed() time.Duration {
+func (t ti[T]) Elapsed() time.Duration {
 	return t.elapsed
 }
