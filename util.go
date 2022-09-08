@@ -1,6 +1,6 @@
 package rxgo
 
-func alwaysTrue[T any](T, uint) bool {
+func skipPredicate[T any](T, uint) bool {
 	return true
 }
 

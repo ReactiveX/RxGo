@@ -450,12 +450,59 @@ func TestWithLatestFrom(t *testing.T) {
 // 	})
 // }
 
+func TestPairWise(t *testing.T) {
+	t.Run("PairWise with EMPTY", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(EMPTY[any](), PairWise[any]()),
+			[]Tuple[any, any]{}, nil, true)
+	})
+
+	t.Run("PairWise with error", func(t *testing.T) {
+		var err = errors.New("throw")
+		checkObservableResults(t, Pipe1(Scheduled[any]("j", "k", err), PairWise[any]()),
+			[]Tuple[any, any]{NewTuple[any, any]("j", "k")}, err, false)
+	})
+
+	t.Run("PairWise with numbers", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(Range[uint](1, 5), PairWise[uint]()),
+			[]Tuple[uint, uint]{
+				NewTuple[uint, uint](1, 2),
+				NewTuple[uint, uint](2, 3),
+				NewTuple[uint, uint](3, 4),
+				NewTuple[uint, uint](4, 5),
+			}, nil, true)
+	})
+
+	t.Run("PairWise with alphabert", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(newObservable(func(subscriber Subscriber[string]) {
+			for i := 1; i <= 5; i++ {
+				subscriber.Send() <- NextNotification(string(rune('A' - 1 + i)))
+			}
+			subscriber.Send() <- CompleteNotification[string]()
+		}), PairWise[string]()), []Tuple[string, string]{
+			NewTuple("A", "B"),
+			NewTuple("B", "C"),
+			NewTuple("C", "D"),
+			NewTuple("D", "E"),
+		}, nil, true)
+	})
+}
+
 func TestToArray(t *testing.T) {
-	t.Run("ToArray with Numbers", func(t *testing.T) {
+	t.Run("ToArray with EMPTY", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(EMPTY[any](), ToArray[any]()), []any{}, nil, true)
+	})
+
+	t.Run("ToArray with error", func(t *testing.T) {
+		var err = errors.New("throw")
+		checkObservableResult(t, Pipe1(Scheduled[any]("a", "z", err), ToArray[any]()),
+			[]any{}, err, false)
+	})
+
+	t.Run("ToArray with numbers", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(Range[uint](1, 5), ToArray[uint]()), []uint{1, 2, 3, 4, 5}, nil, true)
 	})
 
-	t.Run("ToArray with Numbers", func(t *testing.T) {
+	t.Run("ToArray with alphaberts", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(newObservable(func(subscriber Subscriber[string]) {
 			for i := 1; i <= 5; i++ {
 				subscriber.Send() <- NextNotification(string(rune('A' - 1 + i)))

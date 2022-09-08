@@ -55,7 +55,7 @@ func First[T any](predicate PredicateFunc[T], defaultValue ...T) OperatorFunc[T,
 			index    uint
 			hasValue bool
 		)
-		cb := alwaysTrue[T]
+		cb := skipPredicate[T]
 		if predicate != nil {
 			cb = predicate
 		}
@@ -101,7 +101,7 @@ func Last[T any](predicate PredicateFunc[T], defaultValue ...T) OperatorFunc[T, 
 			latestValue T
 			found       bool
 		)
-		cb := alwaysTrue[T]
+		cb := skipPredicate[T]
 		if predicate != nil {
 			cb = predicate
 		}
@@ -274,7 +274,7 @@ func Max[T any](comparer ComparerFunc[T, T]) OperatorFunc[T, T] {
 
 // Counts the number of emissions on the source and emits that number when the source completes.
 func Count[T any](predicate ...PredicateFunc[T]) OperatorFunc[T, uint] {
-	cb := alwaysTrue[T]
+	cb := skipPredicate[T]
 	if len(predicate) > 0 {
 		cb = predicate[0]
 	}
@@ -327,7 +327,7 @@ func Every[T any](predicate PredicateFunc[T]) OperatorFunc[T, bool] {
 			allOk = true
 			index uint
 		)
-		cb := alwaysTrue[T]
+		cb := skipPredicate[T]
 		if predicate != nil {
 			cb = predicate
 		}
@@ -453,7 +453,7 @@ func Filter[T any](predicate PredicateFunc[T]) OperatorFunc[T, T] {
 		var (
 			index uint
 		)
-		cb := alwaysTrue[T]
+		cb := skipPredicate[T]
 		if predicate != nil {
 			cb = predicate
 		}
@@ -761,7 +761,8 @@ func DebounceTime[T any](duration time.Duration) OperatorFunc[T, T] {
 	}
 }
 
-// Catches errors on the observable to be handled by returning a new observable or throwing an error.
+// Catches errors on the observable to be handled by returning a new observable
+// or throwing an error.
 func CatchError[T any](catch func(error, IObservable[T]) IObservable[T]) OperatorFunc[T, T] {
 	return func(source IObservable[T]) IObservable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {
@@ -885,6 +886,33 @@ func WithLatestFrom[A any, B any](input IObservable[B]) OperatorFunc[A, Tuple[A,
 	}
 }
 
+// Groups pairs of consecutive emissions together and emits them as an array of two values.
+func PairWise[T any]() OperatorFunc[T, Tuple[T, T]] {
+	return func(source IObservable[T]) IObservable[Tuple[T, T]] {
+		var (
+			result     = make([]T, 0, 2)
+			noOfRecord int
+		)
+		return createOperatorFunc(
+			source,
+			func(obs Observer[Tuple[T, T]], v T) {
+				result = append(result, v)
+				noOfRecord = len(result)
+				if noOfRecord >= 2 {
+					obs.Next(NewTuple(result[0], result[1]))
+					result = result[1:]
+				}
+			},
+			func(obs Observer[Tuple[T, T]], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[Tuple[T, T]]) {
+				obs.Complete()
+			},
+		)
+	}
+}
+
 // Collects all source emissions and emits them as an array when the source completes.
 func ToArray[T any]() OperatorFunc[T, []T] {
 	return func(source IObservable[T]) IObservable[[]T] {
@@ -897,6 +925,7 @@ func ToArray[T any]() OperatorFunc[T, []T] {
 				result = append(result, v)
 			},
 			func(obs Observer[[]T], err error) {
+				// When the source Observable errors no array will be emitted.
 				obs.Error(err)
 			},
 			func(obs Observer[[]T]) {
