@@ -1,9 +1,32 @@
 package rxgo
 
-import "testing"
+import (
+	"errors"
+	"testing"
+)
 
 func TestSkip(t *testing.T) {
-	checkObservableResults(t, Pipe1(Range[uint](1, 10), Skip[uint](5)), []uint{6, 7, 8, 9, 10}, nil, true)
+	t.Run("Skip with EMPTY", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(EMPTY[uint](), Skip[uint](5)), []uint{}, nil, true)
+	})
+
+	t.Run("Skip with Range(1,10)", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(Range[uint](1, 10), Skip[uint](5)),
+			[]uint{6, 7, 8, 9, 10}, nil, true)
+	})
+
+	t.Run("Skip with ThrownError", func(t *testing.T) {
+		var err = errors.New("stop")
+		checkObservableResults(t, Pipe1(ThrownError[uint](func() error {
+			return err
+		}), Skip[uint](5)), []uint{}, err, false)
+	})
+
+	// t.Run("Skip with Scheduled", func(t *testing.T) {
+	// 	checkObservableResults(t,
+	// 		Pipe1(Scheduled[any](1, 2, errors.New("stop")), Skip[any](2)),
+	// 		[]any{1, 2}, nil, true)
+	// })
 }
 
 func TestSkipLast(t *testing.T) {

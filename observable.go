@@ -59,15 +59,15 @@ func Interval(duration time.Duration) IObservable[uint] {
 			index uint
 		)
 
-	loop:
 		for {
 			select {
 			// If receiver notify stop, we should terminate the operation
 			case <-subscriber.Closed():
-				break loop
+				return
 			case <-time.After(duration):
-				subscriber.Send() <- NextNotification(index)
-				index++
+				if NextNotification(index).Send(subscriber) {
+					index++
+				}
 			}
 		}
 	})
