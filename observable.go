@@ -16,7 +16,7 @@ func NEVER[T any]() IObservable[T] {
 // emits a complete notification.
 func EMPTY[T any]() IObservable[T] {
 	return newObservable(func(subscriber Subscriber[T]) {
-		subscriber.Send() <- CompleteNotification[T]()
+		CompleteNotification[T]().Send(subscriber)
 	})
 }
 
@@ -28,11 +28,7 @@ func Defer[T any](factory func() IObservable[T]) IObservable[T] {
 
 func ThrownError[T any](factory func() error) IObservable[T] {
 	return newObservable(func(subscriber Subscriber[T]) {
-		select {
-		case <-subscriber.Closed():
-			return
-		case subscriber.Send() <- ErrorNotification[T](factory()):
-		}
+		ErrorNotification[T](factory()).Send(subscriber)
 	})
 }
 
@@ -51,7 +47,7 @@ func Range[T constraints.Unsigned](start, count T) IObservable[T] {
 			}
 		}
 
-		subscriber.Send() <- CompleteNotification[T]()
+		CompleteNotification[T]().Send(subscriber)
 	})
 }
 
@@ -81,25 +77,25 @@ func Scheduled[T any](item T, items ...T) IObservable[T] {
 	items = append([]T{item}, items...)
 	return newObservable(func(subscriber Subscriber[T]) {
 		for _, item := range items {
-			data := NextNotification(item)
+			notice := NextNotification(item)
 			switch vi := any(item).(type) {
 			case error:
-				data = ErrorNotification[T](vi)
+				notice = ErrorNotification[T](vi)
 			}
 
 			select {
-			// If receiver tell sender to stop, we should terminate the send operation
+			// If receiver notify stop, we should terminate the operation
 			case <-subscriber.Closed():
 				return
-			case subscriber.Send() <- data:
+			case subscriber.Send() <- notice:
 			}
 
-			if err := data.Err(); err != nil {
+			if err := notice.Err(); err != nil {
 				return
 			}
 		}
 
-		subscriber.Send() <- CompleteNotification[T]()
+		CompleteNotification[T]().Send(subscriber)
 	})
 }
 

@@ -5,8 +5,8 @@ import (
 )
 
 type subscriber[T any] struct {
-	// prevent data race
-	mu sync.RWMutex
+	// to prevent DATA RACE
+	mu *sync.RWMutex
 
 	// channel to transfer data
 	ch chan Notification[T]
@@ -22,6 +22,7 @@ type subscriber[T any] struct {
 
 func NewSubscriber[T any]() *subscriber[T] {
 	return &subscriber[T]{
+		mu:   new(sync.RWMutex),
 		ch:   make(chan Notification[T]),
 		stop: make(chan struct{}),
 	}
@@ -38,36 +39,22 @@ func (s *subscriber[T]) Stop() {
 }
 
 func (s *subscriber[T]) Closed() <-chan struct{} {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.stop
 }
 
 func (s *subscriber[T]) ForEach() <-chan Notification[T] {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.ch
 }
 
 func (s *subscriber[T]) Send() chan<- Notification[T] {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.ch
 }
-
-// func (s *subscriber[T]) Error(err error) {
-// 	s.mu.Lock()
-// 	defer s.mu.Unlock()
-// 	if s.closed {
-// 		return
-// 	}
-// 	emitError(err, s.ch)
-// 	s.closeChannel()
-// }
-
-// func (s *subscriber[T]) Complete() {
-// 	s.mu.Lock()
-// 	defer s.mu.Unlock()
-// 	if s.closed {
-// 		return
-// 	}
-// 	emitDone(s.ch)
-// 	s.closeChannel()
-// }
 
 // this will close the stream and stop the emission of the stream data
 func (s *subscriber[T]) Unsubscribe() {

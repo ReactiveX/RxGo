@@ -23,6 +23,7 @@ type Notification[T any] interface {
 	Value() T
 	Err() error
 	Done() bool
+	Send(Subscriber[T]) bool
 }
 
 type notification[T any] struct {
@@ -48,6 +49,15 @@ func (d notification[T]) Err() error {
 
 func (d notification[T]) Done() bool {
 	return d.done
+}
+
+func (d *notification[T]) Send(sub Subscriber[T]) bool {
+	select {
+	case <-sub.Closed():
+		return false
+	case sub.Send() <- d:
+		return true
+	}
 }
 
 func NextNotification[T any](v T) Notification[T] {

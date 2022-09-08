@@ -553,185 +553,11 @@ func Sample[A any, B any](notifier IObservable[B]) OperatorFunc[A, A] {
 	}
 }
 
-// Projects each source value to an Observable which is merged in the output Observable,
-// in a serialized fashion waiting for each one to complete before merging the next.
-func ConcatMap[T any, R any](project func(value T, index uint) IObservable[R]) OperatorFunc[T, R] {
-	return func(source IObservable[T]) IObservable[R] {
-		return newObservable(func(subscriber Subscriber[R]) {
-			// var (
-			// 	index              uint
-			// 	buffer             = make([]T, 0)
-			// 	concurrent         = uint(1)
-			// 	isComplete         bool
-			// 	activeSubscription uint
-			// )
-
-			// checkComplete := func() {
-			// 	if isComplete && len(buffer) <= 0 {
-			// 		subscriber.Complete()
-			// 	}
-			// }
-
-			// var innerNext func(T)
-			// innerNext = func(outerV T) {
-			// 	activeSubscription++
-
-			// 	stream := project(outerV, index)
-			// 	index++
-
-			// 	// var subscription Subscription
-			// 	stream.SubscribeSync(
-			// 		func(innerV R) {
-			// 			subscriber.Next(innerV)
-			// 		},
-			// 		subscriber.Error,
-			// 		func() {
-			// 			activeSubscription--
-			// 			for len(buffer) > 0 {
-			// 				innerNext(buffer[0])
-			// 				buffer = buffer[1:]
-			// 			}
-			// 			checkComplete()
-			// 		},
-			// 	)
-			// }
-
-			// source.SubscribeSync(
-			// 	func(v T) {
-			// 		if activeSubscription >= concurrent {
-			// 			buffer = append(buffer, v)
-			// 			return
-			// 		}
-			// 		innerNext(v)
-			// 	},
-			// 	subscriber.Error,
-			// 	func() {
-			// 		isComplete = true
-			// 		checkComplete()
-			// 	},
-			// )
-		})
-	}
-}
-
-// Projects each source value to an Observable which is merged in the output
-// Observable only if the previous projected Observable has completed.
-func ExhaustMap[T any, R any](project func(value T, index uint) IObservable[R]) OperatorFunc[T, R] {
-	return func(source IObservable[T]) IObservable[R] {
-		return newObservable(func(subscriber Subscriber[R]) {
-			// var (
-			// 	index        uint
-			// 	isComplete   bool
-			// 	subscription Subscription
-			// )
-			// source.SubscribeSync(
-			// 	func(v T) {
-			// 		if subscription == nil {
-			// 			wg := new(sync.WaitGroup)
-			// 			subscription = project(v, index).Subscribe(
-			// 				func(v R) {
-			// 					subscriber.Next(v)
-			// 				},
-			// 				func(error) {},
-			// 				func() {
-			// 					defer wg.Done()
-			// 					subscription.Unsubscribe()
-			// 					subscription = nil
-			// 					if isComplete {
-			// 						subscriber.Complete()
-			// 					}
-			// 				},
-			// 			)
-			// 			wg.Wait()
-			// 		}
-			// 		index++
-			// 	},
-			// 	subscriber.Error,
-			// 	func() {
-			// 		isComplete = true
-			// 		if subscription == nil {
-			// 			subscriber.Complete()
-			// 		}
-			// 	},
-			// )
-
-			// after collect the source
-		})
-	}
-}
-
-// // Merge the values from all observables to a single observable result.
-// func ConcatAll[A any, B any](concurrent uint64) OperatorFunc[A, B] {
-// 	return func(source IObservable[A]) IObservable[B] {
-// 		return newObservable(func(subscriber Subscriber[B]) {
-// 			source.SubscribeSync(func(a A) {}, func(err error) {}, func() {})
-// 		})
-// 	}
-// }
-
 // Merge the values from all observables to a single observable result.
 func MergeAll[A any, B any](concurrent uint64) OperatorFunc[A, B] {
 	return func(source IObservable[A]) IObservable[B] {
 		return newObservable(func(subscriber Subscriber[B]) {
 
-		})
-	}
-}
-
-// Merge the values from all observables to a single observable result.
-func Merge[T any](input IObservable[T]) OperatorFunc[T, T] {
-	return func(source IObservable[T]) IObservable[T] {
-		return newObservable(func(subscriber Subscriber[T]) {
-			var (
-				activeSubscription = 2
-				wg                 = new(sync.WaitGroup)
-				p1                 = source.SubscribeOn(wg.Done)
-				p2                 = input.SubscribeOn(wg.Done)
-				err                error
-			)
-
-			wg.Add(2)
-
-			onNext := func(v Notification[T]) {
-				if v == nil {
-					return
-				}
-
-				// When any source errors, the resulting observable will error
-				if err = v.Err(); err != nil {
-					p1.Stop()
-					p2.Stop()
-					activeSubscription = 0
-					return
-				}
-
-				if v.Done() {
-					activeSubscription--
-					return
-				}
-
-				subscriber.Send() <- v
-			}
-
-			for activeSubscription > 0 {
-				select {
-				case <-subscriber.Closed():
-					return
-				case v1 := <-p1.ForEach():
-					onNext(v1)
-				case v2 := <-p2.ForEach():
-					onNext(v2)
-				}
-			}
-
-			// Wait for all input streams to unsubscribe
-			wg.Wait()
-
-			if err != nil {
-				subscriber.Send() <- ErrorNotification[T](err)
-			} else {
-				subscriber.Send() <- CompleteNotification[T]()
-			}
 		})
 	}
 }
@@ -816,6 +642,26 @@ func Delay[T any](duration time.Duration) OperatorFunc[T, T] {
 	}
 }
 
+// Delays the emission of items from the source Observable by a given time span
+// determined by the emissions of another Observable.
+func DelayWhen[T any](duration time.Duration) OperatorFunc[T, T] {
+	return func(source IObservable[T]) IObservable[T] {
+		return createOperatorFunc(
+			source,
+			func(obs Observer[T], v T) {
+				time.Sleep(duration)
+				obs.Next(v)
+			},
+			func(obs Observer[T], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[T]) {
+				obs.Complete()
+			},
+		)
+	}
+}
+
 // Emits a value from the source Observable, then ignores subsequent source values
 // for duration milliseconds, then repeats this process.
 func Throttle[T any, R any](durationSelector func(v T) IObservable[R]) OperatorFunc[T, T] {
@@ -843,6 +689,7 @@ func DebounceTime[T any](duration time.Duration) OperatorFunc[T, T] {
 		var (
 			timer *time.Timer
 		)
+		// https://github.com/ReactiveX/RxGo/blob/35328a75073980197d938cf235158a0654024de5/observable_operator.go#L670
 		return createOperatorFunc(
 			source,
 			func(obs Observer[T], v T) {
@@ -904,129 +751,85 @@ func CatchError[T any](catch func(error, IObservable[T]) IObservable[T]) Operato
 	}
 }
 
-// Creates an Observable that mirrors the first source Observable to emit a
-// next, error or complete notification from the combination of the Observable
-// to which the operator is applied and supplied Observables.
-func RaceWith[T any](input IObservable[T], inputs ...IObservable[T]) OperatorFunc[T, T] {
-	return func(source IObservable[T]) IObservable[T] {
-		inputs = append([]IObservable[T]{source, input}, inputs...)
-		return newObservable(func(subscriber Subscriber[T]) {
-			var (
-				noOfInputs = len(inputs)
-				// wg                  = new(sync.WaitGroup)
-				fastestCh           = make(chan int, 1)
-				activeSubscriptions = make([]Subscriber[T], noOfInputs)
-				mu                  = new(sync.RWMutex)
-				// unsubscribed        bool
-			)
-			// wg.Add(noOfInputs * 2)
-
-			// unsubscribeAll := func(index int) {
-
-			// 	var subscription Subscriber[T]
-
-			// 	activeSubscriptions = []Subscriber[T]{subscription}
-			// }
-
-			// emit := func(index int, v Notification[T]) {
-			// 	mu.RLock()
-			// 	if unsubscribed {
-			// 		mu.RUnlock()
-			// 		return
-			// 	}
-
-			// 	log.Println("isThis", index)
-
-			// 	mu.RUnlock()
-			// 	mu.Lock()
-			// 	unsubscribed = true
-			// 	mu.Unlock()
-			// 	// 	unsubscribeAll(index)
-
-			// 	subscriber.Send() <- v
-			// }
-
-			for i, v := range inputs {
-				activeSubscriptions[i] = v.SubscribeOn(func() {
-					log.Println("DONE here")
-					// wg.Done()
-				})
-				go func(idx int, obs Subscriber[T]) {
-					// defer wg.Done()
-					defer log.Println("closing routine", idx)
-
-					for {
-						select {
-						case <-subscriber.Closed():
-							log.Println("downstream closing ", idx)
-							return
-						case <-obs.Closed():
-							log.Println("upstream closing ", idx)
-							return
-						case item := <-obs.ForEach():
-							// mu.Lock()
-							// defer mu.Unlock()
-							// for _, sub := range activeSubscriptions {
-							// 	sub.Stop()
-							// }
-							// activeSubscriptions = []Subscriber[T]{}
-							log.Println("ForEach ah", idx, item)
-							fastestCh <- idx
-							// obs.Stop()
-						}
-					}
-				}(i, activeSubscriptions[i])
-			}
-
-			log.Println("Fastest", <-fastestCh)
-			mu.Lock()
-			for _, v := range activeSubscriptions {
-				v.Stop()
-				log.Println(v)
-			}
-			mu.Unlock()
-			// wg.Wait()
-
-			log.Println("END")
-
-			subscriber.Send() <- CompleteNotification[T]()
-		})
-	}
-}
-
 // Combines the source Observable with other Observables to create an Observable
 // whose values are calculated from the latest values of each, only when the source emits.
 func WithLatestFrom[A any, B any](input IObservable[B]) OperatorFunc[A, Tuple[A, B]] {
 	return func(source IObservable[A]) IObservable[Tuple[A, B]] {
 		return newObservable(func(subscriber Subscriber[Tuple[A, B]]) {
-			// var (
-			// 	allOk        [2]bool
-			// 	latestA      A
-			// 	latestB      B
-			// 	subscription Subscription
-			// )
+			var (
+				allOk              [2]bool
+				activeSubscription = 2
+				wg                 = new(sync.WaitGroup)
+				upStream           = source.SubscribeOn(wg.Done)
+				notifySteam        = input.SubscribeOn(wg.Done)
+				latestA            A
+				latestB            B
+			)
 
-			// // subscription = input.SubscribeOn(func(b B) {
-			// // 	latestB = b
-			// // 	allOk[1] = true
-			// // }, func(err error) {}, func() {
-			// // 	subscription.Unsubscribe()
-			// // }, func() {})
+			wg.Add(activeSubscription)
 
-			// source.SubscribeSync(
-			// 	func(a A) {
-			// 		latestA = a
-			// 		allOk[0] = true
-			// 		if allOk[0] && allOk[1] {
-			// 			subscriber.Next(NewTuple(latestA, latestB))
-			// 		}
-			// 	},
-			// 	subscriber.Error,
-			// 	func() {
-			// 		subscription.Unsubscribe()
-			// 		subscriber.Complete()
-			// 	},
-			// )
+			stopAll := func() {
+				upStream.Stop()
+				notifySteam.Stop()
+				activeSubscription = 0
+			}
+
+			onNext := func() {
+				if allOk[0] && allOk[1] {
+					subscriber.Send() <- NextNotification(NewTuple(latestA, latestB))
+				}
+			}
+
+			// All input Observables must emit at least one value before
+			// the output Observable will emit a value.
+			for activeSubscription > 0 {
+				select {
+				case <-subscriber.Closed():
+					stopAll()
+
+				case item := <-notifySteam.ForEach():
+					if item == nil {
+						continue
+					}
+
+					allOk[1] = true
+					if item.Done() {
+						activeSubscription--
+						continue
+					}
+
+					if err := item.Err(); err != nil {
+						stopAll()
+						subscriber.Send() <- ErrorNotification[Tuple[A, B]](err)
+						continue
+					}
+
+					latestB = item.Value()
+					onNext()
+
+				case item := <-upStream.ForEach():
+					if item == nil {
+						continue
+					}
+
+					allOk[0] = true
+					if item.Done() {
+						activeSubscription--
+						continue
+					}
+
+					if err := item.Err(); err != nil {
+						stopAll()
+						subscriber.Send() <- ErrorNotification[Tuple[A, B]](err)
+						continue
+					}
+
+					latestA = item.Value()
+					onNext()
+				}
+			}
+
+			wg.Wait()
 		})
 	}
 }

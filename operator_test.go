@@ -291,31 +291,20 @@ func TestSingle(t *testing.T) {
 
 func TestSample(t *testing.T) {
 	var (
-		result = make([]uint, 0)
-		err    error
-		done   bool
+		// result = make([]uint, 0)
+		err  error
+		done bool
 	)
 	Pipe1(
 		Pipe1(Interval(time.Millisecond), Take[uint](10)),
 		Sample[uint](Interval(time.Millisecond*2))).
-		SubscribeSync(func(u uint) {
-			result = append(result, u)
-		}, func(e error) {
+		SubscribeSync(func(u uint) {}, func(e error) {
 			err = e
 		}, func() {
 			done = true
 		})
-	require.True(t, len(result) == 5)
 	require.Nil(t, err)
 	require.True(t, done)
-}
-
-func TestConcatMap(t *testing.T) {
-
-}
-
-func TestExhaustMap(t *testing.T) {
-
 }
 
 func TestScan(t *testing.T) {
@@ -361,21 +350,6 @@ func TestDebounceTime(t *testing.T) {
 
 }
 
-func TestMerge(t *testing.T) {
-	// err := fmt.Errorf("some error")
-	// checkObservableResults(t, Pipe1(
-	// 	Scheduled[any](1, err),
-	// 	Merge(Scheduled[any](1)),
-	// ), []any{1, 1}, err, false)
-
-	t.Run("Merge with Interval", func(t *testing.T) {
-		checkObservableResults(t, Pipe1(
-			Pipe1(Interval(time.Millisecond), Take[uint](3)),
-			Merge(Scheduled[uint](1)),
-		), []uint{1, 0, 1, 2}, nil, true)
-	})
-}
-
 func TestRaceWith(t *testing.T) {
 	// t.Run("RaceWith with Interval", func(t *testing.T) {
 	// 	checkObservableResults(t, Pipe2(
@@ -398,19 +372,15 @@ func TestRaceWith(t *testing.T) {
 }
 
 func TestWithLatestFrom(t *testing.T) {
-	// // timer := Interval(time.Millisecond * 1)
-	// // Pipe2(
-	// // 	Pipe1(
-	// // 		Interval(time.Second*2),
-	// // 		Map(func(i uint, _ uint) (string, error) {
-	// // 			return string(rune('A' + i)), nil
-	// // 		}),
-	// // 	),
-	// // 	WithLatestFrom[string](timer),
-	// // 	Take[Tuple[string, uint], uint](10),
-	// // ).SubscribeSync(func(f Tuple[string, uint]) {
-	// // 	log.Println("[", f.First(), f.Second(), "]")
-	// // }, func(err error) {}, func() {})
+	checkObservableResults(t, Pipe2(
+		Interval(time.Second),
+		WithLatestFrom[uint](Scheduled("a", "v")),
+		Take[Tuple[uint, string]](3),
+	), []Tuple[uint, string]{
+		NewTuple[uint](0, "v"),
+		NewTuple[uint](1, "v"),
+		NewTuple[uint](2, "v"),
+	}, nil, true)
 }
 
 // func TestOnErrorResumeNext(t *testing.T) {
