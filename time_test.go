@@ -10,7 +10,7 @@ import (
 func TestWithTimestamp(t *testing.T) {
 	t.Run("WithTimestamp with Numbers", func(t *testing.T) {
 		var (
-			now    = time.Now()
+			now    = time.Now().UTC()
 			result = make([]Timestamp[uint], 0)
 			done   = true
 		)

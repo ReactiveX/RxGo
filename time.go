@@ -28,8 +28,8 @@ func WithTimeInterval[T any]() OperatorFunc[T, TimeInterval[T]] {
 	}
 }
 
-// Attaches a timestamp to each item emitted by an observable indicating when
-// it was emitted
+// Attaches a UTC timestamp to each item emitted by an observable indicating
+// when it was emitted
 func WithTimestamp[T any]() OperatorFunc[T, Timestamp[T]] {
 	return func(source IObservable[T]) IObservable[Timestamp[T]] {
 		return createOperatorFunc(
@@ -65,7 +65,7 @@ type ts[T any] struct {
 var _ Timestamp[any] = (*ts[any])(nil)
 
 func NewTimestamp[T any](value T) Timestamp[T] {
-	return &ts[T]{v: value, t: time.Now()}
+	return &ts[T]{v: value, t: time.Now().UTC()}
 }
 
 func (t *ts[T]) Value() T {
