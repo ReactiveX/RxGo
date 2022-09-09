@@ -172,6 +172,7 @@ func Iif[T any](condition func() bool, trueObservable Observable[T], falseObserv
 
 // Splits the source Observable into two, one with values that satisfy a predicate,
 // and another with values that don't satisfy the predicate.
+// FIXME: redesign the API
 func Partition[T any](source Observable[T], predicate PredicateFunc[T]) {
 	newObservable(func(subscriber Subscriber[Tuple[Observable[T], Observable[T]]]) {
 		var (

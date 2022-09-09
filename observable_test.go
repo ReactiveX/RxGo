@@ -6,17 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 )
 
 func TestMain(m *testing.M) {
 	goleak.VerifyTestMain(m)
-}
-
-func TestObservable(t *testing.T) {
-	// obs := &observableWrapper[string]{}
-	// obs.SubscribeOn(func(s string) {}, func(err error) {}, func() {}, func() {})
 }
 
 func TestNever(t *testing.T) {
@@ -61,16 +55,6 @@ func TestRange(t *testing.T) {
 		checkObservableResults(t, Range[uint](0, 3), []uint{0, 1, 2}, nil, true)
 	})
 }
-
-// func TestCombineLatest(t *testing.T) {
-// 	// checkObservableResults(t, CombineLatest(Range[uint](0, 3), Range[uint](0, 3)), []Tuple[uint, uint]{
-// 	// 	NewTuple[uint, uint](0, 0),
-// 	// 	NewTuple[uint, uint](0, 1),
-// 	// 	NewTuple[uint, uint](1, 1),
-// 	// 	NewTuple[uint, uint](2, 1),
-// 	// 	NewTuple[uint, uint](2, 2),
-// 	// }, nil, true)
-// }
 
 func TestInterval(t *testing.T) {
 	checkObservableResults(t, Pipe1(
@@ -123,40 +107,4 @@ func TestIif(t *testing.T) {
 		}, Scheduled[any]("a", err, "%", "@"), EMPTY[any]())
 		checkObservableResults(t, iif, []any{"a"}, err, false)
 	})
-}
-
-func checkObservableResult[T any](t *testing.T, obs Observable[T], result T, err error, isCompleted bool) {
-	var (
-		hasCompleted  bool
-		collectedErr  error
-		collectedData T
-	)
-	obs.SubscribeSync(func(v T) {
-		collectedData = v
-	}, func(err error) {
-		collectedErr = err
-	}, func() {
-		hasCompleted = true
-	})
-	require.Equal(t, collectedData, result)
-	require.Equal(t, hasCompleted, isCompleted)
-	require.Equal(t, collectedErr, err)
-}
-
-func checkObservableResults[T any](t *testing.T, obs Observable[T], result []T, err error, isCompleted bool) {
-	var (
-		hasCompleted  bool
-		collectedErr  error
-		collectedData = make([]T, 0, len(result))
-	)
-	obs.SubscribeSync(func(v T) {
-		collectedData = append(collectedData, v)
-	}, func(err error) {
-		collectedErr = err
-	}, func() {
-		hasCompleted = true
-	})
-	require.ElementsMatch(t, collectedData, result)
-	require.Equal(t, hasCompleted, isCompleted)
-	require.Equal(t, collectedErr, err)
 }

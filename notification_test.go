@@ -10,7 +10,7 @@ import (
 func TestMaterialize(t *testing.T) {
 	t.Run("Materialize with error", func(t *testing.T) {
 		var err = fmt.Errorf("throw")
-		checkObservableResults(t, Pipe1(Scheduled[any](1, "a", err), Materialize[any]()),
+		checkObservableResults(t, Pipe1(Scheduled[any](1, "a", err, 100), Materialize[any]()),
 			[]ObservableNotification[any]{
 				Next[any](1),
 				Next[any]("a"),

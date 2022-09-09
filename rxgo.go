@@ -5,7 +5,51 @@ import (
 	"sync"
 )
 
-type ObservableFunc[T any] func(subscriber Subscriber[T])
+type (
+	OnNextFunc[T any] func(T)
+	// OnErrorFunc defines a function that computes a value from an error.
+	OnErrorFunc                func(error)
+	OnCompleteFunc             func()
+	FinalizerFunc              func()
+	OperatorFunc[I any, O any] func(Observable[I]) Observable[O]
+
+	PredicateFunc[T any] func(value T, index uint) bool
+
+	ComparerFunc[A any, B any] func(prev A, curr B) int8
+
+	ComparatorFunc[A any, B any] func(prev A, curr B) bool
+
+	AccumulatorFunc[A any, V any] func(acc A, value V, index uint) (A, error)
+
+	ObservableFunc[T any] func(subscriber Subscriber[T])
+)
+
+type Observable[T any] interface {
+	SubscribeWith(subscriber Subscriber[T])
+	SubscribeOn(finalizer ...func()) Subscriber[T]
+	SubscribeSync(onNext func(v T), onError func(err error), onComplete func())
+	// Subscribe(onNext func(T), onError func(error), onComplete func()) Subscription
+}
+
+type Subscription interface {
+	// to unsubscribe the stream
+	Unsubscribe()
+}
+
+type Observer[T any] interface {
+	Next(T)
+	Error(error)
+	Complete()
+}
+
+type Subscriber[T any] interface {
+	Stop()
+	Send() chan<- Notification[T]
+	ForEach() <-chan Notification[T]
+	Closed() <-chan struct{}
+	// Unsubscribe()
+	// Observer[T]
+}
 
 func newObservable[T any](obs ObservableFunc[T]) Observable[T] {
 	return &observableWrapper[T]{source: obs}
