@@ -6,8 +6,7 @@ func Count[T any](predicate ...PredicateFunc[T]) OperatorFunc[T, uint] {
 	if len(predicate) > 0 {
 		cb = predicate[0]
 	}
-
-	return func(source IObservable[T]) IObservable[uint] {
+	return func(source Observable[T]) Observable[uint] {
 		var (
 			count uint
 			index uint
@@ -35,11 +34,11 @@ func Count[T any](predicate ...PredicateFunc[T]) OperatorFunc[T, uint] {
 // (or items that can be compared with a provided function),
 // and when source Observable completes it emits a single item: the item with the largest value.
 func Max[T any](comparer ...ComparerFunc[T, T]) OperatorFunc[T, T] {
-	cb := defaultComparer[T]
+	cb := maximum[T]
 	if len(comparer) > 0 {
 		cb = comparer[0]
 	}
-	return func(source IObservable[T]) IObservable[T] {
+	return func(source Observable[T]) Observable[T] {
 		var (
 			lastValue T
 			first     = true
@@ -53,10 +52,44 @@ func Max[T any](comparer ...ComparerFunc[T, T]) OperatorFunc[T, T] {
 					return
 				}
 
-				switch cb(lastValue, v) {
-				case -1:
+				if cb(lastValue, v) < 0 {
 					lastValue = v
-				default:
+				}
+			},
+			func(obs Observer[T], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[T]) {
+				obs.Next(lastValue)
+				obs.Complete()
+			},
+		)
+	}
+}
+
+// The Min operator operates on an Observable that emits numbers
+// (or items that can be compared with a provided function),
+// and when source Observable completes it emits a single item: the item with the smallest value.
+func Min[T any](comparer ...ComparerFunc[T, T]) OperatorFunc[T, T] {
+	cb := minimum[T]
+	if len(comparer) > 0 {
+		cb = comparer[0]
+	}
+	return func(source Observable[T]) Observable[T] {
+		var (
+			lastValue T
+			first     = true
+		)
+		return createOperatorFunc(
+			source,
+			func(obs Observer[T], v T) {
+				if first {
+					lastValue = v
+					first = false
+					return
+				}
+
+				if cb(lastValue, v) >= 0 {
 					lastValue = v
 				}
 			},
@@ -77,7 +110,7 @@ func Reduce[V any, A any](accumulator AccumulatorFunc[A, V], seed A) OperatorFun
 	if accumulator == nil {
 		panic(`rxgo: "Reduce" expected accumulator func`)
 	}
-	return func(source IObservable[V]) IObservable[A] {
+	return func(source Observable[V]) Observable[A] {
 		var (
 			index  uint
 			result = seed
@@ -98,45 +131,6 @@ func Reduce[V any, A any](accumulator AccumulatorFunc[A, V], seed A) OperatorFun
 			},
 			func(obs Observer[A]) {
 				obs.Next(result)
-				obs.Complete()
-			},
-		)
-	}
-}
-
-// The Min operator operates on an Observable that emits numbers
-// (or items that can be compared with a provided function),
-// and when source Observable completes it emits a single item: the item with the smallest value.
-func Min[T any](comparer ...ComparerFunc[T, T]) OperatorFunc[T, T] {
-	cb := defaultComparer[T]
-	if len(comparer) > 0 {
-		cb = comparer[0]
-	}
-	return func(source IObservable[T]) IObservable[T] {
-		var (
-			lastValue T
-			first     = true
-		)
-		return createOperatorFunc(
-			source,
-			func(obs Observer[T], v T) {
-				if first {
-					lastValue = v
-					first = false
-					return
-				}
-
-				switch cb(lastValue, v) {
-				case 1:
-					lastValue = v
-				default:
-				}
-			},
-			func(obs Observer[T], err error) {
-				obs.Error(err)
-			},
-			func(obs Observer[T]) {
-				obs.Next(lastValue)
 				obs.Complete()
 			},
 		)

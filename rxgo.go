@@ -7,7 +7,7 @@ import (
 
 type ObservableFunc[T any] func(subscriber Subscriber[T])
 
-func newObservable[T any](obs ObservableFunc[T]) IObservable[T] {
+func newObservable[T any](obs ObservableFunc[T]) Observable[T] {
 	return &observableWrapper[T]{source: obs}
 }
 
@@ -15,7 +15,11 @@ type observableWrapper[T any] struct {
 	source ObservableFunc[T]
 }
 
-var _ IObservable[any] = (*observableWrapper[any])(nil)
+var _ Observable[any] = (*observableWrapper[any])(nil)
+
+func (o *observableWrapper[T]) SubscribeWith(subscriber Subscriber[T]) {
+	o.source(subscriber)
+}
 
 func (o *observableWrapper[T]) SubscribeOn(cb ...func()) Subscriber[T] {
 	subscriber := NewSubscriber[T]()

@@ -21,21 +21,46 @@ func TestCount(t *testing.T) {
 	})
 }
 
-func TestMax(t *testing.T) {
+type human struct {
+	age  int
+	name string
+}
 
+func TestMax(t *testing.T) {
 	t.Run("Max with EMPTY", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(EMPTY[any](), Max[any]()), nil, nil, true)
+	})
+
+	t.Run("Max with numbers", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(Scheduled[uint](5, 4, 7, 2, 8), Max[uint]()), uint(8), nil, true)
+	})
+
+	t.Run("Max with struct", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(Scheduled(
+			human{age: 7, name: "Foo"},
+			human{age: 5, name: "Bar"},
+			human{age: 9, name: "Beer"},
+		), Max(func(a, b human) int8 {
+			if a.age < b.age {
+				return -1
+			}
+			return 1
+		})), human{age: 9, name: "Beer"}, nil, true)
 	})
 }
 
 func TestMin(t *testing.T) {
-	type human struct {
-		age  int
-		name string
-	}
-
 	t.Run("Min with EMPTY", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(EMPTY[any](), Min[any]()), nil, nil, true)
+	})
+
+	t.Run("Min with numbers", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(Scheduled[uint](5, 4, 7, 2, 8), Min(func(a, b uint) int8 {
+			if a < b {
+				return -1
+			}
+			return 1
+		})), uint(2), nil, true)
 	})
 
 	t.Run("Min with struct", func(t *testing.T) {

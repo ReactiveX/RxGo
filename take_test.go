@@ -15,7 +15,19 @@ func TestTakeLast(t *testing.T) {
 }
 
 func TestTakeUntil(t *testing.T) {
-	// checkObservableResults(t, Pipe1(Interval(time.Millisecond), TakeUntil[uint](Interval(time.Millisecond*5))), []uint{0, 1, 2, 3}, nil, true)
+	t.Run("TakeUntil with EMPTY", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			EMPTY[uint](),
+			TakeUntil[uint](Scheduled("a")),
+		), []uint{}, nil, true)
+	})
+
+	t.Run("TakeUntil with Interval", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			Interval(time.Millisecond),
+			TakeUntil[uint](Interval(time.Millisecond*5)),
+		), []uint{0, 1, 2, 3}, nil, true)
+	})
 }
 
 func TestTakeWhile(t *testing.T) {

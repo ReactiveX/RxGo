@@ -1,14 +1,18 @@
 package rxgo
 
+import (
+	"sync"
+)
+
 // Emits only the first count values emitted by the source Observable.
 func Take[T any](count uint) OperatorFunc[T, T] {
 	if count == 0 {
-		return func(source IObservable[T]) IObservable[T] {
+		return func(source Observable[T]) Observable[T] {
 			return EMPTY[T]()
 		}
 	}
 
-	return func(source IObservable[T]) IObservable[T] {
+	return func(source Observable[T]) Observable[T] {
 		var (
 			seen = uint(0)
 		)
@@ -36,7 +40,7 @@ func Take[T any](count uint) OperatorFunc[T, T] {
 // Waits for the source to complete, then emits the last N values from the source,
 // as specified by the count argument.
 func TakeLast[T any](count uint) OperatorFunc[T, T] {
-	return func(source IObservable[T]) IObservable[T] {
+	return func(source Observable[T]) Observable[T] {
 		var (
 			values = make([]T, count)
 		)
@@ -63,40 +67,52 @@ func TakeLast[T any](count uint) OperatorFunc[T, T] {
 }
 
 // Emits the values emitted by the source Observable until a notifier Observable emits a value.
-func TakeUntil[T any, R any](notifier IObservable[R]) OperatorFunc[T, T] {
-	return func(source IObservable[T]) IObservable[T] {
+func TakeUntil[T any, R any](notifier Observable[R]) OperatorFunc[T, T] {
+	return func(source Observable[T]) Observable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {
 			var (
-				upStream     = source.SubscribeOn()
-				recv         = upStream.ForEach()
-				notifyStream = notifier.SubscribeOn()
-				// stop         bool
+				wg = new(sync.WaitGroup)
 			)
 
+			wg.Add(2)
+
+			var (
+				upStream     = source.SubscribeOn(wg.Done)
+				notifyStream = notifier.SubscribeOn(wg.Done)
+			)
+
+		loop:
 			for {
 				select {
-				case item, ok := <-recv:
-					if !ok {
-						return
-					}
-					select {
-					case <-subscriber.Closed():
-						return
-					case subscriber.Send() <- item:
-					}
-				case <-notifyStream.ForEach():
-					notifyStream.Stop()
+				case <-subscriber.Closed():
 					upStream.Stop()
-					// select {
-					// case <-subscriber.Closed():
-					// 	return
-					// case subscriber.Send() <- CompleteNotification[T]():
-					// 	log.Println("SSS")
-					// 	// stop = true
-					// }
+					notifyStream.Stop()
+					break loop
+
+				case item, ok := <-upStream.ForEach():
+					if !ok {
+						notifyStream.Stop()
+						break loop
+					}
+
+					ended := item.Err() != nil || item.Done()
+					item.Send(subscriber)
+					if ended {
+						notifyStream.Stop()
+						break loop
+					}
+
+				// Lets values pass until notifier Observable emits a value.
+				// Then, it completes.
+				case <-notifyStream.ForEach():
+					upStream.Stop()
+					notifyStream.Stop()
+					Complete[T]().Send(subscriber)
+					break loop
 				}
 			}
 
+			wg.Wait()
 		})
 	}
 }
@@ -104,7 +120,7 @@ func TakeUntil[T any, R any](notifier IObservable[R]) OperatorFunc[T, T] {
 // Emits values emitted by the source Observable so long as each value satisfies the given predicate,
 // and then completes as soon as this predicate is not satisfied.
 func TakeWhile[T any](predicate func(value T, index uint) bool) OperatorFunc[T, T] {
-	return func(source IObservable[T]) IObservable[T] {
+	return func(source Observable[T]) Observable[T] {
 		var (
 			index uint
 		)

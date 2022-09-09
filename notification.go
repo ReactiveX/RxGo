@@ -7,7 +7,7 @@ import (
 // Represents all of the notifications from the source Observable as next emissions
 // marked with their original types within Notification objects.
 func Materialize[T any]() OperatorFunc[T, ObservableNotification[T]] {
-	return func(source IObservable[T]) IObservable[ObservableNotification[T]] {
+	return func(source Observable[T]) Observable[ObservableNotification[T]] {
 		return newObservable(func(subscriber Subscriber[ObservableNotification[T]]) {
 			var (
 				wg = new(sync.WaitGroup)
@@ -39,7 +39,7 @@ func Materialize[T any]() OperatorFunc[T, ObservableNotification[T]] {
 					// When the source Observable emits error,
 					// the output will emit next as a Notification of type "error", and then complete.
 					completed = item.Err() != nil || item.Done()
-					notice = NextNotification(item.(ObservableNotification[T]))
+					notice = Next(item.(ObservableNotification[T]))
 
 					if !notice.Send(subscriber) {
 						upStream.Stop()
@@ -47,7 +47,7 @@ func Materialize[T any]() OperatorFunc[T, ObservableNotification[T]] {
 					}
 
 					if completed {
-						CompleteNotification[ObservableNotification[T]]().Send(subscriber)
+						Complete[ObservableNotification[T]]().Send(subscriber)
 						upStream.Stop()
 						break observe
 					}
@@ -114,14 +114,14 @@ func (d *notification[T]) Send(sub Subscriber[T]) bool {
 	}
 }
 
-func NextNotification[T any](v T) Notification[T] {
+func Next[T any](v T) Notification[T] {
 	return &notification[T]{kind: NextKind, v: v}
 }
 
-func ErrorNotification[T any](err error) Notification[T] {
+func Error[T any](err error) Notification[T] {
 	return &notification[T]{kind: ErrorKind, err: err}
 }
 
-func CompleteNotification[T any]() Notification[T] {
+func Complete[T any]() Notification[T] {
 	return &notification[T]{kind: CompleteKind, done: true}
 }

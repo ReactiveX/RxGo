@@ -14,9 +14,9 @@ type (
 	// - A positive value if the first argument is greater than the second
 	Comparator func(interface{}, interface{}) int
 	// ItemToObservable defines a function that computes an observable from an item.
-	ItemToObservable func(Item) Observable
+	// ItemToObservable func(Item) Observable
 	// ErrorToObservable defines a function that transforms an observable from an error.
-	ErrorToObservable func(error) Observable
+	// ErrorToObservable func(error) Observable
 	// Func defines a function that computes a value from an input value.
 	Func func(context.Context, interface{}) (interface{}, error)
 	// Func2 defines a function that computes a value from two input values.

@@ -7,7 +7,7 @@ import "time"
 // using the provided scheduler's now() method to retrieve the current time at each
 // emission, then calculating the difference.
 func WithTimeInterval[T any]() OperatorFunc[T, TimeInterval[T]] {
-	return func(source IObservable[T]) IObservable[TimeInterval[T]] {
+	return func(source Observable[T]) Observable[TimeInterval[T]] {
 		var (
 			pastTime = time.Now().UTC()
 		)
@@ -31,7 +31,7 @@ func WithTimeInterval[T any]() OperatorFunc[T, TimeInterval[T]] {
 // Attaches a UTC timestamp to each item emitted by an observable indicating
 // when it was emitted
 func WithTimestamp[T any]() OperatorFunc[T, Timestamp[T]] {
-	return func(source IObservable[T]) IObservable[Timestamp[T]] {
+	return func(source Observable[T]) Observable[Timestamp[T]] {
 		return createOperatorFunc(
 			source,
 			func(obs Observer[Timestamp[T]], v T) {

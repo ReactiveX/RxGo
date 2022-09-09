@@ -30,10 +30,10 @@ Each operator is a transformation stage. By default, everything is sequential. Y
 
 The philosophy of RxGo is to implement the ReactiveX concepts and leverage the main Go primitives (channels, goroutines, etc.) so that the integration between the two worlds is as smooth as possible.
 
-## Installation of RxGo v2
+## Installation of RxGo
 
 ```
-go get -u github.com/reactivex/rxgo/v2
+go get -u github.com/reactivex/rxgo/v3
 ```
 
 ## Getting Started
@@ -43,10 +43,14 @@ go get -u github.com/reactivex/rxgo/v2
 Let's create our first Observable and consume an item:
 
 ```go
-observable := rxgo.Just("Hello, World!")()
-ch := observable.Observe()
-item := <-ch
-fmt.Println(item.V)
+observable := rxgo.Interval(time.Second)
+observable.SubscribeSync(func(v uint) {
+	log.Println("Value ->", v)
+}, func(err error) {
+	log.Println("Error ->", err)
+}, func() {
+	log.Println("Complete!")
+})
 ```
 
 The `Just` operator creates an Observable from a static list of items. `Of(value)` creates an item from a given value. If we want to create an item from an error, we have to use `Error(err)`. This is a difference with the v1 that was accepting a value or an error directly without having to wrap it. What's the rationale for this change? It is to prepare RxGo for the generics feature coming (hopefully) in Go 2.
@@ -206,11 +210,11 @@ The main point here is the goroutine produced those items.
 On the other hand, let's create a **cold** Observable using `Defer` operator:
 
 ```go
-observable := rxgo.Defer([]rxgo.Producer{func(_ context.Context, ch chan<- rxgo.Item) {
+observable := rxgo.Defer(rxgo.NewObservable(func(sub rxgo.Subscriber[int]) {
     for i := 0; i < 3; i++ {
-        ch <- rxgo.Of(i)
+        Next(i).Send(sub)
     }
-}})
+}))
 
 // First Observer
 for item := range observable.Observe() {

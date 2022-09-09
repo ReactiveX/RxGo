@@ -1,7 +1,6 @@
 package rxgo
 
 import (
-	"context"
 	"sync"
 )
 
@@ -12,61 +11,61 @@ type eventSourceIterable struct {
 	opts      []Option
 }
 
-func newEventSourceIterable(ctx context.Context, next <-chan Item, strategy BackpressureStrategy, opts ...Option) Iterable {
-	it := &eventSourceIterable{
-		observers: make([]chan Item, 0),
-		opts:      opts,
-	}
+// func newEventSourceIterable(ctx context.Context, next <-chan Item, strategy BackpressureStrategy, opts ...Option) Iterable {
+// 	it := &eventSourceIterable{
+// 		observers: make([]chan Item, 0),
+// 		opts:      opts,
+// 	}
 
-	go func() {
-		defer func() {
-			it.closeAllObservers()
-		}()
+// 	go func() {
+// 		defer func() {
+// 			it.closeAllObservers()
+// 		}()
 
-		deliver := func(item Item) (done bool) {
-			it.RLock()
-			defer it.RUnlock()
+// 		deliver := func(item Item) (done bool) {
+// 			it.RLock()
+// 			defer it.RUnlock()
 
-			switch strategy {
-			default:
-				fallthrough
-			case Block:
-				for _, observer := range it.observers {
-					if !item.SendContext(ctx, observer) {
-						return true
-					}
-				}
-			case Drop:
-				for _, observer := range it.observers {
-					select {
-					default:
-					case <-ctx.Done():
-						return true
-					case observer <- item:
-					}
-				}
-			}
-			return
-		}
+// 			switch strategy {
+// 			default:
+// 				fallthrough
+// 			case Block:
+// 				for _, observer := range it.observers {
+// 					if !item.SendContext(ctx, observer) {
+// 						return true
+// 					}
+// 				}
+// 			case Drop:
+// 				for _, observer := range it.observers {
+// 					select {
+// 					default:
+// 					case <-ctx.Done():
+// 						return true
+// 					case observer <- item:
+// 					}
+// 				}
+// 			}
+// 			return
+// 		}
 
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case item, ok := <-next:
-				if !ok {
-					return
-				}
+// 		for {
+// 			select {
+// 			case <-ctx.Done():
+// 				return
+// 			case item, ok := <-next:
+// 				if !ok {
+// 					return
+// 				}
 
-				if done := deliver(item); done {
-					return
-				}
-			}
-		}
-	}()
+// 				if done := deliver(item); done {
+// 					return
+// 				}
+// 			}
+// 		}
+// 	}()
 
-	return it
-}
+// 	return it
+// }
 
 func (i *eventSourceIterable) closeAllObservers() {
 	i.Lock()

@@ -2,7 +2,7 @@ package rxgo
 
 // Returns an Observable that skips the first count items emitted by the source Observable.
 func Skip[T any](count uint) OperatorFunc[T, T] {
-	return func(source IObservable[T]) IObservable[T] {
+	return func(source Observable[T]) Observable[T] {
 		var (
 			index uint
 		)
@@ -27,7 +27,7 @@ func Skip[T any](count uint) OperatorFunc[T, T] {
 
 // Skip a specified number of values before the completion of an observable.
 func SkipLast[T any](skipCount uint) OperatorFunc[T, T] {
-	return func(source IObservable[T]) IObservable[T] {
+	return func(source Observable[T]) Observable[T] {
 		var (
 			values = make([]T, 0)
 		)
@@ -52,8 +52,8 @@ func SkipLast[T any](skipCount uint) OperatorFunc[T, T] {
 
 // Returns an Observable that skips items emitted by the source Observable until a
 // second Observable emits an item.
-func SkipUntil[A any, B any](notifier IObservable[B]) OperatorFunc[A, A] {
-	return func(source IObservable[A]) IObservable[A] {
+func SkipUntil[A any, B any](notifier Observable[B]) OperatorFunc[A, A] {
+	return func(source Observable[A]) Observable[A] {
 		return newObservable(func(subscriber Subscriber[A]) {
 			// var (
 			// 	mu           = new(sync.RWMutex)
@@ -91,7 +91,7 @@ func SkipUntil[A any, B any](notifier IObservable[B]) OperatorFunc[A, A] {
 // as long as a specified condition holds true, but emits all further source items
 // as soon as the condition becomes false.
 func SkipWhile[T any](predicate func(v T, index uint) bool) OperatorFunc[T, T] {
-	return func(source IObservable[T]) IObservable[T] {
+	return func(source Observable[T]) Observable[T] {
 		var (
 			index uint
 			pass  bool

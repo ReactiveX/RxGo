@@ -6,7 +6,7 @@ type (
 	OnErrorFunc                func(error)
 	OnCompleteFunc             func()
 	FinalizerFunc              func()
-	OperatorFunc[I any, O any] func(IObservable[I]) IObservable[O]
+	OperatorFunc[I any, O any] func(Observable[I]) Observable[O]
 
 	PredicateFunc[T any] func(value T, index uint) bool
 
@@ -18,9 +18,10 @@ type (
 )
 
 // FIXME: please rename it to `Observable`
-type IObservable[T any] interface {
-	SubscribeOn(...func()) Subscriber[T]
-	SubscribeSync(onNext func(T), onError func(error), onComplete func())
+type Observable[T any] interface {
+	SubscribeWith(subscriber Subscriber[T])
+	SubscribeOn(finalizer ...func()) Subscriber[T]
+	SubscribeSync(onNext func(v T), onError func(err error), onComplete func())
 	// Subscribe(onNext func(T), onError func(error), onComplete func()) Subscription
 }
 
@@ -46,10 +47,10 @@ type Subscriber[T any] interface {
 
 // Pipe
 func Pipe[S any, O1 any](
-	stream IObservable[S],
+	stream Observable[S],
 	f1 OperatorFunc[S, any],
 	f ...OperatorFunc[any, any],
-) IObservable[any] {
+) Observable[any] {
 	result := f1(stream)
 	for _, cb := range f {
 		result = cb(result)
@@ -58,64 +59,64 @@ func Pipe[S any, O1 any](
 }
 
 func Pipe1[S any, O1 any](
-	stream IObservable[S],
+	stream Observable[S],
 	f1 OperatorFunc[S, O1],
-) IObservable[O1] {
+) Observable[O1] {
 	return f1(stream)
 }
 
 func Pipe2[S any, O1 any, O2 any](
-	stream IObservable[S],
+	stream Observable[S],
 	f1 OperatorFunc[S, O1],
 	f2 OperatorFunc[O1, O2],
-) IObservable[O2] {
+) Observable[O2] {
 	return f2(f1(stream))
 }
 
 func Pipe3[S any, O1 any, O2 any, O3 any](
-	stream IObservable[S],
+	stream Observable[S],
 	f1 OperatorFunc[S, O1],
 	f2 OperatorFunc[O1, O2],
 	f3 OperatorFunc[O2, O3],
-) IObservable[O3] {
+) Observable[O3] {
 	return f3(f2(f1(stream)))
 }
 
 func Pipe4[S any, O1 any, O2 any, O3 any, O4 any](
-	stream IObservable[S],
+	stream Observable[S],
 	f1 OperatorFunc[S, O1],
 	f2 OperatorFunc[O1, O2],
 	f3 OperatorFunc[O2, O3],
 	f4 OperatorFunc[O3, O4],
-) IObservable[O4] {
+) Observable[O4] {
 	return f4(f3(f2(f1(stream))))
 }
 
 func Pipe5[S any, O1 any, O2 any, O3 any, O4 any, O5 any](
-	stream IObservable[S],
+	stream Observable[S],
 	f1 OperatorFunc[S, O1],
 	f2 OperatorFunc[O1, O2],
 	f3 OperatorFunc[O2, O3],
 	f4 OperatorFunc[O3, O4],
 	f5 OperatorFunc[O4, O5],
-) IObservable[O5] {
+) Observable[O5] {
 	return f5(f4(f3(f2(f1(stream)))))
 }
 
 func Pipe6[S any, O1 any, O2 any, O3 any, O4 any, O5 any, O6 any](
-	stream IObservable[S],
+	stream Observable[S],
 	f1 OperatorFunc[S, O1],
 	f2 OperatorFunc[O1, O2],
 	f3 OperatorFunc[O2, O3],
 	f4 OperatorFunc[O3, O4],
 	f5 OperatorFunc[O4, O5],
 	f6 OperatorFunc[O5, O6],
-) IObservable[O6] {
+) Observable[O6] {
 	return f6(f5(f4(f3(f2(f1(stream))))))
 }
 
 func Pipe7[S any, O1 any, O2 any, O3 any, O4 any, O5 any, O6 any, O7 any](
-	stream IObservable[S],
+	stream Observable[S],
 	f1 OperatorFunc[S, O1],
 	f2 OperatorFunc[O1, O2],
 	f3 OperatorFunc[O2, O3],
@@ -123,12 +124,12 @@ func Pipe7[S any, O1 any, O2 any, O3 any, O4 any, O5 any, O6 any, O7 any](
 	f5 OperatorFunc[O4, O5],
 	f6 OperatorFunc[O5, O6],
 	f7 OperatorFunc[O6, O7],
-) IObservable[O7] {
+) Observable[O7] {
 	return f7(f6(f5(f4(f3(f2(f1(stream)))))))
 }
 
 func Pipe8[S any, O1 any, O2 any, O3 any, O4 any, O5 any, O6 any, O7 any, O8 any](
-	stream IObservable[S],
+	stream Observable[S],
 	f1 OperatorFunc[S, O1],
 	f2 OperatorFunc[O1, O2],
 	f3 OperatorFunc[O2, O3],
@@ -137,12 +138,12 @@ func Pipe8[S any, O1 any, O2 any, O3 any, O4 any, O5 any, O6 any, O7 any, O8 any
 	f6 OperatorFunc[O5, O6],
 	f7 OperatorFunc[O6, O7],
 	f8 OperatorFunc[O7, O8],
-) IObservable[O8] {
+) Observable[O8] {
 	return f8(f7(f6(f5(f4(f3(f2(f1(stream))))))))
 }
 
 func Pipe9[S any, O1 any, O2 any, O3 any, O4 any, O5 any, O6 any, O7 any, O8 any, O9 any](
-	stream IObservable[S],
+	stream Observable[S],
 	f1 OperatorFunc[S, O1],
 	f2 OperatorFunc[O1, O2],
 	f3 OperatorFunc[O2, O3],
@@ -152,12 +153,12 @@ func Pipe9[S any, O1 any, O2 any, O3 any, O4 any, O5 any, O6 any, O7 any, O8 any
 	f7 OperatorFunc[O6, O7],
 	f8 OperatorFunc[O7, O8],
 	f9 OperatorFunc[O8, O9],
-) IObservable[O9] {
+) Observable[O9] {
 	return f9(f8(f7(f6(f5(f4(f3(f2(f1(stream)))))))))
 }
 
 func Pipe10[S any, O1 any, O2 any, O3 any, O4 any, O5 any, O6 any, O7 any, O8 any, O9 any, O10 any](
-	stream IObservable[S],
+	stream Observable[S],
 	f1 OperatorFunc[S, O1],
 	f2 OperatorFunc[O1, O2],
 	f3 OperatorFunc[O2, O3],
@@ -168,6 +169,6 @@ func Pipe10[S any, O1 any, O2 any, O3 any, O4 any, O5 any, O6 any, O7 any, O8 an
 	f8 OperatorFunc[O7, O8],
 	f9 OperatorFunc[O8, O9],
 	f10 OperatorFunc[O9, O10],
-) IObservable[O10] {
+) Observable[O10] {
 	return f10(f9(f8(f7(f6(f5(f4(f3(f2(f1(stream))))))))))
 }

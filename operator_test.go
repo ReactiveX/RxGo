@@ -10,7 +10,7 @@ import (
 )
 
 func TestElementAt(t *testing.T) {
-	t.Run("ElementAt with Default Value", func(t *testing.T) {
+	t.Run("ElementAt with default value", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(EMPTY[any](), ElementAt[any](1, 10)), 10, nil, true)
 	})
 
@@ -18,7 +18,7 @@ func TestElementAt(t *testing.T) {
 		checkObservableResult(t, Pipe1(Range[uint](1, 100), ElementAt[uint](2)), 3, nil, true)
 	})
 
-	t.Run("ElementAt with Error(ErrArgumentOutOfRange)", func(t *testing.T) {
+	t.Run("ElementAt with error (ErrArgumentOutOfRange)", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(Range[uint](1, 10), ElementAt[uint](100)), 0, ErrArgumentOutOfRange, false)
 	})
 }
@@ -59,40 +59,6 @@ func TestLast(t *testing.T) {
 	})
 }
 
-func TestFind(t *testing.T) {
-	t.Run("Find with empty value", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(EMPTY[any](), Find(func(a any, u uint) bool {
-			return a == nil
-		})), None[any](), nil, true)
-	})
-
-	t.Run("Find with value", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(
-			Scheduled("a", "b", "c", "d", "e"),
-			Find(func(v string, u uint) bool {
-				return v == "c"
-			}),
-		), Some("c"), nil, true)
-	})
-}
-
-func TestFindIndex(t *testing.T) {
-	t.Run("FindIndex with value that doesn't exist", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(EMPTY[any](), FindIndex(func(a any, u uint) bool {
-			return a == nil
-		})), -1, nil, true)
-	})
-
-	t.Run("FindIndex with value", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(
-			Scheduled("a", "b", "c", "d", "e"),
-			FindIndex(func(v string, u uint) bool {
-				return v == "c"
-			}),
-		), 2, nil, true)
-	})
-}
-
 func TestIgnoreElements(t *testing.T) {
 	t.Run("IgnoreElements with EMPTY", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(EMPTY[any](), IgnoreElements[any]()), nil, nil, true)
@@ -110,84 +76,8 @@ func TestIgnoreElements(t *testing.T) {
 	})
 }
 
-func TestEvery(t *testing.T) {
-	t.Run("Every with EMPTY", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(EMPTY[uint](), Every(func(value, index uint) bool {
-			return value < 10
-		})), true, nil, true)
-	})
-
-	t.Run("Every with all value match the condition", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(Range[uint](1, 7), Every(func(value, index uint) bool {
-			return value < 10
-		})), true, nil, true)
-	})
-
-	t.Run("Every with not all value match the condition", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(Range[uint](1, 7), Every(func(value, index uint) bool {
-			return value < 5
-		})), false, nil, true)
-	})
-}
-
 func TestRepeat(t *testing.T) {
 
-}
-
-func TestIsEmpty(t *testing.T) {
-	t.Run("IsEmpty with EMPTY", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(EMPTY[any](), IsEmpty[any]()), true, nil, true)
-	})
-
-	t.Run("IsEmpty with error", func(t *testing.T) {
-		var err = errors.New("something wrong")
-		checkObservableResult(t, Pipe1(Scheduled[any](err), IsEmpty[any]()), false, err, false)
-	})
-
-	t.Run("IsEmpty with value", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(Range[uint](1, 3), IsEmpty[uint]()), false, nil, true)
-	})
-}
-
-func TestDefaultIfEmpty(t *testing.T) {
-	t.Run("DefaultIfEmpty with any", func(t *testing.T) {
-		str := "hello world"
-		checkObservableResult(t, Pipe1(EMPTY[any](), DefaultIfEmpty[any](str)), any(str), nil, true)
-	})
-
-	t.Run("DefaultIfEmpty with NonEmpty", func(t *testing.T) {
-		checkObservableResults(t, Pipe1(Range[uint](1, 3), DefaultIfEmpty[uint](100)), []uint{1, 2, 3}, nil, true)
-	})
-}
-
-func TestMap(t *testing.T) {
-	t.Run("Map with string", func(t *testing.T) {
-		checkObservableResults(t, Pipe1(
-			Range[uint](1, 5),
-			Map(func(v uint, _ uint) (string, error) {
-				return fmt.Sprintf("Number(%d)", v), nil
-			}),
-		), []string{
-			"Number(1)",
-			"Number(2)",
-			"Number(3)",
-			"Number(4)",
-			"Number(5)",
-		}, nil, true)
-	})
-
-	t.Run("Map with Error", func(t *testing.T) {
-		err := fmt.Errorf("omg")
-		checkObservableResults(t, Pipe1(
-			Range[uint](1, 5),
-			Map(func(v uint, _ uint) (string, error) {
-				if v == 3 {
-					return "", err
-				}
-				return fmt.Sprintf("Number(%d)", v), nil
-			}),
-		), []string{"Number(1)", "Number(2)"}, err, false)
-	})
 }
 
 func TestTap(t *testing.T) {
@@ -243,26 +133,6 @@ func TestSample(t *testing.T) {
 		})
 	require.Nil(t, err)
 	require.True(t, done)
-}
-
-func TestScan(t *testing.T) {
-	t.Run("Scan with initial value", func(t *testing.T) {
-		checkObservableResults(t, Pipe1(
-			Scheduled[uint](1, 2, 3),
-			Scan(func(acc, cur, _ uint) (uint, error) {
-				return acc + cur, nil
-			}, 10),
-		), []uint{11, 13, 16}, nil, true)
-	})
-
-	t.Run("Scan with zero default value", func(t *testing.T) {
-		checkObservableResults(t, Pipe1(
-			Scheduled[uint](1, 3, 5),
-			Scan(func(acc, cur, _ uint) (uint, error) {
-				return acc + cur, nil
-			}, 0),
-		), []uint{1, 4, 9}, nil, true)
-	})
 }
 
 func TestDelay(t *testing.T) {
@@ -322,43 +192,6 @@ func TestWithLatestFrom(t *testing.T) {
 // 	})
 // }
 
-func TestPairWise(t *testing.T) {
-	t.Run("PairWise with EMPTY", func(t *testing.T) {
-		checkObservableResults(t, Pipe1(EMPTY[any](), PairWise[any]()),
-			[]Tuple[any, any]{}, nil, true)
-	})
-
-	t.Run("PairWise with error", func(t *testing.T) {
-		var err = errors.New("throw")
-		checkObservableResults(t, Pipe1(Scheduled[any]("j", "k", err), PairWise[any]()),
-			[]Tuple[any, any]{NewTuple[any, any]("j", "k")}, err, false)
-	})
-
-	t.Run("PairWise with numbers", func(t *testing.T) {
-		checkObservableResults(t, Pipe1(Range[uint](1, 5), PairWise[uint]()),
-			[]Tuple[uint, uint]{
-				NewTuple[uint, uint](1, 2),
-				NewTuple[uint, uint](2, 3),
-				NewTuple[uint, uint](3, 4),
-				NewTuple[uint, uint](4, 5),
-			}, nil, true)
-	})
-
-	t.Run("PairWise with alphabert", func(t *testing.T) {
-		checkObservableResults(t, Pipe1(newObservable(func(subscriber Subscriber[string]) {
-			for i := 1; i <= 5; i++ {
-				subscriber.Send() <- NextNotification(string(rune('A' - 1 + i)))
-			}
-			subscriber.Send() <- CompleteNotification[string]()
-		}), PairWise[string]()), []Tuple[string, string]{
-			NewTuple("A", "B"),
-			NewTuple("B", "C"),
-			NewTuple("C", "D"),
-			NewTuple("D", "E"),
-		}, nil, true)
-	})
-}
-
 func TestToArray(t *testing.T) {
 	t.Run("ToArray with EMPTY", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(EMPTY[any](), ToArray[any]()), []any{}, nil, true)
@@ -377,9 +210,9 @@ func TestToArray(t *testing.T) {
 	t.Run("ToArray with alphaberts", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(newObservable(func(subscriber Subscriber[string]) {
 			for i := 1; i <= 5; i++ {
-				subscriber.Send() <- NextNotification(string(rune('A' - 1 + i)))
+				subscriber.Send() <- Next(string(rune('A' - 1 + i)))
 			}
-			subscriber.Send() <- CompleteNotification[string]()
+			subscriber.Send() <- Complete[string]()
 		}), ToArray[string]()), []string{"A", "B", "C", "D", "E"}, nil, true)
 	})
 }

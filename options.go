@@ -130,11 +130,11 @@ func WithContext(ctx context.Context) Option {
 }
 
 // WithObservationStrategy uses the eager observation mode meaning consuming the items even without subscription.
-func WithObservationStrategy(strategy ObservationStrategy) Option {
-	return newFuncOption(func(options *funcOption) {
-		options.observation = strategy
-	})
-}
+// func WithObservationStrategy(strategy ObservationStrategy) Option {
+// 	return newFuncOption(func(options *funcOption) {
+// 		options.observation = strategy
+// 	})
+// }
 
 // WithPool allows to specify an execution pool.
 func WithPool(pool int) Option {
@@ -151,19 +151,19 @@ func WithCPUPool() Option {
 }
 
 // WithBackPressureStrategy sets the back pressure strategy: drop or block.
-func WithBackPressureStrategy(strategy BackpressureStrategy) Option {
-	return newFuncOption(func(options *funcOption) {
-		options.backPressureStrategy = strategy
-	})
-}
+// func WithBackPressureStrategy(strategy BackpressureStrategy) Option {
+// 	return newFuncOption(func(options *funcOption) {
+// 		options.backPressureStrategy = strategy
+// 	})
+// }
 
 // WithErrorStrategy defines how an observable should deal with error.
 // This strategy is propagated to the parent observable.
-func WithErrorStrategy(strategy OnErrorStrategy) Option {
-	return newFuncOption(func(options *funcOption) {
-		options.onErrorStrategy = strategy
-	})
-}
+// func WithErrorStrategy(strategy OnErrorStrategy) Option {
+// 	return newFuncOption(func(options *funcOption) {
+// 		options.onErrorStrategy = strategy
+// 	})
+// }
 
 // WithPublishStrategy converts an ordinary Observable into a connectable Observable.
 func WithPublishStrategy() Option {

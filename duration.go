@@ -64,7 +64,7 @@ func WithDuration(d time.Duration) Duration {
 // 			case error:
 // 				fs[i] = execution{
 // 					f: func() {
-// 						ch <- Error(elem)
+// 						ch <- Errors(elem)
 // 					},
 // 					isTick: false,
 // 				}

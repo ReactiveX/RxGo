@@ -5,7 +5,7 @@ import "reflect"
 // Returns an Observable that emits all items emitted by the source Observable
 // that are distinct by comparison from previous items.
 func Distinct[T any, K comparable](keySelector func(value T) K) OperatorFunc[T, T] {
-	return func(source IObservable[T]) IObservable[T] {
+	return func(source Observable[T]) Observable[T] {
 		var (
 			keySet = make(map[K]bool)
 			exists bool
@@ -40,7 +40,7 @@ func DistinctUntilChanged[T any](comparator ...ComparatorFunc[T, T]) OperatorFun
 	if len(comparator) > 0 {
 		cb = comparator[0]
 	}
-	return func(source IObservable[T]) IObservable[T] {
+	return func(source Observable[T]) Observable[T] {
 		var (
 			lastValue T
 			first     = true
@@ -66,7 +66,7 @@ func DistinctUntilChanged[T any](comparator ...ComparatorFunc[T, T]) OperatorFun
 
 // Filter emits only those items from an Observable that pass a predicate test.
 func Filter[T any](predicate PredicateFunc[T]) OperatorFunc[T, T] {
-	return func(source IObservable[T]) IObservable[T] {
+	return func(source Observable[T]) Observable[T] {
 		var (
 			index uint
 		)

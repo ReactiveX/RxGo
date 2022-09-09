@@ -1,43 +1,172 @@
 package rxgo
 
+import (
+	"fmt"
+)
+
 func skipPredicate[T any](T, uint) bool {
 	return true
 }
 
-func defaultComparer[T any](a T, b T) int8 {
+func minimum[T any](a T, b T) int8 {
+	positive, negative := int8(-1), int8(1)
 	switch any(a).(type) {
 	case string:
 		if any(a).(string) < any(b).(string) {
-			return -1
+			return positive
 		}
-		return 1
-	case nil:
+		return negative
+	case []byte:
+		if string(any(a).([]byte)) < string(any(b).([]byte)) {
+			return positive
+		}
+		return negative
+	case int8:
+		if any(a).(int8) < any(b).(int8) {
+			return positive
+		}
+		return negative
+	case int:
+		if any(a).(int) < any(b).(int) {
+			return positive
+		}
+		return negative
+	case int32:
+		if any(a).(int32) < any(b).(int32) {
+			return positive
+		}
+		return negative
+	case int64:
+		if any(a).(int64) < any(b).(int64) {
+			return positive
+		}
+		return negative
+	case uint8:
+		if any(a).(uint8) < any(b).(uint8) {
+			return positive
+		}
+		return negative
+	case uint:
+		if any(a).(uint) < any(b).(uint) {
+			return positive
+		}
+		return negative
+	case uint32:
+		if any(a).(uint32) < any(b).(uint32) {
+			return positive
+		}
+		return negative
+	case uint64:
+		if any(a).(uint64) < any(b).(uint64) {
+			return positive
+		}
+		return negative
+	case float32:
+		if any(a).(float32) < any(b).(float32) {
+			return positive
+		}
+		return negative
+	case float64:
+		if any(a).(float64) < any(b).(float64) {
+			return positive
+		}
+		return negative
+
+	default:
+		if fmt.Sprintf("%v", a) < fmt.Sprintf("%v", b) {
+			return positive
+		}
+		return negative
 	}
-	return -1
+}
+
+func maximum[T any](a T, b T) int8 {
+	positive, negative := int8(1), int8(-1)
+	switch any(a).(type) {
+	case string:
+		if any(a).(string) > any(b).(string) {
+			return positive
+		}
+		return negative
+	case []byte:
+		if string(any(a).([]byte)) > string(any(b).([]byte)) {
+			return positive
+		}
+		return negative
+	case int8:
+		if any(a).(int8) > any(b).(int8) {
+			return positive
+		}
+		return negative
+	case int:
+		if any(a).(int) > any(b).(int) {
+			return positive
+		}
+		return negative
+	case int32:
+		if any(a).(int32) > any(b).(int32) {
+			return positive
+		}
+		return negative
+	case int64:
+		if any(a).(int64) > any(b).(int64) {
+			return positive
+		}
+		return negative
+	case uint8:
+		if any(a).(uint8) > any(b).(uint8) {
+			return positive
+		}
+		return negative
+	case uint:
+		if any(a).(uint) > any(b).(uint) {
+			return positive
+		}
+		return negative
+	case uint32:
+		if any(a).(uint32) > any(b).(uint32) {
+			return positive
+		}
+		return negative
+	case uint64:
+		if any(a).(uint64) > any(b).(uint64) {
+			return positive
+		}
+		return negative
+	case float32:
+		if any(a).(float32) > any(b).(float32) {
+			return positive
+		}
+		return negative
+	case float64:
+		if any(a).(float64) > any(b).(float64) {
+			return positive
+		}
+		return negative
+	default:
+		if fmt.Sprintf("%v", a) > fmt.Sprintf("%v", b) {
+			return positive
+		}
+		return negative
+	}
 }
 
 func createOperatorFunc[T any, R any](
-	source IObservable[T],
+	source Observable[T],
 	onNext func(Observer[R], T),
 	onError func(Observer[R], error),
 	onComplete func(Observer[R]),
-) IObservable[R] {
+) Observable[R] {
 	return newObservable(func(subscriber Subscriber[R]) {
 		var (
-			// terminated = subscriber.Closed()
-			stop bool
-
-			// input stream
+			stop     bool
 			upStream = source.SubscribeOn()
 		)
 
 		obs := &consumerObserver[R]{
 			onNext: func(v R) {
-				select {
-				case <-subscriber.Closed():
+				if !Next(v).Send(subscriber) {
 					stop = true
-					return
-				case subscriber.Send() <- NextNotification(v):
 				}
 			},
 			onError: func(err error) {
@@ -46,18 +175,14 @@ func createOperatorFunc[T any, R any](
 				select {
 				case <-subscriber.Closed():
 					return
-				case subscriber.Send() <- ErrorNotification[R](err):
+				case subscriber.Send() <- Error[R](err):
 				}
 			},
 			onComplete: func() {
 				// Inform the up stream to stop emit value
 				upStream.Stop()
 				stop = true
-				select {
-				case <-subscriber.Closed():
-					return
-				case subscriber.Send() <- CompleteNotification[R]():
-				}
+				Complete[R]().Send(subscriber)
 			},
 		}
 
