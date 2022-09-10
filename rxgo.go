@@ -11,7 +11,7 @@ type (
 	OnErrorFunc                func(error)
 	OnCompleteFunc             func()
 	FinalizerFunc              func()
-	OperatorFunc[I any, O any] func(Observable[I]) Observable[O]
+	OperatorFunc[I any, O any] func(source Observable[I]) Observable[O]
 
 	PredicateFunc[T any] func(value T, index uint) bool
 
@@ -29,6 +29,11 @@ type Observable[T any] interface {
 	SubscribeOn(finalizer ...func()) Subscriber[T]
 	SubscribeSync(onNext func(v T), onError func(err error), onComplete func())
 	// Subscribe(onNext func(T), onError func(error), onComplete func()) Subscription
+}
+
+type GroupedObservable[K comparable, R any] interface {
+	Observable[R] // Inherit from observable
+	Key() K
 }
 
 type Subscription interface {
@@ -75,6 +80,7 @@ func (o *observableWrapper[T]) SubscribeOn(cb ...func()) Subscriber[T] {
 		defer subscriber.Unsubscribe()
 		defer finalizer()
 		o.source(subscriber)
+		// log.Println("Unsubscribe ->", reflect.TypeOf(o))
 	}()
 	return subscriber
 }

@@ -6,6 +6,16 @@ import (
 	"time"
 )
 
+func TestCombineLatestWith(t *testing.T) {
+	t.Run("CombineLatestWith", func(t *testing.T) {
+		// ForkJoin only capture all latest value from every stream
+		checkObservableResult(t, Pipe1(
+			EMPTY[any](),
+			CombineLatestWith[any](),
+		), []any{nil, "end", uint(10)}, nil, true)
+	})
+}
+
 func TestForkJoin(t *testing.T) {
 	t.Run("ForkJoin with one EMPTY", func(t *testing.T) {
 		// ForkJoin only capture all latest value from every stream

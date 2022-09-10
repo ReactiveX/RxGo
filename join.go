@@ -6,8 +6,31 @@ import (
 	"sync/atomic"
 )
 
-func CombineLatest() {
+// Create an observable that combines the latest values from all passed observables
+// and the source into arrays and emits them.
+func CombineLatestWith[T any](sources ...Observable[T]) OperatorFunc[T, []T] {
+	return func(source Observable[T]) Observable[[]T] {
+		sources = append([]Observable[T]{source}, sources...)
+		return newObservable(func(subscriber Subscriber[[]T]) {
+			var (
+				noOfSource = len(sources)
+				wg         = new(sync.WaitGroup)
+			)
 
+			wg.Add(noOfSource)
+
+			observeStream := func(index int, upStream Subscriber[T]) {
+
+			}
+
+			for i, source := range sources {
+				subscriber := source.SubscribeOn(wg.Done)
+				go observeStream(i, subscriber)
+			}
+
+			wg.Wait()
+		})
+	}
 }
 
 // Accepts an Array of ObservableInput or a dictionary Object of ObservableInput

@@ -198,9 +198,47 @@ func ConcatMap[T any, R any](project func(value T, index uint) Observable[R]) Op
 
 // Groups the items emitted by an Observable according to a specified criterion,
 // and emits these grouped items as GroupedObservables, one GroupedObservable per group.
-func GroupBy[T any, K any](keySelector func(value T) K) OperatorFunc[T, T] {
-	return func(source Observable[T]) Observable[T] {
-		panic("GroupBy not implemented")
+func GroupBy[T any, K comparable](keySelector func(value T) K) OperatorFunc[T, GroupedObservable[K, T]] {
+	if keySelector == nil {
+		panic(`rxgo: "GroupBy" expected keySelector func`)
+	}
+	return func(source Observable[T]) Observable[GroupedObservable[K, T]] {
+		return newObservable(func(subscriber Subscriber[GroupedObservable[K, T]]) {
+			var (
+				wg = new(sync.WaitGroup)
+			)
+
+			wg.Add(1)
+
+			var (
+				key      K
+				upStream = source.SubscribeOn(wg.Done)
+				keySet   = make(map[K]*groupedObservable[K, T])
+			)
+
+		loop:
+			for {
+				select {
+				case <-subscriber.Closed():
+					upStream.Stop()
+					break loop
+
+				case item, ok := <-upStream.ForEach():
+					if !ok {
+						break loop
+					}
+
+					key = keySelector(item.Value())
+					if _, exists := keySet[key]; !exists {
+						keySet[key] = newGroupedObservable[K, T]()
+					} else {
+						keySet[key].connector.Send() <- item
+					}
+				}
+			}
+
+			wg.Wait()
+		})
 	}
 }
 
