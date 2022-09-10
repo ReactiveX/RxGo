@@ -6,6 +6,24 @@ import (
 	"time"
 )
 
+func TestDebounceTime(t *testing.T) {
+	t.Run("DebounceTime with EMPTY", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(
+			EMPTY[any](),
+			DebounceTime[any](time.Millisecond),
+		), nil, nil, true)
+	})
+
+	t.Run("DebounceTime with error", func(t *testing.T) {
+		var err = errors.New("failed")
+		checkObservableResult(t, Pipe1(
+			ThrownError[any](func() error {
+				return err
+			}), DebounceTime[any](time.Millisecond),
+		), nil, err, false)
+	})
+}
+
 func TestDistinct(t *testing.T) {
 	t.Run("Distinct with EMPTY", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(EMPTY[any](), Distinct(func(value any) int {
@@ -43,13 +61,13 @@ func TestDistinctUntilChanged(t *testing.T) {
 		checkObservableResult(t, Pipe1(EMPTY[any](), DistinctUntilChanged[any]()), nil, nil, true)
 	})
 
-	t.Run("DistinctUntilChanged with String", func(t *testing.T) {
+	t.Run("DistinctUntilChanged with string", func(t *testing.T) {
 		checkObservableResults(t,
 			Pipe1(Scheduled("a", "a", "b", "a", "c", "c", "d"), DistinctUntilChanged[string]()),
 			[]string{"a", "b", "a", "c", "d"}, nil, true)
 	})
 
-	t.Run("DistinctUntilChanged with Number", func(t *testing.T) {
+	t.Run("DistinctUntilChanged with numbers", func(t *testing.T) {
 		checkObservableResults(t,
 			Pipe1(
 				Scheduled(30, 31, 20, 34, 33, 29, 35, 20),
@@ -59,7 +77,7 @@ func TestDistinctUntilChanged(t *testing.T) {
 			), []int{30, 31, 34, 35}, nil, true)
 	})
 
-	t.Run("DistinctUntilChanged with Struct", func(t *testing.T) {
+	t.Run("DistinctUntilChanged with struct", func(t *testing.T) {
 		type build struct {
 			engineVersion       string
 			transmissionVersion string
@@ -318,5 +336,23 @@ func TestTakeWhile(t *testing.T) {
 		checkObservableResults(t, Pipe1(Range[uint](1, 100), TakeWhile(func(v uint, _ uint) bool {
 			return v >= 50
 		})), []uint{}, nil, true)
+	})
+}
+
+func TestThrottleTime(t *testing.T) {
+	t.Run("ThrottleTime with EMPTY", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(
+			EMPTY[any](),
+			ThrottleTime[any](time.Millisecond),
+		), nil, nil, true)
+	})
+
+	t.Run("ThrottleTime with error", func(t *testing.T) {
+		var err = errors.New("failed")
+		checkObservableResult(t, Pipe1(
+			ThrownError[any](func() error {
+				return err
+			}), ThrottleTime[any](time.Millisecond),
+		), nil, err, false)
 	})
 }

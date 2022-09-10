@@ -3,7 +3,59 @@ package rxgo
 import (
 	"reflect"
 	"sync"
+	"time"
 )
+
+// Emits a notification from the source Observable only after a particular time span
+// has passed without another source emission.
+func DebounceTime[T any](duration time.Duration) OperatorFunc[T, T] {
+	return func(source Observable[T]) Observable[T] {
+		return newObservable(func(subscriber Subscriber[T]) {
+			var (
+				wg = new(sync.WaitGroup)
+			)
+
+			wg.Add(1)
+
+			var (
+				upStream    = source.SubscribeOn(wg.Done)
+				latestValue T
+				hasValue    bool
+				timeout     = time.After(duration)
+			)
+
+		loop:
+			for {
+				select {
+				case <-subscriber.Closed():
+					upStream.Stop()
+					break loop
+
+				case item, ok := <-upStream.ForEach():
+					if !ok {
+						break loop
+					}
+
+					ended := item.Err() != nil || item.Done()
+					if ended {
+						item.Send(subscriber)
+						break loop
+					}
+					hasValue = true
+					latestValue = item.Value()
+
+				case <-timeout:
+					if hasValue {
+						Next(latestValue).Send(subscriber)
+					}
+					timeout = time.After(duration)
+				}
+			}
+
+			wg.Wait()
+		})
+	}
+}
 
 // Returns an Observable that emits all items emitted by the source Observable
 // that are distinct by comparison from previous items.
@@ -521,5 +573,103 @@ func TakeWhile[T any](predicate func(value T, index uint) bool) OperatorFunc[T, 
 				obs.Complete()
 			},
 		)
+	}
+}
+
+// Emits a value from the source Observable, then ignores subsequent source values
+// for a duration determined by another Observable, then repeats this process.
+func Throttle[T any, R any](durationSelector func(value T) Observable[R]) OperatorFunc[T, T] {
+	return func(source Observable[T]) Observable[T] {
+		return newObservable(func(subscriber Subscriber[T]) {
+			var (
+				wg = new(sync.WaitGroup)
+			)
+
+			wg.Add(1)
+
+			var (
+				upStream = source.SubscribeOn(wg.Done)
+				canEmit  = true
+			)
+
+		loop:
+			for {
+				select {
+				case <-subscriber.Closed():
+					upStream.Stop()
+					break loop
+
+				case item, ok := <-upStream.ForEach():
+					if !ok {
+						break loop
+					}
+
+					ended := item.Err() != nil || item.Done()
+					if ended {
+						item.Send(subscriber)
+						break loop
+					}
+
+					if canEmit {
+						item.Send(subscriber)
+						canEmit = false
+					}
+					wg.Add(1)
+					durationSelector(item.Value()).SubscribeOn(wg.Done)
+				}
+			}
+
+			wg.Wait()
+		})
+	}
+}
+
+// Emits a value from the source Observable, then ignores subsequent source
+// values for duration milliseconds, then repeats this process
+func ThrottleTime[T any](duration time.Duration) OperatorFunc[T, T] {
+	return func(source Observable[T]) Observable[T] {
+		return newObservable(func(subscriber Subscriber[T]) {
+			var (
+				wg = new(sync.WaitGroup)
+			)
+
+			wg.Add(1)
+
+			var (
+				upStream = source.SubscribeOn(wg.Done)
+				canEmit  = true
+				timeout  = time.After(duration)
+			)
+
+		loop:
+			for {
+				select {
+				case <-subscriber.Closed():
+					upStream.Stop()
+					break loop
+
+				case item, ok := <-upStream.ForEach():
+					if !ok {
+						break loop
+					}
+
+					ended := item.Err() != nil || item.Done()
+					if ended {
+						item.Send(subscriber)
+						break loop
+					}
+					if canEmit {
+						item.Send(subscriber)
+						canEmit = false
+					}
+
+				case <-timeout:
+					canEmit = true
+					timeout = time.After(duration)
+				}
+			}
+
+			wg.Wait()
+		})
 	}
 }

@@ -170,54 +170,6 @@ func DelayWhen[T any](duration time.Duration) OperatorFunc[T, T] {
 	}
 }
 
-// Emits a value from the source Observable, then ignores subsequent source values
-// for duration milliseconds, then repeats this process.
-func Throttle[T any, R any](durationSelector func(v T) Observable[R]) OperatorFunc[T, T] {
-	return func(source Observable[T]) Observable[T] {
-		return createOperatorFunc(
-			source,
-			func(obs Observer[T], v T) {
-				durationSelector(v)
-				obs.Next(v)
-			},
-			func(obs Observer[T], err error) {
-				obs.Error(err)
-			},
-			func(obs Observer[T]) {
-				obs.Complete()
-			},
-		)
-	}
-}
-
-// Emits a notification from the source Observable only after a particular time span
-// has passed without another source emission.
-func DebounceTime[T any](duration time.Duration) OperatorFunc[T, T] {
-	return func(source Observable[T]) Observable[T] {
-		var (
-			timer *time.Timer
-		)
-		// https://github.com/ReactiveX/RxGo/blob/35328a75073980197d938cf235158a0654024de5/observable_operator.go#L670
-		return createOperatorFunc(
-			source,
-			func(obs Observer[T], v T) {
-				if timer != nil {
-					timer.Stop()
-				}
-				timer = time.AfterFunc(duration, func() {
-					obs.Next(v)
-				})
-			},
-			func(obs Observer[T], err error) {
-				obs.Error(err)
-			},
-			func(obs Observer[T]) {
-				obs.Complete()
-			},
-		)
-	}
-}
-
 // Catches errors on the observable to be handled by returning a new observable
 // or throwing an error.
 func CatchError[T any](catch func(error, Observable[T]) Observable[T]) OperatorFunc[T, T] {
