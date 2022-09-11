@@ -13,19 +13,87 @@ func CombineLatestWith[T any](sources ...Observable[T]) OperatorFunc[T, []T] {
 		sources = append([]Observable[T]{source}, sources...)
 		return newObservable(func(subscriber Subscriber[[]T]) {
 			var (
-				noOfSource = len(sources)
-				wg         = new(sync.WaitGroup)
+				noOfSource   = len(sources)
+				emitCount    = new(atomic.Uint32)
+				errCh        = make(chan error, 1)
+				stopCh       = make(chan struct{})
+				wg           = new(sync.WaitGroup)
+				latestValues = make([]T, noOfSource)
 			)
 
 			wg.Add(noOfSource)
 
-			observeStream := func(index int, upStream Subscriber[T]) {
-
+			// To ensure the output array always has the same length,
+			// combineLatest will actually wait for all input Observables
+			// to emit at least once, before it starts emitting results.
+			onNext := func() {
+				if emitCount.Load() == uint32(noOfSource) {
+					Next(latestValues).Send(subscriber)
+				}
 			}
+
+			observeStream := func(index int, upStream Subscriber[T]) {
+				var (
+					emitted bool
+				)
+
+			loop:
+				for {
+					select {
+					case <-subscriber.Closed():
+						upStream.Stop()
+						break loop
+
+					case <-stopCh:
+						upStream.Stop()
+						break loop
+
+					case item, ok := <-upStream.ForEach():
+						if !ok {
+							break loop
+						}
+
+						if err := item.Err(); err != nil {
+							errCh <- err
+							break loop
+						}
+
+						if item.Done() {
+							break loop
+						}
+
+						if !emitted {
+							emitCount.Add(1)
+							emitted = true
+						}
+						latestValues[index] = item.Value()
+						onNext()
+					}
+				}
+			}
+
+			go func() {
+				select {
+				case <-subscriber.Closed():
+					return
+				case _, ok := <-errCh:
+					if !ok {
+						return
+					}
+					close(stopCh)
+				}
+			}()
 
 			for i, source := range sources {
 				subscriber := source.SubscribeOn(wg.Done)
 				go observeStream(i, subscriber)
+			}
+
+			select {
+			case <-errCh:
+			default:
+				// Close error channel gracefully
+				close(errCh)
 			}
 
 			wg.Wait()
@@ -52,8 +120,8 @@ func ForkJoin[T any](sources ...Observable[T]) Observable[[]T] {
 		}
 
 		var (
-			wg  = new(sync.WaitGroup)
-			mu  = new(sync.Mutex)
+			wg = new(sync.WaitGroup)
+			// mu  = new(sync.Mutex)
 			err = new(atomic.Pointer[error])
 			// Single buffered channel will not accept more than one signal
 			errCh         = make(chan error, 1)
@@ -83,8 +151,8 @@ func ForkJoin[T any](sources ...Observable[T]) Observable[[]T] {
 		// will not emit anything either, even if it already has some last values
 		// from other observables.
 		onNext := func(index int, v T) {
-			mu.Lock()
-			defer mu.Unlock()
+			// mu.Lock()
+			// defer mu.Unlock()
 			latestValues[index] = v
 		}
 

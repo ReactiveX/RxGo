@@ -121,6 +121,29 @@ func TestWithLatestFrom(t *testing.T) {
 // 	})
 // }
 
+func TestTimeout(t *testing.T) {
+	t.Run("Timeout with EMPTY", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(
+			EMPTY[any](),
+			Timeout[any](time.Second),
+		), nil, nil, true)
+	})
+
+	t.Run("Timeout with timeout error", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(
+			Interval(time.Millisecond*5),
+			Timeout[uint](time.Millisecond),
+		), uint(0), ErrTimeout, false)
+	})
+
+	t.Run("Timeout with Scheduled", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(
+			Pipe1(Scheduled("a"), Delay[string](time.Millisecond*50)),
+			Timeout[string](time.Millisecond*100),
+		), "a", nil, true)
+	})
+}
+
 func TestToArray(t *testing.T) {
 	t.Run("ToArray with EMPTY", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(EMPTY[any](), ToArray[any]()), []any{}, nil, true)

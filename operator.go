@@ -295,6 +295,55 @@ func WithLatestFrom[A any, B any](input Observable[B]) OperatorFunc[A, Tuple[A, 
 	}
 }
 
+// Errors if Observable does not emit a value in given time span.
+func Timeout[T any](duration time.Duration) OperatorFunc[T, T] {
+	return func(source Observable[T]) Observable[T] {
+		return newObservable(func(subscriber Subscriber[T]) {
+			var (
+				wg = new(sync.WaitGroup)
+			)
+
+			wg.Add(1)
+
+			var (
+				stop     bool
+				upStream = source.SubscribeOn(wg.Done)
+				timer    = time.AfterFunc(duration, func() {
+					upStream.Stop()
+					stop = true
+					Error[T](ErrTimeout).Send(subscriber)
+					log.Println("XXX")
+				})
+			)
+
+			for !stop {
+				select {
+				case <-subscriber.Closed():
+					upStream.Stop()
+					stop = true
+
+				case item, ok := <-upStream.ForEach():
+					if !ok {
+						stop = true
+						continue
+					}
+					timer.Stop()
+
+					ended := item.Err() != nil || item.Done()
+					item.Send(subscriber)
+					log.Println(item, ended)
+					if ended {
+						stop = true
+					}
+				}
+			}
+
+			wg.Wait()
+			log.Println("XXX2002")
+		})
+	}
+}
+
 // Collects all source emissions and emits them as an array when the source completes.
 func ToArray[T any]() OperatorFunc[T, []T] {
 	return func(source Observable[T]) Observable[[]T] {
