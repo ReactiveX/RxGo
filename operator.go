@@ -315,16 +315,12 @@ func Timeout[T any, C timeoutConfig[T]](config C) OperatorFunc[T, T] {
 
 			var (
 				upStream = source.SubscribeOn(wg.Done)
-				timer    *time.Timer
+				timeout  <-chan time.Time
 			)
 
 			switch v := any(config).(type) {
 			case time.Duration:
-				timer = time.AfterFunc(v, func() {
-					upStream.Stop()
-					Error[T](ErrTimeout).Send(subscriber)
-				})
-
+				timeout = time.After(v)
 			case TimeoutConfig[T]:
 				panic("unimplemented")
 			}
@@ -341,11 +337,17 @@ func Timeout[T any, C timeoutConfig[T]](config C) OperatorFunc[T, T] {
 						break loop
 					}
 
-					timer.Stop()
+					// Reset timeout
+					timeout = make(<-chan time.Time)
 					item.Send(subscriber)
 					if item.Err() != nil || item.Done() {
 						break loop
 					}
+
+				case <-timeout:
+					upStream.Stop()
+					Error[T](ErrTimeout).Send(subscriber)
+					break loop
 				}
 			}
 
