@@ -7,7 +7,7 @@ import (
 	"github.com/teivah/onecontext"
 )
 
-var emptyContext context.Context
+// var emptyContext context.Context
 
 // Option handles configurable options.
 type Option interface {
@@ -106,13 +106,13 @@ func newFuncOption(f func(*funcOption)) *funcOption {
 	}
 }
 
-func parseOptions(opts ...Option) Option {
-	o := new(funcOption)
-	for _, opt := range opts {
-		opt.apply(o)
-	}
-	return o
-}
+// func parseOptions(opts ...Option) Option {
+// 	o := new(funcOption)
+// 	for _, opt := range opts {
+// 		opt.apply(o)
+// 	}
+// 	return o
+// }
 
 // WithBufferedChannel allows to configure the capacity of a buffered channel.
 func WithBufferedChannel(capacity int) Option {
@@ -179,8 +179,8 @@ func Serialize(identifier func(interface{}) int) Option {
 	})
 }
 
-func connect() Option {
-	return newFuncOption(func(options *funcOption) {
-		options.connectOperation = true
-	})
-}
+// func connect() Option {
+// 	return newFuncOption(func(options *funcOption) {
+// 		options.connectOperation = true
+// 	})
+// }

@@ -1,15 +1,11 @@
 package rxgo
 
-import (
-	"sync"
-)
-
-type eventSourceIterable struct {
-	sync.RWMutex
-	observers []chan Item
-	disposed  bool
-	opts      []Option
-}
+// type eventSourceIterable struct {
+// 	sync.RWMutex
+// 	observers []chan Item
+// 	disposed  bool
+// 	opts      []Option
+// }
 
 // func newEventSourceIterable(ctx context.Context, next <-chan Item, strategy BackpressureStrategy, opts ...Option) Iterable {
 // 	it := &eventSourceIterable{
@@ -67,25 +63,25 @@ type eventSourceIterable struct {
 // 	return it
 // }
 
-func (i *eventSourceIterable) closeAllObservers() {
-	i.Lock()
-	for _, observer := range i.observers {
-		close(observer)
-	}
-	i.disposed = true
-	i.Unlock()
-}
+// func (i *eventSourceIterable) closeAllObservers() {
+// 	i.Lock()
+// 	for _, observer := range i.observers {
+// 		close(observer)
+// 	}
+// 	i.disposed = true
+// 	i.Unlock()
+// }
 
-func (i *eventSourceIterable) Observe(opts ...Option) <-chan Item {
-	option := parseOptions(append(i.opts, opts...)...)
-	next := option.buildChannel()
+// func (i *eventSourceIterable) Observe(opts ...Option) <-chan Item {
+// 	option := parseOptions(append(i.opts, opts...)...)
+// 	next := option.buildChannel()
 
-	i.Lock()
-	if i.disposed {
-		close(next)
-	} else {
-		i.observers = append(i.observers, next)
-	}
-	i.Unlock()
-	return next
-}
+// 	i.Lock()
+// 	if i.disposed {
+// 		close(next)
+// 	} else {
+// 		i.observers = append(i.observers, next)
+// 	}
+// 	i.Unlock()
+// 	return next
+// }

@@ -2,6 +2,8 @@ package rxgo
 
 import (
 	"context"
+	"log"
+	"reflect"
 	"sync"
 )
 
@@ -77,10 +79,11 @@ func (o *observableWrapper[T]) SubscribeOn(cb ...func()) Subscriber[T] {
 		finalizer = cb[0]
 	}
 	go func() {
+		log.Println("Subscribe ->", reflect.TypeOf(o))
 		defer subscriber.Unsubscribe()
 		defer finalizer()
 		o.source(subscriber)
-		// log.Println("Unsubscribe ->", reflect.TypeOf(o))
+		log.Println("Unsubscribe ->", reflect.TypeOf(o))
 	}()
 	return subscriber
 }

@@ -2,8 +2,6 @@ package rxgo
 
 import (
 	"time"
-
-	"github.com/stretchr/testify/mock"
 )
 
 // Infinite represents an infinite wait time
@@ -90,11 +88,11 @@ func WithDuration(d time.Duration) Duration {
 // 	return time.Minute
 // }
 
-type mockDuration struct {
-	mock.Mock
-}
+// type mockDuration struct {
+// 	mock.Mock
+// }
 
-func (m *mockDuration) duration() time.Duration {
-	args := m.Called()
-	return args.Get(0).(time.Duration)
-}
+// func (m *mockDuration) duration() time.Duration {
+// 	args := m.Called()
+// 	return args.Get(0).(time.Duration)
+// }

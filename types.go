@@ -3,10 +3,10 @@ package rxgo
 import "context"
 
 type (
-	operatorOptions struct {
-		stop          func()
-		resetIterable func(Iterable)
-	}
+	// operatorOptions struct {
+	// 	stop          func()
+	// 	resetIterable func(Iterable)
+	// }
 
 	// Comparator defines a func that returns an int:
 	// - 0 if two elements are equals
