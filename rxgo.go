@@ -13,7 +13,8 @@ type (
 	FinalizerFunc              func()
 	OperatorFunc[I any, O any] func(source Observable[I]) Observable[O]
 
-	PredicateFunc[T any] func(value T, index uint) bool
+	PredicateFunc[T any]         func(value T, index uint) bool
+	ProjectionFunc[T any, R any] func(value T, index uint) Observable[R]
 
 	ComparerFunc[A any, B any] func(prev A, curr B) int8
 

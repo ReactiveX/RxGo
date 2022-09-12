@@ -53,7 +53,7 @@ observable.SubscribeSync(func(v uint) {
 })
 ```
 
-The `Just` operator creates an Observable from a static list of items. `Of(value)` creates an item from a given value. If we want to create an item from an error, we have to use `Error(err)`. This is a difference with the v1 that was accepting a value or an error directly without having to wrap it. What's the rationale for this change? It is to prepare RxGo for the generics feature coming (hopefully) in Go 2.
+The `Just` operator creates an Observable from a static list of items. `Of(value)` creates an item from a given value. If we want to create an item from an error, we have to use `Error(err)`.
 
 By the way, the `Just` operator uses currying as syntactic sugar. This way, it accepts multiple items in the first parameter list and multiple options in the second parameter list. We'll see below how to specify options.
 
@@ -71,7 +71,7 @@ if item.Error() {
 fmt.Println(item.V)
 ``` 
 
-`item.Error()` returns a boolean indicating whether an item contains an error. Then, we use either `item.E` to get the error or `item.V` to get the value.
+`item.Err()` returns whether an item contains an error and we use `item.Value` to get the value.
 
 By default, an Observable is stopped once an error is produced. However, there are special operators to deal with errors (e.g., `OnError`, `Retry`, etc.)
 

@@ -167,6 +167,31 @@ func TestConcatMap(t *testing.T) {
 	})
 }
 
+func TestExhaustMap(t *testing.T) {
+	t.Run("ExhaustMap with EMPTY", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			EMPTY[any](),
+			ExhaustMap(func(v any, _ uint) Observable[uint] {
+				return Range[uint](88, 90)
+			}, func(v1 any, v2 uint, _, _ uint) string {
+				return fmt.Sprintf("%v:%d", v1, v2)
+			}),
+		), []string{}, nil, true)
+	})
+
+	t.Run("ExhaustMap with Interval", func(t *testing.T) {
+		checkObservableResults(t, Pipe2(
+			Interval(time.Millisecond*100),
+			ExhaustMap(func(v uint, _ uint) Observable[uint] {
+				return Range[uint](88, 90)
+			}, func(v1 uint, v2 uint, _, _ uint) string {
+				return fmt.Sprintf("%02d:%d", v1, v2)
+			}),
+			Take[string](3),
+		), []string{"00:88", "00:89", "00:90"}, nil, true)
+	})
+}
+
 func TestGroupBy(t *testing.T) {
 	// t.Run("GroupBy with EMPTY", func(t *testing.T) {
 	// 	checkObservableResults(t, Pipe1(

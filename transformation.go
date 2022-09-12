@@ -2,6 +2,7 @@ package rxgo
 
 import (
 	"sync"
+	"sync/atomic"
 )
 
 // Buffers the source Observable values until closingNotifier emits.
@@ -118,7 +119,7 @@ func BufferCount[T any](bufferSize uint, startBufferEvery ...uint) OperatorFunc[
 
 // Projects each source value to an Observable which is merged in the output Observable,
 // in a serialized fashion waiting for each one to complete before merging the next.
-func ConcatMap[T any, R any](project func(value T, index uint) Observable[R]) OperatorFunc[T, R] {
+func ConcatMap[T any, R any](project ProjectionFunc[T, R]) OperatorFunc[T, R] {
 	return func(source Observable[T]) Observable[R] {
 		return newObservable(func(subscriber Subscriber[R]) {
 			var (
@@ -191,6 +192,104 @@ func ConcatMap[T any, R any](project func(value T, index uint) Observable[R]) Op
 					index++
 				}
 			}
+			wg.Wait()
+		})
+	}
+}
+
+// Projects each source value to an Observable which is merged in the output Observable
+// only if the previous projected Observable has completed.
+func ExhaustMap[T any, R any, O any](
+	project ProjectionFunc[T, O],
+	resultSelector func(outerValue T, innerValue O, outerIndex, innerIndex uint) R,
+) OperatorFunc[T, R] {
+	return func(source Observable[T]) Observable[R] {
+		return newObservable(func(subscriber Subscriber[R]) {
+			var (
+				wg = new(sync.WaitGroup)
+			)
+
+			wg.Add(1)
+
+			var (
+				index      uint
+				enabled    = new(atomic.Pointer[bool])
+				upStream   = source.SubscribeOn(wg.Done)
+				downStream Subscriber[O]
+			)
+
+			flag := true
+			enabled.Store(&flag)
+
+			stopDownStream := func() {
+				if downStream != nil {
+					downStream.Stop()
+				}
+			}
+
+			observeStream := func(index uint, value T, stream Subscriber[O]) {
+				var j uint
+			observe:
+				for {
+					select {
+					case <-subscriber.Closed():
+						stopDownStream()
+						break observe
+
+					case item, ok := <-stream.ForEach():
+						if !ok {
+							break observe
+						}
+
+						// TODO: handle error please
+
+						if item.Done() {
+							flag := true
+							enabled.Swap(&flag)
+							break observe
+						}
+
+						Next(resultSelector(value, item.Value(), index, j)).Send(subscriber)
+						j++
+					}
+				}
+			}
+
+		loop:
+			for {
+				select {
+				case <-subscriber.Closed():
+					upStream.Stop()
+					stopDownStream()
+
+				case item, ok := <-upStream.ForEach():
+					if !ok {
+						break loop
+					}
+
+					if err := item.Err(); err != nil {
+						stopDownStream()
+						Error[R](err).Send(subscriber)
+						break loop
+					}
+
+					if item.Done() {
+						stopDownStream()
+						Complete[R]().Send(subscriber)
+						break loop
+					}
+
+					if *enabled.Load() {
+						flag := false
+						enabled.Swap(&flag)
+						wg.Add(1)
+						downStream = project(item.Value(), index).SubscribeOn(wg.Done)
+						go observeStream(index, item.Value(), downStream)
+						index++
+					}
+				}
+			}
+
 			wg.Wait()
 		})
 	}
@@ -270,7 +369,7 @@ func Map[T any, R any](mapper func(T, uint) (R, error)) OperatorFunc[T, R] {
 }
 
 // Projects each source value to an Observable which is merged in the output Observable.
-func MergeMap[T any, R any](project func(value T, index uint) Observable[R]) OperatorFunc[T, R] {
+func MergeMap[T any, R any](project ProjectionFunc[T, R]) OperatorFunc[T, R] {
 	return func(source Observable[T]) Observable[R] {
 		return newObservable(func(subscriber Subscriber[R]) {
 			var (
@@ -355,9 +454,9 @@ func MergeMap[T any, R any](project func(value T, index uint) Observable[R]) Ope
 	}
 }
 
-// Applies an accumulator function over the source Observable where the accumulator
-// function itself returns an Observable, then each intermediate Observable returned
-// is merged into the output Observable.
+// Applies an accumulator function over the source Observable where the accumulator function
+// itself returns an Observable, then each intermediate Observable returned is merged into
+// the output Observable.
 func MergeScan[T any, R any](accumulator func(acc R, value T, index uint) Observable[R], seed R) OperatorFunc[T, R] {
 	return func(source Observable[T]) Observable[R] {
 		return nil

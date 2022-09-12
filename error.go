@@ -9,5 +9,6 @@ var (
 	ErrNotFound           = errors.New("rxgo: no values match")
 	ErrSequence           = errors.New("rxgo: too many values match")
 	ErrArgumentOutOfRange = errors.New("rxgo: argument out of range")
-	ErrTimeout            = errors.New("rxgo: timeout")
+	// An error thrown by the timeout operator.
+	ErrTimeout = errors.New("rxgo: timeout")
 )

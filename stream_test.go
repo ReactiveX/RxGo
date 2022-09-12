@@ -21,10 +21,6 @@ func TestSwitchMap(t *testing.T) {
 	// 	"x -> 2, y -> 2"}, nil, true)
 }
 
-func TestExhaustMap(t *testing.T) {
-
-}
-
 func TestMerge(t *testing.T) {
 	// err := fmt.Errorf("some error")
 	// checkObservableResults(t, Pipe1(
