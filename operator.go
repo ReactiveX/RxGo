@@ -2,7 +2,6 @@ package rxgo
 
 import (
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"golang.org/x/exp/constraints"
@@ -314,20 +313,14 @@ func Timeout[T any, C timeoutConfig[T]](config C) OperatorFunc[T, T] {
 			wg.Add(1)
 
 			var (
-				stop     = new(atomic.Pointer[bool])
 				upStream = source.SubscribeOn(wg.Done)
 				timer    *time.Timer
 			)
-
-			flag := false
-			stop.Store(&flag) // set initial value
 
 			switch v := any(config).(type) {
 			case time.Duration:
 				timer = time.AfterFunc(v, func() {
 					upStream.Stop()
-					flag := true
-					stop.Swap(&flag)
 					Error[T](ErrTimeout).Send(subscriber)
 				})
 
@@ -335,26 +328,23 @@ func Timeout[T any, C timeoutConfig[T]](config C) OperatorFunc[T, T] {
 				panic("unimplemented")
 			}
 
-			for !*stop.Load() {
+		loop:
+			for {
 				select {
 				case <-subscriber.Closed():
 					upStream.Stop()
-					flag := true
-					stop.Swap(&flag)
+					break loop
 
 				case item, ok := <-upStream.ForEach():
 					if !ok {
-						flag := true
-						stop.Swap(&flag)
-						continue
+						break loop
 					}
-					timer.Stop()
 
-					if item.Err() != nil || item.Done() {
-						flag := true
-						stop.Swap(&flag)
-					}
+					timer.Stop()
 					item.Send(subscriber)
+					if item.Err() != nil || item.Done() {
+						break loop
+					}
 				}
 			}
 
