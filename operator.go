@@ -1,8 +1,8 @@
 package rxgo
 
 import (
-	"log"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/exp/constraints"
@@ -126,7 +126,6 @@ func Sample[A any, B any](notifier Observable[B]) OperatorFunc[A, A] {
 			}
 
 			wg.Wait()
-			log.Println("ALL DONE")
 		})
 	}
 }
@@ -295,8 +294,17 @@ func WithLatestFrom[A any, B any](input Observable[B]) OperatorFunc[A, Tuple[A, 
 	}
 }
 
+type TimeoutConfig[T any] struct {
+	With func() Observable[T]
+	Each time.Duration
+}
+
+type timeoutConfig[T any] interface {
+	time.Duration | TimeoutConfig[T]
+}
+
 // Errors if Observable does not emit a value in given time span.
-func Timeout[T any](duration time.Duration) OperatorFunc[T, T] {
+func Timeout[T any, C timeoutConfig[T]](config C) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {
 			var (
@@ -306,40 +314,51 @@ func Timeout[T any](duration time.Duration) OperatorFunc[T, T] {
 			wg.Add(1)
 
 			var (
-				stop     bool
+				stop     = new(atomic.Pointer[bool])
 				upStream = source.SubscribeOn(wg.Done)
-				timer    = time.AfterFunc(duration, func() {
-					upStream.Stop()
-					stop = true
-					Error[T](ErrTimeout).Send(subscriber)
-					log.Println("XXX")
-				})
+				timer    *time.Timer
 			)
 
-			for !stop {
+			flag := false
+			stop.Store(&flag) // set initial value
+
+			switch v := any(config).(type) {
+			case time.Duration:
+				timer = time.AfterFunc(v, func() {
+					upStream.Stop()
+					flag := true
+					stop.Swap(&flag)
+					Error[T](ErrTimeout).Send(subscriber)
+				})
+
+			case TimeoutConfig[T]:
+				panic("unimplemented")
+			}
+
+			for !*stop.Load() {
 				select {
 				case <-subscriber.Closed():
 					upStream.Stop()
-					stop = true
+					flag := true
+					stop.Swap(&flag)
 
 				case item, ok := <-upStream.ForEach():
 					if !ok {
-						stop = true
+						flag := true
+						stop.Swap(&flag)
 						continue
 					}
 					timer.Stop()
 
-					ended := item.Err() != nil || item.Done()
-					item.Send(subscriber)
-					log.Println(item, ended)
-					if ended {
-						stop = true
+					if item.Err() != nil || item.Done() {
+						flag := true
+						stop.Swap(&flag)
 					}
+					item.Send(subscriber)
 				}
 			}
 
 			wg.Wait()
-			log.Println("XXX2002")
 		})
 	}
 }

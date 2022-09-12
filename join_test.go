@@ -7,12 +7,31 @@ import (
 )
 
 func TestCombineLatestWith(t *testing.T) {
-	t.Run("CombineLatestWith", func(t *testing.T) {
-		// ForkJoin only capture all latest value from every stream
+	t.Run("CombineLatestWith EMPTY", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(
 			EMPTY[any](),
-			CombineLatestWith[any](),
-		), []any{nil, "end", uint(10)}, nil, true)
+			CombineLatestWith(
+				Scheduled[any]("end"),
+				Pipe2(
+					Interval(time.Millisecond*100),
+					Map(func(v, _ uint) (any, error) {
+						return v, nil
+					}),
+					Take[any](10),
+				),
+			),
+		), nil, nil, true)
+	})
+
+	t.Run("CombineLatestWith with values", func(t *testing.T) {
+		checkObservableResults(t, Pipe2(
+			Interval(time.Millisecond*500),
+			CombineLatestWith(
+				Range[uint](1, 10),
+				Scheduled[uint](88),
+			),
+			Take[[]uint](1),
+		), [][]uint{{0, 10, 88}}, nil, true)
 	})
 }
 

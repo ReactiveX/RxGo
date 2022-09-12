@@ -62,6 +62,7 @@ func CombineLatestWith[T any](sources ...Observable[T]) OperatorFunc[T, []T] {
 							break loop
 						}
 
+						//  Passing an empty array will result in an Observable that completes immediately.
 						if !emitted {
 							emitCount.Add(1)
 							emitted = true
@@ -89,6 +90,8 @@ func CombineLatestWith[T any](sources ...Observable[T]) OperatorFunc[T, []T] {
 				go observeStream(i, subscriber)
 			}
 
+			wg.Wait()
+
 			select {
 			case <-errCh:
 			default:
@@ -96,7 +99,7 @@ func CombineLatestWith[T any](sources ...Observable[T]) OperatorFunc[T, []T] {
 				close(errCh)
 			}
 
-			wg.Wait()
+			Complete[[]T]().Send(subscriber)
 		})
 	}
 }
