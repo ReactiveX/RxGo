@@ -303,6 +303,7 @@ type timeoutConfig[T any] interface {
 }
 
 // Errors if Observable does not emit a value in given time span.
+// FIXME:  DATA RACE and send on closed channel
 func Timeout[T any, C timeoutConfig[T]](config C) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {
