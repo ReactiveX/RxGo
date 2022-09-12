@@ -315,9 +315,9 @@ func TestTakeUntil(t *testing.T) {
 
 	t.Run("TakeUntil with Interval", func(t *testing.T) {
 		checkObservableResults(t, Pipe1(
-			Interval(time.Millisecond),
-			TakeUntil[uint](Interval(time.Millisecond*5)),
-		), []uint{0, 1, 2, 3}, nil, true)
+			Range[uint](1, 5),
+			TakeUntil[uint](Interval(time.Millisecond*100)),
+		), []uint{1, 2, 3, 4, 5}, nil, true)
 	})
 }
 
