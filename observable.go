@@ -41,18 +41,24 @@ func Defer[T any](factory func() Observable[T]) Observable[T] {
 func Range[T constraints.Unsigned](start, count T) Observable[T] {
 	return newObservable(func(subscriber Subscriber[T]) {
 		var (
-			end = start + count
+			end    = start + count
+			closed bool
 		)
 
+	loop:
 		for i := start; i < end; i++ {
 			select {
 			case <-subscriber.Closed():
-				return
+				closed = true
+				break loop
+
 			case subscriber.Send() <- Next(i):
 			}
 		}
 
-		Complete[T]().Send(subscriber)
+		if !closed {
+			Complete[T]().Send(subscriber)
+		}
 	})
 }
 
@@ -64,11 +70,12 @@ func Interval(duration time.Duration) Observable[uint] {
 			index uint
 		)
 
+	loop:
 		for {
 			select {
 			// If receiver notify stop, we should terminate the operation
 			case <-subscriber.Closed():
-				return
+				break loop
 			case <-time.After(duration):
 				if Next(index).Send(subscriber) {
 					index++

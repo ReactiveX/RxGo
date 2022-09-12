@@ -124,8 +124,7 @@ func ForkJoin[T any](sources ...Observable[T]) Observable[[]T] {
 		}
 
 		var (
-			wg = new(sync.WaitGroup)
-			// mu  = new(sync.Mutex)
+			wg  = new(sync.WaitGroup)
 			err = new(atomic.Pointer[error])
 			// Single buffered channel will not accept more than one signal
 			errCh         = make(chan error, 1)

@@ -172,11 +172,7 @@ func createOperatorFunc[T any, R any](
 			onError: func(err error) {
 				upStream.Stop()
 				stop = true
-				select {
-				case <-subscriber.Closed():
-					return
-				case subscriber.Send() <- Error[R](err):
-				}
+				Error[R](err).Send(subscriber)
 			},
 			onComplete: func() {
 				// Inform the up stream to stop emit value

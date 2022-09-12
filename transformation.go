@@ -1,6 +1,7 @@
 package rxgo
 
 import (
+	"log"
 	"sync"
 	"sync/atomic"
 )
@@ -199,10 +200,10 @@ func ConcatMap[T any, R any](project ProjectionFunc[T, R]) OperatorFunc[T, R] {
 
 // Projects each source value to an Observable which is merged in the output Observable
 // only if the previous projected Observable has completed.
-func ExhaustMap[T any, R any, O any](
-	project ProjectionFunc[T, O],
-	resultSelector func(outerValue T, innerValue O, outerIndex, innerIndex uint) R,
-) OperatorFunc[T, R] {
+func ExhaustMap[T any, R any](project ProjectionFunc[T, R]) OperatorFunc[T, R] {
+	if project == nil {
+		panic(`rxgo: "ExhaustMap" expected project func`)
+	}
 	return func(source Observable[T]) Observable[R] {
 		return newObservable(func(subscriber Subscriber[R]) {
 			var (
@@ -215,7 +216,7 @@ func ExhaustMap[T any, R any, O any](
 				index      uint
 				enabled    = new(atomic.Pointer[bool])
 				upStream   = source.SubscribeOn(wg.Done)
-				downStream Subscriber[O]
+				downStream Subscriber[R]
 			)
 
 			flag := true
@@ -227,16 +228,17 @@ func ExhaustMap[T any, R any, O any](
 				}
 			}
 
-			observeStream := func(index uint, value T, stream Subscriber[O]) {
-				var j uint
+			observeStream := func(index uint, forEach <-chan Notification[R]) {
 			observe:
 				for {
 					select {
 					case <-subscriber.Closed():
-						stopDownStream()
 						break observe
 
-					case item, ok := <-stream.ForEach():
+					case <-upStream.Closed():
+						break observe
+
+					case item, ok := <-forEach:
 						if !ok {
 							break observe
 						}
@@ -244,13 +246,13 @@ func ExhaustMap[T any, R any, O any](
 						// TODO: handle error please
 
 						if item.Done() {
+							stopDownStream()
 							flag := true
 							enabled.Swap(&flag)
 							break observe
 						}
 
-						Next(resultSelector(value, item.Value(), index, j)).Send(subscriber)
-						j++
+						item.Send(subscriber)
 					}
 				}
 			}
@@ -261,6 +263,7 @@ func ExhaustMap[T any, R any, O any](
 				case <-subscriber.Closed():
 					upStream.Stop()
 					stopDownStream()
+					break loop
 
 				case item, ok := <-upStream.ForEach():
 					if !ok {
@@ -279,20 +282,29 @@ func ExhaustMap[T any, R any, O any](
 						break loop
 					}
 
+					log.Println(item, ok)
 					if *enabled.Load() {
 						flag := false
 						enabled.Swap(&flag)
 						wg.Add(1)
 						downStream = project(item.Value(), index).SubscribeOn(wg.Done)
-						go observeStream(index, item.Value(), downStream)
-						index++
+						go observeStream(index, downStream.ForEach())
 					}
+					index++
 				}
 			}
 
 			wg.Wait()
 		})
 	}
+}
+
+// Converts a higher-order Observable into a first-order Observable by dropping inner
+// Observables while the previous inner Observable has not yet completed.
+func ExhaustAll[T any]() OperatorFunc[Observable[T], T] {
+	return ExhaustMap(func(value Observable[T], _ uint) Observable[T] {
+		return value
+	})
 }
 
 // Groups the items emitted by an Observable according to a specified criterion,
@@ -343,6 +355,9 @@ func GroupBy[T any, K comparable](keySelector func(value T) K) OperatorFunc[T, G
 
 // Map transforms the items emitted by an Observable by applying a function to each item.
 func Map[T any, R any](mapper func(T, uint) (R, error)) OperatorFunc[T, R] {
+	if mapper == nil {
+		panic(`rxgo: "Map" expected mapper func`)
+	}
 	return func(source Observable[T]) Observable[R] {
 		var (
 			index uint
@@ -409,7 +424,6 @@ func MergeMap[T any, R any](project ProjectionFunc[T, R]) OperatorFunc[T, R] {
 						}
 
 						item.Send(subscriber)
-						// log.Println("Item ->", item)
 					}
 				}
 			}
@@ -521,5 +535,80 @@ func Scan[V any, A any](accumulator AccumulatorFunc[A, V], seed A) OperatorFunc[
 				obs.Complete()
 			},
 		)
+	}
+}
+
+// Projects each source value to an Observable which is merged in the output Observable,
+// emitting values only from the most recently projected Observable.
+func SwitchMap[T any, R any](project func(value T, index uint) Observable[R]) OperatorFunc[T, R] {
+	return func(source Observable[T]) Observable[R] {
+		return newObservable(func(subscriber Subscriber[R]) {
+			var (
+				index uint
+				wg    = new(sync.WaitGroup)
+				// mu    = new(sync.RWMutex)
+				stop = make(chan struct{})
+				// closing  = make(chan struct{})
+				upStream = source.SubscribeOn(wg.Done)
+				// stream   Subscriber[R]
+			)
+
+			wg.Add(1)
+
+			closeStream := func() {
+				close(stop)
+				stop = make(chan struct{})
+			}
+
+			startStream := func(obs Observable[R]) {
+				defer wg.Done()
+				stream := obs.SubscribeOn()
+				defer stream.Stop()
+
+			loop:
+				for {
+					select {
+					case <-stop:
+						break loop
+
+					case <-subscriber.Closed():
+						stream.Stop()
+						return
+
+					case item, ok := <-stream.ForEach():
+						if !ok {
+							break loop
+						}
+
+						item.Send(subscriber)
+					}
+				}
+			}
+
+		observe:
+			for {
+				select {
+				case <-subscriber.Closed():
+					upStream.Stop()
+					closeStream()
+
+				case item := <-upStream.ForEach():
+					if err := item.Err(); err != nil {
+						break observe
+					}
+
+					if item.Done() {
+						break observe
+					}
+
+					closeStream()
+					wg.Add(1)
+					go startStream(project(item.Value(), index))
+					index++
+				}
+			}
+
+			wg.Wait()
+		})
 	}
 }
