@@ -71,13 +71,13 @@ func TestForkJoin(t *testing.T) {
 			return fmt.Errorf("failed at %d", index)
 		}
 		checkObservableResultWithAnyError(t, ForkJoin(
-			ThrownError[string](func() error {
+			ThrowError[string](func() error {
 				return createErr(1)
 			}),
-			ThrownError[string](func() error {
+			ThrowError[string](func() error {
 				return createErr(2)
 			}),
-			ThrownError[string](func() error {
+			ThrowError[string](func() error {
 				return createErr(3)
 			}),
 			Scheduled("a"),

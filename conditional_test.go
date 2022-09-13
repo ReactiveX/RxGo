@@ -84,3 +84,20 @@ func TestIsEmpty(t *testing.T) {
 		checkObservableResult(t, Pipe1(Range[uint](1, 3), IsEmpty[uint]()), false, nil, true)
 	})
 }
+
+func TestThrowIfEmpty(t *testing.T) {
+	t.Run("ThrowIfEmpty with EMPTY", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(EMPTY[any](), ThrowIfEmpty[any]()), nil, ErrEmpty, false)
+	})
+
+	t.Run("ThrowIfEmpty with error factory", func(t *testing.T) {
+		var err = errors.New("something wrong")
+		checkObservableResult(t, Pipe1(EMPTY[any](), ThrowIfEmpty[any](func() error {
+			return err
+		})), nil, err, false)
+	})
+
+	t.Run("ThrowIfEmpty with value", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(Range[uint](1, 3), ThrowIfEmpty[uint]()), []uint{1, 2, 3}, nil, true)
+	})
+}

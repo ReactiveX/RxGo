@@ -20,9 +20,9 @@ func TestEmpty(t *testing.T) {
 	checkObservableResults(t, EMPTY[any](), []any{}, nil, true)
 }
 
-func TestThrownError(t *testing.T) {
+func TestThrowError(t *testing.T) {
 	var v = fmt.Errorf("uncaught error")
-	checkObservableResults(t, ThrownError[string](func() error {
+	checkObservableResults(t, ThrowError[string](func() error {
 		return v
 	}), []string{}, v, false)
 }

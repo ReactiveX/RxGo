@@ -17,7 +17,7 @@ func TestDebounceTime(t *testing.T) {
 	t.Run("DebounceTime with error", func(t *testing.T) {
 		var err = errors.New("failed")
 		checkObservableResult(t, Pipe1(
-			ThrownError[any](func() error {
+			ThrowError[any](func() error {
 				return err
 			}), DebounceTime[any](time.Millisecond),
 		), nil, err, false)
@@ -32,7 +32,7 @@ func TestDistinct(t *testing.T) {
 	})
 
 	t.Run("Distinct with numbers", func(t *testing.T) {
-		checkObservableResults(t, Pipe1(Scheduled(1, 1, 2, 2, 2, 1, 2, 3, 4, 3, 2, 1), Distinct(func(value int) int {
+		checkObservableResults(t, Pipe1(Of2(1, 1, 2, 2, 2, 1, 2, 3, 4, 3, 2, 1), Distinct(func(value int) int {
 			return value
 		})), []int{1, 2, 3, 4}, nil, true)
 	})
@@ -43,7 +43,7 @@ func TestDistinct(t *testing.T) {
 			age  uint
 		}
 
-		checkObservableResults(t, Pipe1(Scheduled(
+		checkObservableResults(t, Pipe1(Of2(
 			user{name: "Foo", age: 4},
 			user{name: "Bar", age: 7},
 			user{name: "Foo", age: 5},
@@ -63,14 +63,14 @@ func TestDistinctUntilChanged(t *testing.T) {
 
 	t.Run("DistinctUntilChanged with string", func(t *testing.T) {
 		checkObservableResults(t,
-			Pipe1(Scheduled("a", "a", "b", "a", "c", "c", "d"), DistinctUntilChanged[string]()),
+			Pipe1(Of2("a", "a", "b", "a", "c", "c", "d"), DistinctUntilChanged[string]()),
 			[]string{"a", "b", "a", "c", "d"}, nil, true)
 	})
 
 	t.Run("DistinctUntilChanged with numbers", func(t *testing.T) {
 		checkObservableResults(t,
 			Pipe1(
-				Scheduled(30, 31, 20, 34, 33, 29, 35, 20),
+				Of2(30, 31, 20, 34, 33, 29, 35, 20),
 				DistinctUntilChanged(func(prev, current int) bool {
 					return current <= prev
 				}),
@@ -84,7 +84,7 @@ func TestDistinctUntilChanged(t *testing.T) {
 		}
 		checkObservableResults(t,
 			Pipe1(
-				Scheduled(
+				Of2(
 					build{engineVersion: "1.1.0", transmissionVersion: "1.2.0"},
 					build{engineVersion: "1.1.0", transmissionVersion: "1.4.0"},
 					build{engineVersion: "1.3.0", transmissionVersion: "1.4.0"},
@@ -110,7 +110,7 @@ func TestDistinctUntilChanged(t *testing.T) {
 		}
 		checkObservableResults(t,
 			Pipe1(
-				Scheduled(
+				Of2(
 					account{updatedBy: "blesh", data: []string{}},
 					account{updatedBy: "blesh", data: []string{}},
 					account{updatedBy: "jamieson"},
@@ -149,7 +149,7 @@ func TestFilter(t *testing.T) {
 	t.Run("Filter with error", func(t *testing.T) {
 		var err = errors.New("throw")
 		checkObservableResult(t, Pipe1(
-			ThrownError[any](func() error {
+			ThrowError[any](func() error {
 				return err
 			}), Filter[any](nil)), nil, err, false)
 	})
@@ -165,7 +165,7 @@ func TestFilter(t *testing.T) {
 
 	t.Run("Filter with alphaberts", func(t *testing.T) {
 		checkObservableResults(t, Pipe1(
-			Scheduled("a", "b", "cd", "kill", "p", "z", "animal"),
+			Of2("a", "b", "cd", "kill", "p", "z", "animal"),
 			Filter(func(value string, index uint) bool {
 				return len(value) == 1
 			}),
@@ -214,9 +214,9 @@ func TestIgnoreElements(t *testing.T) {
 		checkObservableResult(t, Pipe1(EMPTY[any](), IgnoreElements[any]()), nil, nil, true)
 	})
 
-	t.Run("IgnoreElements with ThrownError", func(t *testing.T) {
+	t.Run("IgnoreElements with ThrowError", func(t *testing.T) {
 		var err = errors.New("throw")
-		checkObservableResult(t, Pipe1(ThrownError[error](func() error {
+		checkObservableResult(t, Pipe1(ThrowError[error](func() error {
 			return err
 		}), IgnoreElements[error]()), nil, err, false)
 	})
@@ -236,18 +236,12 @@ func TestSkip(t *testing.T) {
 			[]uint{6, 7, 8, 9, 10}, nil, true)
 	})
 
-	t.Run("Skip with ThrownError", func(t *testing.T) {
+	t.Run("Skip with ThrowError", func(t *testing.T) {
 		var err = errors.New("stop")
-		checkObservableResults(t, Pipe1(ThrownError[uint](func() error {
+		checkObservableResults(t, Pipe1(ThrowError[uint](func() error {
 			return err
 		}), Skip[uint](5)), []uint{}, err, false)
 	})
-
-	// t.Run("Skip with Scheduled", func(t *testing.T) {
-	// 	checkObservableResults(t,
-	// 		Pipe1(Scheduled[any](1, 2, errors.New("stop")), Skip[any](2)),
-	// 		[]any{1, 2}, nil, true)
-	// })
 }
 
 func TestSkipLast(t *testing.T) {
@@ -258,17 +252,17 @@ func TestSkipUntil(t *testing.T) {
 	t.Run("SkipUntil with EMPTY", func(t *testing.T) {
 		checkObservableResults(t, Pipe1(
 			EMPTY[uint](),
-			SkipUntil[uint](Scheduled("a")),
+			SkipUntil[uint](Of2("a")),
 		), []uint{}, nil, true)
 	})
 
-	t.Run("SkipUntil with ThrownError", func(t *testing.T) {
+	t.Run("SkipUntil with ThrowError", func(t *testing.T) {
 		var err = errors.New("failed")
 		checkObservableResults(t, Pipe1(
-			ThrownError[uint](func() error {
+			ThrowError[uint](func() error {
 				return err
 			}),
-			SkipUntil[uint](Scheduled("a")),
+			SkipUntil[uint](Of2("a")),
 		), []uint{}, err, false)
 	})
 
@@ -283,7 +277,7 @@ func TestSkipUntil(t *testing.T) {
 func TestSkipWhile(t *testing.T) {
 	t.Run("SkipWhile until condition meet", func(t *testing.T) {
 		checkObservableResults(t, Pipe1(
-			Scheduled("Green Arrow", "SuperMan", "Flash", "SuperGirl", "Black Canary"),
+			Of2("Green Arrow", "SuperMan", "Flash", "SuperGirl", "Black Canary"),
 			SkipWhile(func(v string, _ uint) bool {
 				return v != "SuperGirl"
 			})), []string{"SuperGirl", "Black Canary"}, nil, true)
@@ -309,7 +303,7 @@ func TestTakeUntil(t *testing.T) {
 	t.Run("TakeUntil with EMPTY", func(t *testing.T) {
 		checkObservableResults(t, Pipe1(
 			EMPTY[uint](),
-			TakeUntil[uint](Scheduled("a")),
+			TakeUntil[uint](Of2("a")),
 		), []uint{}, nil, true)
 	})
 
@@ -350,7 +344,7 @@ func TestThrottleTime(t *testing.T) {
 	t.Run("ThrottleTime with error", func(t *testing.T) {
 		var err = errors.New("failed")
 		checkObservableResult(t, Pipe1(
-			ThrownError[any](func() error {
+			ThrowError[any](func() error {
 				return err
 			}), ThrottleTime[any](time.Millisecond),
 		), nil, err, false)

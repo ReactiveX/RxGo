@@ -8,21 +8,17 @@ import (
 type (
 	OnNextFunc[T any] func(T)
 	// OnErrorFunc defines a function that computes a value from an error.
-	OnErrorFunc                func(error)
-	OnCompleteFunc             func()
-	FinalizerFunc              func()
-	OperatorFunc[I any, O any] func(source Observable[I]) Observable[O]
-
-	PredicateFunc[T any]         func(value T, index uint) bool
-	ProjectionFunc[T any, R any] func(value T, index uint) Observable[R]
-
-	ComparerFunc[A any, B any] func(prev A, curr B) int8
-
-	ComparatorFunc[A any, B any] func(prev A, curr B) bool
-
+	OnErrorFunc                   func(error)
+	OnCompleteFunc                func()
+	FinalizerFunc                 func()
+	ErrorFunc                     func() error
+	OperatorFunc[I any, O any]    func(source Observable[I]) Observable[O]
+	PredicateFunc[T any]          func(value T, index uint) bool
+	ProjectionFunc[T any, R any]  func(value T, index uint) Observable[R]
+	ComparerFunc[A any, B any]    func(prev A, curr B) int8
+	ComparatorFunc[A any, B any]  func(prev A, curr B) bool
 	AccumulatorFunc[A any, V any] func(acc A, value V, index uint) (A, error)
-
-	ObservableFunc[T any] func(subscriber Subscriber[T])
+	ObservableFunc[T any]         func(subscriber Subscriber[T])
 )
 
 type Observable[T any] interface {
@@ -57,12 +53,18 @@ type Subscriber[T any] interface {
 	// Observer[T]
 }
 
+type Subject[T any] interface {
+	Subscriber[T]
+	Subscription
+}
+
 func newObservable[T any](obs ObservableFunc[T]) Observable[T] {
 	return &observableWrapper[T]{source: obs}
 }
 
 type observableWrapper[T any] struct {
-	source ObservableFunc[T]
+	source    ObservableFunc[T]
+	connector func() Subject[T]
 }
 
 var _ Observable[any] = (*observableWrapper[any])(nil)
@@ -72,7 +74,12 @@ func (o *observableWrapper[T]) SubscribeWith(subscriber Subscriber[T]) {
 }
 
 func (o *observableWrapper[T]) SubscribeOn(cb ...func()) Subscriber[T] {
-	subscriber := NewSubscriber[T]()
+	var subscriber Subject[T]
+	if o.connector != nil {
+		subscriber = o.connector()
+	} else {
+		subscriber = NewSubscriber[T]()
+	}
 	finalizer := func() {}
 	if len(cb) > 0 {
 		finalizer = cb[0]

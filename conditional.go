@@ -137,3 +137,37 @@ func IsEmpty[T any]() OperatorFunc[T, bool] {
 		)
 	}
 }
+
+// If the source observable completes without emitting a value, it will emit an error.
+// The error will be created at that time by the optional errorFactory argument, otherwise,
+// the error will be `ErrEmpty`.
+func ThrowIfEmpty[T any](errorFactory ...ErrorFunc) OperatorFunc[T, T] {
+	factory := func() error {
+		return ErrEmpty
+	}
+	if len(errorFactory) > 0 {
+		factory = errorFactory[0]
+	}
+	return func(source Observable[T]) Observable[T] {
+		var (
+			empty = true
+		)
+		return createOperatorFunc(
+			source,
+			func(obs Observer[T], v T) {
+				empty = false
+				obs.Next(v)
+			},
+			func(obs Observer[T], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[T]) {
+				if empty {
+					obs.Error(factory())
+					return
+				}
+				obs.Complete()
+			},
+		)
+	}
+}

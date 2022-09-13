@@ -132,7 +132,7 @@ func TestTimeout(t *testing.T) {
 	t.Run("Timeout with error", func(t *testing.T) {
 		var err = errors.New("failed")
 		checkObservableResult(t, Pipe1(
-			ThrownError[any](func() error {
+			ThrowError[any](func() error {
 				return err
 			}),
 			Timeout[any](time.Millisecond),

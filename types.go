@@ -24,7 +24,7 @@ type (
 	// FuncN defines a function that computes a value from N input values.
 	FuncN func(...interface{}) interface{}
 	// ErrorFunc defines a function that computes a value from an error.
-	ErrorFunc func(error) interface{}
+	// ErrorFunc func(error) interface{}
 	// Predicate defines a func that returns a bool from an input value.
 	Predicate func(interface{}) bool
 	// Marshaller defines a marshaller type (interface{} to []byte).

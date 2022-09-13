@@ -168,48 +168,6 @@ func DelayWhen[T any](duration time.Duration) OperatorFunc[T, T] {
 	}
 }
 
-// Catches errors on the observable to be handled by returning a new observable
-// or throwing an error.
-func CatchError[T any](catch func(error, Observable[T]) Observable[T]) OperatorFunc[T, T] {
-	return func(source Observable[T]) Observable[T] {
-		return newObservable(func(subscriber Subscriber[T]) {
-			var (
-				wg = new(sync.WaitGroup)
-				// subscription Subscription
-				// subscribe func(Observable[T])
-			)
-
-			// unsubscribe := func() {
-			// 	if subscription != nil {
-			// 		subscription.Unsubscribe()
-			// 	}
-			// 	subscription = nil
-			// }
-
-			// subscribe = func(stream Observable[T]) {
-			// 	subscription = stream.Subscribe(
-			// 		subscriber.Next,
-			// 		func(err error) {
-			// 			obs := catch(err, source)
-			// 			unsubscribe() // unsubscribe the previous stream and start another one
-			// 			subscribe(obs)
-			// 		},
-			// 		func() {
-			// 			unsubscribe()
-			// 			wg.Done()
-			// 		},
-			// 	)
-			// }
-
-			wg.Add(1)
-			// subscribe(source)
-			wg.Wait()
-
-			subscriber.Send() <- Complete[T]()
-		})
-	}
-}
-
 // Combines the source Observable with other Observables to create an Observable
 // whose values are calculated from the latest values of each, only when the source emits.
 func WithLatestFrom[A any, B any](input Observable[B]) OperatorFunc[A, Tuple[A, B]] {

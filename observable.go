@@ -85,6 +85,23 @@ func Interval(duration time.Duration) Observable[uint] {
 	})
 }
 
+// FIXME: rename me to `Of`
+func Of2[T any](item T, items ...T) Observable[T] {
+	items = append([]T{item}, items...)
+	return newObservable(func(subscriber Subscriber[T]) {
+		for _, item := range items {
+			select {
+			// If receiver notify stop, we should terminate the operation
+			case <-subscriber.Closed():
+				return
+			case subscriber.Send() <- Next(item):
+			}
+		}
+
+		Complete[T]().Send(subscriber)
+	})
+}
+
 func Scheduled[T any](item T, items ...T) Observable[T] {
 	items = append([]T{item}, items...)
 	return newObservable(func(subscriber Subscriber[T]) {
@@ -111,7 +128,15 @@ func Scheduled[T any](item T, items ...T) Observable[T] {
 	})
 }
 
-func ThrownError[T any](factory func() error) Observable[T] {
+// Creates an observable that will create an error instance and push it to the consumer as
+// an error immediately upon subscription.
+//
+// This creation function is useful for creating an observable that will create an error and
+// error every time it is subscribed to. Generally, inside of most operators when you might
+// want to return an errored observable, this is unnecessary. In most cases, such as in the
+// inner return of concatMap, mergeMap, defer, and many others, you can simply throw the
+// error, and RxGo will pick that up and notify the consumer of the error.
+func ThrowError[T any](factory ErrorFunc) Observable[T] {
 	return newObservable(func(subscriber Subscriber[T]) {
 		Error[T](factory()).Send(subscriber)
 	})

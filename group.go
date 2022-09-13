@@ -1,9 +1,8 @@
 package rxgo
 
 type groupedObservable[K comparable, T any] struct {
+	key K
 	observableWrapper[T]
-	key       K
-	connector Subscriber[T]
 }
 
 var (
@@ -11,7 +10,11 @@ var (
 )
 
 func newGroupedObservable[K comparable, T any]() *groupedObservable[K, T] {
-	return &groupedObservable[K, T]{connector: NewSubscriber[T]()}
+	obs := &groupedObservable[K, T]{}
+	obs.connector = func() Subject[T] {
+		return NewSubscriber[T]()
+	}
+	return obs
 }
 
 func (g *groupedObservable[K, T]) Key() K {
