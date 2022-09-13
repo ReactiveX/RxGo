@@ -9,7 +9,7 @@ There are operators for different purposes, and they may be categorized as: crea
 <!-- - from -->
 <!-- - fromEventPattern -->
 <!-- - generate -->
-<!-- - of -->
+- Of ✅
 - Defer ✅
 - EMPTY ✅
 - Interval ✅
@@ -100,7 +100,7 @@ There are operators for different purposes, and they may be categorized as: crea
 
 ## Error Handling Operators
 
-- CatchError
+- CatchError ✅
 - Retry
 - RetryWhen
 
@@ -126,6 +126,8 @@ There are operators for different purposes, and they may be categorized as: crea
 - Find ✅
 - FindIndex ✅
 - IsEmpty ✅
+- IsEmpty ✅
+- ThrowIfEmpty ✅
 
 ## Mathematical and Aggregate Operators
 
