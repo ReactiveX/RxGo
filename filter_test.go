@@ -226,6 +226,52 @@ func TestIgnoreElements(t *testing.T) {
 	})
 }
 
+func TestSingle(t *testing.T) {
+	t.Run("Single with EMPTY, it should throw ErrEmpty", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(
+			EMPTY[uint](),
+			Single[uint](),
+		), uint(0), ErrEmpty, false)
+	})
+
+	t.Run("Single with Range(1,10), it should throw ErrSequence", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(
+			Range[uint](1, 10),
+			Single(func(value, index uint, source Observable[uint]) bool {
+				return value > 2
+			}),
+		), uint(0), ErrSequence, false)
+	})
+
+	t.Run("Single with Range(1,10), it should throw ErrNotFound", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(
+			Range[uint](1, 10),
+			Single(func(value, index uint, source Observable[uint]) bool {
+				return value > 100
+			}),
+		), uint(0), ErrNotFound, false)
+	})
+
+	t.Run("Single with ThrowError", func(t *testing.T) {
+		var err = errors.New("failed")
+		checkObservableResult(t, Pipe1(
+			ThrowError[string](func() error {
+				return err
+			}),
+			Single[string](),
+		), "", err, false)
+	})
+
+	t.Run("Single with Range(1,10)", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(
+			Range[uint](1, 10),
+			Single(func(value, index uint, source Observable[uint]) bool {
+				return value == 2
+			}),
+		), uint(2), nil, true)
+	})
+}
+
 func TestSkip(t *testing.T) {
 	t.Run("Skip with EMPTY", func(t *testing.T) {
 		checkObservableResults(t, Pipe1(EMPTY[uint](), Skip[uint](5)), []uint{}, nil, true)

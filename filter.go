@@ -294,6 +294,53 @@ func IgnoreElements[T any]() OperatorFunc[T, T] {
 	}
 }
 
+// Returns an observable that asserts that only one value is emitted from the observable
+// that matches the predicate. If no predicate is provided, then it will assert that the
+// observable only emits one value.
+func Single[T any](predicate ...func(value T, index uint, source Observable[T]) bool) OperatorFunc[T, T] {
+	cb := func(T, uint, Observable[T]) bool {
+		return true
+	}
+	if len(predicate) > 0 {
+		cb = predicate[0]
+	}
+	return func(source Observable[T]) Observable[T] {
+		var (
+			index    uint
+			hasValue bool
+			result   = make([]T, 0)
+		)
+		return createOperatorFunc(
+			source,
+			func(obs Observer[T], v T) {
+				hasValue = true
+				if cb(v, index, source) {
+					result = append(result, v)
+				}
+				index++
+			},
+			func(obs Observer[T], err error) {
+				obs.Error(err)
+			},
+			func(obs Observer[T]) {
+				noOfResult := len(result)
+				if !hasValue {
+					obs.Error(ErrEmpty)
+					return
+				} else if noOfResult > 1 {
+					obs.Error(ErrSequence)
+					return
+				} else if noOfResult < 1 {
+					obs.Error(ErrNotFound)
+					return
+				}
+				obs.Next(result[0])
+				obs.Complete()
+			},
+		)
+	}
+}
+
 // Returns an Observable that skips the first count items emitted by the source Observable.
 func Skip[T any](count uint) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {

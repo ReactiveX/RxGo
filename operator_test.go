@@ -46,10 +46,6 @@ func TestTap(t *testing.T) {
 	})
 }
 
-func TestSingle(t *testing.T) {
-
-}
-
 func TestSample(t *testing.T) {
 	var (
 		// result = make([]uint, 0)

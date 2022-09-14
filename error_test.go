@@ -3,6 +3,7 @@ package rxgo
 import (
 	"fmt"
 	"testing"
+	"time"
 )
 
 func TestCatchError(t *testing.T) {
@@ -66,5 +67,21 @@ func TestCatchError(t *testing.T) {
 				return caught
 			}),
 		), []any{1, 2, 3, 1, 2, 3}, err, false)
+	})
+}
+
+func TestRetry(t *testing.T) {
+	t.Run("Retry with count 2", func(t *testing.T) {
+		var err = fmt.Errorf("throw five")
+		checkObservableResults(t, Pipe2(
+			Interval(time.Millisecond*100),
+			Map(func(v, _ uint) (uint, error) {
+				if v > 5 {
+					return 0, err
+				}
+				return v, nil
+			}),
+			Retry[uint, uint8](2),
+		), []uint{0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5}, err, false)
 	})
 }

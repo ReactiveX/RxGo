@@ -3,6 +3,8 @@ package rxgo
 import (
 	"errors"
 	"sync"
+
+	"golang.org/x/exp/constraints"
 )
 
 var (
@@ -75,6 +77,81 @@ func CatchError[T any](catch func(err error, caught Observable[T]) Observable[T]
 						if ended {
 							break catchLoop
 						}
+					}
+				}
+			}
+
+			wg.Wait()
+		})
+	}
+}
+
+type RetryConfig struct {
+	Count          uint
+	ResetOnSuccess bool
+}
+
+type retryConfig interface {
+	constraints.Unsigned | RetryConfig
+}
+
+// Returns an Observable that mirrors the source Observable with the exception of an error.
+func Retry[T any, C retryConfig](config ...C) OperatorFunc[T, T] {
+	var maxRetryCount uint
+	switch v := any(config[0]).(type) {
+	case RetryConfig:
+	case uint8:
+		maxRetryCount = uint(v)
+	case uint16:
+		maxRetryCount = uint(v)
+	case uint32:
+		maxRetryCount = uint(v)
+	case uint64:
+		maxRetryCount = uint(v)
+	case uint:
+		maxRetryCount = v
+	}
+	return func(source Observable[T]) Observable[T] {
+		return newObservable(func(subscriber Subscriber[T]) {
+			var (
+				wg = new(sync.WaitGroup)
+			)
+
+			wg.Add(1)
+
+			var (
+				upStream = source.SubscribeOn(wg.Done)
+				errCount uint
+			)
+
+		observe:
+			//  If count is omitted, retry will try to resubscribe on errors infinite number of times.
+			for maxRetryCount == 0 || errCount <= maxRetryCount {
+				select {
+				case <-subscriber.Closed():
+					upStream.Stop()
+					break observe
+
+				case item, ok := <-upStream.ForEach():
+					if !ok {
+						break observe
+					}
+
+					if err := item.Err(); err != nil {
+						errCount++
+						if errCount > maxRetryCount {
+							item.Send(subscriber)
+							break observe
+						}
+
+						upStream.Stop()
+						upStream = source.SubscribeOn()
+						continue
+					}
+
+					item.Send(subscriber)
+					if item.Done() {
+						break observe
 					}
 				}
 			}
