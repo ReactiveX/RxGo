@@ -4,6 +4,7 @@ import (
 	"log"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 // Buffers the source Observable values until closingNotifier emits.
@@ -44,6 +45,11 @@ func Buffer[T any, R any](closingNotifier Observable[R]) OperatorFunc[T, []T] {
 
 					if item.Done() {
 						notifyStream.Stop()
+						// Flush out all remaining buffer
+						if len(buffer) >= 0 {
+							Next(buffer).Send(subscriber)
+						}
+						Complete[[]T]().Send(subscriber)
 						break observe
 					}
 
@@ -55,9 +61,7 @@ func Buffer[T any, R any](closingNotifier Observable[R]) OperatorFunc[T, []T] {
 						break observe
 					}
 
-					if !Next(buffer).Send(subscriber) {
-						break observe
-					}
+					Next(buffer).Send(subscriber)
 
 					// Reset buffer
 					buffer = make([]T, 0)
@@ -65,8 +69,6 @@ func Buffer[T any, R any](closingNotifier Observable[R]) OperatorFunc[T, []T] {
 			}
 
 			wg.Wait()
-
-			Complete[[]T]().Send(subscriber)
 		})
 	}
 }
@@ -115,6 +117,214 @@ func BufferCount[T any](bufferSize uint, startBufferEvery ...uint) OperatorFunc[
 				obs.Complete()
 			},
 		)
+	}
+}
+
+// Buffers the source Observable values for a specific time period.
+func BufferTime[T any](bufferTimeSpan time.Duration) OperatorFunc[T, []T] {
+	return func(source Observable[T]) Observable[[]T] {
+		return newObservable(func(subscriber Subscriber[[]T]) {
+			var (
+				wg = new(sync.WaitGroup)
+			)
+
+			wg.Add(1)
+
+			var (
+				buffer   = make([]T, 0)
+				upStream = source.SubscribeOn(wg.Done)
+				timer    *time.Timer
+			)
+
+			setTimer := func() {
+				if timer != nil {
+					timer.Stop()
+				}
+				timer = time.NewTimer(bufferTimeSpan)
+			}
+
+			setTimer()
+
+		observe:
+			for {
+				select {
+				case <-subscriber.Closed():
+					upStream.Stop()
+					break observe
+
+				case item, ok := <-upStream.ForEach():
+					if !ok {
+						break observe
+					}
+
+					if err := item.Err(); err != nil {
+						Error[[]T](err).Send(subscriber)
+						break observe
+					}
+
+					if item.Done() {
+						Next(buffer).Send(subscriber)
+						Complete[[]T]().Send(subscriber)
+						break observe
+					}
+
+					buffer = append(buffer, item.Value())
+
+				case <-timer.C:
+					Next(buffer).Send(subscriber)
+					setTimer()
+				}
+			}
+
+			// FIXME: I don't know how to stop timer
+			timer.Stop()
+
+			wg.Wait()
+		})
+	}
+}
+
+// Buffers the source Observable values starting from an emission from openings and ending
+// when the output of closingSelector emits.
+func BufferToggle[T any, O any](openings func() Observable[O], closingSelector func(value O) Observable[O]) OperatorFunc[T, []T] {
+	return func(source Observable[T]) Observable[[]T] {
+		return newObservable(func(subscriber Subscriber[[]T]) {
+			var (
+				wg = new(sync.WaitGroup)
+			)
+
+			wg.Add(2)
+
+			var (
+				buffer      = make([]T, 0)
+				startStream = openings().SubscribeOn(wg.Done)
+				upStream    = source.SubscribeOn(wg.Done)
+				allowed     bool
+				emitStream  = make(<-chan Notification[O], 1)
+			)
+
+			// Buffers values from the source by opening the buffer via signals from an
+			// Observable provided to openings, and closing and sending the buffers when a
+			// Subscribable or Promise returned by the closingSelector function emits.
+		observe:
+			for {
+				select {
+				case <-subscriber.Closed():
+					break observe
+
+				case item, ok := <-startStream.ForEach():
+					if !ok {
+						break observe
+					}
+
+					wg.Add(1)
+					emitStream = closingSelector(item.Value()).SubscribeOn(wg.Done).ForEach()
+				case item, ok := <-upStream.ForEach():
+					if !ok {
+						break observe
+					}
+
+					if allowed {
+						buffer = append(buffer, item.Value())
+					}
+
+				case <-emitStream:
+					Next(buffer).Send(subscriber)
+				}
+			}
+
+			wg.Wait()
+		})
+	}
+}
+
+// Buffers the source Observable values, using a factory function of closing Observables to
+// determine when to close, emit, and reset the buffer.
+func BufferWhen[T any, R any](closingSelector func() Observable[R]) OperatorFunc[T, []T] {
+	return func(source Observable[T]) Observable[[]T] {
+		return newObservable(func(subscriber Subscriber[[]T]) {
+			var (
+				wg = new(sync.WaitGroup)
+			)
+
+			wg.Add(2)
+
+			var (
+				index         uint
+				buffer        = make([]T, 0)
+				upStream      = source.SubscribeOn(wg.Done)
+				closingStream = closingSelector().SubscribeOn(wg.Done)
+			)
+
+			stopStreams := func() {
+				upStream.Stop()
+				closingStream.Stop()
+			}
+
+			onError := func(err error) {
+				stopStreams()
+				Error[[]T](err).Send(subscriber)
+			}
+
+			onComplete := func() {
+				stopStreams()
+				if len(buffer) > 0 {
+					Next(buffer).Send(subscriber)
+				}
+				Complete[[]T]().Send(subscriber)
+			}
+
+		observe:
+			for {
+				select {
+				case <-subscriber.Closed():
+					stopStreams()
+					break observe
+
+				case item, ok := <-upStream.ForEach():
+					// If the upstream closed, we break
+					if !ok {
+						stopStreams()
+						break observe
+					}
+
+					if err := item.Err(); err != nil {
+						onError(err)
+						break observe
+					}
+
+					if item.Done() {
+						onComplete()
+						break observe
+					}
+
+					buffer = append(buffer, item.Value())
+					index++
+
+				case item, ok := <-closingStream.ForEach():
+					if !ok {
+						stopStreams()
+						break observe
+					}
+
+					if err := item.Err(); err != nil {
+						onError(err)
+						break observe
+					}
+
+					if item.Done() {
+						onComplete()
+						break observe
+					}
+
+					Next(buffer).Send(subscriber)
+					// Reset buffer values after sent
+					buffer = make([]T, 0)
+				}
+			}
+
+			wg.Wait()
+		})
 	}
 }
 
@@ -324,7 +534,7 @@ func GroupBy[T any, K comparable](keySelector func(value T) K) OperatorFunc[T, G
 			var (
 				key      K
 				upStream = source.SubscribeOn(wg.Done)
-				keySet   = make(map[K]*groupedObservable[K, T])
+				keySet   = make(map[K]Subject[T])
 			)
 
 		loop:
@@ -339,11 +549,14 @@ func GroupBy[T any, K comparable](keySelector func(value T) K) OperatorFunc[T, G
 						break loop
 					}
 
+					log.Println(item)
 					key = keySelector(item.Value())
 					if _, exists := keySet[key]; !exists {
-						keySet[key] = newGroupedObservable[K, T]()
+						keySet[key] = NewSubscriber[T]()
 					} else {
-						keySet[key].connector.Send() <- item
+						log.Println("HELLO")
+						keySet[key].Send() <- item
+						log.Println("HELLO END")
 					}
 				}
 			}

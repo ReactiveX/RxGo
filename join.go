@@ -178,7 +178,7 @@ func ForkJoin[T any](sources ...Observable[T]) Observable[[]T] {
 
 					// if one error, everything error
 					if err := item.Err(); err != nil {
-						errCh <- err
+						errCh <- err // FIXME: data race
 						break observe
 					}
 

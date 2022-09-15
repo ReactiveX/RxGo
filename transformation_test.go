@@ -8,31 +8,39 @@ import (
 )
 
 func TestBuffer(t *testing.T) {
-	// t.Run("Buffer with EMPTY", func(t *testing.T) {
-	// 	checkObservableResult(t, Pipe1(
-	// 		EMPTY[uint](),
-	// 		Buffer[uint](Scheduled("a")),
-	// 	), nil, nil, true)
-	// })
-
-	t.Run("Buffer with Scheduled", func(t *testing.T) {
+	t.Run("Buffer with EMPTY", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(
-			Interval(time.Millisecond),
-			Buffer[uint](Scheduled("a")),
+			EMPTY[uint](),
+			Buffer[uint](Of2("a")),
 		), []uint{}, nil, true)
 	})
 
-	// t.Run("Buffer with Interval", func(t *testing.T) {
-	// 	checkObservableResults(t, Pipe2(
-	// 		Interval(time.Millisecond*10),
-	// 		Buffer[uint](Interval(time.Millisecond*100)),
-	// 		Take[[]uint](3),
-	// 	), [][]uint{
-	// 		{0, 1, 2, 3, 4, 5, 6, 7, 8},
-	// 		{9, 10, 11, 12, 13, 14, 15, 16, 17},
-	// 		{18, 19, 20, 21, 22, 23, 24, 25, 26},
-	// 	}, nil, true)
-	// })
+	t.Run("Buffer with error", func(t *testing.T) {
+		var err = fmt.Errorf("failed")
+		checkObservableResult(t, Pipe1(
+			ThrowError[string](func() error {
+				return err
+			}),
+			Buffer[string](Of2("a")),
+		), []string{}, err, false)
+	})
+
+	t.Run("Buffer with EMPTY should throw ErrEmpty", func(t *testing.T) {
+		checkObservableResult(t, Pipe2(
+			EMPTY[string](),
+			ThrowIfEmpty[string](),
+			Buffer[string](Interval(time.Millisecond)),
+		), nil, ErrEmpty, false)
+	})
+
+	t.Run("Buffer with Interval", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			Of2("a", "b", "c", "d", "e"),
+			Buffer[string](Interval(time.Millisecond*100)),
+		), [][]string{
+			{"a", "b", "c", "d", "e"},
+		}, nil, true)
+	})
 }
 
 func TestBufferCount(t *testing.T) {
@@ -72,6 +80,54 @@ func TestBufferCount(t *testing.T) {
 	// })
 }
 
+func TestBufferTime(t *testing.T) {
+	t.Run("BufferTime with EMPTY", func(t *testing.T) {
+		checkObservableHasResults(t, Pipe1(
+			EMPTY[string](),
+			BufferTime[string](time.Millisecond*500),
+		), nil, true)
+	})
+
+	t.Run("BufferTime with Of", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			Of2("a", "z", "j", "p"),
+			BufferTime[string](time.Millisecond*500),
+		), [][]string{{"a", "z", "j", "p"}}, nil, true)
+	})
+}
+
+func TestBufferWhen(t *testing.T) {
+	// t.Run("BufferWhen with EMPTY", func(t *testing.T) {
+	// 	checkObservableResults(t, Pipe1(
+	// 		EMPTY[string](),
+	// 		BufferWhen[string](func() Observable[string] {
+	// 			return Of2("a")
+	// 		}),
+	// 	), [][]string{}, nil, true)
+	// })
+
+	t.Run("BufferWhen with Of", func(t *testing.T) {
+		values := []string{"I", "#@$%^&*", "XD", "Z"}
+		checkObservableResults(t, Pipe1(
+			Of2(values[0], values[1:]...),
+			BufferWhen[string](func() Observable[uint] {
+				return Interval(time.Millisecond * 10)
+			}),
+		), [][]string{values}, nil, true)
+	})
+
+	// t.Run("BufferWhen with values", func(t *testing.T) {
+	// 	const interval = 500
+	// 	checkObservableHasResults(t, Pipe2(
+	// 		Interval(time.Millisecond*interval),
+	// 		BufferWhen[uint](func() Observable[uint] {
+	// 			return Interval(time.Millisecond * interval * 2)
+	// 		}),
+	// 		Take[[]uint](4),
+	// 	), nil, true)
+	// })
+}
+
 func TestConcatMap(t *testing.T) {
 	t.Run("ConcatMap with error on upstream", func(t *testing.T) {
 		var err = fmt.Errorf("throw")
@@ -89,7 +145,7 @@ func TestConcatMap(t *testing.T) {
 		), []string{"z[0]", "z[1]"}, err, false)
 	})
 
-	t.Run("ConcatMap with conditional ThrownError", func(t *testing.T) {
+	t.Run("ConcatMap with conditional ThrowError", func(t *testing.T) {
 		var err = fmt.Errorf("throw")
 
 		mapTo := func(v string, i uint) string {
@@ -103,20 +159,20 @@ func TestConcatMap(t *testing.T) {
 					return Scheduled(mapTo(x, i), mapTo(x, i), mapTo(x, i))
 				}
 
-				return ThrownError[string](func() error {
+				return ThrowError[string](func() error {
 					return err
 				})
 			}),
 		), []string{"z[0]", "z[0]", "z[0]"}, err, false)
 	})
 
-	t.Run("ConcatMap with ThrownError on return stream", func(t *testing.T) {
+	t.Run("ConcatMap with ThrowError on return stream", func(t *testing.T) {
 		var err = fmt.Errorf("throw")
 
 		checkObservableResults(t, Pipe1(
 			Scheduled("z", "q"),
 			ConcatMap(func(x string, i uint) Observable[string] {
-				return ThrownError[string](func() error {
+				return ThrowError[string](func() error {
 					return err
 				})
 			}),
@@ -247,7 +303,7 @@ func TestGroupBy(t *testing.T) {
 	// 		GroupBy[js](func(v js) string {
 	// 			return v.name
 	// 		}),
-	// 	), []any{}, nil, true)
+	// 	), []GroupedObservable[js]{}, nil, true)
 	// })
 }
 

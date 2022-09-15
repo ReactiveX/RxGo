@@ -2,6 +2,7 @@ package rxgo
 
 import (
 	"fmt"
+	"sync"
 )
 
 func skipPredicate[T any](T, uint) bool {
@@ -159,8 +160,14 @@ func createOperatorFunc[T any, R any](
 ) Observable[R] {
 	return newObservable(func(subscriber Subscriber[R]) {
 		var (
-			stop     bool
-			upStream = source.SubscribeOn()
+			wg   = new(sync.WaitGroup)
+			stop bool
+		)
+
+		wg.Add(1)
+
+		var (
+			upStream = source.SubscribeOn(wg.Done)
 		)
 
 		obs := &consumerObserver[R]{
@@ -210,5 +217,7 @@ func createOperatorFunc[T any, R any](
 				onNext(obs, item.Value())
 			}
 		}
+
+		wg.Wait()
 	})
 }
