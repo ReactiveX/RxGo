@@ -1,10 +1,47 @@
 package rxgo
 
 import (
+	"log"
 	"reflect"
 	"sync"
 	"time"
 )
+
+// Ignores source values for a duration determined by another Observable, then emits the
+// most recent value from the source Observable, then repeats this process.
+func Audit[T any](durationSelector func(value T) Observable[any]) OperatorFunc[T, T] {
+	return func(source Observable[T]) Observable[T] {
+		return newObservable(func(subscriber Subscriber[T]) {
+			var (
+				wg = new(sync.WaitGroup)
+			)
+
+			wg.Add(1)
+
+			var (
+				upStream    = source.SubscribeOn(wg.Done)
+				latestValue T
+			)
+
+		observe:
+			for {
+				select {
+				case <-subscriber.Closed():
+				case item, ok := <-upStream.ForEach():
+					if !ok {
+						break observe
+					}
+					latestValue = item.Value()
+					log.Println(item, ok)
+				}
+			}
+
+			log.Println(latestValue)
+
+			wg.Wait()
+		})
+	}
+}
 
 // Emits a notification from the source Observable only after a particular time span
 // has passed without another source emission.
@@ -291,6 +328,66 @@ func IgnoreElements[T any]() OperatorFunc[T, T] {
 				obs.Complete()
 			},
 		)
+	}
+}
+
+// Emits the most recently emitted value from the source Observable whenever
+// another Observable, the notifier, emits.
+func Sample[T any, R any](notifier Observable[R]) OperatorFunc[T, T] {
+	return func(source Observable[T]) Observable[T] {
+		return newObservable(func(subscriber Subscriber[T]) {
+			var (
+				wg = new(sync.WaitGroup)
+			)
+
+			wg.Add(2)
+
+			var (
+				latestValue  Notification[T]
+				upStream     = source.SubscribeOn(wg.Done)
+				notifyStream = notifier.SubscribeOn(wg.Done)
+			)
+
+			unsubscribeAll := func() {
+				upStream.Stop()
+				notifyStream.Stop()
+			}
+
+		observe:
+			for {
+				select {
+				case <-subscriber.Closed():
+					unsubscribeAll()
+					break observe
+
+				case item, ok := <-upStream.ForEach():
+					if !ok {
+						unsubscribeAll()
+						break observe
+					}
+
+					if err := item.Err(); err != nil {
+						item.Send(subscriber)
+						unsubscribeAll()
+						break observe
+					}
+
+					if item.Done() {
+						item.Send(subscriber)
+						unsubscribeAll()
+						break observe
+					}
+					latestValue = item
+
+				case <-notifyStream.ForEach():
+					if latestValue != nil {
+						latestValue.Send(subscriber)
+					}
+				}
+			}
+
+			wg.Wait()
+		})
 	}
 }
 

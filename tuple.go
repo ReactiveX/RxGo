@@ -18,6 +18,7 @@ func (p pair[A, B]) Second() B {
 	return p.second
 }
 
+// Create a tuple using first and second value.
 func NewTuple[A any, B any](a A, b B) Tuple[A, B] {
 	return &pair[A, B]{first: a, second: b}
 }

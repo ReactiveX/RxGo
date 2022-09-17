@@ -88,47 +88,6 @@ func Single2[T any](predicate func(v T, index uint) bool) OperatorFunc[T, T] {
 	}
 }
 
-// Emits the most recently emitted value from the source Observable whenever
-// another Observable, the notifier, emits.
-func Sample[A any, B any](notifier Observable[B]) OperatorFunc[A, A] {
-	return func(source Observable[A]) Observable[A] {
-		return newObservable(func(subscriber Subscriber[A]) {
-			var (
-				wg           = new(sync.WaitGroup)
-				upStream     = source.SubscribeOn(wg.Done)
-				notifyStream = notifier.SubscribeOn(wg.Done)
-				latestValue  = Next(*new(A))
-			)
-
-			wg.Add(2)
-
-		observe:
-			for {
-				select {
-				case <-subscriber.Closed():
-					return
-				case item, ok := <-upStream.ForEach():
-					if !ok {
-						break observe
-					}
-
-					if item.Done() {
-						notifyStream.Stop()
-						subscriber.Send() <- item
-						break observe
-					}
-
-					latestValue = item
-				case <-notifyStream.ForEach():
-					subscriber.Send() <- latestValue
-				}
-			}
-
-			wg.Wait()
-		})
-	}
-}
-
 // Delays the emission of items from the source Observable by a given timeout.
 func Delay[T any](duration time.Duration) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {

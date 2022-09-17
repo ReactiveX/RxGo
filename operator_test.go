@@ -46,24 +46,6 @@ func TestTap(t *testing.T) {
 	})
 }
 
-func TestSample(t *testing.T) {
-	var (
-		// result = make([]uint, 0)
-		err  error
-		done bool
-	)
-	Pipe1(
-		Pipe1(Interval(time.Millisecond), Take[uint](10)),
-		Sample[uint](Interval(time.Millisecond*2))).
-		SubscribeSync(func(u uint) {}, func(e error) {
-			err = e
-		}, func() {
-			done = true
-		})
-	require.Nil(t, err)
-	require.True(t, done)
-}
-
 func TestDelay(t *testing.T) {
 
 }

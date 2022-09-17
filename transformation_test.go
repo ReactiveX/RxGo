@@ -85,7 +85,7 @@ func TestBufferTime(t *testing.T) {
 		checkObservableHasResults(t, Pipe1(
 			EMPTY[string](),
 			BufferTime[string](time.Millisecond*500),
-		), nil, true)
+		), true, nil, true)
 	})
 
 	t.Run("BufferTime with Of", func(t *testing.T) {

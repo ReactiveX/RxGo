@@ -1,6 +1,8 @@
 package rxgo
 
-// Pipe
+// If there is a commonly used sequence of operators in your code, use the `Pipe` function to
+// extract the sequence into a new operator. Even if a sequence is not that common, breaking
+// it out into a single operator can improve readability.
 func Pipe[S any, O1 any](
 	stream Observable[S],
 	f1 OperatorFunc[S, any],

@@ -226,6 +226,38 @@ func TestIgnoreElements(t *testing.T) {
 	})
 }
 
+func TestSample(t *testing.T) {
+	t.Run("Sample with EMPTY", func(t *testing.T) {
+		checkObservableHasResults(t, Pipe1(
+			EMPTY[any](),
+			Sample[any](Interval(time.Millisecond*2)),
+		), false, nil, true)
+	})
+
+	t.Run("Sample with error", func(t *testing.T) {
+		checkObservableHasResults(t, Pipe2(
+			EMPTY[any](),
+			Sample[any](Interval(time.Millisecond*2)),
+			ThrowIfEmpty[any](),
+		), false, ErrEmpty, false)
+	})
+
+	t.Run("Sample with Range(1,100)", func(t *testing.T) {
+		checkObservableHasResults(t, Pipe1(
+			Range[uint](1, 100),
+			Sample[uint](Interval(time.Millisecond*100)),
+		), false, nil, true)
+	})
+
+	t.Run("Sample with Interval", func(t *testing.T) {
+		checkObservableHasResults(t, Pipe2(
+			Interval(time.Millisecond),
+			Sample[uint](Interval(time.Millisecond*5)),
+			Take[uint](3),
+		), true, nil, true)
+	})
+}
+
 func TestSingle(t *testing.T) {
 	t.Run("Single with EMPTY, it should throw ErrEmpty", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(

@@ -42,7 +42,7 @@ func checkObservableResultWithAnyError[T any](t *testing.T, obs Observable[T], r
 	require.Contains(t, err, collectedErr)
 }
 
-func checkObservableHasResults[T any](t *testing.T, obs Observable[T], err error, isCompleted bool) {
+func checkObservableHasResults[T any](t *testing.T, obs Observable[T], hasResult bool, err error, isCompleted bool) {
 	var (
 		hasCompleted  bool
 		collectedErr  error
@@ -55,7 +55,11 @@ func checkObservableHasResults[T any](t *testing.T, obs Observable[T], err error
 	}, func() {
 		hasCompleted = true
 	})
-	require.True(t, len(collectedData) > 0)
+	if hasResult {
+		require.True(t, len(collectedData) > 0)
+	} else {
+		require.True(t, len(collectedData) == 0)
+	}
 	require.Equal(t, hasCompleted, isCompleted)
 	require.Equal(t, collectedErr, err)
 }
