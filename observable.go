@@ -30,11 +30,45 @@ func Defer[T any](factory func() Observable[T]) Observable[T] {
 	// function returns a falsy value, then EMPTY is used as Observable instead.
 	// Last but not least, an exception during the factory function call is transferred
 	// to the Observer by calling error.
-	obs := factory()
-	if obs == nil {
-		return EMPTY[T]()
-	}
-	return obs
+	return newObservable(func(subscriber Subscriber[T]) {
+		var (
+			wg     = new(sync.WaitGroup)
+			stream = factory()
+		)
+
+		if stream == nil {
+			stream = EMPTY[T]()
+		}
+
+		wg.Add(1)
+
+		var (
+			upStream = stream.SubscribeOn(wg.Done)
+			ended    bool
+		)
+
+	loop:
+		for {
+			select {
+			case <-subscriber.Closed():
+				upStream.Stop()
+				break loop
+
+			case item, ok := <-upStream.ForEach():
+				if !ok {
+					break loop
+				}
+
+				ended = item.Done() || item.Err() != nil
+				item.Send(subscriber)
+				if ended {
+					break loop
+				}
+			}
+		}
+
+		wg.Wait()
+	})
 }
 
 // Creates an Observable that emits a sequence of numbers within a specified range.

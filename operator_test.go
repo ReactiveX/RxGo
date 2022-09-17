@@ -17,6 +17,16 @@ func TestRepeat(t *testing.T) {
 		), []any{}, nil, true)
 	})
 
+	t.Run("Repeat with config", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			Of2[any](12, 88),
+			Repeat[any](RepeatConfig{
+				Count: 5,
+				Delay: time.Millisecond,
+			}),
+		), []any{12, 88, 12, 88, 12, 88, 12, 88, 12, 88}, nil, true)
+	})
+
 	t.Run("Repeat with error", func(t *testing.T) {
 		var err = errors.New("throw")
 		// Repeat with error will no repeat

@@ -1,6 +1,7 @@
 package rxgo
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -100,5 +101,92 @@ func TestRetry(t *testing.T) {
 			}),
 			Retry[uint, uint8](2),
 		), []uint{0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5}, err, false)
+	})
+
+	t.Run("Retry with count 2", func(t *testing.T) {
+		var err = fmt.Errorf("throw five")
+		checkObservableResults(t, Pipe2(
+			Interval(time.Millisecond*100),
+			Map(func(v, _ uint) (uint, error) {
+				if v > 5 {
+					return 0, err
+				}
+				return v, nil
+			}),
+			Retry[uint](RetryConfig{
+				Count: 2,
+				Delay: time.Millisecond,
+			}),
+		), []uint{0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5}, err, false)
+	})
+
+	t.Run("Retry with Iif", func(t *testing.T) {
+		var ok = false
+		checkObservableResults(t, Pipe1(
+			Iif(func() bool {
+				if ok {
+					ok = false
+					return ok
+				}
+				ok = true
+				return ok
+			},
+				Of2("x", "^", "@", "#"),
+				ThrowError[string](func() error {
+					return errors.New("retry")
+				})),
+			Retry[string, uint](3),
+		), []string{"x", "^", "@", "#"}, nil, true)
+	})
+
+	t.Run("Retry with Defer", func(t *testing.T) {
+		var count = 0
+		checkObservableResults(t, Pipe1(
+			Defer(func() Observable[string] {
+				count++
+				if count < 2 {
+					return ThrowError[string](func() error {
+						return errors.New("retry")
+					})
+				}
+				return Of2("hello", "world", "!!!")
+			}),
+			Retry[string, uint](3),
+		), []string{"hello", "world", "!!!"}, nil, true)
+	})
+
+	t.Run("Retry with Defer", func(t *testing.T) {
+		var count = 0
+		checkObservableResults(t, Pipe1(
+			Defer(func() Observable[string] {
+				count++
+				if count <= 3 {
+					return ThrowError[string](func() error {
+						return errors.New("retry")
+					})
+				}
+				return Of2("hello", "world", "!!!")
+			}),
+			Retry[string, uint](3),
+		), []string{"hello", "world", "!!!"}, nil, true)
+	})
+
+	t.Run("Retry with Defer but failed", func(t *testing.T) {
+		var (
+			count = 0
+			err   = errors.New("retry")
+		)
+		checkObservableResults(t, Pipe1(
+			Defer(func() Observable[string] {
+				count++
+				if count < 5 {
+					return ThrowError[string](func() error {
+						return err
+					})
+				}
+				return Of2("hello", "world", "!!!")
+			}),
+			Retry[string, uint](2),
+		), []string{}, err, false)
 	})
 }

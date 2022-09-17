@@ -3,6 +3,7 @@ package rxgo
 import (
 	"errors"
 	"sync"
+	"time"
 
 	"golang.org/x/exp/constraints"
 )
@@ -88,6 +89,7 @@ func CatchError[T any](catch func(err error, caught Observable[T]) Observable[T]
 
 type RetryConfig struct {
 	Count          uint
+	Delay          time.Duration
 	ResetOnSuccess bool
 }
 
@@ -97,42 +99,62 @@ type retryConfig interface {
 
 // Returns an Observable that mirrors the source Observable with the exception of an error.
 func Retry[T any, C retryConfig](config ...C) OperatorFunc[T, T] {
-	var maxRetryCount uint
-	switch v := any(config[0]).(type) {
-	case RetryConfig:
-	case uint8:
-		maxRetryCount = uint(v)
-	case uint16:
-		maxRetryCount = uint(v)
-	case uint32:
-		maxRetryCount = uint(v)
-	case uint64:
-		maxRetryCount = uint(v)
-	case uint:
-		maxRetryCount = v
+	var (
+		maxRetryCount  = int64(-1)
+		delay          = time.Duration(0)
+		resetOnSuccess bool
+	)
+	if len(config) > 0 {
+		switch v := any(config[0]).(type) {
+		case RetryConfig:
+			if v.Count > 0 {
+				maxRetryCount = int64(v.Count)
+			}
+			if v.Delay > 0 {
+				delay = v.Delay
+			}
+			resetOnSuccess = v.ResetOnSuccess
+		case uint8:
+			maxRetryCount = int64(v)
+		case uint16:
+			maxRetryCount = int64(v)
+		case uint32:
+			maxRetryCount = int64(v)
+		case uint64:
+			maxRetryCount = int64(v)
+		case uint:
+			maxRetryCount = int64(v)
+		}
 	}
 	return func(source Observable[T]) Observable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {
 			var (
-				wg = new(sync.WaitGroup)
+				wg       = new(sync.WaitGroup)
+				errCount = int64(0)
+				upStream Subscriber[T]
+				forEach  <-chan Notification[T]
 			)
 
-			wg.Add(1)
-
-			var (
+			setupStream := func(first bool) {
+				wg.Add(1)
+				if delay > 0 && !first {
+					time.Sleep(delay)
+				}
 				upStream = source.SubscribeOn(wg.Done)
-				errCount uint
-			)
+				forEach = upStream.ForEach()
+			}
+
+			setupStream(true)
 
 		observe:
 			//  If count is omitted, retry will try to resubscribe on errors infinite number of times.
-			for maxRetryCount == 0 || errCount <= maxRetryCount {
+			for {
 				select {
 				case <-subscriber.Closed():
 					upStream.Stop()
 					break observe
 
-				case item, ok := <-upStream.ForEach():
+				case item, ok := <-forEach:
 					if !ok {
 						break observe
 					}
@@ -144,9 +166,12 @@ func Retry[T any, C retryConfig](config ...C) OperatorFunc[T, T] {
 							break observe
 						}
 
-						upStream.Stop()
-						upStream = source.SubscribeOn()
+						setupStream(false)
 						continue
+					}
+
+					if errCount > 0 && resetOnSuccess {
+						errCount = 0
 					}
 
 					item.Send(subscriber)

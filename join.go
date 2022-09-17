@@ -426,65 +426,68 @@ func RaceWith[T any](input Observable[T], inputs ...Observable[T]) OperatorFunc[
 
 // Combines multiple Observables to create an Observable whose values are calculated
 // from the values, in order, of each of its input Observables.
-func Zip[T any](sources ...Observable[T]) Observable[[]T] {
-	return newObservable(func(subscriber Subscriber[[]T]) {
-		var (
-			wg         = new(sync.WaitGroup)
-			noOfSource = uint(len(sources))
-			observers  = make([]Subscriber[T], 0, noOfSource)
-		)
+func ZipWith[T any](input Observable[T], inputs ...Observable[T]) OperatorFunc[T, []T] {
+	return func(source Observable[T]) Observable[[]T] {
+		inputs = append([]Observable[T]{source, input}, inputs...)
+		return newObservable(func(subscriber Subscriber[[]T]) {
+			var (
+				wg         = new(sync.WaitGroup)
+				noOfSource = uint(len(inputs))
+				observers  = make([]Subscriber[T], 0, noOfSource)
+			)
 
-		wg.Add(int(noOfSource))
+			wg.Add(int(noOfSource))
 
-		for _, source := range sources {
-			observers = append(observers, source.SubscribeOn(wg.Done))
-		}
-
-		unsubscribeAll := func() {
-			for _, obs := range observers {
-				obs.Stop()
+			for _, input := range inputs {
+				observers = append(observers, input.SubscribeOn(wg.Done))
 			}
-		}
 
-		var (
-			result    = make([]T, noOfSource)
-			completed uint
-		)
-	loop:
-		for {
-		innerLoop:
-			for i, obs := range observers {
-				select {
-				case <-subscriber.Closed():
-					unsubscribeAll()
-					break loop
-
-				case item, ok := <-obs.ForEach():
-					if !ok || item.Done() {
-						completed++
-						unsubscribeAll()
-						break innerLoop
-					}
-
-					if item != nil {
-						result[i] = item.Value()
-					}
+			unsubscribeAll := func() {
+				for _, obs := range observers {
+					obs.Stop()
 				}
 			}
 
-			// Any of the stream completed, we will escape
-			if completed > 0 {
-				Complete[[]T]().Send(subscriber)
-				break loop
+			var (
+				result    = make([]T, noOfSource)
+				completed uint
+			)
+		loop:
+			for {
+			innerLoop:
+				for i, obs := range observers {
+					select {
+					case <-subscriber.Closed():
+						unsubscribeAll()
+						break loop
+
+					case item, ok := <-obs.ForEach():
+						if !ok || item.Done() {
+							completed++
+							unsubscribeAll()
+							break innerLoop
+						}
+
+						if item != nil {
+							result[i] = item.Value()
+						}
+					}
+				}
+
+				// Any of the stream completed, we will escape
+				if completed > 0 {
+					Complete[[]T]().Send(subscriber)
+					break loop
+				}
+
+				Next(result).Send(subscriber)
+
+				// Reset the values for next loop
+				result = make([]T, noOfSource)
+				completed = 0
 			}
 
-			Next(result).Send(subscriber)
-
-			// Reset the values for next loop
-			result = make([]T, noOfSource)
-			completed = 0
-		}
-
-		wg.Wait()
-	})
+			wg.Wait()
+		})
+	}
 }

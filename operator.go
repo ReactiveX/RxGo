@@ -7,28 +7,62 @@ import (
 	"golang.org/x/exp/constraints"
 )
 
+type RepeatConfig struct {
+	Count uint
+	Delay time.Duration
+}
+
+type repeatConfig interface {
+	constraints.Unsigned | RepeatConfig
+}
+
 // Returns an Observable that will resubscribe to the source stream when the source stream
 // completes.
-func Repeat[T any, N constraints.Unsigned](count N) OperatorFunc[T, T] {
+func Repeat[T any, C repeatConfig](config ...C) OperatorFunc[T, T] {
+	var (
+		maxRepeatCount = int64(-1)
+		delay          = time.Duration(0)
+	)
+	if len(config) > 0 {
+		switch v := any(config[0]).(type) {
+		case RepeatConfig:
+			if v.Count > 0 {
+				maxRepeatCount = int64(v.Count)
+			}
+			if v.Delay > 0 {
+				delay = v.Delay
+			}
+		case uint8:
+			maxRepeatCount = int64(v)
+		case uint16:
+			maxRepeatCount = int64(v)
+		case uint32:
+			maxRepeatCount = int64(v)
+		case uint64:
+			maxRepeatCount = int64(v)
+		case uint:
+			maxRepeatCount = int64(v)
+		}
+	}
 	return func(source Observable[T]) Observable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {
 			var (
-				wg = new(sync.WaitGroup)
+				wg          = new(sync.WaitGroup)
+				repeatCount = int64(0)
+				upStream    Subscriber[T]
+				forEach     <-chan Notification[T]
 			)
 
-			var (
-				repeated = N(0)
-				upStream Subscriber[T]
-				forEach  <-chan Notification[T]
-			)
-
-			setupStream := func() {
+			setupStream := func(first bool) {
 				wg.Add(1)
+				if delay > 0 && !first {
+					time.Sleep(delay)
+				}
 				upStream = source.SubscribeOn(wg.Done)
 				forEach = upStream.ForEach()
 			}
 
-			setupStream()
+			setupStream(true)
 
 		observe:
 			for {
@@ -48,9 +82,9 @@ func Repeat[T any, N constraints.Unsigned](count N) OperatorFunc[T, T] {
 					}
 
 					if item.Done() {
-						repeated++
-						if repeated < count {
-							setupStream()
+						repeatCount++
+						if maxRepeatCount < 0 || repeatCount < maxRepeatCount {
+							setupStream(false)
 							continue
 						}
 
