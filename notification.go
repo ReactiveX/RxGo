@@ -4,6 +4,64 @@ import (
 	"sync"
 )
 
+// Converts an Observable of ObservableNotification objects into the emissions that they
+// represent.
+func Dematerialize[T any]() OperatorFunc[ObservableNotification[T], T] {
+	return func(source Observable[ObservableNotification[T]]) Observable[T] {
+		return newObservable(func(subscriber Subscriber[T]) {
+			var (
+				wg = new(sync.WaitGroup)
+			)
+
+			wg.Add(1)
+
+			var (
+				upStream = source.SubscribeOn(wg.Done)
+				notice   ObservableNotification[T]
+			)
+
+		observe:
+			for {
+				select {
+				case <-subscriber.Closed():
+					upStream.Stop()
+					break observe
+
+				case item, ok := <-upStream.ForEach():
+					if !ok {
+						break observe
+					}
+
+					if item.Done() {
+						break observe
+					}
+
+					notice = item.Value()
+
+					switch notice.Kind() {
+					case NextKind:
+						Next(notice.Value()).Send(subscriber)
+
+					case ErrorKind:
+						if err := notice.Err(); err != nil {
+							Error[T](notice.Err()).Send(subscriber)
+						}
+						break observe
+
+					case CompleteKind:
+						Complete[T]().Send(subscriber)
+						break observe
+					}
+				}
+			}
+
+			upStream.Stop()
+
+			wg.Wait()
+		})
+	}
+}
+
 // Represents all of the notifications from the source Observable as next emissions
 // marked with their original types within Notification objects.
 func Materialize[T any]() OperatorFunc[T, ObservableNotification[T]] {

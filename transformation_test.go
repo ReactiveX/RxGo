@@ -8,12 +8,12 @@ import (
 )
 
 func TestBuffer(t *testing.T) {
-	t.Run("Buffer with EMPTY", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(
-			EMPTY[uint](),
-			Buffer[uint](Of2("a")),
-		), []uint{}, nil, true)
-	})
+	// t.Run("Buffer with EMPTY", func(t *testing.T) {
+	// 	checkObservableResult(t, Pipe1(
+	// 		EMPTY[uint](),
+	// 		Buffer[uint](Of2("a")),
+	// 	), []uint{}, nil, true)
+	// })
 
 	// t.Run("Buffer with error", func(t *testing.T) {
 	// 	var err = fmt.Errorf("failed")
