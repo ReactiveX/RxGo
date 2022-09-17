@@ -1,6 +1,7 @@
 package rxgo
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -93,20 +94,54 @@ func TestForkJoin(t *testing.T) {
 }
 
 func TestZip(t *testing.T) {
-	t.Run("Zip with Scheduled", func(t *testing.T) {
+	t.Run("Zip with all EMPTY", func(t *testing.T) {
 		checkObservableResults(t, Zip(
 			EMPTY[any](),
-			Scheduled[any]("Foo", "Bar", "Beer"),
-			Scheduled[any](true, true, false),
+			EMPTY[any](),
+			EMPTY[any](),
+		), [][]any{}, nil, true)
+	})
+
+	t.Run("Zip with error", func(t *testing.T) {
+		var err = errors.New("stop")
+		checkObservableResults(t, Pipe1(
+			Zip(
+				Of2[any](27, 25, 29),
+				Of2[any]("Foo", "Bar", "Beer"),
+				Of2[any](true, true, false),
+			),
+			Map(func(v []any, i uint) ([]any, error) {
+				if i >= 2 {
+					return nil, err
+				}
+				return v, nil
+			}),
 		), [][]any{
-			{nil, "Foo", true},
-			{nil, "Bar", true},
-			{nil, "Beer", false},
-			{nil, nil, nil},
+			{27, "Foo", true},
+			{25, "Bar", true},
+		}, err, false)
+	})
+
+	t.Run("Zip with EMPTY and Of", func(t *testing.T) {
+		checkObservableResults(t, Zip(
+			EMPTY[any](),
+			Of2[any]("Foo", "Bar", "Beer"),
+			Of2[any](true, true, false),
+		), [][]any{}, nil, true)
+	})
+
+	t.Run("Zip with Of (not tally)", func(t *testing.T) {
+		checkObservableResults(t, Zip(
+			Of2[any](27, 25, 29),
+			Of2[any]("Foo", "Beer"),
+			Of2[any](true, true, false),
+		), [][]any{
+			{27, "Foo", true},
+			{25, "Beer", true},
 		}, nil, true)
 	})
 
-	t.Run("Zip with Scheduled", func(t *testing.T) {
+	t.Run("Zip with Of (tally)", func(t *testing.T) {
 		checkObservableResults(t, Zip(
 			Scheduled[any](27, 25, 29),
 			Scheduled[any]("Foo", "Bar", "Beer"),
@@ -115,7 +150,6 @@ func TestZip(t *testing.T) {
 			{27, "Foo", true},
 			{25, "Bar", true},
 			{29, "Beer", false},
-			{nil, nil, nil},
 		}, nil, true)
 	})
 }

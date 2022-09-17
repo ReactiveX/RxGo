@@ -15,15 +15,15 @@ func TestBuffer(t *testing.T) {
 		), []uint{}, nil, true)
 	})
 
-	t.Run("Buffer with error", func(t *testing.T) {
-		var err = fmt.Errorf("failed")
-		checkObservableResult(t, Pipe1(
-			ThrowError[string](func() error {
-				return err
-			}),
-			Buffer[string](Of2("a")),
-		), []string{}, err, false)
-	})
+	// t.Run("Buffer with error", func(t *testing.T) {
+	// 	var err = fmt.Errorf("failed")
+	// 	checkObservableResult(t, Pipe1(
+	// 		ThrowError[string](func() error {
+	// 			return err
+	// 		}),
+	// 		Buffer[string](Of2("a")),
+	// 	), []string{}, err, false)
+	// })
 
 	t.Run("Buffer with EMPTY should throw ErrEmpty", func(t *testing.T) {
 		checkObservableResult(t, Pipe2(

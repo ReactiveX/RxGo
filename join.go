@@ -388,11 +388,11 @@ func Zip[T any](sources ...Observable[T]) Observable[[]T] {
 	return newObservable(func(subscriber Subscriber[[]T]) {
 		var (
 			wg         = new(sync.WaitGroup)
-			noOfSource = len(sources)
+			noOfSource = uint(len(sources))
 			observers  = make([]Subscriber[T], 0, noOfSource)
 		)
 
-		wg.Add(noOfSource)
+		wg.Add(int(noOfSource))
 
 		for _, source := range sources {
 			observers = append(observers, source.SubscribeOn(wg.Done))
@@ -406,10 +406,11 @@ func Zip[T any](sources ...Observable[T]) Observable[[]T] {
 
 		var (
 			result    = make([]T, noOfSource)
-			completes = [2]uint{} // true | false
+			completed uint
 		)
 	loop:
 		for {
+		innerLoop:
 			for i, obs := range observers {
 				select {
 				case <-subscriber.Closed():
@@ -417,10 +418,10 @@ func Zip[T any](sources ...Observable[T]) Observable[[]T] {
 					break loop
 
 				case item, ok := <-obs.ForEach():
-					if !ok {
-						completes[1]++
-					} else if ok || item.Done() {
-						completes[0]++
+					if !ok || item.Done() {
+						completed++
+						unsubscribeAll()
+						break innerLoop
 					}
 
 					if item != nil {
@@ -429,7 +430,8 @@ func Zip[T any](sources ...Observable[T]) Observable[[]T] {
 				}
 			}
 
-			if completes[1] >= uint(noOfSource) {
+			// Any of the stream completed, we will escape
+			if completed > 0 {
 				Complete[[]T]().Send(subscriber)
 				break loop
 			}
@@ -438,7 +440,7 @@ func Zip[T any](sources ...Observable[T]) Observable[[]T] {
 
 			// Reset the values for next loop
 			result = make([]T, noOfSource)
-			completes = [2]uint{}
+			completed = 0
 		}
 
 		wg.Wait()
