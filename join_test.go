@@ -93,6 +93,131 @@ func TestForkJoin(t *testing.T) {
 	})
 }
 
+func TestMergeWith(t *testing.T) {
+	t.Run("MergeWith all EMTPY", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			EMPTY[any](),
+			MergeWith(
+				EMPTY[any](),
+				EMPTY[any](),
+			),
+		), []any{}, nil, true)
+	})
+
+	t.Run("MergeWith multiple EMTPY", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			Of2[any]("a", "b", "q", "j", "z"),
+			MergeWith(
+				EMPTY[any](),
+				EMPTY[any](),
+			),
+		), []any{"a", "b", "q", "j", "z"}, nil, true)
+	})
+
+	t.Run("MergeWith Interval", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			Pipe2(
+				Interval(time.Millisecond),
+				Take[uint](3),
+				Map(func(v uint, _ uint) (string, error) {
+					return fmt.Sprintf("a -> %v", v), nil
+				}),
+			),
+			MergeWith(
+				Pipe2(
+					Interval(time.Millisecond*300),
+					Take[uint](5),
+					Map(func(v uint, _ uint) (string, error) {
+						return fmt.Sprintf("b -> %v", v), nil
+					}),
+				),
+				EMPTY[string](),
+			),
+		), []string{
+			"a -> 0", "a -> 1", "a -> 2",
+			"b -> 0", "b -> 1", "b -> 2", "b -> 3", "b -> 4",
+		}, nil, true)
+	})
+
+	t.Run("MergeWith Of", func(t *testing.T) {
+		checkObservableHasResults(t, Pipe1(
+			Of2[any]("a", "b", "q", "j", "z"),
+			MergeWith(Pipe1(
+				Range[uint](1, 10),
+				Map(func(v, _ uint) (any, error) {
+					return any(v), nil
+				}),
+			)),
+		), true, nil, true)
+	})
+
+	t.Run("MergeWith error", func(t *testing.T) {
+		var err = errors.New("cannot more than 5")
+		checkObservableHasResults(t, Pipe1(
+			Of2[any]("a", "b", "q", "j", "z"),
+			MergeWith(Pipe1(
+				Range[uint](1, 10),
+				Map(func(v, _ uint) (any, error) {
+					if v > 5 {
+						return nil, err
+					}
+					return any(v), nil
+				}),
+			)),
+		), true, err, false)
+	})
+
+	t.Run("MergeWith all errors", func(t *testing.T) {
+		var err = errors.New("failed")
+		checkObservableHasResults(t, Pipe1(
+			ThrowError[any](func() error {
+				return err
+			}),
+			MergeWith(
+				ThrowError[any](func() error {
+					return err
+				}),
+				ThrowError[any](func() error {
+					return err
+				}),
+			),
+		), false, err, false)
+	})
+}
+
+func TestPartition(t *testing.T) {
+	t.Run("Partition with EMPTY", func(t *testing.T) {})
+
+	t.Run("Partition with error", func(t *testing.T) {})
+
+	t.Run("Partition", func(t *testing.T) {})
+}
+
+func TestRaceWith(t *testing.T) {
+	t.Run("RaceWith with EMPTY", func(t *testing.T) {})
+
+	t.Run("RaceWith with error", func(t *testing.T) {})
+
+	t.Run("RaceWith with Interval", func(t *testing.T) {
+		//		checkObservableResults(t, Pipe2(
+		//			Pipe1(Interval(time.Millisecond*7), Map(func(v uint, _ uint) (string, error) {
+		//				return fmt.Sprintf("slowest -> %v", v), nil
+		//			})),
+		//			RaceWith(
+		//				Pipe1(Interval(time.Millisecond*3), Map(func(v uint, _ uint) (string, error) {
+		//					return fmt.Sprintf("fastest -> %v", v), nil
+		//				})),
+		//				Pipe1(Interval(time.Millisecond*5), Map(func(v uint, _ uint) (string, error) {
+		//					return fmt.Sprintf("average -> %v", v), nil
+		//				})),
+		//			),
+		//			Take[string](5),
+		//		),
+		//			[]string{"fastest -> 0"}, // "fastest -> 1", "fastest -> 2", "fastest -> 3", "fastest -> 4"
+		//			nil, true)
+	})
+}
+
 func TestZip(t *testing.T) {
 	t.Run("Zip with all EMPTY", func(t *testing.T) {
 		checkObservableResults(t, Zip(

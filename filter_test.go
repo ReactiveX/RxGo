@@ -411,6 +411,18 @@ func TestTakeWhile(t *testing.T) {
 	})
 }
 
+func TestThrottle(t *testing.T) {
+	// TODO:
+	t.Run("Throttle with EMPTY", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(
+			EMPTY[any](),
+			Throttle(func(v any) Observable[uint] {
+				return Interval(time.Second)
+			}),
+		), nil, nil, true)
+	})
+}
+
 func TestThrottleTime(t *testing.T) {
 	t.Run("ThrottleTime with EMPTY", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(
@@ -426,5 +438,12 @@ func TestThrottleTime(t *testing.T) {
 				return err
 			}), ThrottleTime[any](time.Millisecond),
 		), nil, err, false)
+	})
+
+	t.Run("ThrottleTime with alphaberts", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			Of2("(", "a", "b", "q", ")"),
+			ThrottleTime[string](time.Millisecond*500),
+		), []string{"("}, nil, true)
 	})
 }

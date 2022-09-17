@@ -7,20 +7,62 @@ import (
 	"golang.org/x/exp/constraints"
 )
 
-// Returns an Observable that will resubscribe to the source
-// stream when the source stream completes.
+// Returns an Observable that will resubscribe to the source stream when the source stream
+// completes.
 func Repeat[T any, N constraints.Unsigned](count N) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {
-			// source.SubscribeSync(
-			// 	func(t T) {
-			// 		for i := N(0); i < count; i++ {
-			// 			subscriber.Next(t)
-			// 		}
-			// 	},
-			// 	subscriber.Error,
-			// 	subscriber.Complete,
-			// )
+			var (
+				wg = new(sync.WaitGroup)
+			)
+
+			var (
+				repeated = N(0)
+				upStream Subscriber[T]
+				forEach  <-chan Notification[T]
+			)
+
+			setupStream := func() {
+				wg.Add(1)
+				upStream = source.SubscribeOn(wg.Done)
+				forEach = upStream.ForEach()
+			}
+
+			setupStream()
+
+		observe:
+			for {
+				select {
+				case <-subscriber.Closed():
+					upStream.Stop()
+					break observe
+
+				case item, ok := <-forEach:
+					if !ok {
+						break observe
+					}
+
+					if err := item.Err(); err != nil {
+						Error[T](err).Send(subscriber)
+						break observe
+					}
+
+					if item.Done() {
+						repeated++
+						if repeated < count {
+							setupStream()
+							continue
+						}
+
+						Complete[T]().Send(subscriber)
+						break observe
+					}
+
+					item.Send(subscriber)
+				}
+			}
+
+			wg.Wait()
 		})
 	}
 }

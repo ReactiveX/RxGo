@@ -10,7 +10,49 @@ import (
 )
 
 func TestRepeat(t *testing.T) {
+	t.Run("Repeat with EMPTY", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			EMPTY[any](),
+			Repeat[any, uint](3),
+		), []any{}, nil, true)
+	})
 
+	t.Run("Repeat with error", func(t *testing.T) {
+		var err = errors.New("throw")
+		// Repeat with error will no repeat
+		checkObservableResults(t, Pipe1(
+			ThrowError[string](func() error {
+				return err
+			}),
+			Repeat[string, uint](3),
+		), []string{}, err, false)
+	})
+
+	t.Run("Repeat with error", func(t *testing.T) {
+		var err = errors.New("throw at 3")
+		// Repeat with error will no repeat
+		checkObservableResults(t, Pipe2(
+			Range[uint](1, 10),
+			Map(func(v, _ uint) (uint, error) {
+				if v >= 3 {
+					return 0, err
+				}
+				return v, nil
+			}),
+			Repeat[uint, uint](3),
+		), []uint{1, 2}, err, false)
+	})
+
+	t.Run("Repeat with alphaberts", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			Of2("a", "bb", "cc", "ff", "gg"),
+			Repeat[string, uint](3),
+		), []string{
+			"a", "bb", "cc", "ff", "gg",
+			"a", "bb", "cc", "ff", "gg",
+			"a", "bb", "cc", "ff", "gg",
+		}, nil, true)
+	})
 }
 
 func TestTap(t *testing.T) {
@@ -48,31 +90,6 @@ func TestTap(t *testing.T) {
 
 func TestDelay(t *testing.T) {
 
-}
-
-func TestThrottle(t *testing.T) {
-
-}
-
-func TestRaceWith(t *testing.T) {
-	// t.Run("RaceWith with Interval", func(t *testing.T) {
-	// 	checkObservableResults(t, Pipe2(
-	// 		Pipe1(Interval(time.Millisecond*7), Map(func(v uint, _ uint) (string, error) {
-	// 			return fmt.Sprintf("slowest -> %v", v), nil
-	// 		})),
-	// 		RaceWith(
-	// 			Pipe1(Interval(time.Millisecond*3), Map(func(v uint, _ uint) (string, error) {
-	// 				return fmt.Sprintf("fastest -> %v", v), nil
-	// 			})),
-	// 			Pipe1(Interval(time.Millisecond*5), Map(func(v uint, _ uint) (string, error) {
-	// 				return fmt.Sprintf("average -> %v", v), nil
-	// 			})),
-	// 		),
-	// 		Take[string](5),
-	// 	),
-	// 		[]string{"fastest -> 0"}, // "fastest -> 1", "fastest -> 2", "fastest -> 3", "fastest -> 4"
-	// 		nil, true)
-	// })
 }
 
 func TestWithLatestFrom(t *testing.T) {

@@ -163,11 +163,11 @@ func ForkJoin[T any](sources ...Observable[T]) Observable[[]T] {
 		observe:
 			for {
 				select {
-				case <-stopCh:
+				case <-subscriber.Closed():
 					upStream.Stop()
 					break observe
 
-				case <-subscriber.Closed():
+				case <-stopCh:
 					upStream.Stop()
 					break observe
 
@@ -230,64 +230,108 @@ func ForkJoin[T any](sources ...Observable[T]) Observable[[]T] {
 }
 
 // Merge the values from all observables to a single observable result.
-func Merge[T any](input Observable[T]) OperatorFunc[T, T] {
+func MergeWith[T any](input Observable[T], inputs ...Observable[T]) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
+		inputs = append([]Observable[T]{source, input}, inputs...)
 		return newObservable(func(subscriber Subscriber[T]) {
 			var (
-				activeSubscription = 2
-				wg                 = new(sync.WaitGroup)
-				p1                 = source.SubscribeOn(wg.Done)
-				p2                 = input.SubscribeOn(wg.Done)
-				err                error
+				wg                  = new(sync.WaitGroup)
+				mu                  = new(sync.RWMutex)
+				activeSubCount      = new(atomic.Int32)
+				noOfInputs          = len(inputs)
+				activeSubscriptions = make([]Subscriber[T], noOfInputs)
+				err                 = new(atomic.Pointer[error])
+				stopCh              = make(chan struct{})
+				errCh               = make(chan error, 1)
 			)
 
-			wg.Add(2)
-
-			stopAll := func() {
-				p1.Stop()
-				p2.Stop()
-				activeSubscription = 0
+			onError := func(err error) {
+				mu.Lock()
+				defer mu.Unlock()
+				select {
+				case errCh <- err:
+				default:
+				}
 			}
 
-			onNext := func(v Notification[T]) {
-				if v == nil {
-					return
-				}
-
-				// When any source errors, the resulting observable will error
-				if err = v.Err(); err != nil {
-					stopAll()
-					subscriber.Send() <- Error[T](err)
-					return
-				}
-
-				if v.Done() {
-					activeSubscription--
-					return
-				}
-
-				subscriber.Send() <- v
-			}
-
-			for activeSubscription > 0 {
+			go func() {
 				select {
 				case <-subscriber.Closed():
-					stopAll()
-				case v1 := <-p1.ForEach():
-					onNext(v1)
-				case v2 := <-p2.ForEach():
-					onNext(v2)
+					return
+				case v, ok := <-errCh:
+					if !ok {
+						return
+					}
+					err.Swap(&v)
+					close(stopCh)
+				}
+				log.Println("EDN Routine")
+			}()
+
+			observeStream := func(index int, stream Subscriber[T]) {
+				defer activeSubCount.Add(-1)
+
+			observe:
+				for {
+					select {
+					case <-subscriber.Closed():
+						stream.Stop()
+						break observe
+
+					case <-stopCh:
+						stream.Stop()
+						break observe
+
+					case item, ok := <-stream.ForEach():
+						if !ok {
+							break observe
+						}
+
+						if err := item.Err(); err != nil {
+							onError(err)
+							break observe
+						}
+
+						if item.Done() {
+							break observe
+						}
+
+						item.Send(subscriber)
+					}
 				}
 			}
 
-			// Wait for all input streams to unsubscribe
+			wg.Add(noOfInputs)
+			// activeSubCount.Store(int32(noOfInputs))
+
+			for i, input := range inputs {
+				activeSubscriptions[i] = input.SubscribeOn(wg.Done)
+				go observeStream(i, activeSubscriptions[i])
+			}
+
 			wg.Wait()
 
-			if err != nil {
-				subscriber.Send() <- Error[T](err)
-			} else {
-				subscriber.Send() <- Complete[T]()
+			// Remove dangling go-routine
+			select {
+			case <-errCh:
+			default:
+				mu.Lock()
+				// Close error channel gracefully
+				close(errCh)
+				mu.Unlock()
 			}
+
+			// Stop all stream
+			for _, sub := range activeSubscriptions {
+				sub.Stop()
+			}
+
+			if exception := err.Load(); exception != nil {
+				Error[T](*exception).Send(subscriber)
+				return
+			}
+
+			Complete[T]().Send(subscriber)
 		})
 	}
 }
@@ -300,84 +344,82 @@ func RaceWith[T any](input Observable[T], inputs ...Observable[T]) OperatorFunc[
 		inputs = append([]Observable[T]{source, input}, inputs...)
 		return newObservable(func(subscriber Subscriber[T]) {
 			var (
-				noOfInputs = len(inputs)
 				// wg                  = new(sync.WaitGroup)
+				noOfInputs          = len(inputs)
 				fastestCh           = make(chan int, 1)
+				stopCh              = make(chan struct{})
 				activeSubscriptions = make([]Subscriber[T], noOfInputs)
-				mu                  = new(sync.RWMutex)
+				// mu                  = new(sync.RWMutex)
 				// unsubscribed        bool
 			)
-			// wg.Add(noOfInputs * 2)
 
-			// unsubscribeAll := func(index int) {
+			// wg.Add(noOfInputs)
 
-			// 	var subscription Subscriber[T]
-
-			// 	activeSubscriptions = []Subscriber[T]{subscription}
-			// }
-
-			// emit := func(index int, v Notification[T]) {
-			// 	mu.RLock()
-			// 	if unsubscribed {
-			// 		mu.RUnlock()
-			// 		return
-			// 	}
-
-			// 	log.Println("isThis", index)
-
-			// 	mu.RUnlock()
+			// unsubscribeAll := func() {
 			// 	mu.Lock()
-			// 	unsubscribed = true
+			// 	for _, v := range activeSubscriptions {
+			// 		v.Stop()
+			// 		log.Println(v)
+			// 	}
 			// 	mu.Unlock()
-			// 	// 	unsubscribeAll(index)
-
-			// 	subscriber.Send() <- v
 			// }
+
+			benchmarkStream := func(idx int, stream Subscriber[T]) {
+				defer stream.Stop()
+
+			observe:
+				for {
+					select {
+					case <-subscriber.Closed():
+						log.Println("downstream closing ", idx)
+						break observe
+
+					case <-stopCh:
+						log.Println("Closing stream")
+						break observe
+
+					case item, ok := <-stream.ForEach():
+						if !ok {
+							break observe
+						}
+
+						select {
+						case fastestCh <- idx:
+							// Inform I'm the winner
+						default:
+							stream.Stop()
+							break observe
+						}
+
+						// mu.Lock()
+						// defer mu.Unlock()
+						// for _, sub := range activeSubscriptions {
+						// 	sub.Stop()
+						// }
+						// activeSubscriptions = []Subscriber[T]{}
+						log.Println("ForEach ah", idx, item)
+						// fastestCh <- idx
+						// obs.Stop()
+					}
+				}
+			}
 
 			for i, v := range inputs {
-				activeSubscriptions[i] = v.SubscribeOn(func() {
-					log.Println("DONE here")
-					// wg.Done()
-				})
-				go func(idx int, obs Subscriber[T]) {
-					// defer wg.Done()
-					defer log.Println("closing routine", idx)
-
-					for {
-						select {
-						case <-subscriber.Closed():
-							log.Println("downstream closing ", idx)
-							return
-						case <-obs.Closed():
-							log.Println("upstream closing ", idx)
-							return
-						case item := <-obs.ForEach():
-							// mu.Lock()
-							// defer mu.Unlock()
-							// for _, sub := range activeSubscriptions {
-							// 	sub.Stop()
-							// }
-							// activeSubscriptions = []Subscriber[T]{}
-							log.Println("ForEach ah", idx, item)
-							fastestCh <- idx
-							// obs.Stop()
-						}
-					}
-				}(i, activeSubscriptions[i])
+				activeSubscriptions[i] = v.SubscribeOn()
+				go benchmarkStream(i, activeSubscriptions[i])
 			}
 
-			log.Println("Fastest", <-fastestCh)
-			mu.Lock()
-			for _, v := range activeSubscriptions {
-				v.Stop()
-				log.Println(v)
+			// unsubscribeAll()
+
+			for {
+				select {
+				case item, ok := <-fastestCh:
+					stopCh <- struct{}{}
+					log.Println(item, ok)
+				}
 			}
-			mu.Unlock()
-			// wg.Wait()
 
-			log.Println("END")
-
-			subscriber.Send() <- Complete[T]()
+			Complete[T]().Send(subscriber)
 		})
 	}
 }

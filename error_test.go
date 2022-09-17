@@ -71,6 +71,23 @@ func TestCatchError(t *testing.T) {
 }
 
 func TestRetry(t *testing.T) {
+	t.Run("Retry with EMPTY", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			EMPTY[any](),
+			Retry[any, uint8](2),
+		), []any{}, nil, true)
+	})
+
+	t.Run("Retry with ThrowError", func(t *testing.T) {
+		var err = fmt.Errorf("throwing")
+		checkObservableResults(t, Pipe1(
+			ThrowError[string](func() error {
+				return err
+			}),
+			Retry[string, uint8](2),
+		), []string{}, err, false)
+	})
+
 	t.Run("Retry with count 2", func(t *testing.T) {
 		var err = fmt.Errorf("throw five")
 		checkObservableResults(t, Pipe2(

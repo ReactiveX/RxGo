@@ -391,6 +391,14 @@ func Sample[T any, R any](notifier Observable[R]) OperatorFunc[T, T] {
 	}
 }
 
+// Emits the most recently emitted value from the source Observable within periodic time
+// intervals.
+func SampleTime[T any](duration time.Duration) OperatorFunc[T, T] {
+	return func(source Observable[T]) Observable[T] {
+		return Pipe1(source, Sample[T](Interval(duration)))
+	}
+}
+
 // Returns an observable that asserts that only one value is emitted from the observable
 // that matches the predicate. If no predicate is provided, then it will assert that the
 // observable only emits one value.
@@ -758,6 +766,7 @@ func Throttle[T any, R any](durationSelector func(value T) Observable[R]) Operat
 						item.Send(subscriber)
 						canEmit = false
 					}
+
 					wg.Add(1)
 					durationSelector(item.Value()).SubscribeOn(wg.Done)
 				}

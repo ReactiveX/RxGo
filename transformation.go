@@ -621,11 +621,11 @@ func MergeMap[T any, R any](project ProjectionFunc[T, R]) OperatorFunc[T, R] {
 					select {
 					case <-subscriber.Closed():
 						downStream.Stop()
-						return
+						break loop
 
 					case item, ok := <-downStream.ForEach():
 						if !ok {
-							return
+							break loop
 						}
 
 						if item.Done() {
@@ -674,9 +674,7 @@ func MergeMap[T any, R any](project ProjectionFunc[T, R]) OperatorFunc[T, R] {
 
 			wg.Wait()
 
-			// if errCount < 1 {
-			// 	Complete[R]().Send(subscriber)
-			// }
+			Complete[R]().Send(subscriber)
 		})
 	}
 }
@@ -684,9 +682,47 @@ func MergeMap[T any, R any](project ProjectionFunc[T, R]) OperatorFunc[T, R] {
 // Applies an accumulator function over the source Observable where the accumulator function
 // itself returns an Observable, then each intermediate Observable returned is merged into
 // the output Observable.
-func MergeScan[T any, R any](accumulator func(acc R, value T, index uint) Observable[R], seed R) OperatorFunc[T, R] {
-	return func(source Observable[T]) Observable[R] {
-		return nil
+func MergeScan[V any, A any](accumulator func(acc A, value V, index uint) Observable[A], seed A, concurrent ...uint) OperatorFunc[V, A] {
+	return func(source Observable[V]) Observable[A] {
+		return newObservable(func(subscriber Subscriber[A]) {
+			var (
+				wg = new(sync.WaitGroup)
+			)
+
+			wg.Add(1)
+
+			var (
+				index      uint
+				finalValue = seed
+				upStream   = source.SubscribeOn(wg.Done)
+			)
+
+			// MergeScan internally keeps the value of the acc parameter:
+			// as long as the source Observable emits without inner Observable emitting,
+			// the acc will be set to seed.
+
+			observeStream := func() {
+				Next(finalValue).Send(subscriber)
+			}
+
+		loop:
+			for {
+				select {
+				case <-subscriber.Closed():
+				case item, ok := <-upStream.ForEach():
+					if !ok {
+						break loop
+					}
+
+					wg.Add(1)
+					accumulator(finalValue, item.Value(), index).SubscribeOn(wg.Done)
+					observeStream()
+					index++
+				}
+			}
+
+			wg.Wait()
+		})
 	}
 }
 
