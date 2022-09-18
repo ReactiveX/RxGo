@@ -1,15 +1,14 @@
 package rxgo
 
 import (
-	"log"
 	"reflect"
 	"sync"
 	"time"
 )
 
-// Ignores source values for a duration determined by another Observable, then emits the
-// most recent value from the source Observable, then repeats this process.
-func Audit[T any](durationSelector func(value T) Observable[any]) OperatorFunc[T, T] {
+// Ignores source values for a duration determined by another Observable, then
+// emits the most recent value from the source Observable, then repeats this process.
+func Audit[T any, R any](durationSelector func(value T) Observable[R]) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {
 			var (
@@ -19,24 +18,55 @@ func Audit[T any](durationSelector func(value T) Observable[any]) OperatorFunc[T
 			wg.Add(1)
 
 			var (
-				upStream    = source.SubscribeOn(wg.Done)
-				latestValue T
+				upStream       = source.SubscribeOn(wg.Done)
+				durationStream Subscriber[R]
+				durationCh     = make(<-chan Notification[R])
+				latestValue    T
 			)
+
+			unsubsribe := func() {
+				if durationStream != nil {
+					durationStream.Stop()
+				}
+				durationStream = nil
+			}
 
 		observe:
 			for {
 				select {
 				case <-subscriber.Closed():
+					upStream.Stop()
+					break observe
+
 				case item, ok := <-upStream.ForEach():
 					if !ok {
 						break observe
 					}
+
+					if err := item.Err(); err != nil {
+						unsubsribe()
+						Error[T](err).Send(subscriber)
+						break observe
+					}
+
+					if item.Done() {
+						unsubsribe()
+						Complete[T]().Send(subscriber)
+						break observe
+					}
+
 					latestValue = item.Value()
-					log.Println(item, ok)
+					if durationStream == nil {
+						wg.Add(1)
+						durationStream = durationSelector(latestValue).SubscribeOn(wg.Done)
+						durationCh = durationStream.ForEach()
+					}
+
+				case <-durationCh:
+					Next(latestValue).Send(subscriber)
+					unsubsribe()
 				}
 			}
-
-			log.Println(latestValue)
 
 			wg.Wait()
 		})

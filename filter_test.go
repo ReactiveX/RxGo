@@ -6,6 +6,44 @@ import (
 	"time"
 )
 
+func TestAudit(t *testing.T) {
+	t.Run("Audit with EMPTY", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(
+			EMPTY[any](),
+			Audit(func(v any) Observable[uint] {
+				return Interval(time.Millisecond * 10)
+			}),
+		), nil, nil, true)
+	})
+
+	t.Run("Audit with outer error", func(t *testing.T) {
+		var err = errors.New("failed")
+		checkObservableResult(t, Pipe1(
+			ThrowError[any](func() error {
+				return err
+			}),
+			Audit(func(v any) Observable[uint] {
+				return Interval(time.Millisecond * 10)
+			}),
+		), nil, err, false)
+	})
+
+	// t.Run("Audit with inner error", func(t *testing.T) {
+	// 	var err = errors.New("failed")
+	// 	checkObservableResults(t, Pipe1(
+	// 		Range[uint](1, 10),
+	// 		Audit(func(v uint) Observable[any] {
+	// 			if v < 5 {
+	// 				return Of2[any](v)
+	// 			}
+	// 			return ThrowError[any](func() error {
+	// 				return err
+	// 			})
+	// 		}),
+	// 	), []uint{1, 2, 3, 4, 5}, err, false)
+	// })
+}
+
 func TestDebounceTime(t *testing.T) {
 	t.Run("DebounceTime with EMPTY", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(
