@@ -186,7 +186,7 @@ func BufferTime[T any](bufferTimeSpan time.Duration) OperatorFunc[T, []T] {
 
 // Buffers the source Observable values starting from an emission from openings and ending
 // when the output of closingSelector emits.
-func BufferToggle[T any, O any](openings func() Observable[O], closingSelector func(value O) Observable[O]) OperatorFunc[T, []T] {
+func BufferToggle[T any, O any](openings Observable[O], closingSelector func(value O) Observable[O]) OperatorFunc[T, []T] {
 	return func(source Observable[T]) Observable[[]T] {
 		return newObservable(func(subscriber Subscriber[[]T]) {
 			var (
@@ -196,12 +196,28 @@ func BufferToggle[T any, O any](openings func() Observable[O], closingSelector f
 			wg.Add(2)
 
 			var (
-				buffer      = make([]T, 0)
-				startStream = openings().SubscribeOn(wg.Done)
-				upStream    = source.SubscribeOn(wg.Done)
 				allowed     bool
-				emitStream  = make(<-chan Notification[O], 1)
+				buffer      []T
+				startStream = openings.SubscribeOn(wg.Done)
+				upStream    = source.SubscribeOn(wg.Done)
+				emitStream  Subscriber[O]
+				stopCh      <-chan Notification[O]
 			)
+
+			setupValues := func() {
+				allowed = false
+				buffer = make([]T, 0)
+				stopCh = make(<-chan Notification[O])
+			}
+
+			unsubscribeAll := func() {
+				startStream.Stop()
+				if emitStream != nil {
+					emitStream.Stop()
+				}
+			}
+
+			setupValues()
 
 			// Buffers values from the source by opening the buffer via signals from an
 			// Observable provided to openings, and closing and sending the buffers when a
@@ -217,19 +233,42 @@ func BufferToggle[T any, O any](openings func() Observable[O], closingSelector f
 						break observe
 					}
 
+					allowed = true
+					if emitStream != nil {
+						// Unsubscribe the previous one
+						emitStream.Stop()
+					}
 					wg.Add(1)
-					emitStream = closingSelector(item.Value()).SubscribeOn(wg.Done).ForEach()
+					emitStream = closingSelector(item.Value()).SubscribeOn(wg.Done)
+					stopCh = emitStream.ForEach()
+
+				case <-stopCh:
+					Next(buffer).Send(subscriber)
+					if emitStream != nil {
+						emitStream.Stop()
+					}
+					setupValues()
+
 				case item, ok := <-upStream.ForEach():
 					if !ok {
+						break observe
+					}
+
+					if err := item.Err(); err != nil {
+						unsubscribeAll()
+						Error[[]T](err).Send(subscriber)
+						break observe
+					}
+
+					if item.Done() {
+						unsubscribeAll()
+						Complete[[]T]().Send(subscriber)
 						break observe
 					}
 
 					if allowed {
 						buffer = append(buffer, item.Value())
 					}
-
-				case <-emitStream:
-					Next(buffer).Send(subscriber)
 				}
 			}
 

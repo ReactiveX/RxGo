@@ -96,6 +96,32 @@ func TestBufferTime(t *testing.T) {
 	})
 }
 
+func TestBufferToggle(t *testing.T) {
+	toggleFunc := BufferToggle[uint](Interval(time.Second), func(v uint) Observable[uint] {
+		if v%2 == 0 {
+			return Interval(time.Millisecond * 500)
+		}
+		return EMPTY[uint]()
+	})
+
+	t.Run("BufferToggle with EMPTY", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			EMPTY[uint](),
+			toggleFunc,
+		), [][]uint{}, nil, true)
+	})
+
+	t.Run("BufferToggle with error", func(t *testing.T) {
+		var err = errors.New("failed")
+		checkObservableResults(t, Pipe1(
+			ThrowError[uint](func() error {
+				return err
+			}),
+			toggleFunc,
+		), [][]uint{}, err, false)
+	})
+}
+
 func TestBufferWhen(t *testing.T) {
 	// t.Run("BufferWhen with EMPTY", func(t *testing.T) {
 	// 	checkObservableResults(t, Pipe1(

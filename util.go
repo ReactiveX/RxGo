@@ -172,9 +172,7 @@ func createOperatorFunc[T any, R any](
 
 		obs := &consumerObserver[R]{
 			onNext: func(v R) {
-				if !Next(v).Send(subscriber) {
-					stop = true
-				}
+				Next(v).Send(subscriber)
 			},
 			onError: func(err error) {
 				upStream.Stop()

@@ -2,10 +2,13 @@ package rxgo
 
 import (
 	"errors"
-	"log"
 	"sync"
 	"sync/atomic"
 )
+
+func CombineLatestAll() {
+	// TODO: implement `CombineLatestAll`
+}
 
 // Create an observable that combines the latest values from all passed observables
 // and the source into arrays and emits them.
@@ -16,6 +19,7 @@ func CombineLatestWith[T any](sources ...Observable[T]) OperatorFunc[T, []T] {
 			var (
 				noOfSource   = len(sources)
 				emitCount    = new(atomic.Uint32)
+				errOnce      = new(atomic.Pointer[error])
 				errCh        = make(chan error, 1)
 				stopCh       = make(chan struct{})
 				wg           = new(sync.WaitGroup)
@@ -39,7 +43,7 @@ func CombineLatestWith[T any](sources ...Observable[T]) OperatorFunc[T, []T] {
 				)
 
 			loop:
-				for {
+				for errOnce.Load() != nil {
 					select {
 					case <-subscriber.Closed():
 						upStream.Stop()
@@ -55,7 +59,7 @@ func CombineLatestWith[T any](sources ...Observable[T]) OperatorFunc[T, []T] {
 						}
 
 						if err := item.Err(); err != nil {
-							errCh <- err
+							errOnce.CompareAndSwap(nil, &err)
 							break loop
 						}
 
@@ -105,7 +109,98 @@ func CombineLatestWith[T any](sources ...Observable[T]) OperatorFunc[T, []T] {
 	}
 }
 
-// Accepts an Array of ObservableInput or a dictionary Object of ObservableInput
+// Converts a higher-order Observable into a first-order Observable by
+// concatenating the inner Observables in order.
+func ConcatAll[T any]() OperatorFunc[Observable[T], T] {
+	return func(source Observable[Observable[T]]) Observable[T] {
+		return newObservable(func(subscriber Subscriber[T]) {
+			var (
+				wg = new(sync.WaitGroup)
+			)
+
+			wg.Add(1)
+
+			var (
+				index      uint
+				upStream   = source.SubscribeOn(wg.Done)
+				downStream Subscriber[T]
+			)
+
+			unsubscribeAll := func() {
+				upStream.Stop()
+				if downStream != nil {
+					downStream.Stop()
+				}
+			}
+
+		outerLoop:
+			for {
+				select {
+				case <-subscriber.Closed():
+					upStream.Stop()
+					break outerLoop
+
+				case item, ok := <-upStream.ForEach():
+					// If the upstream closed, we break
+					if !ok {
+						break outerLoop
+					}
+
+					if err := item.Err(); err != nil {
+						Error[T](err).Send(subscriber)
+						break outerLoop
+					}
+
+					if item.Done() {
+						Complete[T]().Send(subscriber)
+						break outerLoop
+					}
+
+					wg.Add(1)
+					// we should wait the projection to complete
+					downStream = item.Value().SubscribeOn(wg.Done)
+
+				innerLoop:
+					for {
+						select {
+						case <-subscriber.Closed():
+							unsubscribeAll()
+							break outerLoop
+
+						case item, ok := <-downStream.ForEach():
+							if !ok {
+								break innerLoop
+							}
+
+							if err := item.Err(); err != nil {
+								unsubscribeAll()
+								item.Send(subscriber)
+								break outerLoop
+							}
+
+							if item.Done() {
+								// downStream.Stop()
+								break innerLoop
+							}
+
+							item.Send(subscriber)
+						}
+					}
+
+					index++
+				}
+			}
+
+			wg.Wait()
+		})
+	}
+}
+
+func ConcatWith() {
+	// TODO: implement `ConcatWith`
+}
+
+// FIXME: Accepts an Array of ObservableInput or a dictionary Object of ObservableInput
 // and returns an Observable that emits either an array of values in the exact same
 // order as the passed array, or a dictionary of values in the same shape as the
 // passed dictionary.
@@ -229,7 +324,7 @@ func ForkJoin[T any](sources ...Observable[T]) Observable[[]T] {
 	})
 }
 
-// Merge the values from all observables to a single observable result.
+// FIXME: Merge the values from all observables to a single observable result.
 func MergeWith[T any](input Observable[T], inputs ...Observable[T]) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
 		inputs = append([]Observable[T]{source, input}, inputs...)
@@ -265,7 +360,6 @@ func MergeWith[T any](input Observable[T], inputs ...Observable[T]) OperatorFunc
 					err.Swap(&v)
 					close(stopCh)
 				}
-				log.Println("EDN Routine")
 			}()
 
 			observeStream := func(index int, stream Subscriber[T]) {
@@ -336,7 +430,7 @@ func MergeWith[T any](input Observable[T], inputs ...Observable[T]) OperatorFunc
 	}
 }
 
-// Creates an Observable that mirrors the first source Observable to emit a
+// FIXME: Creates an Observable that mirrors the first source Observable to emit a
 // next, error or complete notification from the combination of the Observable
 // to which the operator is applied and supplied Observables.
 func RaceWith[T any](input Observable[T], inputs ...Observable[T]) OperatorFunc[T, T] {
@@ -344,16 +438,16 @@ func RaceWith[T any](input Observable[T], inputs ...Observable[T]) OperatorFunc[
 		inputs = append([]Observable[T]{source, input}, inputs...)
 		return newObservable(func(subscriber Subscriber[T]) {
 			var (
-				// wg                  = new(sync.WaitGroup)
-				noOfInputs          = len(inputs)
-				fastestCh           = make(chan int, 1)
-				stopCh              = make(chan struct{})
+				wg         = new(sync.WaitGroup)
+				noOfInputs = len(inputs)
+				// fastest             = int(-1)
+				stopCh              = make(chan int)
 				activeSubscriptions = make([]Subscriber[T], noOfInputs)
 				// mu                  = new(sync.RWMutex)
 				// unsubscribed        bool
 			)
 
-			// wg.Add(noOfInputs)
+			wg.Add(noOfInputs)
 
 			// unsubscribeAll := func() {
 			// 	mu.Lock()
@@ -364,32 +458,33 @@ func RaceWith[T any](input Observable[T], inputs ...Observable[T]) OperatorFunc[
 			// 	mu.Unlock()
 			// }
 
-			benchmarkStream := func(idx int, stream Subscriber[T]) {
+			benchmarkStream := func(index int, stream Subscriber[T]) {
 				defer stream.Stop()
 
 			observe:
 				for {
 					select {
 					case <-subscriber.Closed():
-						log.Println("downstream closing ", idx)
 						break observe
 
-					case <-stopCh:
-						log.Println("Closing stream")
-						break observe
-
-					case item, ok := <-stream.ForEach():
-						if !ok {
+					case v := <-stopCh:
+						if v != index {
 							break observe
 						}
 
-						select {
-						case fastestCh <- idx:
-							// Inform I'm the winner
-						default:
-							stream.Stop()
-							break observe
-						}
+						// case item, ok := <-stream.ForEach():
+						// 	if !ok {
+						// 		break observe
+						// 	}
+
+						// mu.Lock()
+						// select {
+						// case fastestCh <- index:
+						// 	// Inform I'm the winner
+						// default:
+						// 	stream.Stop()
+						// 	break observe
+						// }
 
 						// mu.Lock()
 						// defer mu.Unlock()
@@ -397,7 +492,7 @@ func RaceWith[T any](input Observable[T], inputs ...Observable[T]) OperatorFunc[
 						// 	sub.Stop()
 						// }
 						// activeSubscriptions = []Subscriber[T]{}
-						log.Println("ForEach ah", idx, item)
+						// log.Println("ForEach ah", index, item)
 						// fastestCh <- idx
 						// obs.Stop()
 					}
@@ -405,19 +500,22 @@ func RaceWith[T any](input Observable[T], inputs ...Observable[T]) OperatorFunc[
 			}
 
 			for i, v := range inputs {
-				activeSubscriptions[i] = v.SubscribeOn()
+				activeSubscriptions[i] = v.SubscribeOn(wg.Done)
 				go benchmarkStream(i, activeSubscriptions[i])
 			}
 
 			// unsubscribeAll()
 
-			for {
-				select {
-				case item, ok := <-fastestCh:
-					stopCh <- struct{}{}
-					log.Println(item, ok)
-				}
-			}
+			// stopCh <- <-fastestCh
+			// for {
+			// select {
+			// case stopCh <- <-fastestCh:
+
+			// 	// log.Println(item, ok)
+			// }
+			// }
+
+			wg.Wait()
 
 			Complete[T]().Send(subscriber)
 		})
@@ -449,23 +547,38 @@ func ZipWith[T any](input Observable[T], inputs ...Observable[T]) OperatorFunc[T
 			}
 
 			var (
-				result    = make([]T, noOfSource)
+				result    []T
 				completed uint
 			)
-		loop:
+
+			setupValues := func() {
+				result = make([]T, noOfSource)
+				completed = 0
+			}
+
+			setupValues()
+
+		outerLoop:
 			for {
+
 			innerLoop:
 				for i, obs := range observers {
 					select {
 					case <-subscriber.Closed():
 						unsubscribeAll()
-						break loop
+						break outerLoop
 
 					case item, ok := <-obs.ForEach():
 						if !ok || item.Done() {
 							completed++
 							unsubscribeAll()
 							break innerLoop
+						}
+
+						if err := item.Err(); err != nil {
+							unsubscribeAll()
+							Error[[]T](err).Send(subscriber)
+							break outerLoop
 						}
 
 						if item != nil {
@@ -477,14 +590,131 @@ func ZipWith[T any](input Observable[T], inputs ...Observable[T]) OperatorFunc[T
 				// Any of the stream completed, we will escape
 				if completed > 0 {
 					Complete[[]T]().Send(subscriber)
-					break loop
+					break outerLoop
 				}
 
 				Next(result).Send(subscriber)
 
 				// Reset the values for next loop
-				result = make([]T, noOfSource)
-				completed = 0
+				setupValues()
+			}
+
+			wg.Wait()
+		})
+	}
+}
+
+// Collects all observable inner sources from the source, once the source
+// completes, it will subscribe to all inner sources, combining their
+// values by index and emitting them.
+func ZipAll[T any]() OperatorFunc[Observable[T], []T] {
+	return func(source Observable[Observable[T]]) Observable[[]T] {
+		return newObservable(func(subscriber Subscriber[[]T]) {
+			var (
+				wg = new(sync.WaitGroup)
+			)
+
+			wg.Add(1)
+
+			var (
+				runNext     bool
+				upStream    = source.SubscribeOn(wg.Done)
+				observables = make([]Observable[T], 0)
+			)
+
+			// Collects all observable inner sources from the source, once the
+			// source completes, it will subscribe to all inner sources,
+			// combining their values by index and emitting them.
+		loop:
+			for {
+				select {
+				case <-subscriber.Closed():
+					upStream.Stop()
+					break loop
+
+				case item, ok := <-upStream.ForEach():
+					if !ok {
+						break loop
+					}
+
+					if err := item.Err(); err != nil {
+						Error[[]T](err).Send(subscriber)
+						break loop
+					}
+
+					if item.Done() {
+						runNext = true
+						break loop
+					}
+
+					observables = append(observables, item.Value())
+				}
+			}
+
+			var noOfObservables = len(observables)
+			if runNext && noOfObservables > 0 {
+				var (
+					observers = make([]Subscriber[T], 0, noOfObservables)
+					result    []T
+					completed uint
+				)
+
+				setupValues := func() {
+					result = make([]T, noOfObservables)
+					completed = 0
+				}
+
+				unsubscribeAll := func() {
+					for _, obs := range observers {
+						obs.Stop()
+					}
+				}
+
+				setupValues()
+				wg.Add(noOfObservables)
+				for _, obs := range observables {
+					observers = append(observers, obs.SubscribeOn(wg.Done))
+				}
+
+			outerLoop:
+				for {
+				innerLoop:
+					for i, obs := range observers {
+						select {
+						case <-subscriber.Closed():
+							unsubscribeAll()
+							break outerLoop
+
+						case item, ok := <-obs.ForEach():
+							if !ok || item.Done() {
+								completed++
+								unsubscribeAll()
+								break innerLoop
+							}
+
+							if err := item.Err(); err != nil {
+								unsubscribeAll()
+								Error[[]T](err).Send(subscriber)
+								break outerLoop
+							}
+
+							if item != nil {
+								result[i] = item.Value()
+							}
+						}
+					}
+
+					// Any of the stream completed, we will escape
+					if completed > 0 {
+						Complete[[]T]().Send(subscriber)
+						break outerLoop
+					}
+
+					Next(result).Send(subscriber)
+
+					// Reset the values for next loop
+					setupValues()
+				}
 			}
 
 			wg.Wait()
