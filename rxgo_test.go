@@ -6,24 +6,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func checkObservableResult[T any](t *testing.T, obs Observable[T], result T, err error, isCompleted bool) {
-	var (
-		hasCompleted  bool
-		collectedErr  error
-		collectedData T
-	)
-	obs.SubscribeSync(func(v T) {
-		collectedData = v
-	}, func(err error) {
-		collectedErr = err
-	}, func() {
-		hasCompleted = true
-	})
-	require.Equal(t, collectedData, result)
-	require.Equal(t, hasCompleted, isCompleted)
-	require.Equal(t, collectedErr, err)
-}
-
 func checkObservableHasResults[T any](t *testing.T, obs Observable[T], hasResult bool, err error, isCompleted bool) {
 	var (
 		hasCompleted  bool
@@ -42,6 +24,24 @@ func checkObservableHasResults[T any](t *testing.T, obs Observable[T], hasResult
 	} else {
 		require.True(t, len(collectedData) == 0)
 	}
+	require.Equal(t, hasCompleted, isCompleted)
+	require.Equal(t, collectedErr, err)
+}
+
+func checkObservableResult[T any](t *testing.T, obs Observable[T], result T, err error, isCompleted bool) {
+	var (
+		hasCompleted  bool
+		collectedErr  error
+		collectedData T
+	)
+	obs.SubscribeSync(func(v T) {
+		collectedData = v
+	}, func(err error) {
+		collectedErr = err
+	}, func() {
+		hasCompleted = true
+	})
+	require.Equal(t, collectedData, result)
 	require.Equal(t, hasCompleted, isCompleted)
 	require.Equal(t, collectedErr, err)
 }

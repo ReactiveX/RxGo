@@ -211,7 +211,7 @@ func TestConcatMap(t *testing.T) {
 			Scheduled("z", "q"),
 			ConcatMap(func(x string, i uint) Observable[string] {
 				return Pipe2(
-					Interval(time.Second),
+					Interval(time.Millisecond*10),
 					Map(func(y, idx uint) (string, error) {
 						if idx == 1 {
 							return "", err
