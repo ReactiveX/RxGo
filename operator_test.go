@@ -146,14 +146,14 @@ func TestTimeout(t *testing.T) {
 
 	t.Run("Timeout with timeout error", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(
-			Interval(time.Millisecond*5),
+			Interval(time.Millisecond*10),
 			Timeout[uint](time.Millisecond),
 		), uint(0), ErrTimeout, false)
 	})
 
 	t.Run("Timeout with Scheduled", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(
-			Pipe1(Scheduled("a"), Delay[string](time.Millisecond*50)),
+			Of2("a"),
 			Timeout[string](time.Millisecond*100),
 		), "a", nil, true)
 	})
