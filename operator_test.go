@@ -65,12 +65,12 @@ func TestRepeat(t *testing.T) {
 	})
 }
 
-func TestTap(t *testing.T) {
-	t.Run("Tap with Range(1, 5)", func(t *testing.T) {
+func TestDo(t *testing.T) {
+	t.Run("Do with Range(1, 5)", func(t *testing.T) {
 		result := make([]string, 0)
 		checkObservableResults(t, Pipe1(
 			Range[uint](1, 5),
-			Tap(NewObserver(func(v uint) {
+			Do(NewObserver(func(v uint) {
 				result = append(result, fmt.Sprintf("Number(%v)", v))
 			}, nil, nil)),
 		), []uint{1, 2, 3, 4, 5}, nil, true)
@@ -83,14 +83,14 @@ func TestTap(t *testing.T) {
 		}, result)
 	})
 
-	t.Run("Tap with Error", func(t *testing.T) {
+	t.Run("Do with Error", func(t *testing.T) {
 		var (
 			err    = fmt.Errorf("An error")
 			result = make([]string, 0)
 		)
 		checkObservableResults(t, Pipe1(
 			Scheduled[any](1, err),
-			Tap(NewObserver(func(v any) {
+			Do(NewObserver(func(v any) {
 				result = append(result, fmt.Sprintf("Number(%v)", v))
 			}, nil, nil)),
 		), []any{1}, err, false)

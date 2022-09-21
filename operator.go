@@ -102,7 +102,7 @@ func Repeat[T any, C repeatConfig](config ...C) OperatorFunc[T, T] {
 }
 
 // Used to perform side-effects for notifications from the source observable
-func Tap[T any](cb Observer[T]) OperatorFunc[T, T] {
+func Do[T any](cb Observer[T]) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
 		if cb == nil {
 			cb = NewObserver[T](nil, nil, nil)
@@ -185,21 +185,82 @@ func Delay[T any](duration time.Duration) OperatorFunc[T, T] {
 
 // Delays the emission of items from the source Observable by a given time span
 // determined by the emissions of another Observable.
-func DelayWhen[T any](duration time.Duration) OperatorFunc[T, T] {
+func DelayWhen[T any, R any](delayDurationSelector ProjectionFunc[T, R]) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
-		return createOperatorFunc(
-			source,
-			func(obs Observer[T], v T) {
-				time.Sleep(duration)
-				obs.Next(v)
-			},
-			func(obs Observer[T], err error) {
-				obs.Error(err)
-			},
-			func(obs Observer[T]) {
-				obs.Complete()
-			},
-		)
+		return newObservable(func(subscriber Subscriber[T]) {
+			var (
+				wg = new(sync.WaitGroup)
+			)
+
+			wg.Add(1)
+
+			var (
+				upStream = source.SubscribeOn(wg.Done)
+				index    uint
+			)
+
+			observeStream := func(index uint, value T) {
+				delayStream := delayDurationSelector(value, index).SubscribeOn(wg.Done)
+
+			loop:
+				for {
+					select {
+					case <-subscriber.Closed():
+						delayStream.Stop()
+						break loop
+
+					case item, ok := <-delayStream.ForEach():
+						if !ok {
+							break loop
+						}
+
+						// If the "duration" Observable only emits the complete notification (without next), the value emitted by the source Observable will never get to the output Observable - it will be swallowed.
+						if item.Done() {
+							break loop
+						}
+
+						// If the "duration" Observable errors, the error will be propagated to the output Observable.
+						if err := item.Err(); err != nil {
+							Error[T](err).Send(subscriber)
+							break loop
+						}
+
+						Next(value).Send(subscriber)
+						delayStream.Stop()
+						break loop
+					}
+				}
+			}
+
+		observe:
+			for {
+				select {
+				case <-subscriber.Closed():
+					upStream.Stop()
+					break observe
+
+				case item, ok := <-upStream.ForEach():
+					if !ok {
+						break observe
+					}
+
+					if item.Done() {
+						break observe
+					}
+
+					if err := item.Err(); err != nil {
+						Error[T](err).Send(subscriber)
+						break observe
+					}
+
+					wg.Add(1)
+					observeStream(index, item.Value())
+					index++
+				}
+			}
+
+			wg.Wait()
+		})
 	}
 }
 

@@ -6,9 +6,8 @@ import (
 	"time"
 )
 
-// Ignores source values for a duration determined by another Observable, then
-// emits the most recent value from the source Observable, then repeats this process.
-func Audit[T any, R any](durationSelector func(value T) Observable[R]) OperatorFunc[T, T] {
+// Ignores source values for a duration determined by another Observable, then emits the most recent value from the source Observable, then repeats this process.
+func Audit[T any, R any](durationSelector DurationFunc[T, R]) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {
 			var (
@@ -20,16 +19,23 @@ func Audit[T any, R any](durationSelector func(value T) Observable[R]) OperatorF
 			var (
 				upStream       = source.SubscribeOn(wg.Done)
 				durationStream Subscriber[R]
-				durationCh     = make(<-chan Notification[R])
+				durationCh     <-chan Notification[R]
 				latestValue    T
 			)
 
-			unsubsribe := func() {
+			setValues := func() {
+				durationStream = nil
+				durationCh = make(<-chan Notification[R])
+			}
+
+			unsubscribeStream := func() {
 				if durationStream != nil {
 					durationStream.Stop()
 				}
-				durationStream = nil
+				setValues()
 			}
+
+			setValues()
 
 		observe:
 			for {
@@ -44,13 +50,11 @@ func Audit[T any, R any](durationSelector func(value T) Observable[R]) OperatorF
 					}
 
 					if err := item.Err(); err != nil {
-						unsubsribe()
 						Error[T](err).Send(subscriber)
 						break observe
 					}
 
 					if item.Done() {
-						unsubsribe()
 						Complete[T]().Send(subscriber)
 						break observe
 					}
@@ -62,20 +66,49 @@ func Audit[T any, R any](durationSelector func(value T) Observable[R]) OperatorF
 						durationCh = durationStream.ForEach()
 					}
 
-				case <-durationCh:
+				case item, ok := <-durationCh:
+					if !ok {
+						continue
+					}
+
+					// TODO: handle done?
+
+					if err := item.Err(); err != nil {
+						upStream.Stop()
+						Error[T](err).Send(subscriber)
+						break observe
+					}
+
 					Next(latestValue).Send(subscriber)
-					unsubsribe()
+
+					// reset
+					unsubscribeStream()
 				}
 			}
+
+			// prevent leaking
+			unsubscribeStream()
 
 			wg.Wait()
 		})
 	}
 }
 
-// Emits a notification from the source Observable only after a particular time span
-// has passed without another source emission.
-func DebounceTime[T any](duration time.Duration) OperatorFunc[T, T] {
+// Ignores source values for duration milliseconds, then emits the most recent value from the source Observable, then repeats this process.
+func AuditTime[T any, R any](duration time.Duration) OperatorFunc[T, T] {
+	return func(source Observable[T]) Observable[T] {
+		return Pipe1(
+			source,
+			Debounce(func(value T) Observable[uint] {
+				// FIXME: maybe replace it to timer
+				return Interval(duration)
+			}),
+		)
+	}
+}
+
+// Emits a notification from the source Observable only after a particular time span determined by another Observable has passed without another source emission.
+func Debounce[T any, R any](durationSelector DurationFunc[T, R]) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {
 			var (
@@ -86,41 +119,96 @@ func DebounceTime[T any](duration time.Duration) OperatorFunc[T, T] {
 
 			var (
 				upStream    = source.SubscribeOn(wg.Done)
+				downStream  Subscriber[R]
+				notifyCh    <-chan Notification[R]
 				latestValue T
-				hasValue    bool
-				timeout     = time.After(duration)
 			)
 
-		loop:
+			setValues := func() {
+				downStream = nil
+				notifyCh = make(<-chan Notification[R])
+			}
+
+			unsubscribeStream := func() {
+				if downStream != nil {
+					downStream.Stop()
+				}
+				setValues()
+			}
+
+			setValues()
+
+		observe:
 			for {
 				select {
 				case <-subscriber.Closed():
 					upStream.Stop()
-					break loop
+					break observe
 
 				case item, ok := <-upStream.ForEach():
 					if !ok {
-						break loop
+						break observe
 					}
 
-					ended := item.Err() != nil || item.Done()
-					if ended {
-						item.Send(subscriber)
-						break loop
+					if err := item.Err(); err != nil {
+						Error[T](err).Send(subscriber)
+						break observe
 					}
-					hasValue = true
+
+					if item.Done() {
+						Complete[T]().Send(subscriber)
+						break observe
+					}
+
+					// The notification is emitted only when the duration Observable emits a next notification, and if no other notification was emitted on the source Observable since the duration Observable was spawned. If a new notification appears before the duration Observable emits, the previous notification will not be emitted and a new duration is scheduled from durationSelector is scheduled.
 					latestValue = item.Value()
-
-				case <-timeout:
-					if hasValue {
-						Next(latestValue).Send(subscriber)
+					unsubscribeStream()
+					if downStream == nil {
+						wg.Add(1)
+						downStream = durationSelector(latestValue).SubscribeOn(wg.Done)
+						notifyCh = downStream.ForEach()
 					}
-					timeout = time.After(duration)
+
+				// TODO: goroutine selection is chosen via a uniform pseudo-random selection: https://go.dev/ref/spec#Select_statements
+				case item, ok := <-notifyCh:
+					if !ok {
+						continue
+					}
+
+					// TODO: handle done?
+
+					if err := item.Err(); err != nil {
+						upStream.Stop()
+						Error[T](err).Send(subscriber)
+						break observe
+					}
+
+					Next(latestValue).Send(subscriber)
+
+					// reset
+					unsubscribeStream()
 				}
 			}
 
+			// prevent leaking
+			unsubscribeStream()
+
 			wg.Wait()
 		})
+	}
+}
+
+// Emits a notification from the source Observable only after a particular time span
+// has passed without another source emission.
+func DebounceTime[T any](duration time.Duration) OperatorFunc[T, T] {
+	return func(source Observable[T]) Observable[T] {
+		return Pipe1(
+			source,
+			Debounce(func(value T) Observable[uint] {
+				// FIXME: maybe replace it to timer
+				return Interval(duration)
+			}),
+		)
 	}
 }
 

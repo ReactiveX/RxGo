@@ -28,20 +28,81 @@ func TestAudit(t *testing.T) {
 		), nil, err, false)
 	})
 
-	// t.Run("Audit with inner error", func(t *testing.T) {
+	t.Run("Audit with inner error", func(t *testing.T) {
+		var err = errors.New("failed")
+		checkObservableHasResults(t, Pipe1(
+			Range[uint](1, 100),
+			Audit(func(v uint) Observable[any] {
+				if v < 5 {
+					return Of2[any](v)
+				}
+				return ThrowError[any](func() error {
+					return err
+				})
+			}),
+		), true, err, false)
+	})
+}
+
+func TestDebounce(t *testing.T) {
+	t.Run("Debounce with EMPTY", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(
+			EMPTY[any](),
+			Debounce(func(v any) Observable[any] {
+				return Of2(v)
+			}),
+		), nil, nil, true)
+	})
+
+	t.Run("Debounce with error", func(t *testing.T) {
+		var err = errors.New("failed")
+		checkObservableResult(t, Pipe1(
+			ThrowError[any](func() error {
+				return err
+			}),
+			Debounce(func(v any) Observable[any] {
+				return Of2(v)
+			}),
+		), nil, err, false)
+	})
+
+	t.Run("Debounce with Interval", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			Range[uint](1, 10),
+			Debounce(func(v uint) Observable[uint] {
+				return Interval(time.Millisecond * 100)
+			}),
+		), []uint{}, nil, true)
+	})
+
+	// t.Run("Debounce with inner error", func(t *testing.T) {
 	// 	var err = errors.New("failed")
-	// 	checkObservableResults(t, Pipe1(
-	// 		Range[uint](1, 10),
-	// 		Audit(func(v uint) Observable[any] {
-	// 			if v < 5 {
-	// 				return Of2[any](v)
-	// 			}
-	// 			return ThrowError[any](func() error {
+	// 	checkObservableHasResults(t, Pipe1(
+	// 		Range[uint](1, 100),
+	// 		Debounce(func(v uint) Observable[uint] {
+	// 			return ThrowError[uint](func() error {
 	// 				return err
 	// 			})
 	// 		}),
-	// 	), []uint{1, 2, 3, 4, 5}, err, false)
+	// 	), true, err, false)
 	// })
+
+	t.Run("Debounce with conditional error (Inputs should skip due to debounce)", func(t *testing.T) {
+		t.Parallel()
+
+		var err = errors.New(`cannot accept more than 1`)
+		checkObservableHasResults(t, Pipe1(
+			Interval(time.Millisecond*100),
+			Debounce(func(v uint) Observable[uint] {
+				if v >= 1 {
+					return ThrowError[uint](func() error {
+						return err
+					})
+				}
+				return Interval(time.Millisecond * 500)
+			}),
+		), false, err, false)
+	})
 }
 
 func TestDebounceTime(t *testing.T) {
@@ -59,6 +120,26 @@ func TestDebounceTime(t *testing.T) {
 				return err
 			}), DebounceTime[any](time.Millisecond),
 		), nil, err, false)
+	})
+
+	t.Run("DebounceTime with Interval less than debounce time", func(t *testing.T) {
+		checkObservableHasResults(t, Pipe2(
+			Interval(time.Millisecond*10),
+			Take[uint](3), // 30ms
+			Debounce(func(v uint) Observable[uint] {
+				return Interval(time.Millisecond * 100)
+			}),
+		), false, nil, true)
+	})
+
+	t.Run("DebounceTime with Interval greater than debounce time", func(t *testing.T) {
+		checkObservableHasResults(t, Pipe2(
+			Interval(time.Millisecond*100),
+			Take[uint](3), // 300ms
+			Debounce(func(v uint) Observable[uint] {
+				return Interval(time.Millisecond * 10)
+			}),
+		), true, nil, true)
 	})
 }
 
@@ -120,6 +201,7 @@ func TestDistinctUntilChanged(t *testing.T) {
 			engineVersion       string
 			transmissionVersion string
 		}
+
 		checkObservableResults(t,
 			Pipe1(
 				Of2(
@@ -146,6 +228,7 @@ func TestDistinctUntilChanged(t *testing.T) {
 			updatedBy string
 			data      []string
 		}
+
 		checkObservableResults(t,
 			Pipe1(
 				Of2(
