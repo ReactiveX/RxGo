@@ -8,9 +8,9 @@ import (
 )
 
 func TestCatch(t *testing.T) {
-	t.Run("Catch with EMPTY", func(t *testing.T) {
+	t.Run("Catch with Empty", func(t *testing.T) {
 		checkObservableResults(t, Pipe1(
-			EMPTY[string](),
+			Empty[string](),
 			Catch(func(err error, caught Observable[string]) Observable[string] {
 				return Of2("I", "II", "III", "IV", "V")
 			}),
@@ -26,10 +26,10 @@ func TestCatch(t *testing.T) {
 		), []string{"A", "I", "II", "III", "IV", "V", "Z"}, nil, true)
 	})
 
-	t.Run("Catch with ThrowError", func(t *testing.T) {
+	t.Run("Catch with Throw", func(t *testing.T) {
 		var err = fmt.Errorf("throw")
 		checkObservableResults(t, Pipe1(
-			ThrowError[string](func() error {
+			Throw[string](func() error {
 				return err
 			}),
 			Catch(func(err error, caught Observable[string]) Observable[string] {
@@ -72,17 +72,17 @@ func TestCatch(t *testing.T) {
 }
 
 func TestRetry(t *testing.T) {
-	t.Run("Retry with EMPTY", func(t *testing.T) {
+	t.Run("Retry with Empty", func(t *testing.T) {
 		checkObservableResults(t, Pipe1(
-			EMPTY[any](),
+			Empty[any](),
 			Retry[any, uint8](2),
 		), []any{}, nil, true)
 	})
 
-	t.Run("Retry with ThrowError", func(t *testing.T) {
+	t.Run("Retry with Throw", func(t *testing.T) {
 		var err = fmt.Errorf("throwing")
 		checkObservableResults(t, Pipe1(
-			ThrowError[string](func() error {
+			Throw[string](func() error {
 				return err
 			}),
 			Retry[string, uint8](2),
@@ -132,7 +132,7 @@ func TestRetry(t *testing.T) {
 				return ok
 			},
 				Of2("x", "^", "@", "#"),
-				ThrowError[string](func() error {
+				Throw[string](func() error {
 					return errors.New("retry")
 				})),
 			Retry[string, uint](3),
@@ -145,7 +145,7 @@ func TestRetry(t *testing.T) {
 			Defer(func() Observable[string] {
 				count++
 				if count < 2 {
-					return ThrowError[string](func() error {
+					return Throw[string](func() error {
 						return errors.New("retry")
 					})
 				}
@@ -161,7 +161,7 @@ func TestRetry(t *testing.T) {
 			Defer(func() Observable[string] {
 				count++
 				if count <= 3 {
-					return ThrowError[string](func() error {
+					return Throw[string](func() error {
 						return errors.New("retry")
 					})
 				}
@@ -180,7 +180,7 @@ func TestRetry(t *testing.T) {
 			Defer(func() Observable[string] {
 				count++
 				if count < 5 {
-					return ThrowError[string](func() error {
+					return Throw[string](func() error {
 						return err
 					})
 				}

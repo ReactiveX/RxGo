@@ -17,12 +17,12 @@ func TestNever(t *testing.T) {
 }
 
 func TestEmpty(t *testing.T) {
-	checkObservableResults(t, EMPTY[any](), []any{}, nil, true)
+	checkObservableResults(t, Empty[any](), []any{}, nil, true)
 }
 
-func TestThrowError(t *testing.T) {
+func TestThrow(t *testing.T) {
 	var v = fmt.Errorf("uncaught error")
-	checkObservableResults(t, ThrowError[string](func() error {
+	checkObservableResults(t, Throw[string](func() error {
 		return v
 	}), []string{}, v, false)
 }
@@ -83,20 +83,20 @@ func TestTimer(t *testing.T) {
 }
 
 func TestIif(t *testing.T) {
-	t.Run("Iif with EMPTY and Interval", func(t *testing.T) {
+	t.Run("Iif with Empty and Interval", func(t *testing.T) {
 		flag := true
 		iif := Iif(func() bool {
 			return flag
-		}, EMPTY[uint](), Pipe1(Interval(time.Millisecond), Take[uint](3)))
+		}, Empty[uint](), Pipe1(Interval(time.Millisecond), Take[uint](3)))
 		checkObservableResult(t, iif, uint(0), nil, true)
 		flag = false
 		checkObservableResults(t, iif, []uint{0, 1, 2}, nil, true)
 	})
 
-	t.Run("Iif with Scheduled and EMPTY", func(t *testing.T) {
+	t.Run("Iif with Scheduled and Empty", func(t *testing.T) {
 		iif := Iif(func() bool {
 			return true
-		}, Scheduled("a", "q", "%", "@"), EMPTY[string]())
+		}, Scheduled("a", "q", "%", "@"), Empty[string]())
 		checkObservableResults(t, iif, []string{"a", "q", "%", "@"}, nil, true)
 	})
 
@@ -104,7 +104,7 @@ func TestIif(t *testing.T) {
 		var err = errors.New("throw")
 		iif := Iif(func() bool {
 			return true
-		}, Scheduled[any]("a", err, "%", "@"), EMPTY[any]())
+		}, Scheduled[any]("a", err, "%", "@"), Empty[any]())
 		checkObservableResults(t, iif, []any{"a"}, err, false)
 	})
 }

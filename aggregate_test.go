@@ -6,8 +6,8 @@ import (
 )
 
 func TestCount(t *testing.T) {
-	t.Run("Count with EMPTY", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(EMPTY[any](), Count[any]()), uint(0), nil, true)
+	t.Run("Count with Empty", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(Empty[any](), Count[any]()), uint(0), nil, true)
 	})
 
 	t.Run("Count everything from Range(0,7)", func(t *testing.T) {
@@ -27,8 +27,8 @@ type human struct {
 }
 
 func TestMax(t *testing.T) {
-	t.Run("Max with EMPTY", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(EMPTY[any](), Max[any]()), nil, nil, true)
+	t.Run("Max with Empty", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(Empty[any](), Max[any]()), nil, nil, true)
 	})
 
 	t.Run("Max with numbers", func(t *testing.T) {
@@ -50,8 +50,8 @@ func TestMax(t *testing.T) {
 }
 
 func TestMin(t *testing.T) {
-	t.Run("Min with EMPTY", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(EMPTY[any](), Min[any]()), nil, nil, true)
+	t.Run("Min with Empty", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(Empty[any](), Min[any]()), nil, nil, true)
 	})
 
 	t.Run("Min with numbers", func(t *testing.T) {
@@ -78,9 +78,9 @@ func TestMin(t *testing.T) {
 }
 
 func TestReduce(t *testing.T) {
-	t.Run("Reduce with EMPTY", func(t *testing.T) {
+	t.Run("Reduce with Empty", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(
-			EMPTY[uint](),
+			Empty[uint](),
 			Reduce(func(acc, cur, _ uint) (uint, error) {
 				return acc + cur, nil
 			}, 0),

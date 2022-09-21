@@ -710,7 +710,7 @@ func SkipWhile[T any](predicate func(v T, index uint) bool) OperatorFunc[T, T] {
 func Take[T any](count uint) OperatorFunc[T, T] {
 	if count == 0 {
 		return func(source Observable[T]) Observable[T] {
-			return EMPTY[T]()
+			return Empty[T]()
 		}
 	}
 

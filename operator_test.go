@@ -10,9 +10,9 @@ import (
 )
 
 func TestRepeat(t *testing.T) {
-	t.Run("Repeat with EMPTY", func(t *testing.T) {
+	t.Run("Repeat with Empty", func(t *testing.T) {
 		checkObservableResults(t, Pipe1(
-			EMPTY[any](),
+			Empty[any](),
 			Repeat[any, uint](3),
 		), []any{}, nil, true)
 	})
@@ -31,7 +31,7 @@ func TestRepeat(t *testing.T) {
 		var err = errors.New("throw")
 		// Repeat with error will no repeat
 		checkObservableResults(t, Pipe1(
-			ThrowError[string](func() error {
+			Throw[string](func() error {
 				return err
 			}),
 			Repeat[string, uint](3),
@@ -127,9 +127,9 @@ func TestWithLatestFrom(t *testing.T) {
 // }
 
 func TestTimeout(t *testing.T) {
-	t.Run("Timeout with EMPTY", func(t *testing.T) {
+	t.Run("Timeout with Empty", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(
-			EMPTY[any](),
+			Empty[any](),
 			Timeout[any](time.Second),
 		), nil, nil, true)
 	})
@@ -137,7 +137,7 @@ func TestTimeout(t *testing.T) {
 	t.Run("Timeout with error", func(t *testing.T) {
 		var err = errors.New("failed")
 		checkObservableResult(t, Pipe1(
-			ThrowError[any](func() error {
+			Throw[any](func() error {
 				return err
 			}),
 			Timeout[any](time.Millisecond),
@@ -160,8 +160,8 @@ func TestTimeout(t *testing.T) {
 }
 
 func TestToArray(t *testing.T) {
-	t.Run("ToArray with EMPTY", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(EMPTY[any](), ToArray[any]()), []any{}, nil, true)
+	t.Run("ToArray with Empty", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(Empty[any](), ToArray[any]()), []any{}, nil, true)
 	})
 
 	t.Run("ToArray with error", func(t *testing.T) {

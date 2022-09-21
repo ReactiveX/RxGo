@@ -8,7 +8,7 @@ import (
 func TestDefaultIfEmpty(t *testing.T) {
 	t.Run("DefaultIfEmpty with any", func(t *testing.T) {
 		str := "hello world"
-		checkObservableResult(t, Pipe1(EMPTY[any](), DefaultIfEmpty[any](str)), any(str), nil, true)
+		checkObservableResult(t, Pipe1(Empty[any](), DefaultIfEmpty[any](str)), any(str), nil, true)
 	})
 
 	t.Run("DefaultIfEmpty with non-empty", func(t *testing.T) {
@@ -17,8 +17,8 @@ func TestDefaultIfEmpty(t *testing.T) {
 }
 
 func TestEvery(t *testing.T) {
-	t.Run("Every with EMPTY", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(EMPTY[uint](), Every(func(value, index uint) bool {
+	t.Run("Every with Empty", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(Empty[uint](), Every(func(value, index uint) bool {
 			return value < 10
 		})), true, nil, true)
 	})
@@ -37,8 +37,8 @@ func TestEvery(t *testing.T) {
 }
 
 func TestFind(t *testing.T) {
-	t.Run("Find with EMPTY", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(EMPTY[any](), Find(func(a any, u uint) bool {
+	t.Run("Find with Empty", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(Empty[any](), Find(func(a any, u uint) bool {
 			return a == nil
 		})), None[any](), nil, true)
 	})
@@ -55,7 +55,7 @@ func TestFind(t *testing.T) {
 
 func TestFindIndex(t *testing.T) {
 	t.Run("FindIndex with value that doesn't exist", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(EMPTY[any](), FindIndex(func(a any, u uint) bool {
+		checkObservableResult(t, Pipe1(Empty[any](), FindIndex(func(a any, u uint) bool {
 			return a == nil
 		})), -1, nil, true)
 	})
@@ -71,8 +71,8 @@ func TestFindIndex(t *testing.T) {
 }
 
 func TestIsEmpty(t *testing.T) {
-	t.Run("IsEmpty with EMPTY", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(EMPTY[any](), IsEmpty[any]()), true, nil, true)
+	t.Run("IsEmpty with Empty", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(Empty[any](), IsEmpty[any]()), true, nil, true)
 	})
 
 	t.Run("IsEmpty with error", func(t *testing.T) {
@@ -85,14 +85,20 @@ func TestIsEmpty(t *testing.T) {
 	})
 }
 
+func TestSequenceEqual(t *testing.T) {
+	// TODO: add tests
+	t.Run("SequenceEqual with Empty", func(t *testing.T) {
+	})
+}
+
 func TestThrowIfEmpty(t *testing.T) {
-	t.Run("ThrowIfEmpty with EMPTY", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(EMPTY[any](), ThrowIfEmpty[any]()), nil, ErrEmpty, false)
+	t.Run("ThrowIfEmpty with Empty", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(Empty[any](), ThrowIfEmpty[any]()), nil, ErrEmpty, false)
 	})
 
 	t.Run("ThrowIfEmpty with error factory", func(t *testing.T) {
 		var err = errors.New("something wrong")
-		checkObservableResult(t, Pipe1(EMPTY[any](), ThrowIfEmpty[any](func() error {
+		checkObservableResult(t, Pipe1(Empty[any](), ThrowIfEmpty[any](func() error {
 			return err
 		})), nil, err, false)
 	})

@@ -8,13 +8,13 @@ import (
 )
 
 // An Observable that emits no items to the Observer and never completes.
-func NEVER[T any]() Observable[T] {
+func Never[T any]() Observable[T] {
 	return newObservable(func(sub Subscriber[T]) {})
 }
 
 // A simple Observable that emits no items to the Observer and immediately
 // emits a complete notification.
-func EMPTY[T any]() Observable[T] {
+func Empty[T any]() Observable[T] {
 	return newObservable(func(subscriber Subscriber[T]) {
 		Complete[T]().Send(subscriber)
 	})
@@ -27,7 +27,7 @@ func Defer[T any](factory func() Observable[T]) Observable[T] {
 	// It waits until an Observer subscribes to it, calls the given factory function
 	// to get an Observable -- where a factory function typically generates a new
 	// Observable -- and subscribes the Observer to this Observable. In case the factory
-	// function returns a falsy value, then EMPTY is used as Observable instead.
+	// function returns a falsy value, then Empty is used as Observable instead.
 	// Last but not least, an exception during the factory function call is transferred
 	// to the Observer by calling error.
 	return newObservable(func(subscriber Subscriber[T]) {
@@ -37,7 +37,7 @@ func Defer[T any](factory func() Observable[T]) Observable[T] {
 		)
 
 		if stream == nil {
-			stream = EMPTY[T]()
+			stream = Empty[T]()
 		}
 
 		wg.Add(1)
@@ -170,7 +170,7 @@ func Scheduled[T any](item T, items ...T) Observable[T] {
 // want to return an errored observable, this is unnecessary. In most cases, such as in the
 // inner return of concatMap, mergeMap, defer, and many others, you can simply throw the
 // error, and RxGo will pick that up and notify the consumer of the error.
-func ThrowError[T any](factory ErrorFunc) Observable[T] {
+func Throw[T any](factory ErrorFunc) Observable[T] {
 	return newObservable(func(subscriber Subscriber[T]) {
 		Error[T](factory()).Send(subscriber)
 	})

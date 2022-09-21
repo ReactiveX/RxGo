@@ -1,7 +1,11 @@
 package rxgo
 
-// Emits a given value if the source Observable completes without emitting any
-// next value, otherwise mirrors the source Observable.
+import (
+	"reflect"
+	"sync"
+)
+
+// Emits a given value if the source Observable completes without emitting any next value, otherwise mirrors the source Observable.
 func DefaultIfEmpty[T any](defaultValue T) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
 		var (
@@ -26,8 +30,7 @@ func DefaultIfEmpty[T any](defaultValue T) OperatorFunc[T, T] {
 	}
 }
 
-// Returns an Observable that emits whether or not every item of the
-// source satisfies the condition specified.
+// Returns an Observable that emits whether or not every item of the source satisfies the condition specified.
 func Every[T any](predicate PredicateFunc[T]) OperatorFunc[T, bool] {
 	return func(source Observable[T]) Observable[bool] {
 		var (
@@ -115,8 +118,7 @@ func FindIndex[T any](predicate PredicateFunc[T]) OperatorFunc[T, int] {
 	}
 }
 
-// Emits false if the input Observable emits any values,
-// or emits true if the input Observable completes without emitting any values.
+// Emits false if the input Observable emits any values, or emits true if the input Observable completes without emitting any values.
 func IsEmpty[T any]() OperatorFunc[T, bool] {
 	return func(source Observable[T]) Observable[bool] {
 		var (
@@ -138,9 +140,73 @@ func IsEmpty[T any]() OperatorFunc[T, bool] {
 	}
 }
 
-// If the source observable completes without emitting a value, it will emit an error.
-// The error will be created at that time by the optional errorFactory argument, otherwise,
-// the error will be `ErrEmpty`.
+// Compares all values of two observables in sequence using an optional comparator function and returns an observable of a single boolean value representing whether or not the two sequences are equal.
+func SequenceEqual[T any](compareTo Observable[T], comparator ...ComparatorFunc[T, T]) OperatorFunc[T, bool] {
+	compare := func(a, b T) bool {
+		return reflect.DeepEqual(a, b)
+	}
+	if len(comparator) > 0 {
+		compare = comparator[0]
+	}
+	return func(source Observable[T]) Observable[bool] {
+		return newObservable(func(subscriber Subscriber[bool]) {
+			var (
+				wg = new(sync.WaitGroup)
+			)
+
+			wg.Add(2)
+
+			var (
+				firstValues, secondValues = []T{}, []T{}
+				upStream                  = source.SubscribeOn(wg.Done)
+				downStream                = compareTo.SubscribeOn(wg.Done)
+			)
+
+			compareIsSame := func() {
+				if len(firstValues) > 0 && len(secondValues) > 0 {
+					if !compare(firstValues[0], secondValues[0]) {
+						upStream.Stop()
+						downStream.Stop()
+
+						Next(false).Send(subscriber)
+						Complete[bool]().Send(subscriber)
+						return
+					}
+					firstValues, secondValues = firstValues[1:], secondValues[1:]
+				}
+			}
+
+		observe:
+			for {
+				select {
+				case <-subscriber.Closed():
+					upStream.Stop()
+					break observe
+
+				case item := <-upStream.ForEach():
+					if err := item.Err(); err != nil {
+						break observe
+					}
+
+					firstValues = append(firstValues, item.Value())
+					compareIsSame()
+
+				case item := <-downStream.ForEach():
+					if err := item.Err(); err != nil {
+						break observe
+					}
+
+					secondValues = append(secondValues, item.Value())
+					compareIsSame()
+				}
+			}
+
+			wg.Wait()
+		})
+	}
+}
+
+// If the source observable completes without emitting a value, it will emit an error. The error will be created at that time by the optional errorFactory argument, otherwise, the error will be `ErrEmpty`.
 func ThrowIfEmpty[T any](errorFactory ...ErrorFunc) OperatorFunc[T, T] {
 	factory := func() error {
 		return ErrEmpty

@@ -8,9 +8,9 @@ import (
 )
 
 func TestCombineLatestWith(t *testing.T) {
-	// t.Run("CombineLatestWith EMPTY", func(t *testing.T) {
+	// t.Run("CombineLatestWith Empty", func(t *testing.T) {
 	// 	checkObservableResult(t, Pipe1(
-	// 		EMPTY[any](),
+	// 		Empty[any](),
 	// 		CombineLatestWith(
 	// 			Scheduled[any]("end"),
 	// 			Pipe2(
@@ -37,10 +37,10 @@ func TestCombineLatestWith(t *testing.T) {
 }
 
 func TestForkJoin(t *testing.T) {
-	// t.Run("ForkJoin with one EMPTY", func(t *testing.T) {
+	// t.Run("ForkJoin with one Empty", func(t *testing.T) {
 	// 	// ForkJoin only capture all latest value from every stream
 	// 	checkObservableResult(t, ForkJoin(
-	// 		EMPTY[any](),
+	// 		Empty[any](),
 	// 		Scheduled[any]("j", "k", "end"),
 	// 		Pipe1(Range[uint](1, 10), Map(func(v, _ uint) (any, error) {
 	// 			return v, nil
@@ -48,11 +48,11 @@ func TestForkJoin(t *testing.T) {
 	// 	), []any{nil, "end", uint(10)}, nil, true)
 	// })
 
-	// t.Run("ForkJoin with all EMPTY", func(t *testing.T) {
+	// t.Run("ForkJoin with all Empty", func(t *testing.T) {
 	// 	checkObservableResult(t, ForkJoin(
-	// 		EMPTY[uint](),
-	// 		EMPTY[uint](),
-	// 		EMPTY[uint](),
+	// 		Empty[uint](),
+	// 		Empty[uint](),
+	// 		Empty[uint](),
 	// 	), []uint{0, 0, 0}, nil, true)
 	// })
 
@@ -72,13 +72,13 @@ func TestForkJoin(t *testing.T) {
 	// 		return fmt.Errorf("failed at %d", index)
 	// 	}
 	// 	checkObservableResultWithAnyError(t, ForkJoin(
-	// 		ThrowError[string](func() error {
+	// 		Throw[string](func() error {
 	// 			return createErr(1)
 	// 		}),
-	// 		ThrowError[string](func() error {
+	// 		Throw[string](func() error {
 	// 			return createErr(2)
 	// 		}),
-	// 		ThrowError[string](func() error {
+	// 		Throw[string](func() error {
 	// 			return createErr(3)
 	// 		}),
 	// 		Scheduled("a"),
@@ -94,11 +94,11 @@ func TestForkJoin(t *testing.T) {
 }
 
 func TestConcatAll(t *testing.T) {
-	t.Run("ConcatAll with EMPTY", func(t *testing.T) {
+	t.Run("ConcatAll with Empty", func(t *testing.T) {
 		checkObservableResults(t, Pipe2(
 			Range[uint](1, 5),
 			Map(func(v, _ uint) (Observable[string], error) {
-				return EMPTY[string](), nil
+				return Empty[string](), nil
 			}),
 			ConcatAll[string](),
 		), []string{}, nil, true)
@@ -109,7 +109,7 @@ func TestConcatAll(t *testing.T) {
 		checkObservableResults(t, Pipe2(
 			Range[uint](1, 5),
 			Map(func(v, _ uint) (Observable[any], error) {
-				return ThrowError[any](func() error {
+				return Throw[any](func() error {
 					return err
 				}), nil
 			}),
@@ -140,10 +140,10 @@ func TestConcatAll(t *testing.T) {
 func TestMergeWith(t *testing.T) {
 	t.Run("MergeWith all EMTPY", func(t *testing.T) {
 		// checkObservableResults(t, Pipe1(
-		// 	EMPTY[any](),
+		// 	Empty[any](),
 		// 	MergeWith(
-		// 		EMPTY[any](),
-		// 		EMPTY[any](),
+		// 		Empty[any](),
+		// 		Empty[any](),
 		// 	),
 		// ), []any{}, nil, true)
 	})
@@ -152,8 +152,8 @@ func TestMergeWith(t *testing.T) {
 		// checkObservableResults(t, Pipe1(
 		// 	Of2[any]("a", "b", "q", "j", "z"),
 		// 	MergeWith(
-		// 		EMPTY[any](),
-		// 		EMPTY[any](),
+		// 		Empty[any](),
+		// 		Empty[any](),
 		// 	),
 		// ), []any{"a", "b", "q", "j", "z"}, nil, true)
 	})
@@ -175,7 +175,7 @@ func TestMergeWith(t *testing.T) {
 		// 				return fmt.Sprintf("b -> %v", v), nil
 		// 			}),
 		// 		),
-		// 		EMPTY[string](),
+		// 		Empty[string](),
 		// 	),
 		// ), []string{
 		// 	"a -> 0", "a -> 1", "a -> 2",
@@ -214,14 +214,14 @@ func TestMergeWith(t *testing.T) {
 	t.Run("MergeWith all errors", func(t *testing.T) {
 		// var err = errors.New("failed")
 		// checkObservableHasResults(t, Pipe1(
-		// 	ThrowError[any](func() error {
+		// 	Throw[any](func() error {
 		// 		return err
 		// 	}),
 		// 	MergeWith(
-		// 		ThrowError[any](func() error {
+		// 		Throw[any](func() error {
 		// 			return err
 		// 		}),
-		// 		ThrowError[any](func() error {
+		// 		Throw[any](func() error {
 		// 			return err
 		// 		}),
 		// 	),
@@ -230,7 +230,7 @@ func TestMergeWith(t *testing.T) {
 }
 
 func TestPartition(t *testing.T) {
-	t.Run("Partition with EMPTY", func(t *testing.T) {})
+	t.Run("Partition with Empty", func(t *testing.T) {})
 
 	t.Run("Partition with error", func(t *testing.T) {})
 
@@ -238,10 +238,10 @@ func TestPartition(t *testing.T) {
 }
 
 func TestRaceWith(t *testing.T) {
-	t.Run("RaceWith with EMPTY", func(t *testing.T) {
+	t.Run("RaceWith with Empty", func(t *testing.T) {
 		// checkObservableResults(t, Pipe1(
-		// 	EMPTY[any](),
-		// 	RaceWith(EMPTY[any](), EMPTY[any]()),
+		// 	Empty[any](),
+		// 	RaceWith(Empty[any](), Empty[any]()),
 		// ), nil, nil, true)
 	})
 
@@ -268,20 +268,20 @@ func TestRaceWith(t *testing.T) {
 }
 
 func TestZipWith(t *testing.T) {
-	t.Run("Zip with all EMPTY", func(t *testing.T) {
+	t.Run("Zip with all Empty", func(t *testing.T) {
 		checkObservableResults(t, Pipe1(
-			EMPTY[any](),
+			Empty[any](),
 			ZipWith(
-				EMPTY[any](),
-				EMPTY[any](),
+				Empty[any](),
+				Empty[any](),
 			),
 		), [][]any{}, nil, true)
 	})
 
-	t.Run("Zip with ThrowError", func(t *testing.T) {
+	t.Run("Zip with Throw", func(t *testing.T) {
 		var err = errors.New("stop")
 		checkObservableResults(t, Pipe1(
-			ThrowError[any](func() error {
+			Throw[any](func() error {
 				return err
 			}),
 			ZipWith(
@@ -311,9 +311,9 @@ func TestZipWith(t *testing.T) {
 		}, err, false)
 	})
 
-	t.Run("Zip with EMPTY and Of", func(t *testing.T) {
+	t.Run("Zip with Empty and Of", func(t *testing.T) {
 		checkObservableResults(t, Pipe1(
-			EMPTY[any](),
+			Empty[any](),
 			ZipWith(
 				Of2[any]("Foo", "Bar", "Beer"),
 				Of2[any](true, true, false),
@@ -350,11 +350,11 @@ func TestZipWith(t *testing.T) {
 }
 
 func TestZipAll(t *testing.T) {
-	t.Run("ZipAll with EMPTY", func(t *testing.T) {
+	t.Run("ZipAll with Empty", func(t *testing.T) {
 		checkObservableResults(t, Pipe2(
 			Range[uint](1, 5),
 			Map(func(v, _ uint) (Observable[string], error) {
-				return EMPTY[string](), nil
+				return Empty[string](), nil
 			}),
 			ZipAll[string](),
 		), [][]string{}, nil, true)
@@ -365,7 +365,7 @@ func TestZipAll(t *testing.T) {
 		checkObservableResults(t, Pipe2(
 			Range[uint](1, 3),
 			Map(func(v, _ uint) (Observable[any], error) {
-				return ThrowError[any](func() error {
+				return Throw[any](func() error {
 					return err
 				}), nil
 			}),

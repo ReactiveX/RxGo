@@ -8,9 +8,9 @@ import (
 )
 
 func TestBuffer(t *testing.T) {
-	// t.Run("Buffer with EMPTY", func(t *testing.T) {
+	// t.Run("Buffer with Empty", func(t *testing.T) {
 	// 	checkObservableResult(t, Pipe1(
-	// 		EMPTY[uint](),
+	// 		Empty[uint](),
 	// 		Buffer[uint](Of2("a")),
 	// 	), []uint{}, nil, true)
 	// })
@@ -18,16 +18,16 @@ func TestBuffer(t *testing.T) {
 	// t.Run("Buffer with error", func(t *testing.T) {
 	// 	var err = fmt.Errorf("failed")
 	// 	checkObservableResult(t, Pipe1(
-	// 		ThrowError[string](func() error {
+	// 		Throw[string](func() error {
 	// 			return err
 	// 		}),
 	// 		Buffer[string](Of2("a")),
 	// 	), []string{}, err, false)
 	// })
 
-	t.Run("Buffer with EMPTY should throw ErrEmpty", func(t *testing.T) {
+	t.Run("Buffer with Empty should throw ErrEmpty", func(t *testing.T) {
 		checkObservableResult(t, Pipe2(
-			EMPTY[string](),
+			Empty[string](),
 			ThrowIfEmpty[string](),
 			Buffer[string](Interval(time.Millisecond)),
 		), nil, ErrEmpty, false)
@@ -44,9 +44,9 @@ func TestBuffer(t *testing.T) {
 }
 
 func TestBufferCount(t *testing.T) {
-	// t.Run("BufferCount with EMPTY", func(t *testing.T) {
+	// t.Run("BufferCount with Empty", func(t *testing.T) {
 	// 	checkObservableResult(t, Pipe1(
-	// 		EMPTY[uint](),
+	// 		Empty[uint](),
 	// 		BufferCount[uint](2),
 	// 	), nil, nil, true)
 	// })
@@ -81,9 +81,9 @@ func TestBufferCount(t *testing.T) {
 }
 
 func TestBufferTime(t *testing.T) {
-	t.Run("BufferTime with EMPTY", func(t *testing.T) {
+	t.Run("BufferTime with Empty", func(t *testing.T) {
 		checkObservableHasResults(t, Pipe1(
-			EMPTY[string](),
+			Empty[string](),
 			BufferTime[string](time.Millisecond*500),
 		), true, nil, true)
 	})
@@ -101,12 +101,12 @@ func TestBufferToggle(t *testing.T) {
 		if v%2 == 0 {
 			return Interval(time.Millisecond * 500)
 		}
-		return EMPTY[uint]()
+		return Empty[uint]()
 	})
 
-	t.Run("BufferToggle with EMPTY", func(t *testing.T) {
+	t.Run("BufferToggle with Empty", func(t *testing.T) {
 		checkObservableResults(t, Pipe1(
-			EMPTY[uint](),
+			Empty[uint](),
 			toggleFunc,
 		), [][]uint{}, nil, true)
 	})
@@ -114,7 +114,7 @@ func TestBufferToggle(t *testing.T) {
 	t.Run("BufferToggle with error", func(t *testing.T) {
 		var err = errors.New("failed")
 		checkObservableResults(t, Pipe1(
-			ThrowError[uint](func() error {
+			Throw[uint](func() error {
 				return err
 			}),
 			toggleFunc,
@@ -123,9 +123,9 @@ func TestBufferToggle(t *testing.T) {
 }
 
 func TestBufferWhen(t *testing.T) {
-	// t.Run("BufferWhen with EMPTY", func(t *testing.T) {
+	// t.Run("BufferWhen with Empty", func(t *testing.T) {
 	// 	checkObservableResults(t, Pipe1(
-	// 		EMPTY[string](),
+	// 		Empty[string](),
 	// 		BufferWhen[string](func() Observable[string] {
 	// 			return Of2("a")
 	// 		}),
@@ -171,7 +171,7 @@ func TestConcatMap(t *testing.T) {
 		), []string{"z[0]", "z[1]"}, err, false)
 	})
 
-	t.Run("ConcatMap with conditional ThrowError", func(t *testing.T) {
+	t.Run("ConcatMap with conditional Throw", func(t *testing.T) {
 		var err = fmt.Errorf("throw")
 
 		mapTo := func(v string, i uint) string {
@@ -185,20 +185,20 @@ func TestConcatMap(t *testing.T) {
 					return Scheduled(mapTo(x, i), mapTo(x, i), mapTo(x, i))
 				}
 
-				return ThrowError[string](func() error {
+				return Throw[string](func() error {
 					return err
 				})
 			}),
 		), []string{"z[0]", "z[0]", "z[0]"}, err, false)
 	})
 
-	t.Run("ConcatMap with ThrowError on return stream", func(t *testing.T) {
+	t.Run("ConcatMap with Throw on return stream", func(t *testing.T) {
 		var err = fmt.Errorf("throw")
 
 		checkObservableResults(t, Pipe1(
 			Scheduled("z", "q"),
 			ConcatMap(func(x string, i uint) Observable[string] {
-				return ThrowError[string](func() error {
+				return Throw[string](func() error {
 					return err
 				})
 			}),
@@ -250,9 +250,9 @@ func TestConcatMap(t *testing.T) {
 }
 
 func TestExhaustMap(t *testing.T) {
-	t.Run("ExhaustMap with EMPTY", func(t *testing.T) {
+	t.Run("ExhaustMap with Empty", func(t *testing.T) {
 		checkObservableResults(t, Pipe1(
-			EMPTY[any](),
+			Empty[any](),
 			ExhaustMap(func(x any, _ uint) Observable[string] {
 				return Pipe1(
 					Range[uint](88, 90),
@@ -266,7 +266,7 @@ func TestExhaustMap(t *testing.T) {
 
 	t.Run("ExhaustMap with error", func(t *testing.T) {
 		checkObservableResults(t, Pipe1(
-			EMPTY[any](),
+			Empty[any](),
 			ExhaustMap(func(x any, _ uint) Observable[string] {
 				return Pipe1(
 					Range[uint](88, 90),
@@ -311,9 +311,9 @@ func TestExhaustAll(t *testing.T) {
 }
 
 func TestGroupBy(t *testing.T) {
-	// t.Run("GroupBy with EMPTY", func(t *testing.T) {
+	// t.Run("GroupBy with Empty", func(t *testing.T) {
 	// 	checkObservableResults(t, Pipe1(
-	// 		EMPTY[any](),
+	// 		Empty[any](),
 	// 		GroupBy[any, any](),
 	// 	), []any{}, nil, true)
 	// })
@@ -334,9 +334,9 @@ func TestGroupBy(t *testing.T) {
 }
 
 func TestMap(t *testing.T) {
-	t.Run("Map with EMPTY", func(t *testing.T) {
+	t.Run("Map with Empty", func(t *testing.T) {
 		checkObservableResults(t, Pipe1(
-			EMPTY[any](),
+			Empty[any](),
 			Map(func(v any, _ uint) (any, error) {
 				return v, nil
 			}),
@@ -373,7 +373,7 @@ func TestMap(t *testing.T) {
 }
 
 func TestMergeMap(t *testing.T) {
-	t.Run("MergeMap with EMPTY", func(t *testing.T) {
+	t.Run("MergeMap with Empty", func(t *testing.T) {
 
 	})
 
@@ -447,8 +447,8 @@ func TestScan(t *testing.T) {
 }
 
 func TestPairWise(t *testing.T) {
-	t.Run("PairWise with EMPTY", func(t *testing.T) {
-		checkObservableResults(t, Pipe1(EMPTY[any](), PairWise[any]()),
+	t.Run("PairWise with Empty", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(Empty[any](), PairWise[any]()),
 			[]Tuple[any, any]{}, nil, true)
 	})
 
