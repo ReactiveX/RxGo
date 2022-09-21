@@ -109,8 +109,7 @@ func CombineLatestWith[T any](sources ...Observable[T]) OperatorFunc[T, []T] {
 	}
 }
 
-// Converts a higher-order Observable into a first-order Observable by
-// concatenating the inner Observables in order.
+// Converts a higher-order Observable into a first-order Observable by  concatenating the inner Observables in order.
 func ConcatAll[T any]() OperatorFunc[Observable[T], T] {
 	return func(source Observable[Observable[T]]) Observable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {
@@ -196,8 +195,59 @@ func ConcatAll[T any]() OperatorFunc[Observable[T], T] {
 	}
 }
 
-func ConcatWith() {
-	// TODO: implement `ConcatWith`
+// Emits all of the values from the source observable, then, once it completes, subscribes to each observable source provided, one at a time, emitting all of their values, and not subscribing to the next one until it completes.
+func ConcatWith[T any](sources ...Observable[T]) OperatorFunc[T, T] {
+	return func(source Observable[T]) Observable[T] {
+		sources = append([]Observable[T]{source}, sources...)
+		return newObservable(func(subscriber Subscriber[T]) {
+			var (
+				wg  = new(sync.WaitGroup)
+				err error
+			)
+
+		outerLoop:
+			for len(sources) > 0 {
+				wg.Add(1)
+				firstSource := sources[0]
+				upStream := firstSource.SubscribeOn(wg.Done)
+
+			innerLoop:
+				for {
+					select {
+					case <-subscriber.Closed():
+						upStream.Stop()
+						return
+
+					case item, ok := <-upStream.ForEach():
+						if !ok {
+							break innerLoop
+						}
+
+						if item.Done() {
+							// start another loop
+							break innerLoop
+						}
+
+						if err = item.Err(); err != nil {
+							break outerLoop
+						}
+
+						item.Send(subscriber)
+					}
+				}
+
+				sources = sources[1:]
+			}
+
+			if err != nil {
+				Error[T](err).Send(subscriber)
+			} else {
+				Complete[T]().Send(subscriber)
+			}
+
+			wg.Wait()
+		})
+	}
 }
 
 // FIXME: Accepts an Array of ObservableInput or a dictionary Object of ObservableInput

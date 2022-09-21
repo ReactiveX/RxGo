@@ -273,13 +273,16 @@ func WithLatestFrom[A any, B any](input Observable[B]) OperatorFunc[A, Tuple[A, 
 				allOk              [2]bool
 				activeSubscription = 2
 				wg                 = new(sync.WaitGroup)
-				upStream           = source.SubscribeOn(wg.Done)
-				notifySteam        = input.SubscribeOn(wg.Done)
 				latestA            A
 				latestB            B
 			)
 
 			wg.Add(activeSubscription)
+
+			var (
+				upStream    = source.SubscribeOn(wg.Done)
+				notifySteam = input.SubscribeOn(wg.Done)
+			)
 
 			stopAll := func() {
 				upStream.Stop()

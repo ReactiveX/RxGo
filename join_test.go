@@ -36,6 +36,68 @@ func TestCombineLatestWith(t *testing.T) {
 	// })
 }
 
+func TestConcatWith(t *testing.T) {
+	t.Run("ConcatWith all Empty", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			Empty[any](),
+			ConcatWith(
+				Empty[any](),
+				Empty[any](),
+			),
+		), []any{}, nil, true)
+	})
+
+	t.Run("ConcatAll with Throw", func(t *testing.T) {
+		var err = fmt.Errorf("ConcatAll failed")
+		checkObservableResults(t, Pipe1(
+			Throw[any](func() error {
+				return err
+			}),
+			ConcatWith(
+				Empty[any](),
+				Empty[any](),
+			),
+		), []any{}, err, false)
+	})
+
+	t.Run("ConcatAll with inner error", func(t *testing.T) {
+		var err = fmt.Errorf("failed")
+		checkObservableResults(t, Pipe1(
+			Range[uint](1, 8),
+			ConcatWith(
+				Throw[uint](func() error {
+					return err
+				}),
+				Empty[uint](),
+			),
+		), []uint{1, 2, 3, 4, 5, 6, 7, 8}, err, false)
+	})
+
+	t.Run("ConcatWith Empty and Of", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			Empty[uint](),
+			ConcatWith(
+				Of2[uint](88, 667),
+				Range[uint](1, 5),
+			),
+		), []uint{88, 667, 1, 2, 3, 4, 5}, nil, true)
+	})
+
+	t.Run("ConcatWith any values", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			Of2[any]("a", "b", "c", "d"),
+			ConcatWith(
+				Of2[any](1, 2, 88),
+				Of2[any](88.1991, true, false),
+			),
+		), []any{
+			"a", "b", "c", "d",
+			1, 2, 88,
+			88.1991, true, false,
+		}, nil, true)
+	})
+}
+
 func TestForkJoin(t *testing.T) {
 	// t.Run("ForkJoin with one Empty", func(t *testing.T) {
 	// 	// ForkJoin only capture all latest value from every stream
