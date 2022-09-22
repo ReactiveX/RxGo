@@ -1,10 +1,13 @@
 package rxgo
 
 import (
+	"context"
 	"log"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 )
 
 // Buffers the source Observable values until closingNotifier emits.
@@ -447,8 +450,7 @@ func ConcatMap[T any, R any](project ProjectionFunc[T, R]) OperatorFunc[T, R] {
 	}
 }
 
-// Projects each source value to an Observable which is merged in the output Observable
-// only if the previous projected Observable has completed.
+// Projects each source value to an Observable which is merged in the output Observable only if the previous projected Observable has completed.
 func ExhaustMap[T any, R any](project ProjectionFunc[T, R]) OperatorFunc[T, R] {
 	if project == nil {
 		panic(`rxgo: "ExhaustMap" expected project func`)
@@ -456,104 +458,93 @@ func ExhaustMap[T any, R any](project ProjectionFunc[T, R]) OperatorFunc[T, R] {
 	return func(source Observable[T]) Observable[R] {
 		return newObservable(func(subscriber Subscriber[R]) {
 			var (
-				wg = new(sync.WaitGroup)
-			)
-
-			wg.Add(1)
-
-			var (
-				index      uint
-				enabled    = new(atomic.Pointer[bool])
-				upStream   = source.SubscribeOn(wg.Done)
-				downStream Subscriber[R]
+				index    uint
+				err      error
+				allowed  = new(atomic.Pointer[bool])
+				upStream = source.SubscribeOn()
+				g, ctx   = errgroup.WithContext(context.TODO())
 			)
 
 			flag := true
-			enabled.Store(&flag)
+			allowed.Store(&flag)
 
-			stopDownStream := func() {
-				if downStream != nil {
-					downStream.Stop()
-				}
-			}
+			observeStream := func(ctx context.Context, index uint, value T) func() error {
+				return func() error {
+					var (
+						stream = project(value, index).SubscribeOn()
+					)
 
-			observeStream := func(index uint, forEach <-chan Notification[R]) {
-			observe:
-				for {
-					select {
-					case <-subscriber.Closed():
-						break observe
+				innerLoop:
+					for {
+						select {
+						case <-subscriber.Closed():
+							stream.Stop()
+							return nil
 
-					case <-upStream.Closed():
-						break observe
+						case item, ok := <-stream.ForEach():
+							if !ok {
+								break innerLoop
+							}
 
-					case item, ok := <-forEach:
-						if !ok {
-							break observe
+							if err := item.Err(); err != nil {
+								return err
+							}
+
+							if item.Done() {
+								flag := true
+								allowed.Store(&flag)
+								return nil
+							}
+
+							item.Send(subscriber)
 						}
-
-						// TODO: handle error please
-
-						if item.Done() {
-							stopDownStream()
-							flag := true
-							enabled.Swap(&flag)
-							break observe
-						}
-
-						item.Send(subscriber)
 					}
+
+					return nil
 				}
 			}
 
-		loop:
+		outerLoop:
 			for {
 				select {
 				case <-subscriber.Closed():
-					upStream.Stop()
-					stopDownStream()
-					break loop
+					return
 
 				case item, ok := <-upStream.ForEach():
 					if !ok {
-						break loop
+						break outerLoop
 					}
 
-					if err := item.Err(); err != nil {
-						stopDownStream()
-						Error[R](err).Send(subscriber)
-						break loop
+					if err = item.Err(); err != nil {
+						break outerLoop
 					}
 
 					if item.Done() {
-						stopDownStream()
-						Complete[R]().Send(subscriber)
-						break loop
+						break outerLoop
 					}
 
-					log.Println(item, ok)
-					if *enabled.Load() {
+					if *allowed.Load() {
 						flag := false
-						enabled.Swap(&flag)
-						wg.Add(1)
-						downStream = project(item.Value(), index).SubscribeOn(wg.Done)
-						go observeStream(index, downStream.ForEach())
+						allowed.Store(&flag)
+						g.Go(observeStream(ctx, index, item.Value()))
+						index++
 					}
-					index++
 				}
 			}
 
-			wg.Wait()
+			if err != nil {
+				Error[R](err).Send(subscriber)
+				return
+			}
+
+			if err := g.Wait(); err != nil {
+				Error[R](err).Send(subscriber)
+				return
+			}
+
+			Complete[R]().Send(subscriber)
 		})
 	}
-}
-
-// Converts a higher-order Observable into a first-order Observable by dropping inner
-// Observables while the previous inner Observable has not yet completed.
-func ExhaustAll[T any]() OperatorFunc[Observable[T], T] {
-	return ExhaustMap(func(value Observable[T], _ uint) Observable[T] {
-		return value
-	})
 }
 
 // Groups the items emitted by an Observable according to a specified criterion,
@@ -587,6 +578,8 @@ func GroupBy[T any, K comparable](keySelector func(value T) K) OperatorFunc[T, G
 					if !ok {
 						break loop
 					}
+
+					newObservable(func(subscriber Subscriber[T]) {})
 
 					log.Println(item)
 					key = keySelector(item.Value())

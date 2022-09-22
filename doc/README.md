@@ -26,20 +26,20 @@ There are operators for different purposes, and they may be categorized as: crea
 
 <!-- - Partition -->
 
-- Concat
 - ConcatAll ✅
+- ConcatWith ✅
+- CombineLatestAll ✅
 - CombineLatestWith ✅
-- CombineLatestAll
+- ExhaustAll
 - ForkJoin ✅
+- MergeAll 🚧
 - MergeWith 🚧
 - RaceWith 🚧
-- ZipWith ✅
 - ZipAll ✅
-- exhaustAll
-- mergeAll
-- switchAll
+- ZipWith ✅
+- SwitchAll
 - startWith
-- withLatestFrom
+- WithLatestFrom
 
 ## Transformation Operators
 

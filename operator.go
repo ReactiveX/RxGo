@@ -183,8 +183,7 @@ func Delay[T any](duration time.Duration) OperatorFunc[T, T] {
 	}
 }
 
-// Delays the emission of items from the source Observable by a given time span
-// determined by the emissions of another Observable.
+// Delays the emission of items from the source Observable by a given time span determined by the emissions of another Observable.
 func DelayWhen[T any, R any](delayDurationSelector ProjectionFunc[T, R]) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {

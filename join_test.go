@@ -7,152 +7,100 @@ import (
 	"time"
 )
 
-func TestCombineLatestWith(t *testing.T) {
-	// t.Run("CombineLatestWith Empty", func(t *testing.T) {
-	// 	checkObservableResult(t, Pipe1(
-	// 		Empty[any](),
-	// 		CombineLatestWith(
-	// 			Scheduled[any]("end"),
-	// 			Pipe2(
-	// 				Interval(time.Millisecond*100),
-	// 				Map(func(v, _ uint) (any, error) {
-	// 					return v, nil
-	// 				}),
-	// 				Take[any](10),
-	// 			),
-	// 		),
-	// 	), nil, nil, true)
-	// })
+func TestCombineLatestAll(t *testing.T) {
+	t.Run("CombineLatestAll with Empty", func(t *testing.T) {
+		checkObservableHasResults(t, Pipe2(
+			Of2[uint](1, 2),
+			Map(func(v, _ uint) (Observable[any], error) {
+				return Empty[any](), nil
+			}),
+			CombineLatestAll(func(values []any) string {
+				return fmt.Sprintf("%v", values)
+			}),
+		), false, nil, true)
+	})
 
-	// t.Run("CombineLatestWith with values", func(t *testing.T) {
-	// 	checkObservableResults(t, Pipe2(
-	// 		Interval(time.Millisecond*500),
-	// 		CombineLatestWith(
-	// 			Range[uint](1, 10),
-	// 			Scheduled[uint](88),
-	// 		),
-	// 		Take[[]uint](1),
-	// 	), [][]uint{{0, 10, 88}}, nil, true)
-	// })
+	t.Run("CombineLatestAll with inner error", func(t *testing.T) {
+		var err = errors.New("stop now")
+		checkObservableHasResults(t, Pipe2(
+			Of2[uint](1, 2, 5, 6),
+			Map(func(v, idx uint) (Observable[any], error) {
+				if idx > 2 {
+					return Throw[any](func() error {
+						return err
+					}), nil
+				}
+				return Empty[any](), nil
+			}),
+			CombineLatestAll(func(values []any) string {
+				return fmt.Sprintf("%v", values)
+			}),
+		), false, err, false)
+	})
+
+	t.Run("CombineLatestAll with values", func(t *testing.T) {
+		checkObservableHasResults(t, Pipe3(
+			Of2[uint](1, 2),
+			Map(func(v, _ uint) (Observable[uint], error) {
+				return Pipe1(
+					Interval(time.Millisecond*100),
+					Take[uint](3),
+				), nil
+			}),
+			Take[Observable[uint]](2),
+			CombineLatestAll(func(values []uint) string {
+				return fmt.Sprintf("%v", values)
+			}),
+		), true, nil, true)
+	})
 }
 
-func TestConcatWith(t *testing.T) {
-	t.Run("ConcatWith all Empty", func(t *testing.T) {
-		checkObservableResults(t, Pipe1(
+func TestCombineLatestWith(t *testing.T) {
+	t.Run("CombineLatestWith Empty", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(
 			Empty[any](),
-			ConcatWith(
-				Empty[any](),
-				Empty[any](),
+			CombineLatestWith(
+				Of2[any]("end"),
+				Pipe2(
+					Interval(time.Millisecond*100),
+					Map(func(v, _ uint) (any, error) {
+						return v, nil
+					}),
+					Take[any](10),
+				),
 			),
-		), []any{}, nil, true)
+		), nil, nil, true)
 	})
 
-	t.Run("ConcatAll with Throw", func(t *testing.T) {
-		var err = fmt.Errorf("ConcatAll failed")
-		checkObservableResults(t, Pipe1(
-			Throw[any](func() error {
-				return err
-			}),
-			ConcatWith(
-				Empty[any](),
-				Empty[any](),
-			),
-		), []any{}, err, false)
-	})
-
-	t.Run("ConcatAll with inner error", func(t *testing.T) {
-		var err = fmt.Errorf("failed")
-		checkObservableResults(t, Pipe1(
-			Range[uint](1, 8),
-			ConcatWith(
-				Throw[uint](func() error {
+	t.Run("CombineLatestWith error", func(t *testing.T) {
+		var err = errors.New("terminated")
+		checkObservableResult(t, Pipe1(
+			Empty[any](),
+			CombineLatestWith(
+				Throw[any](func() error {
 					return err
 				}),
-				Empty[uint](),
+				Pipe2(
+					Interval(time.Millisecond*100),
+					Map(func(v, _ uint) (any, error) {
+						return v, nil
+					}),
+					Take[any](10),
+				),
 			),
-		), []uint{1, 2, 3, 4, 5, 6, 7, 8}, err, false)
+		), nil, err, false)
 	})
 
-	t.Run("ConcatWith Empty and Of", func(t *testing.T) {
-		checkObservableResults(t, Pipe1(
-			Empty[uint](),
-			ConcatWith(
-				Of2[uint](88, 667),
-				Range[uint](1, 5),
+	t.Run("CombineLatestWith with values", func(t *testing.T) {
+		checkObservableResults(t, Pipe2(
+			Interval(time.Millisecond*500),
+			CombineLatestWith(
+				Range[uint](1, 10),
+				Of2[uint](88),
 			),
-		), []uint{88, 667, 1, 2, 3, 4, 5}, nil, true)
+			Take[[]uint](1),
+		), [][]uint{{0, 10, 88}}, nil, true)
 	})
-
-	t.Run("ConcatWith any values", func(t *testing.T) {
-		checkObservableResults(t, Pipe1(
-			Of2[any]("a", "b", "c", "d"),
-			ConcatWith(
-				Of2[any](1, 2, 88),
-				Of2[any](88.1991, true, false),
-			),
-		), []any{
-			"a", "b", "c", "d",
-			1, 2, 88,
-			88.1991, true, false,
-		}, nil, true)
-	})
-}
-
-func TestForkJoin(t *testing.T) {
-	// t.Run("ForkJoin with one Empty", func(t *testing.T) {
-	// 	// ForkJoin only capture all latest value from every stream
-	// 	checkObservableResult(t, ForkJoin(
-	// 		Empty[any](),
-	// 		Scheduled[any]("j", "k", "end"),
-	// 		Pipe1(Range[uint](1, 10), Map(func(v, _ uint) (any, error) {
-	// 			return v, nil
-	// 		})),
-	// 	), []any{nil, "end", uint(10)}, nil, true)
-	// })
-
-	// t.Run("ForkJoin with all Empty", func(t *testing.T) {
-	// 	checkObservableResult(t, ForkJoin(
-	// 		Empty[uint](),
-	// 		Empty[uint](),
-	// 		Empty[uint](),
-	// 	), []uint{0, 0, 0}, nil, true)
-	// })
-
-	// t.Run("ForkJoin with error observable", func(t *testing.T) {
-	// 	var err = fmt.Errorf("failed")
-	// 	checkObservableResult(t, ForkJoin(
-	// 		Scheduled[uint](1, 88, 2, 7215251),
-	// 		Pipe1(Interval(time.Millisecond*10), Map(func(v, _ uint) (uint, error) {
-	// 			return v, err
-	// 		})),
-	// 		Interval(time.Millisecond*100),
-	// 	), nil, err, false)
-	// })
-
-	// t.Run("ForkJoin with multiple error", func(t *testing.T) {
-	// 	createErr := func(index uint) error {
-	// 		return fmt.Errorf("failed at %d", index)
-	// 	}
-	// 	checkObservableResultWithAnyError(t, ForkJoin(
-	// 		Throw[string](func() error {
-	// 			return createErr(1)
-	// 		}),
-	// 		Throw[string](func() error {
-	// 			return createErr(2)
-	// 		}),
-	// 		Throw[string](func() error {
-	// 			return createErr(3)
-	// 		}),
-	// 		Scheduled("a"),
-	// 	), nil, []error{createErr(1), createErr(2), createErr(3)}, false)
-	// })
-
-	// t.Run("ForkJoin with complete", func(t *testing.T) {
-	// 	checkObservableResult(t, ForkJoin(
-	// 		Scheduled[uint](1, 88, 2, 7215251),
-	// 		Pipe1(Interval(time.Millisecond*10), Take[uint](3)),
-	// 	), []uint{7215251, 2}, nil, true)
-	// })
 }
 
 func TestConcatAll(t *testing.T) {
@@ -196,6 +144,123 @@ func TestConcatAll(t *testing.T) {
 			0, 1, 2, 3,
 			0, 1, 2, 3,
 		}, nil, true)
+	})
+}
+
+func TestConcatWith(t *testing.T) {
+	t.Run("ConcatWith all Empty", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			Empty[any](),
+			ConcatWith(
+				Empty[any](),
+				Empty[any](),
+			),
+		), []any{}, nil, true)
+	})
+
+	t.Run("ConcatWith Throw", func(t *testing.T) {
+		var err = fmt.Errorf("ConcatAll failed")
+		checkObservableResults(t, Pipe1(
+			Throw[any](func() error {
+				return err
+			}),
+			ConcatWith(
+				Empty[any](),
+				Empty[any](),
+			),
+		), []any{}, err, false)
+	})
+
+	t.Run("ConcatWith inner error", func(t *testing.T) {
+		var err = fmt.Errorf("failed")
+		checkObservableResults(t, Pipe1(
+			Range[uint](1, 8),
+			ConcatWith(
+				Throw[uint](func() error {
+					return err
+				}),
+				Empty[uint](),
+			),
+		), []uint{1, 2, 3, 4, 5, 6, 7, 8}, err, false)
+	})
+
+	t.Run("ConcatWith Empty and Of", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			Empty[uint](),
+			ConcatWith(
+				Of2[uint](88, 667),
+				Range[uint](1, 5),
+			),
+		), []uint{88, 667, 1, 2, 3, 4, 5}, nil, true)
+	})
+
+	t.Run("ConcatWith any values", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			Of2[any]("a", "b", "c", "d"),
+			ConcatWith(
+				Of2[any](1, 2, 88),
+				Of2[any](88.1991, true, false),
+			),
+		), []any{
+			"a", "b", "c", "d",
+			1, 2, 88,
+			88.1991, true, false,
+		}, nil, true)
+	})
+}
+
+// ForkJoin only capture all latest value from every stream
+func TestForkJoin(t *testing.T) {
+	t.Run("ForkJoin with one Empty", func(t *testing.T) {
+		checkObservableResult(t, ForkJoin(
+			Empty[any](),
+			Of2[any]("j", "k", "end"),
+			Pipe1(Range[uint](1, 10), Map(func(v, _ uint) (any, error) {
+				return v, nil
+			})),
+		), nil, nil, true)
+	})
+
+	t.Run("ForkJoin with all Empty", func(t *testing.T) {
+		checkObservableResult(t, ForkJoin(
+			Empty[uint](),
+			Empty[uint](),
+			Empty[uint](),
+		), nil, nil, true)
+	})
+
+	t.Run("ForkJoin with error observable", func(t *testing.T) {
+		var err = fmt.Errorf("failed")
+		checkObservableResult(t, ForkJoin(
+			Of2[uint](1, 88, 2, 7215251),
+			Pipe1(Interval(time.Millisecond*10), Map(func(v, _ uint) (uint, error) {
+				return v, err
+			})),
+			Interval(time.Millisecond*100),
+		), nil, err, false)
+	})
+
+	t.Run("ForkJoin with multiple error", func(t *testing.T) {
+		var err = errors.New("failed")
+		checkObservableResult(t, ForkJoin(
+			Throw[string](func() error {
+				return err
+			}),
+			Throw[string](func() error {
+				return err
+			}),
+			Throw[string](func() error {
+				return err
+			}),
+			Scheduled("a"),
+		), nil, err, false)
+	})
+
+	t.Run("ForkJoin with complete", func(t *testing.T) {
+		checkObservableResult(t, ForkJoin(
+			Scheduled[uint](1, 88, 2, 7215251),
+			Pipe1(Interval(time.Millisecond*10), Take[uint](3)),
+		), []uint{7215251, 2}, nil, true)
 	})
 }
 
@@ -412,7 +477,7 @@ func TestZipWith(t *testing.T) {
 }
 
 func TestZipAll(t *testing.T) {
-	t.Run("ZipAll with Empty", func(t *testing.T) {
+	t.Run("ZipAll with all Empty", func(t *testing.T) {
 		checkObservableResults(t, Pipe2(
 			Range[uint](1, 5),
 			Map(func(v, _ uint) (Observable[string], error) {

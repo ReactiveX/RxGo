@@ -7,6 +7,7 @@ require (
 	github.com/teivah/onecontext v1.3.0
 	go.uber.org/goleak v1.2.0
 	golang.org/x/exp v0.0.0-20220827204233-334a2380cb91
+	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 )
 
 require (

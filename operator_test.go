@@ -102,16 +102,22 @@ func TestDelay(t *testing.T) {
 
 }
 
+func TestDelayWhen(t *testing.T) {
+	t.Run("DelayWhen", func(t *testing.T) {})
+}
+
 func TestWithLatestFrom(t *testing.T) {
-	checkObservableResults(t, Pipe2(
-		Interval(time.Second),
-		WithLatestFrom[uint](Scheduled("a", "v")),
-		Take[Tuple[uint, string]](3),
-	), []Tuple[uint, string]{
-		NewTuple[uint](0, "v"),
-		NewTuple[uint](1, "v"),
-		NewTuple[uint](2, "v"),
-	}, nil, true)
+	t.Run("WithLatestFrom", func(t *testing.T) {
+		checkObservableResults(t, Pipe2(
+			Interval(time.Millisecond*500),
+			WithLatestFrom[uint](Scheduled("a", "v")),
+			Take[Tuple[uint, string]](3),
+		), []Tuple[uint, string]{
+			NewTuple[uint](0, "v"),
+			NewTuple[uint](1, "v"),
+			NewTuple[uint](2, "v"),
+		}, nil, true)
+	})
 }
 
 // func TestOnErrorResumeNext(t *testing.T) {
