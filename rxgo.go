@@ -7,6 +7,7 @@ import (
 
 type (
 	OnNextFunc[T any] func(T)
+
 	// OnErrorFunc defines a function that computes a value from an error.
 	OnErrorFunc                   func(error)
 	OnCompleteFunc                func()
@@ -93,11 +94,7 @@ func (o *observableWrapper[T]) SubscribeOn(cb ...func()) Subscriber[T] {
 	return subscriber
 }
 
-func (o *observableWrapper[T]) SubscribeSync(
-	onNext func(T),
-	onError func(error),
-	onComplete func(),
-) {
+func (o *observableWrapper[T]) SubscribeSync(onNext func(T), onError func(error), onComplete func()) {
 	ctx := context.Background()
 	subscriber := NewSafeSubscriber(onNext, onError, onComplete)
 	wg := new(sync.WaitGroup)

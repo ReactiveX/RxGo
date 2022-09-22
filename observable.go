@@ -12,24 +12,16 @@ func Never[T any]() Observable[T] {
 	return newObservable(func(sub Subscriber[T]) {})
 }
 
-// A simple Observable that emits no items to the Observer and immediately
-// emits a complete notification.
+// A simple Observable that emits no items to the Observer and immediately emits a complete notification.
 func Empty[T any]() Observable[T] {
 	return newObservable(func(subscriber Subscriber[T]) {
 		Complete[T]().Send(subscriber)
 	})
 }
 
-// Creates an Observable that, on subscribe, calls an Observable
-// factory to make an Observable for each new Observer.
+// Creates an Observable that, on subscribe, calls an Observable factory to make an Observable for each new Observer.
 func Defer[T any](factory func() Observable[T]) Observable[T] {
-	// defer allows you to create an Observable only when the Observer subscribes.
-	// It waits until an Observer subscribes to it, calls the given factory function
-	// to get an Observable -- where a factory function typically generates a new
-	// Observable -- and subscribes the Observer to this Observable. In case the factory
-	// function returns a falsy value, then Empty is used as Observable instead.
-	// Last but not least, an exception during the factory function call is transferred
-	// to the Observer by calling error.
+	// defer allows you to create an Observable only when the Observer subscribes. It waits until an Observer subscribes to it, calls the given factory function to get an Observable -- where a factory function typically generates a new Observable -- and subscribes the Observer to this Observable. In case the factory function returns a falsy value, then Empty is used as Observable instead. Last but not least, an exception during the factory function call is transferred to the Observer by calling error.
 	return newObservable(func(subscriber Subscriber[T]) {
 		var (
 			wg     = new(sync.WaitGroup)
@@ -96,8 +88,7 @@ func Range[T constraints.Unsigned](start, count T) Observable[T] {
 	})
 }
 
-// Interval creates an Observable emitting incremental integers infinitely between
-// each given time interval.
+// Interval creates an Observable emitting incremental integers infinitely between each given time interval.
 func Interval(duration time.Duration) Observable[uint] {
 	return newObservable(func(subscriber Subscriber[uint]) {
 		var (
@@ -162,35 +153,43 @@ func Scheduled[T any](item T, items ...T) Observable[T] {
 	})
 }
 
-// Creates an observable that will create an error instance and push it to the consumer as
-// an error immediately upon subscription.
-//
-// This creation function is useful for creating an observable that will create an error and
-// error every time it is subscribed to. Generally, inside of most operators when you might
-// want to return an errored observable, this is unnecessary. In most cases, such as in the
-// inner return of concatMap, mergeMap, defer, and many others, you can simply throw the
-// error, and RxGo will pick that up and notify the consumer of the error.
+// Creates an observable that will create an error instance and push it to the consumer as an error immediately upon subscription. This creation function is useful for creating an observable that will create an error and error every time it is subscribed to. Generally, inside of most operators when you might want to return an errored observable, this is unnecessary. In most cases, such as in the inner return of concatMap, mergeMap, defer, and many others, you can simply throw the error, and RxGo will pick that up and notify the consumer of the error.
 func Throw[T any](factory ErrorFunc) Observable[T] {
 	return newObservable(func(subscriber Subscriber[T]) {
 		Error[T](factory()).Send(subscriber)
 	})
 }
 
-func Timer[T any](start, interval time.Duration) Observable[float64] {
-	return newObservable(func(subscriber Subscriber[float64]) {
+// Creates an observable that will wait for a specified time period before emitting the number 0.
+func Timer[N constraints.Unsigned](startDue time.Duration, intervalDuration ...time.Duration) Observable[N] {
+
+	return newObservable(func(subscriber Subscriber[N]) {
 		var (
-			latest = start
+			index    = N(0)
+			interval = startDue
 		)
 
-		for {
-			select {
-			case <-subscriber.Closed():
-				return
-			case <-time.After(interval):
-				subscriber.Send() <- Next(latest.Seconds())
-				latest = latest + interval
+		time.Sleep(startDue)
+		Next(index).Send(subscriber)
+		index++
+
+		if len(intervalDuration) > 0 {
+			interval = intervalDuration[0]
+			timeout := time.After(interval)
+
+			for {
+				select {
+				case <-subscriber.Closed():
+					return
+				case <-timeout:
+					Next(index).Send(subscriber)
+					index++
+					timeout = time.After(interval)
+				}
 			}
 		}
+
+		Complete[N]().Send(subscriber)
 	})
 }
 

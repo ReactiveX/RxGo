@@ -80,11 +80,7 @@ type safeSubscriber[T any] struct {
 func NewSafeSubscriber[T any](onNext OnNextFunc[T], onError OnErrorFunc, onComplete OnCompleteFunc) *safeSubscriber[T] {
 	sub := &safeSubscriber[T]{
 		subscriber: NewSubscriber[T](),
-		dst: &consumerObserver[T]{
-			onNext:     onNext,
-			onError:    onError,
-			onComplete: onComplete,
-		},
+		dst:        NewObserver(onNext, onError, onComplete),
 	}
 	return sub
 }

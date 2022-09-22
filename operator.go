@@ -413,7 +413,7 @@ func Timeout[T any, C timeoutConfig[T]](config C) OperatorFunc[T, T] {
 }
 
 // Collects all source emissions and emits them as an array when the source completes.
-func ToArray[T any]() OperatorFunc[T, []T] {
+func ToSlice[T any]() OperatorFunc[T, []T] {
 	return func(source Observable[T]) Observable[[]T] {
 		var (
 			result = make([]T, 0)

@@ -165,27 +165,27 @@ func TestTimeout(t *testing.T) {
 	})
 }
 
-func TestToArray(t *testing.T) {
-	t.Run("ToArray with Empty", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(Empty[any](), ToArray[any]()), []any{}, nil, true)
+func TestToSlice(t *testing.T) {
+	t.Run("ToSlice with Empty", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(Empty[any](), ToSlice[any]()), []any{}, nil, true)
 	})
 
-	t.Run("ToArray with error", func(t *testing.T) {
+	t.Run("ToSlice with error", func(t *testing.T) {
 		var err = errors.New("throw")
-		checkObservableResult(t, Pipe1(Scheduled[any]("a", "z", err), ToArray[any]()),
+		checkObservableResult(t, Pipe1(Scheduled[any]("a", "z", err), ToSlice[any]()),
 			nil, err, false)
 	})
 
-	t.Run("ToArray with numbers", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(Range[uint](1, 5), ToArray[uint]()), []uint{1, 2, 3, 4, 5}, nil, true)
+	t.Run("ToSlice with numbers", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(Range[uint](1, 5), ToSlice[uint]()), []uint{1, 2, 3, 4, 5}, nil, true)
 	})
 
-	t.Run("ToArray with alphaberts", func(t *testing.T) {
+	t.Run("ToSlice with alphaberts", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(newObservable(func(subscriber Subscriber[string]) {
 			for i := 1; i <= 5; i++ {
 				subscriber.Send() <- Next(string(rune('A' - 1 + i)))
 			}
 			subscriber.Send() <- Complete[string]()
-		}), ToArray[string]()), []string{"A", "B", "C", "D", "E"}, nil, true)
+		}), ToSlice[string]()), []string{"A", "B", "C", "D", "E"}, nil, true)
 	})
 }

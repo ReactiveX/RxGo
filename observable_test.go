@@ -17,7 +17,20 @@ func TestNever(t *testing.T) {
 }
 
 func TestEmpty(t *testing.T) {
-	checkObservableResults(t, Empty[any](), []any{}, nil, true)
+	t.Run(`Empty with "any" type`, func(t *testing.T) {
+		checkObservableResult(t, Empty[any](), nil, nil, true)
+		checkObservableResults(t, Empty[any](), []any{}, nil, true)
+	})
+
+	t.Run(`Empty with "string" type`, func(t *testing.T) {
+		checkObservableResult(t, Empty[string](), "", nil, true)
+		checkObservableResults(t, Empty[string](), []string{}, nil, true)
+	})
+
+	t.Run(`Empty with "uint" type`, func(t *testing.T) {
+		checkObservableResult(t, Empty[uint](), uint(0), nil, true)
+		checkObservableResults(t, Empty[uint](), []uint{}, nil, true)
+	})
 }
 
 func TestThrow(t *testing.T) {
@@ -32,6 +45,15 @@ func TestDefer(t *testing.T) {
 		checkObservableResult(t, Defer(func() Observable[string] {
 			return nil
 		}), "", nil, true)
+	})
+
+	t.Run("Defer with Throw", func(t *testing.T) {
+		var err = fmt.Errorf("throw")
+		checkObservableResult(t, Defer(func() Observable[string] {
+			return Throw[string](func() error {
+				return err
+			})
+		}), "", err, false)
 	})
 
 	t.Run("Defer with alphaberts", func(t *testing.T) {
@@ -79,7 +101,20 @@ func TestScheduled(t *testing.T) {
 }
 
 func TestTimer(t *testing.T) {
+	t.Run("Timer with zero initial value", func(t *testing.T) {
+		checkObservableResult(t, Timer[uint](0), uint(0), nil, true)
+	})
 
+	t.Run("Timer with non-zero initial value", func(t *testing.T) {
+		checkObservableResult(t, Timer[uint](time.Millisecond), uint(0), nil, true)
+	})
+
+	t.Run("Timer with initial and duration value", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			Timer[uint](0, time.Millisecond),
+			Take[uint](3),
+		), []uint{0, 1, 2}, nil, true)
+	})
 }
 
 func TestIif(t *testing.T) {

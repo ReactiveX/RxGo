@@ -102,13 +102,18 @@ func TestFindIndex(t *testing.T) {
 
 func TestIsEmpty(t *testing.T) {
 	t.Run("IsEmpty with Empty", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(Empty[any](), IsEmpty[any]()), true, nil, true)
+		checkObservableResult(t, Pipe1(
+			Empty[any](),
+			IsEmpty[any](),
+		), true, nil, true)
 	})
 
 	t.Run("IsEmpty with error", func(t *testing.T) {
 		var err = errors.New("something wrong")
 		checkObservableResult(t, Pipe1(
-			Of2[any](err),
+			Throw[any](func() error {
+				return err
+			}),
 			IsEmpty[any](),
 		), false, err, false)
 	})
