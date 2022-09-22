@@ -165,8 +165,7 @@ func Timer[N constraints.Unsigned](startDue time.Duration, intervalDuration ...t
 
 	return newObservable(func(subscriber Subscriber[N]) {
 		var (
-			index    = N(0)
-			interval = startDue
+			index = N(0)
 		)
 
 		time.Sleep(startDue)
@@ -174,8 +173,8 @@ func Timer[N constraints.Unsigned](startDue time.Duration, intervalDuration ...t
 		index++
 
 		if len(intervalDuration) > 0 {
-			interval = intervalDuration[0]
-			timeout := time.After(interval)
+			startDue = intervalDuration[0]
+			timeout := time.After(startDue)
 
 			for {
 				select {
@@ -184,7 +183,7 @@ func Timer[N constraints.Unsigned](startDue time.Duration, intervalDuration ...t
 				case <-timeout:
 					Next(index).Send(subscriber)
 					index++
-					timeout = time.After(interval)
+					timeout = time.After(startDue)
 				}
 			}
 		}
