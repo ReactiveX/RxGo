@@ -157,19 +157,24 @@ func SequenceEqual[T any](compareTo Observable[T], comparator ...ComparatorFunc[
 			wg.Add(2)
 
 			var (
+				activeSubscriptions       = uint(2)
 				firstValues, secondValues = []T{}, []T{}
 				upStream                  = source.SubscribeOn(wg.Done)
 				downStream                = compareTo.SubscribeOn(wg.Done)
+				isSimilar                 bool
+				err                       error
 			)
+
+			unsubscribeAll := func() {
+				upStream.Stop()
+				downStream.Stop()
+				activeSubscriptions = 0
+			}
 
 			compareIsSame := func() {
 				if len(firstValues) > 0 && len(secondValues) > 0 {
-					if !compare(firstValues[0], secondValues[0]) {
-						upStream.Stop()
-						downStream.Stop()
-
-						Next(false).Send(subscriber)
-						Complete[bool]().Send(subscriber)
+					if isSimilar = compare(firstValues[0], secondValues[0]); !isSimilar {
+						unsubscribeAll()
 						return
 					}
 					firstValues, secondValues = firstValues[1:], secondValues[1:]
@@ -177,23 +182,43 @@ func SequenceEqual[T any](compareTo Observable[T], comparator ...ComparatorFunc[
 			}
 
 		observe:
-			for {
+			for activeSubscriptions > 0 {
 				select {
 				case <-subscriber.Closed():
-					upStream.Stop()
+					unsubscribeAll()
 					break observe
 
-				case item := <-upStream.ForEach():
-					if err := item.Err(); err != nil {
+				case item, ok := <-upStream.ForEach():
+					if !ok {
+						continue
+					}
+
+					if err = item.Err(); err != nil {
+						unsubscribeAll()
 						break observe
+					}
+
+					if item.Done() {
+						activeSubscriptions--
+						continue
 					}
 
 					firstValues = append(firstValues, item.Value())
 					compareIsSame()
 
-				case item := <-downStream.ForEach():
-					if err := item.Err(); err != nil {
+				case item, ok := <-downStream.ForEach():
+					if !ok {
+						continue
+					}
+
+					if err = item.Err(); err != nil {
+						unsubscribeAll()
 						break observe
+					}
+
+					if item.Done() {
+						activeSubscriptions--
+						continue
 					}
 
 					secondValues = append(secondValues, item.Value())
@@ -202,6 +227,20 @@ func SequenceEqual[T any](compareTo Observable[T], comparator ...ComparatorFunc[
 			}
 
 			wg.Wait()
+
+			// TODO: maybe we can emit first before wait
+
+			if err != nil {
+				Error[bool](err).Send(subscriber)
+				return
+			}
+
+			if len(firstValues) == 0 && len(secondValues) == 0 {
+				isSimilar = true
+			}
+
+			Next(isSimilar).Send(subscriber)
+			Complete[bool]().Send(subscriber)
 		})
 	}
 }

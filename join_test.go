@@ -252,13 +252,13 @@ func TestForkJoin(t *testing.T) {
 			Throw[string](func() error {
 				return err
 			}),
-			Scheduled("a"),
+			Of2("a"),
 		), nil, err, false)
 	})
 
 	t.Run("ForkJoin with complete", func(t *testing.T) {
 		checkObservableResult(t, ForkJoin(
-			Scheduled[uint](1, 88, 2, 7215251),
+			Of2[uint](1, 88, 2, 7215251),
 			Pipe1(Interval(time.Millisecond*10), Take[uint](3)),
 		), []uint{7215251, 2}, nil, true)
 	})
@@ -463,10 +463,10 @@ func TestZipWith(t *testing.T) {
 
 	t.Run("Zip with Of (tally)", func(t *testing.T) {
 		checkObservableResults(t, Pipe1(
-			Scheduled[any](27, 25, 29),
+			Of2[any](27, 25, 29),
 			ZipWith(
-				Scheduled[any]("Foo", "Bar", "Beer"),
-				Scheduled[any](true, true, false),
+				Of2[any]("Foo", "Bar", "Beer"),
+				Of2[any](true, true, false),
 			),
 		), [][]any{
 			{27, "Foo", true},

@@ -704,7 +704,7 @@ func ZipAll[T any]() OperatorFunc[Observable[T], []T] {
 						}
 					}
 
-					// Any of the stream completed, we will escape
+					// any of the stream completed, we will escape
 					if completed > 0 {
 						Complete[[]T]().Send(subscriber)
 						break outerLoop
@@ -712,7 +712,7 @@ func ZipAll[T any]() OperatorFunc[Observable[T], []T] {
 
 					Next(result).Send(subscriber)
 
-					// Reset the values for next loop
+					// reset the values for next loop
 					setupValues()
 				}
 			}
