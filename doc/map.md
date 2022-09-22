@@ -1,45 +1,62 @@
+# Map
 
-# Map Operator
+> Applies a given project function to each value emitted by the source Observable, and emits the resulting values as an Observable.
 
-## Overview
+## Description
 
-Transform the items emitted by an Observable by applying a function to each item.
+![](https://rxjs.dev/assets/images/marble-diagrams/map.png)
 
-![](http://reactivex.io/documentation/operators/images/map.png)
+This operator applies a projection to each value and emits that projection in the output Observable.
 
-## Example
+## Example 1
 
 ```go
-observable := rxgo.Just(1, 2, 3)().
-	Map(func(_ context.Context, i interface{}) (interface{}, error) {
-		return i.(int) * 10, nil
-	})
+rxgo.Pipe1(
+	rxgo.Range[uint8](1, 5),
+	rxgo.Map(func(v uint8, index uint) (string, error) {
+		return fmt.Sprintf("%d", v), nil
+	}),
+).SubscribeSync(func(v string) {
+    log.Println("Next ->", v)
+}, func(err error) {
+    log.Println("Error ->", err)
+}, func() {
+    log.Println("Complete!")
+})
+
+// Output:
+// Next -> 1
+// Next -> 2
+// Next -> 3
+// Next -> 4
+// Next -> 5
+// Complete!
 ```
 
-Output:
+## Example 2
 
+```go
+rxgo.Pipe1(
+	rxgo.Range[uint8](1, 10),
+	rxgo.Map(func(v uint8, index uint) (string, error) {
+		if v > 5 {
+			return "", errors.New("the value is greater than 5")
+		}
+		return fmt.Sprintf("%d", v), nil
+	}),
+).SubscribeSync(func(v string) {
+    log.Println("Next ->", v)
+}, func(err error) {
+    log.Println("Error ->", err)
+}, func() {
+    log.Println("Complete!")
+})
+
+// Output:
+// Next -> 1
+// Next -> 2
+// Next -> 3
+// Next -> 4
+// Next -> 5
+// Error -> the value is greater than 5
 ```
-10
-20
-30
-```
-
-## Options
-
-* [WithBufferedChannel](options.md#withbufferedchannel)
-
-* [WithContext](options.md#withcontext)
-
-* [WithObservationStrategy](options.md#withobservationstrategy)
-
-* [WithErrorStrategy](options.md#witherrorstrategy)
-
-* [WithPool](options.md#withpool)
-
-* [WithCPUPool](options.md#withcpupool)
-
-### Serialize
-
-[Detail](options.md#serialize)
-
-* [WithPublishStrategy](options.md#withpublishstrategy)

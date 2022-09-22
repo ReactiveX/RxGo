@@ -1,4 +1,4 @@
-# Timer Operator
+# Timer
 
 ## Overview
 
@@ -10,7 +10,7 @@ Creates an observable that will wait for a specified time period before emitting
 
 Wait 3 seconds and start another observable
 
-You might want to use timer to delay subscription to an observable by a set amount of time. Here we use a timer with concatMapTo or concatMap in order to wait a few seconds and start a subscription to a source.
+You might want to use timer to delay subscription to an observable by a set amount of time.
 
 ```go
 rxgo.Timer[uint](time.Second * 3).SubscribeSync(func(v uint) {
@@ -34,7 +34,9 @@ Note that this observable will never complete.
 ```go
 rxgo.Timer[uint](0, time.Second).SubscribeSync(func(v uint) {
     log.Println("Timer ->", v)
-}, nil, nil)
+}, nil, func() {
+    log.Println("Complete!")
+})
 // 0 - after 0ms
 // 1 - after 1s
 // 2 - after 2s

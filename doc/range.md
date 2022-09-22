@@ -1,28 +1,34 @@
-# Range Operator
+# Range
+
+> Creates an Observable that emits a sequence of numbers within a specified range.
 
 ## Overview
 
-Create an Observable that emits a range of sequential integers.
+![](https://rxjs.dev/assets/images/marble-diagrams/range.png)
 
-![](http://reactivex.io/documentation/operators/images/range.png)
+`Range` operator emits a range of sequential integers, in order, where you select the start of the range and its length.
 
 ## Example
 
 ```go
-observable := rxgo.Range(0, 3)
+rxgo.Range(1, 10).SubscribeSync(func(v string) {
+    log.Println("Next ->", v)
+}, func(err error) {
+    log.Println("Error ->", err)
+}, func() {
+    log.Println("Complete!")
+})
+
+// Output:
+// Next -> 1
+// Next -> 2
+// Next -> 3
+// Next -> 4
+// Next -> 5
+// Next -> 6
+// Next -> 7
+// Next -> 8
+// Next -> 9
+// Next -> 10
+// Complete!
 ```
-
-Output:
-
-```
-0
-1
-2
-3
-```
-
-## Options
-
-* [WithBufferedChannel](options.md#withbufferedchannel)
-
-* [WithContext](options.md#withcontext)

@@ -1,4 +1,4 @@
-# Take Operator
+# Take
 
 ## Overview
 
@@ -18,15 +18,3 @@ Output:
 1
 2
 ```
-
-## Options
-
-* [WithBufferedChannel](options.md#withbufferedchannel)
-
-* [WithContext](options.md#withcontext)
-
-* [WithObservationStrategy](options.md#withobservationstrategy)
-
-* [WithErrorStrategy](options.md#witherrorstrategy)
-
-* [WithPublishStrategy](options.md#withpublishstrategy)

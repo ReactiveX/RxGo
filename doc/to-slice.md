@@ -1,4 +1,4 @@
-# ToSlice Operator
+# ToSlice
 
 > Collects all source emissions and emits them as an slice when the source completes.
 
