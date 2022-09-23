@@ -2,6 +2,7 @@ package rxgo
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 )
@@ -15,12 +16,14 @@ func TestDefaultIfEmpty(t *testing.T) {
 		), any(str), nil, true)
 	})
 
-	t.Run("DefaultIfEmpty with error", func(t *testing.T) {
-		str := "hello world"
+	t.Run("DefaultIfEmpty with Throw", func(t *testing.T) {
+		var err = fmt.Errorf("some error")
 		checkObservableResult(t, Pipe1(
-			Empty[any](),
-			DefaultIfEmpty[any](str),
-		), any(str), nil, true)
+			Throw[any](func() error {
+				return err
+			}),
+			DefaultIfEmpty[any]("hello world"),
+		), nil, err, false)
 	})
 
 	t.Run("DefaultIfEmpty with non-empty", func(t *testing.T) {
@@ -39,6 +42,18 @@ func TestEvery(t *testing.T) {
 				return value < 10
 			}),
 		), true, nil, true)
+	})
+
+	t.Run("Every with Throw", func(t *testing.T) {
+		var err = fmt.Errorf("some error")
+		checkObservableResult(t, Pipe1(
+			Throw[uint](func() error {
+				return err
+			}),
+			Every(func(value, index uint) bool {
+				return value < 10
+			}),
+		), false, err, false)
 	})
 
 	t.Run("Every with all value match the condition", func(t *testing.T) {
@@ -70,13 +85,34 @@ func TestFind(t *testing.T) {
 		), None[any](), nil, true)
 	})
 
+	t.Run("Find with Throw", func(t *testing.T) {
+		var err = errors.New("some error")
+		checkObservableResult(t, Pipe1(
+			Throw[any](func() error {
+				return err
+			}),
+			Find(func(a any, u uint) bool {
+				return a == "xxx"
+			}),
+		), Optional[any]{}, err, false)
+	})
+
 	t.Run("Find with value", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(
-			Scheduled("a", "b", "c", "d", "e"),
+			Of2("a", "b", "c", "d", "e"),
 			Find(func(v string, u uint) bool {
 				return v == "c"
 			}),
 		), Some("c"), nil, true)
+	})
+
+	t.Run("Find with Range", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(
+			Range[uint8](1, 10),
+			Find(func(v uint8, u uint) bool {
+				return v == 5
+			}),
+		), Some[uint8](5), nil, true)
 	})
 }
 
