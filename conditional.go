@@ -250,7 +250,7 @@ func ThrowIfEmpty[T any](errorFactory ...ErrorFunc) OperatorFunc[T, T] {
 	factory := func() error {
 		return ErrEmpty
 	}
-	if len(errorFactory) > 0 {
+	if len(errorFactory) > 0 && errorFactory[0] != nil {
 		factory = errorFactory[0]
 	}
 	return func(source Observable[T]) Observable[T] {

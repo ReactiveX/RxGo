@@ -19,8 +19,7 @@ var (
 	ErrTimeout = errors.New("rxgo: timeout")
 )
 
-// Catches errors on the observable to be handled by returning a new observable or
-// throwing an error.
+// Catches errors on the observable to be handled by returning a new observable or throwing an error.
 func Catch[T any](catch func(err error, caught Observable[T]) Observable[T]) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {

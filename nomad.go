@@ -1,11 +1,20 @@
 package rxgo
 
-type Optional[T any] struct {
+type Optional[T any] interface {
+	MustGet() T
+	OrElse(fallback T) T
+	IsNone() bool
+	Get() (T, bool)
+}
+
+type optional[T any] struct {
 	none bool
 	v    T
 }
 
-func (o Optional[T]) MustGet() T {
+var _ Optional[any] = (*optional[any])(nil)
+
+func (o optional[T]) MustGet() T {
 	if !o.none {
 		panic("rxgo: option has no value")
 	}
@@ -13,18 +22,18 @@ func (o Optional[T]) MustGet() T {
 	return o.v
 }
 
-func (o Optional[T]) OrElse(fallback T) T {
+func (o optional[T]) OrElse(fallback T) T {
 	if o.none {
 		return fallback
 	}
 	return o.v
 }
 
-func (o Optional[T]) None() bool {
+func (o optional[T]) IsNone() bool {
 	return o.none
 }
 
-func (o Optional[T]) Get() (T, bool) {
+func (o optional[T]) Get() (T, bool) {
 	if !o.none {
 		return *new(T), false
 	}
@@ -33,9 +42,9 @@ func (o Optional[T]) Get() (T, bool) {
 }
 
 func Some[T any](v T) Optional[T] {
-	return Optional[T]{v: v}
+	return optional[T]{v: v}
 }
 
 func None[T any]() Optional[T] {
-	return Optional[T]{none: true}
+	return optional[T]{none: true}
 }

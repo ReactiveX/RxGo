@@ -198,8 +198,7 @@ func Debounce[T any, R any](durationSelector DurationFunc[T, R]) OperatorFunc[T,
 	}
 }
 
-// Emits a notification from the source Observable only after a particular time span
-// has passed without another source emission.
+// Emits a notification from the source Observable only after a particular time span has passed without another source emission.
 func DebounceTime[T any](duration time.Duration) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
 		return Pipe1(
@@ -212,8 +211,7 @@ func DebounceTime[T any](duration time.Duration) OperatorFunc[T, T] {
 	}
 }
 
-// Returns an Observable that emits all items emitted by the source Observable
-// that are distinct by comparison from previous items.
+// Returns an Observable that emits all items emitted by the source Observable that are distinct by comparison from previous items.
 func Distinct[T any, K comparable](keySelector func(value T) K) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
 		var (
@@ -241,8 +239,7 @@ func Distinct[T any, K comparable](keySelector func(value T) K) OperatorFunc[T, 
 	}
 }
 
-// Returns a result Observable that emits all values pushed by the source observable
-// if they are distinct in comparison to the last value the result observable emitted.
+// Returns a result Observable that emits all values pushed by the source observable if they are distinct in comparison to the last value the result observable emitted.
 func DistinctUntilChanged[T any](comparator ...ComparatorFunc[T, T]) OperatorFunc[T, T] {
 	cb := func(prev T, current T) bool {
 		return reflect.DeepEqual(prev, current)
@@ -340,8 +337,7 @@ func Filter[T any](predicate PredicateFunc[T]) OperatorFunc[T, T] {
 	}
 }
 
-// Emits only the first value (or the first value that meets some condition)
-// emitted by the source Observable.
+// Emits only the first value (or the first value that meets some condition) emitted by the source Observable.
 func First[T any](predicate PredicateFunc[T], defaultValue ...T) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
 		var (
@@ -381,11 +377,7 @@ func First[T any](predicate PredicateFunc[T], defaultValue ...T) OperatorFunc[T,
 	}
 }
 
-// Returns an Observable that emits only the last item emitted by the source Observable.
-// It optionally takes a predicate function as a parameter, in which case,
-// rather than emitting the last item from the source Observable,
-// the resulting Observable will emit the last item from the source Observable
-// that satisfies the predicate.
+// Returns an Observable that emits only the last item emitted by the source Observable. It optionally takes a predicate function as a parameter, in which case, rather than emitting the last item from the source Observable, the resulting Observable will emit the last item from the source Observable that satisfies the predicate.
 func Last[T any](predicate PredicateFunc[T], defaultValue ...T) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
 		var (
@@ -509,17 +501,14 @@ func Sample[T any, R any](notifier Observable[R]) OperatorFunc[T, T] {
 	}
 }
 
-// Emits the most recently emitted value from the source Observable within periodic time
-// intervals.
+// Emits the most recently emitted value from the source Observable within periodic time intervals.
 func SampleTime[T any](duration time.Duration) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
 		return Pipe1(source, Sample[T](Interval(duration)))
 	}
 }
 
-// Returns an observable that asserts that only one value is emitted from the observable
-// that matches the predicate. If no predicate is provided, then it will assert that the
-// observable only emits one value.
+// Returns an observable that asserts that only one value is emitted from the observable that matches the predicate. If no predicate is provided, then it will assert that the observable only emits one value.
 func Single[T any](predicate ...func(value T, index uint, source Observable[T]) bool) OperatorFunc[T, T] {
 	cb := func(T, uint, Observable[T]) bool {
 		return true
@@ -614,8 +603,7 @@ func SkipLast[T any](skipCount uint) OperatorFunc[T, T] {
 	}
 }
 
-// Returns an Observable that skips items emitted by the source Observable until a
-// second Observable emits an item.
+// Returns an Observable that skips items emitted by the source Observable until a second Observable emits an item.
 func SkipUntil[T any, R any](notifier Observable[R]) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {
@@ -631,8 +619,7 @@ func SkipUntil[T any, R any](notifier Observable[R]) OperatorFunc[T, T] {
 				notifyStream = notifier.SubscribeOn(wg.Done)
 			)
 
-			// It will never let the source observable emit any values if the
-			// notifier completes or throws an error without emitting a value before.
+			// It will never let the source observable emit any values if the notifier completes or throws an error without emitting a value before.
 
 		loop:
 			for {
@@ -659,10 +646,7 @@ func SkipUntil[T any, R any](notifier Observable[R]) OperatorFunc[T, T] {
 						item.Send(subscriber)
 					}
 
-				// Internally the skipUntil operator subscribes to the passed in observable
-				// (in the following called notifier) in order to recognize the emission of
-				// its first value. When this happens, the operator unsubscribes from the
-				// notifier and starts emitting the values of the source observable.
+				// Internally the skipUntil operator subscribes to the passed in observable (in the following called notifier) in order to recognize the emission of its first value. When this happens, the operator unsubscribes from the notifier and starts emitting the values of the source observable.
 				case <-notifyStream.ForEach():
 					notifyStream.Stop()
 					skip = false
@@ -674,9 +658,7 @@ func SkipUntil[T any, R any](notifier Observable[R]) OperatorFunc[T, T] {
 	}
 }
 
-// Returns an Observable that skips all items emitted by the source Observable
-// as long as a specified condition holds true, but emits all further source items
-// as soon as the condition becomes false.
+// Returns an Observable that skips all items emitted by the source Observable as long as a specified condition holds true, but emits all further source items as soon as the condition becomes false.
 func SkipWhile[T any](predicate func(v T, index uint) bool) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
 		var (
@@ -739,8 +721,7 @@ func Take[T any](count uint) OperatorFunc[T, T] {
 	}
 }
 
-// Waits for the source to complete, then emits the last N values from the source,
-// as specified by the count argument.
+// Waits for the source to complete, then emits the last N values from the source, as specified by the count argument.
 func TakeLast[T any](count uint) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
 		var (
@@ -819,8 +800,7 @@ func TakeUntil[T any, R any](notifier Observable[R]) OperatorFunc[T, T] {
 	}
 }
 
-// Emits values emitted by the source Observable so long as each value satisfies the given predicate,
-// and then completes as soon as this predicate is not satisfied.
+// Emits values emitted by the source Observable so long as each value satisfies the given predicate, and then completes as soon as this predicate is not satisfied.
 func TakeWhile[T any](predicate func(value T, index uint) bool) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
 		var (
@@ -846,8 +826,7 @@ func TakeWhile[T any](predicate func(value T, index uint) bool) OperatorFunc[T, 
 	}
 }
 
-// Emits a value from the source Observable, then ignores subsequent source values
-// for a duration determined by another Observable, then repeats this process.
+// Emits a value from the source Observable, then ignores subsequent source values for a duration determined by another Observable, then repeats this process.
 func Throttle[T any, R any](durationSelector func(value T) Observable[R]) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {
@@ -895,8 +874,7 @@ func Throttle[T any, R any](durationSelector func(value T) Observable[R]) Operat
 	}
 }
 
-// Emits a value from the source Observable, then ignores subsequent source
-// values for duration milliseconds, then repeats this process
+// Emits a value from the source Observable, then ignores subsequent source values for duration milliseconds, then repeats this process
 func ThrottleTime[T any](duration time.Duration) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {

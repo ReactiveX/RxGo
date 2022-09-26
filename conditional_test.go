@@ -16,7 +16,7 @@ func TestDefaultIfEmpty(t *testing.T) {
 		), any(str), nil, true)
 	})
 
-	t.Run("DefaultIfEmpty with Throw", func(t *testing.T) {
+	t.Run("DefaultIfEmpty with error", func(t *testing.T) {
 		var err = fmt.Errorf("some error")
 		checkObservableResult(t, Pipe1(
 			Throw[any](func() error {
@@ -44,7 +44,7 @@ func TestEvery(t *testing.T) {
 		), true, nil, true)
 	})
 
-	t.Run("Every with Throw", func(t *testing.T) {
+	t.Run("Every with error", func(t *testing.T) {
 		var err = fmt.Errorf("some error")
 		checkObservableResult(t, Pipe1(
 			Throw[uint](func() error {
@@ -85,16 +85,16 @@ func TestFind(t *testing.T) {
 		), None[any](), nil, true)
 	})
 
-	t.Run("Find with Throw", func(t *testing.T) {
+	t.Run("Find with error", func(t *testing.T) {
 		var err = errors.New("some error")
 		checkObservableResult(t, Pipe1(
 			Throw[any](func() error {
 				return err
 			}),
 			Find(func(a any, u uint) bool {
-				return a == "xxx"
+				return a == "not found"
 			}),
-		), Optional[any]{}, err, false)
+		), nil, err, false)
 	})
 
 	t.Run("Find with value", func(t *testing.T) {
@@ -124,6 +124,18 @@ func TestFindIndex(t *testing.T) {
 				return a == nil
 			}),
 		), -1, nil, true)
+	})
+
+	t.Run("FindIndex with error", func(t *testing.T) {
+		var err = errors.New("some error")
+		checkObservableResult(t, Pipe1(
+			Throw[any](func() error {
+				return err
+			}),
+			FindIndex(func(a any, u uint) bool {
+				return a == nil
+			}),
+		), int(0), err, false)
 	})
 
 	t.Run("FindIndex with value", func(t *testing.T) {
