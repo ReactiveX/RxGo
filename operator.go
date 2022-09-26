@@ -16,8 +16,7 @@ type repeatConfig interface {
 	constraints.Unsigned | RepeatConfig
 }
 
-// Returns an Observable that will resubscribe to the source stream when the source stream
-// completes.
+// Returns an Observable that will resubscribe to the source stream when the source stream completes.
 func Repeat[T any, C repeatConfig](config ...C) OperatorFunc[T, T] {
 	var (
 		maxRepeatCount = int64(-1)
@@ -125,9 +124,7 @@ func Do[T any](cb Observer[T]) OperatorFunc[T, T] {
 	}
 }
 
-// Returns an observable that asserts that only one value is emitted from the observable
-// that matches the predicate. If no predicate is provided, then it will assert that the
-// observable only emits one value.
+// Returns an observable that asserts that only one value is emitted from the observable that matches the predicate. If no predicate is provided, then it will assert that the observable only emits one value.
 // FIXME: should rename `Single2` to `Single`
 func Single2[T any](predicate func(v T, index uint) bool) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
@@ -263,8 +260,7 @@ func DelayWhen[T any, R any](delayDurationSelector ProjectionFunc[T, R]) Operato
 	}
 }
 
-// Combines the source Observable with other Observables to create an Observable
-// whose values are calculated from the latest values of each, only when the source emits.
+// Combines the source Observable with other Observables to create an Observable whose values are calculated from the latest values of each, only when the source emits.
 func WithLatestFrom[A any, B any](input Observable[B]) OperatorFunc[A, Tuple[A, B]] {
 	return func(source Observable[A]) Observable[Tuple[A, B]] {
 		return newObservable(func(subscriber Subscriber[Tuple[A, B]]) {
@@ -371,12 +367,12 @@ func Timeout[T any, C timeoutConfig[T]](config C) OperatorFunc[T, T] {
 
 			var (
 				upStream = source.SubscribeOn(wg.Done)
-				timeout  <-chan time.Time
+				timer    *time.Timer
 			)
 
 			switch v := any(config).(type) {
 			case time.Duration:
-				timeout = time.After(v)
+				timer = time.NewTimer(v)
 			case TimeoutConfig[T]:
 				panic("unimplemented")
 			}
@@ -393,14 +389,14 @@ func Timeout[T any, C timeoutConfig[T]](config C) OperatorFunc[T, T] {
 						break loop
 					}
 
-					// Reset timeout
-					timeout = make(<-chan time.Time)
+					// reset timeout
+					timer.Stop()
 					item.Send(subscriber)
 					if item.Err() != nil || item.Done() {
 						break loop
 					}
 
-				case <-timeout:
+				case <-timer.C:
 					upStream.Stop()
 					Error[T](ErrTimeout).Send(subscriber)
 					break loop
@@ -424,7 +420,6 @@ func ToSlice[T any]() OperatorFunc[T, []T] {
 				result = append(result, v)
 			},
 			func(obs Observer[[]T], err error) {
-				// When the source Observable errors no array will be emitted.
 				obs.Error(err)
 			},
 			func(obs Observer[[]T]) {

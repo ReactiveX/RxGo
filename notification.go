@@ -4,8 +4,74 @@ import (
 	"sync"
 )
 
-// Converts an Observable of ObservableNotification objects into the emissions that they
-// represent.
+// NotificationKind
+type NotificationKind int
+
+const (
+	NextKind NotificationKind = iota
+	ErrorKind
+	CompleteKind
+)
+
+type ObservableNotification[T any] interface {
+	Kind() NotificationKind
+	Value() T // returns the underlying value if it's a "Next" notification
+	Err() error
+}
+
+type Notification[T any] interface {
+	ObservableNotification[T]
+	Send(Subscriber[T]) bool
+	Done() bool
+}
+
+type notification[T any] struct {
+	kind NotificationKind
+	v    T
+	err  error
+	done bool
+}
+
+var _ Notification[any] = (*notification[any])(nil)
+
+func (d notification[T]) Kind() NotificationKind {
+	return d.kind
+}
+
+func (d notification[T]) Value() T {
+	return d.v
+}
+
+func (d notification[T]) Err() error {
+	return d.err
+}
+
+func (d notification[T]) Done() bool {
+	return d.done
+}
+
+func (d *notification[T]) Send(sub Subscriber[T]) bool {
+	select {
+	case <-sub.Closed():
+		return false
+	case sub.Send() <- d:
+		return true
+	}
+}
+
+func Next[T any](v T) Notification[T] {
+	return &notification[T]{kind: NextKind, v: v}
+}
+
+func Error[T any](err error) Notification[T] {
+	return &notification[T]{kind: ErrorKind, err: err}
+}
+
+func Complete[T any]() Notification[T] {
+	return &notification[T]{kind: CompleteKind, done: true}
+}
+
+// Converts an Observable of ObservableNotification objects into the emissions that they represent.
 func Dematerialize[T any]() OperatorFunc[ObservableNotification[T], T] {
 	return func(source Observable[ObservableNotification[T]]) Observable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {
@@ -62,8 +128,7 @@ func Dematerialize[T any]() OperatorFunc[ObservableNotification[T], T] {
 	}
 }
 
-// Represents all of the notifications from the source Observable as next emissions
-// marked with their original types within Notification objects.
+// Represents all of the notifications from the source Observable as next emissions marked with their original types within Notification objects.
 func Materialize[T any]() OperatorFunc[T, ObservableNotification[T]] {
 	return func(source Observable[T]) Observable[ObservableNotification[T]] {
 		return newObservable(func(subscriber Subscriber[ObservableNotification[T]]) {
@@ -91,11 +156,7 @@ func Materialize[T any]() OperatorFunc[T, ObservableNotification[T]] {
 						break observe
 					}
 
-					// When the source Observable emits complete,
-					// the output Observable will emit next as a Notification of type "complete",
-					// and then it will emit complete as well.
-					// When the source Observable emits error,
-					// the output will emit next as a Notification of type "error", and then complete.
+					// When the source Observable emits complete, the output Observable will emit next as a Notification of type "Complete", and then it will emit complete as well. When the source Observable emits error, the output will emit next as a Notification of type "Error", and then complete.
 					completed = item.Err() != nil || item.Done()
 					notice = Next(item.(ObservableNotification[T]))
 
@@ -105,8 +166,8 @@ func Materialize[T any]() OperatorFunc[T, ObservableNotification[T]] {
 					}
 
 					if completed {
-						Complete[ObservableNotification[T]]().Send(subscriber)
 						upStream.Stop()
+						Complete[ObservableNotification[T]]().Send(subscriber)
 						break observe
 					}
 				}
@@ -115,71 +176,4 @@ func Materialize[T any]() OperatorFunc[T, ObservableNotification[T]] {
 			wg.Wait()
 		})
 	}
-}
-
-// NotificationKind
-type NotificationKind int
-
-const (
-	NextKind NotificationKind = iota
-	ErrorKind
-	CompleteKind
-)
-
-type ObservableNotification[T any] interface {
-	Kind() NotificationKind
-	Value() T
-	Err() error
-}
-
-type Notification[T any] interface {
-	ObservableNotification[T]
-	Send(Subscriber[T]) bool
-	Done() bool
-}
-
-type notification[T any] struct {
-	kind NotificationKind
-	v    T
-	err  error
-	done bool
-}
-
-var _ Notification[any] = (*notification[any])(nil)
-
-func (d notification[T]) Kind() NotificationKind {
-	return d.kind
-}
-
-func (d notification[T]) Value() T {
-	return d.v
-}
-
-func (d notification[T]) Err() error {
-	return d.err
-}
-
-func (d notification[T]) Done() bool {
-	return d.done
-}
-
-func (d *notification[T]) Send(sub Subscriber[T]) bool {
-	select {
-	case <-sub.Closed():
-		return false
-	case sub.Send() <- d:
-		return true
-	}
-}
-
-func Next[T any](v T) Notification[T] {
-	return &notification[T]{kind: NextKind, v: v}
-}
-
-func Error[T any](err error) Notification[T] {
-	return &notification[T]{kind: ErrorKind, err: err}
-}
-
-func Complete[T any]() Notification[T] {
-	return &notification[T]{kind: CompleteKind, done: true}
 }

@@ -118,7 +118,8 @@ func TestDebounceTime(t *testing.T) {
 		checkObservableResult(t, Pipe1(
 			Throw[any](func() error {
 				return err
-			}), DebounceTime[any](time.Millisecond),
+			}),
+			DebounceTime[any](time.Millisecond),
 		), nil, err, false)
 	})
 
@@ -145,15 +146,21 @@ func TestDebounceTime(t *testing.T) {
 
 func TestDistinct(t *testing.T) {
 	t.Run("Distinct with Empty", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(Empty[any](), Distinct(func(value any) int {
-			return value.(int)
-		})), nil, nil, true)
+		checkObservableResult(t, Pipe1(
+			Empty[any](),
+			Distinct(func(value any) int {
+				return value.(int)
+			}),
+		), nil, nil, true)
 	})
 
 	t.Run("Distinct with numbers", func(t *testing.T) {
-		checkObservableResults(t, Pipe1(Of2(1, 1, 2, 2, 2, 1, 2, 3, 4, 3, 2, 1), Distinct(func(value int) int {
-			return value
-		})), []int{1, 2, 3, 4}, nil, true)
+		checkObservableResults(t, Pipe1(
+			Of2(1, 1, 2, 2, 2, 1, 2, 3, 4, 3, 2, 1),
+			Distinct(func(value int) int {
+				return value
+			}),
+		), []int{1, 2, 3, 4}, nil, true)
 	})
 
 	t.Run("Distinct with struct", func(t *testing.T) {
@@ -162,13 +169,16 @@ func TestDistinct(t *testing.T) {
 			age  uint
 		}
 
-		checkObservableResults(t, Pipe1(Of2(
-			user{name: "Foo", age: 4},
-			user{name: "Bar", age: 7},
-			user{name: "Foo", age: 5},
-		), Distinct(func(v user) string {
-			return v.name
-		})), []user{
+		checkObservableResults(t, Pipe1(
+			Of2(
+				user{name: "Foo", age: 4},
+				user{name: "Bar", age: 7},
+				user{name: "Foo", age: 5},
+			),
+			Distinct(func(v user) string {
+				return v.name
+			}),
+		), []user{
 			{age: 4, name: "Foo"},
 			{age: 7, name: "Bar"},
 		}, nil, true)
@@ -177,13 +187,17 @@ func TestDistinct(t *testing.T) {
 
 func TestDistinctUntilChanged(t *testing.T) {
 	t.Run("DistinctUntilChanged with empty", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(Empty[any](), DistinctUntilChanged[any]()), nil, nil, true)
+		checkObservableResult(t, Pipe1(
+			Empty[any](),
+			DistinctUntilChanged[any](),
+		), nil, nil, true)
 	})
 
 	t.Run("DistinctUntilChanged with string", func(t *testing.T) {
-		checkObservableResults(t,
-			Pipe1(Of2("a", "a", "b", "a", "c", "c", "d"), DistinctUntilChanged[string]()),
-			[]string{"a", "b", "a", "c", "d"}, nil, true)
+		checkObservableResults(t, Pipe1(
+			Of2("a", "a", "b", "a", "c", "c", "d"),
+			DistinctUntilChanged[string](),
+		), []string{"a", "b", "a", "c", "d"}, nil, true)
 	})
 
 	t.Run("DistinctUntilChanged with numbers", func(t *testing.T) {
@@ -250,21 +264,33 @@ func TestDistinctUntilChanged(t *testing.T) {
 
 func TestElementAt(t *testing.T) {
 	t.Run("ElementAt with default value", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(Empty[any](), ElementAt[any](1, 10)), 10, nil, true)
+		checkObservableResult(t, Pipe1(
+			Empty[any](),
+			ElementAt[any](1, 10),
+		), 10, nil, true)
 	})
 
 	t.Run("ElementAt position 2", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(Range[uint](1, 100), ElementAt[uint](2)), 3, nil, true)
+		checkObservableResult(t, Pipe1(
+			Range[uint](1, 100),
+			ElementAt[uint](2),
+		), 3, nil, true)
 	})
 
 	t.Run("ElementAt with error (ErrArgumentOutOfRange)", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(Range[uint](1, 10), ElementAt[uint](100)), 0, ErrArgumentOutOfRange, false)
+		checkObservableResult(t, Pipe1(
+			Range[uint](1, 10),
+			ElementAt[uint](100),
+		), 0, ErrArgumentOutOfRange, false)
 	})
 }
 
 func TestFilter(t *testing.T) {
 	t.Run("Filter with Empty", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(Empty[any](), Filter[any](nil)), nil, nil, true)
+		checkObservableResult(t, Pipe1(
+			Empty[any](),
+			Filter[any](nil),
+		), nil, nil, true)
 	})
 
 	t.Run("Filter with error", func(t *testing.T) {
@@ -272,7 +298,9 @@ func TestFilter(t *testing.T) {
 		checkObservableResult(t, Pipe1(
 			Throw[any](func() error {
 				return err
-			}), Filter[any](nil)), nil, err, false)
+			}),
+			Filter[any](nil),
+		), nil, err, false)
 	})
 
 	t.Run("Filter with Range(1,100)", func(t *testing.T) {
@@ -296,54 +324,84 @@ func TestFilter(t *testing.T) {
 
 func TestFirst(t *testing.T) {
 	t.Run("First with Empty", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(Empty[any](), First[any](nil)), nil, ErrEmpty, false)
+		checkObservableResult(t, Pipe1(
+			Empty[any](),
+			First[any](nil),
+		), nil, ErrEmpty, false)
 	})
 
 	t.Run("First with default value", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(Empty[any](), First[any](nil, "hello default value")), "hello default value", nil, true)
+		checkObservableResult(t, Pipe1(
+			Empty[any](),
+			First[any](nil, "hello default value"),
+		), "hello default value", nil, true)
 	})
 
 	t.Run("First with value", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(Range[uint8](88, 99), First(func(value uint8, index uint) bool {
-			return value > 0
-		})), uint8(88), nil, true)
+		checkObservableResult(t, Pipe1(
+			Range[uint8](88, 99),
+			First(func(value uint8, index uint) bool {
+				return value > 0
+			}),
+		), uint8(88), nil, true)
 	})
 }
 
 func TestLast(t *testing.T) {
 	t.Run("Last with empty value", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(Empty[any](), Last[any](nil)), nil, ErrEmpty, false)
+		checkObservableResult(t, Pipe1(
+			Empty[any](),
+			Last[any](nil),
+		), nil, ErrEmpty, false)
 	})
 
 	t.Run("Last with default value", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(Empty[any](), Last[any](nil, 88)), 88, nil, true)
+		checkObservableResult(t, Pipe1(
+			Empty[any](),
+			Last[any](nil, 88),
+		), 88, nil, true)
 	})
 
 	t.Run("Last with value", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(Range[uint8](1, 72), Last[uint8](nil)), uint8(72), nil, true)
+		checkObservableResult(t, Pipe1(
+			Range[uint8](1, 72),
+			Last[uint8](nil),
+		), uint8(72), nil, true)
 	})
 
 	t.Run("Last with value but not matched", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(Range[uint8](1, 10), Last(func(value uint8, _ uint) bool {
-			return value > 10
-		})), uint8(0), ErrNotFound, false)
+		checkObservableResult(t, Pipe1(
+			Range[uint8](1, 10),
+			Last(func(value uint8, _ uint) bool {
+				return value > 10
+			}),
+		), uint8(0), ErrNotFound, false)
 	})
 }
 
 func TestIgnoreElements(t *testing.T) {
 	t.Run("IgnoreElements with Empty", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(Empty[any](), IgnoreElements[any]()), nil, nil, true)
+		checkObservableResult(t, Pipe1(
+			Empty[any](),
+			IgnoreElements[any](),
+		), nil, nil, true)
 	})
 
 	t.Run("IgnoreElements with Throw", func(t *testing.T) {
 		var err = errors.New("throw")
-		checkObservableResult(t, Pipe1(Throw[error](func() error {
-			return err
-		}), IgnoreElements[error]()), nil, err, false)
+		checkObservableResult(t, Pipe1(
+			Throw[error](func() error {
+				return err
+			}),
+			IgnoreElements[error](),
+		), nil, err, false)
 	})
 
 	t.Run("IgnoreElements with Range(1,7)", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(Range[uint](1, 7), IgnoreElements[uint]()), uint(0), nil, true)
+		checkObservableResult(t, Pipe1(
+			Range[uint](1, 7),
+			IgnoreElements[uint](),
+		), uint(0), nil, true)
 	})
 }
 
@@ -427,19 +485,27 @@ func TestSingle(t *testing.T) {
 
 func TestSkip(t *testing.T) {
 	t.Run("Skip with Empty", func(t *testing.T) {
-		checkObservableResults(t, Pipe1(Empty[uint](), Skip[uint](5)), []uint{}, nil, true)
+		checkObservableResults(t, Pipe1(
+			Empty[uint](),
+			Skip[uint](5),
+		), []uint{}, nil, true)
 	})
 
 	t.Run("Skip with Range(1,10)", func(t *testing.T) {
-		checkObservableResults(t, Pipe1(Range[uint](1, 10), Skip[uint](5)),
-			[]uint{6, 7, 8, 9, 10}, nil, true)
+		checkObservableResults(t, Pipe1(
+			Range[uint](1, 10),
+			Skip[uint](5),
+		), []uint{6, 7, 8, 9, 10}, nil, true)
 	})
 
 	t.Run("Skip with Throw", func(t *testing.T) {
 		var err = errors.New("stop")
-		checkObservableResults(t, Pipe1(Throw[uint](func() error {
-			return err
-		}), Skip[uint](5)), []uint{}, err, false)
+		checkObservableResults(t, Pipe1(
+			Throw[uint](func() error {
+				return err
+			}),
+			Skip[uint](5),
+		), []uint{}, err, false)
 	})
 }
 
@@ -479,13 +545,17 @@ func TestSkipWhile(t *testing.T) {
 			Of2("Green Arrow", "SuperMan", "Flash", "SuperGirl", "Black Canary"),
 			SkipWhile(func(v string, _ uint) bool {
 				return v != "SuperGirl"
-			})), []string{"SuperGirl", "Black Canary"}, nil, true)
+			}),
+		), []string{"SuperGirl", "Black Canary"}, nil, true)
 	})
 
 	t.Run("SkipWhile until index 5", func(t *testing.T) {
-		checkObservableResults(t, Pipe1(Range[uint](1, 10), SkipWhile(func(_ uint, idx uint) bool {
-			return idx != 5
-		})), []uint{6, 7, 8, 9, 10}, nil, true)
+		checkObservableResults(t, Pipe1(
+			Range[uint](1, 10),
+			SkipWhile(func(_ uint, idx uint) bool {
+				return idx != 5
+			}),
+		), []uint{6, 7, 8, 9, 10}, nil, true)
 	})
 }
 
@@ -520,20 +590,25 @@ func TestTakeWhile(t *testing.T) {
 		for i := uint(0); i <= 5; i++ {
 			result = append(result, i)
 		}
-		checkObservableResults(t, Pipe1(Interval(time.Millisecond), TakeWhile(func(v uint, _ uint) bool {
-			return v <= 5
-		})), result, nil, true)
+		checkObservableResults(t, Pipe1(
+			Interval(time.Millisecond),
+			TakeWhile(func(v uint, _ uint) bool {
+				return v <= 5
+			}),
+		), result, nil, true)
 	})
 
 	t.Run("TakeWhile with Range", func(t *testing.T) {
-		checkObservableResults(t, Pipe1(Range[uint](1, 100), TakeWhile(func(v uint, _ uint) bool {
-			return v >= 50
-		})), []uint{}, nil, true)
+		checkObservableResults(t, Pipe1(
+			Range[uint](1, 100),
+			TakeWhile(func(v uint, _ uint) bool {
+				return v >= 50
+			}),
+		), []uint{}, nil, true)
 	})
 }
 
 func TestThrottle(t *testing.T) {
-	// TODO:
 	t.Run("Throttle with Empty", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(
 			Empty[any](),
@@ -541,6 +616,61 @@ func TestThrottle(t *testing.T) {
 				return Interval(time.Second)
 			}),
 		), nil, nil, true)
+	})
+
+	t.Run("Throttle with Interval", func(t *testing.T) {
+		checkObservableResults(t, Pipe2(
+			Interval(time.Millisecond),
+			Throttle(func(v uint) Observable[uint] {
+				return Empty[uint]()
+			}),
+			Take[uint](4),
+		), []uint{0, 1, 2, 3}, nil, true)
+
+		duration := time.Millisecond * 5
+		checkObservableHasResults(t, Pipe2(
+			Interval(time.Millisecond),
+			Throttle(func(v uint) Observable[uint] {
+				return Interval(duration)
+			}),
+			Take[uint](4),
+		), true, nil, true)
+	})
+
+	t.Run("Throttle with outer error", func(t *testing.T) {
+		var err = errors.New("failed now")
+		checkObservableResult(t, Pipe1(
+			Throw[uint](func() error {
+				return err
+			}),
+			Throttle(func(v uint) Observable[uint] {
+				return Empty[uint]()
+			}),
+		), uint(0), err, false)
+	})
+
+	t.Run("Throttle with inner error", func(t *testing.T) {
+		var err = errors.New("failed now")
+		checkObservableResult(t, Pipe1(
+			Interval(time.Millisecond),
+			Throttle(func(v uint) Observable[uint] {
+				return Throw[uint](func() error {
+					return err
+				})
+			}),
+		), uint(0), err, false)
+
+		checkObservableHasResults(t, Pipe1(
+			Interval(time.Millisecond),
+			Throttle(func(v uint) Observable[uint] {
+				if v > 3 {
+					return Throw[uint](func() error {
+						return err
+					})
+				}
+				return Of2(v)
+			}),
+		), true, err, false)
 	})
 }
 
@@ -557,7 +687,8 @@ func TestThrottleTime(t *testing.T) {
 		checkObservableResult(t, Pipe1(
 			Throw[any](func() error {
 				return err
-			}), ThrottleTime[any](time.Millisecond),
+			}),
+			ThrottleTime[any](time.Millisecond),
 		), nil, err, false)
 	})
 

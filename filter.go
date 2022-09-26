@@ -3,6 +3,7 @@ package rxgo
 import (
 	"reflect"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -837,35 +838,85 @@ func Throttle[T any, R any](durationSelector func(value T) Observable[R]) Operat
 			wg.Add(1)
 
 			var (
-				upStream = source.SubscribeOn(wg.Done)
-				canEmit  = true
+				errCh          = make(chan error, 1)
+				canEmit        = new(atomic.Pointer[bool])
+				upStream       = source.SubscribeOn(wg.Done)
+				durationStream Subscriber[R]
 			)
 
-		loop:
+			defer close(errCh)
+
+			flag := true
+			canEmit.Store(&flag)
+
+			unsubscribeStream := func() {
+				if durationStream != nil {
+					durationStream.Stop()
+				}
+			}
+
+			observeStream := func(stream Subscriber[R]) {
+			innerLoop:
+				for {
+					select {
+					case <-stream.Closed():
+						break innerLoop
+
+					case item, ok := <-stream.ForEach():
+						if !ok {
+							break innerLoop
+						}
+
+						if err := item.Err(); err != nil {
+							sendNonBlock(err, errCh)
+							break innerLoop
+						}
+
+						flag := true
+						canEmit.Store(&flag)
+
+						if item.Done() {
+							break innerLoop
+						}
+					}
+				}
+			}
+
+		outerLoop:
 			for {
 				select {
 				case <-subscriber.Closed():
+					unsubscribeStream()
 					upStream.Stop()
-					break loop
+					break outerLoop
+
+				case err := <-errCh:
+					unsubscribeStream()
+					upStream.Stop()
+					Error[T](err).Send(subscriber)
+					break outerLoop
 
 				case item, ok := <-upStream.ForEach():
 					if !ok {
-						break loop
+						break outerLoop
 					}
 
 					ended := item.Err() != nil || item.Done()
 					if ended {
+						unsubscribeStream()
 						item.Send(subscriber)
-						break loop
+						break outerLoop
 					}
 
-					if canEmit {
+					if *canEmit.Load() {
+						unsubscribeStream()
+						flag := false
+						canEmit.Store(&flag)
 						item.Send(subscriber)
-						canEmit = false
+						wg.Add(1)
+						durationStream = durationSelector(item.Value()).SubscribeOn(wg.Done)
+						go observeStream(durationStream)
 					}
-
-					wg.Add(1)
-					durationSelector(item.Value()).SubscribeOn(wg.Done)
 				}
 			}
 
@@ -877,48 +928,8 @@ func Throttle[T any, R any](durationSelector func(value T) Observable[R]) Operat
 // Emits a value from the source Observable, then ignores subsequent source values for duration milliseconds, then repeats this process
 func ThrottleTime[T any](duration time.Duration) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
-		return newObservable(func(subscriber Subscriber[T]) {
-			var (
-				wg = new(sync.WaitGroup)
-			)
-
-			wg.Add(1)
-
-			var (
-				upStream = source.SubscribeOn(wg.Done)
-				canEmit  = true
-				timeout  = time.After(duration)
-			)
-
-		loop:
-			for {
-				select {
-				case <-subscriber.Closed():
-					upStream.Stop()
-					break loop
-
-				case item, ok := <-upStream.ForEach():
-					if !ok {
-						break loop
-					}
-
-					ended := item.Err() != nil || item.Done()
-					if ended {
-						item.Send(subscriber)
-						break loop
-					}
-					if canEmit {
-						item.Send(subscriber)
-						canEmit = false
-					}
-
-				case <-timeout:
-					canEmit = true
-					timeout = time.After(duration)
-				}
-			}
-
-			wg.Wait()
-		})
+		return Pipe1(source, Throttle(func(value T) Observable[uint] {
+			return Interval(duration)
+		}))
 	}
 }

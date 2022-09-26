@@ -562,9 +562,7 @@ func MergeWith[T any](input Observable[T], inputs ...Observable[T]) OperatorFunc
 	}
 }
 
-// FIXME: Creates an Observable that mirrors the first source Observable to emit a
-// next, error or complete notification from the combination of the Observable
-// to which the operator is applied and supplied Observables.
+// FIXME: Creates an Observable that mirrors the first source Observable to emit a next, error or complete notification from the combination of the Observable to which the operator is applied and supplied Observables.
 func RaceWith[T any](sources ...Observable[T]) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
 		sources = append([]Observable[T]{source}, sources...)

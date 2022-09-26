@@ -12,9 +12,9 @@ ToSlice will wait until the source Observable completes before emitting the slic
 
 ```go
 rxgo.Pipe2(
-	Interval[uint](time.Second),
-	Take[uint](10),
-	ToSlice[uint](),
+    rxgo.Interval[uint](time.Second),
+    rxgo.Take[uint](10),
+    rxgo.ToSlice[uint](),
 ).SubscribeSync(func(v []uint) {
     log.Println("Next ->", v)
 }, func(err error) {

@@ -3,6 +3,7 @@ package rxgo
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 )
@@ -22,62 +23,95 @@ func TestBuffer(t *testing.T) {
 	// 			return err
 	// 		}),
 	// 		Buffer[string](Of2("a")),
-	// 	), []string{}, err, false)
+	// 	), []string(nil), err, false)
 	// })
 
-	t.Run("Buffer with Empty should throw ErrEmpty", func(t *testing.T) {
-		checkObservableResult(t, Pipe2(
-			Empty[string](),
-			ThrowIfEmpty[string](),
-			Buffer[string](Interval(time.Millisecond)),
-		), nil, ErrEmpty, false)
-	})
+	// t.Run("Buffer with Empty should throw ErrEmpty", func(t *testing.T) {
+	// 	checkObservableResult(t, Pipe2(
+	// 		Empty[string](),
+	// 		ThrowIfEmpty[string](),
+	// 		Buffer[string](Interval(time.Millisecond)),
+	// 	), nil, ErrEmpty, false)
+	// })
 
-	t.Run("Buffer with Interval", func(t *testing.T) {
-		checkObservableResults(t, Pipe1(
-			Of2("a", "b", "c", "d", "e"),
-			Buffer[string](Interval(time.Millisecond*100)),
-		), [][]string{
-			{"a", "b", "c", "d", "e"},
-		}, nil, true)
-	})
+	// t.Run("Buffer with Interval", func(t *testing.T) {
+	// 	checkObservableResults(t, Pipe1(
+	// 		Of2("a", "b", "c", "d", "e"),
+	// 		Buffer[string](Interval(time.Millisecond*500)),
+	// 	), [][]string{
+	// 		{"a", "b", "c", "d", "e"},
+	// 	}, nil, true)
+	// })
 }
 
 func TestBufferCount(t *testing.T) {
-	// t.Run("BufferCount with Empty", func(t *testing.T) {
-	// 	checkObservableResult(t, Pipe1(
-	// 		Empty[uint](),
-	// 		BufferCount[uint](2),
-	// 	), nil, nil, true)
-	// })
+	t.Run("BufferCount with Empty", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(
+			Empty[uint](),
+			BufferCount[uint](2),
+		), nil, nil, true)
+	})
 
-	// t.Run("BufferCount with Range(1,7)", func(t *testing.T) {
-	// 	checkObservableResults(t, Pipe1(
-	// 		Range[uint](1, 7),
-	// 		BufferCount[uint](2),
-	// 	), [][]uint{
-	// 		{1, 2},
-	// 		{3, 4},
-	// 		{5, 6},
-	// 		{7},
-	// 	}, nil, true)
-	// })
+	t.Run("BufferCount with error", func(t *testing.T) {
+		var err = errors.New("failed")
+		checkObservableResult(t, Pipe1(
+			Throw[any](func() error {
+				return err
+			}),
+			BufferCount[any](2),
+		), nil, err, false)
+	})
 
-	// t.Run("BufferCount with Range(1,7)", func(t *testing.T) {
-	// 	checkObservableResults(t, Pipe1(
-	// 		Range[uint](0, 7),
-	// 		BufferCount[uint](3, 1),
-	// 	), [][]uint{
-	// 		{0, 1, 2},
-	// 		{1, 2, 3},
-	// 		{2, 3, 4},
-	// 		{3, 4, 5},
-	// 		{4, 5, 6},
-	// 		{5, 6, 7},
-	// 		{5, 6},
-	// 		{7},
-	// 	}, nil, true)
-	// })
+	t.Run("BufferCount with error", func(t *testing.T) {
+		var (
+			of  = Of2("a", "h", "j", "o", "k", "e", "r", "!")
+			err = errors.New("failed")
+		)
+
+		checkObservableResults(t, Pipe2(
+			of,
+			Map(func(v string, _ uint) (string, error) {
+				if strings.EqualFold(v, "e") {
+					return "", err
+				}
+				return v, nil
+			}),
+			BufferCount[string](2),
+		), [][]string{{"a", "h"}, {"j", "o"}}, err, false)
+
+		checkObservableResults(t, Pipe2(
+			of,
+			Map(func(v string, _ uint) (string, error) {
+				if strings.EqualFold(v, "r") {
+					return "", err
+				}
+				return v, nil
+			}),
+			BufferCount[string](2),
+		), [][]string{{"a", "h"}, {"j", "o"}, {"k", "e"}}, err, false)
+	})
+
+	t.Run("BufferCount with Range(1,7)", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			Range[uint](1, 7),
+			BufferCount[uint](2),
+		), [][]uint{{1, 2}, {3, 4}, {5, 6}, {7}}, nil, true)
+	})
+
+	t.Run("BufferCount with Range(1,7)", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			Range[uint](0, 7),
+			BufferCount[uint](3, 1),
+		), [][]uint{
+			{0, 1, 2},
+			{1, 2, 3},
+			{2, 3, 4},
+			{3, 4, 5},
+			{4, 5, 6},
+			{5, 6},
+			{6},
+		}, nil, true)
+	})
 }
 
 func TestBufferTime(t *testing.T) {
@@ -374,7 +408,27 @@ func TestMap(t *testing.T) {
 
 func TestMergeMap(t *testing.T) {
 	t.Run("MergeMap with Empty", func(t *testing.T) {
+		checkObservableHasResults(t, Pipe1(
+			Empty[string](),
+			MergeMap(func(x string, i uint) Observable[Tuple[string, uint]] {
+				return Pipe2(
+					Interval(time.Millisecond),
+					Map(func(y, _ uint) (Tuple[string, uint], error) {
+						return NewTuple(x, y), nil
+					}),
+					Take[Tuple[string, uint]](3),
+				)
+			}),
+		), false, nil, true)
+	})
 
+	t.Run("MergeMap with inner Empty", func(t *testing.T) {
+		checkObservableHasResults(t, Pipe1(
+			Of2("a", "b", "v"),
+			MergeMap(func(x string, i uint) Observable[any] {
+				return Empty[any]()
+			}),
+		), false, nil, true)
 	})
 
 	t.Run("MergeMap with complete", func(t *testing.T) {
@@ -443,6 +497,78 @@ func TestScan(t *testing.T) {
 				return acc + cur, nil
 			}, 0),
 		), []uint{1, 4, 9}, nil, true)
+	})
+}
+
+func TestSwitchMap(t *testing.T) {
+	t.Run("SwitchMap with Empty", func(t *testing.T) {
+		checkObservableHasResults(t, Pipe1(
+			Empty[uint](),
+			SwitchMap(func(_, _ uint) Observable[string] {
+				return Of2("hello", "world", "!!")
+			}),
+		), false, nil, true)
+	})
+
+	t.Run("SwitchMap with Empty and inner error", func(t *testing.T) {
+		var err = errors.New("throw")
+		checkObservableHasResults(t, Pipe1(
+			Empty[uint](),
+			SwitchMap(func(_, _ uint) Observable[any] {
+				return Throw[any](func() error {
+					return err
+				})
+			}),
+		), false, nil, true)
+	})
+
+	t.Run("SwitchMap with error", func(t *testing.T) {
+		var err = errors.New("throw")
+		checkObservableHasResults(t, Pipe1(
+			Throw[any](func() error {
+				return err
+			}),
+			SwitchMap(func(v any, _ uint) Observable[any] {
+				return Of2(v)
+			}),
+		), false, err, false)
+	})
+
+	t.Run("SwitchMap with inner error", func(t *testing.T) {
+		var err = errors.New("throw")
+		checkObservableHasResults(t, Pipe1(
+			Range[uint](1, 5),
+			SwitchMap(func(_, _ uint) Observable[any] {
+				return Throw[any](func() error {
+					return err
+				})
+			}),
+		), false, err, false)
+	})
+
+	t.Run("SwitchMap with inner error", func(t *testing.T) {
+		var err = errors.New("throw")
+		checkObservableHasResults(t, Pipe1(
+			Throw[any](func() error {
+				return err
+			}),
+			SwitchMap(func(v any, _ uint) Observable[any] {
+				return Of2(v)
+			}),
+		), false, err, false)
+	})
+
+	t.Run("SwitchMap with values", func(t *testing.T) {
+		checkObservableHasResults(t, Pipe1(
+			Range[uint](1, 100),
+			SwitchMap(func(v, _ uint) Observable[string] {
+				arr := make([]string, 0)
+				for i := uint(0); i < v; i++ {
+					arr = append(arr, fmt.Sprintf("%d{%d}", v, i))
+				}
+				return Of2(arr[0], arr[1:]...)
+			}),
+		), true, nil, true)
 	})
 }
 

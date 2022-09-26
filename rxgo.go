@@ -36,7 +36,7 @@ type GroupedObservable[K comparable, R any] interface {
 }
 
 type Subscription interface {
-	// to unsubscribe the stream
+	// allow user to unsubscribe the stream manually
 	Unsubscribe()
 }
 
@@ -129,13 +129,15 @@ observe:
 				break observe
 			}
 
-			if item.Done() {
-				sub.dst.Complete()
+			// handle `Error` notification
+			if err := item.Err(); err != nil {
+				sub.dst.Error(err)
 				break observe
 			}
 
-			if err := item.Err(); err != nil {
-				sub.dst.Error(err)
+			// handle `Complete` notification
+			if item.Done() {
+				sub.dst.Complete()
 				break observe
 			}
 

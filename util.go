@@ -5,6 +5,15 @@ import (
 	"sync"
 )
 
+func sendNonBlock[T any](v T, ch chan T) bool {
+	select {
+	case ch <- v:
+		return true
+	default:
+		return false
+	}
+}
+
 func skipPredicate[T any](T, uint) bool {
 	return true
 }

@@ -21,7 +21,7 @@ func Empty[T any]() Observable[T] {
 
 // Creates an Observable that, on subscribe, calls an Observable factory to make an Observable for each new Observer.
 func Defer[T any](factory func() Observable[T]) Observable[T] {
-	// defer allows you to create an Observable only when the Observer subscribes. It waits until an Observer subscribes to it, calls the given factory function to get an Observable -- where a factory function typically generates a new Observable -- and subscribes the Observer to this Observable. In case the factory function returns a falsy value, then Empty is used as Observable instead. Last but not least, an exception during the factory function call is transferred to the Observer by calling error.
+	// `Defer` allows you to create an Observable only when the Observer subscribes. It waits until an Observer subscribes to it, calls the given factory function to get an Observable -- where a factory function typically generates a new Observable -- and subscribes the Observer to this Observable. In case the factory function returns a falsy value, then Empty is used as Observable instead. Last but not least, an exception during the factory function call is transferred to the Observer by calling error.
 	return newObservable(func(subscriber Subscriber[T]) {
 		var (
 			wg     = new(sync.WaitGroup)
@@ -153,7 +153,7 @@ func Scheduled[T any](item T, items ...T) Observable[T] {
 	})
 }
 
-// Creates an observable that will create an error instance and push it to the consumer as an error immediately upon subscription. This creation function is useful for creating an observable that will create an error and error every time it is subscribed to. Generally, inside of most operators when you might want to return an errored observable, this is unnecessary. In most cases, such as in the inner return of concatMap, mergeMap, defer, and many others, you can simply throw the error, and RxGo will pick that up and notify the consumer of the error.
+// Creates an observable that will create an error instance and push it to the consumer as an error immediately upon subscription. This creation function is useful for creating an observable that will create an error and error every time it is subscribed to. Generally, inside of most operators when you might want to return an errored observable, this is unnecessary. In most cases, such as in the inner return of `ConcatMap`, `MergeMap`, `Defer`, and many others, you can simply throw the error, and RxGo will pick that up and notify the consumer of the error.
 func Throw[T any](factory ErrorFunc) Observable[T] {
 	return newObservable(func(subscriber Subscriber[T]) {
 		Error[T](factory()).Send(subscriber)
@@ -162,7 +162,6 @@ func Throw[T any](factory ErrorFunc) Observable[T] {
 
 // Creates an observable that will wait for a specified time period before emitting the number 0.
 func Timer[N constraints.Unsigned](startDue time.Duration, intervalDuration ...time.Duration) Observable[N] {
-
 	return newObservable(func(subscriber Subscriber[N]) {
 		var (
 			index = N(0)
@@ -234,8 +233,7 @@ func Iif[T any](condition func() bool, trueObservable Observable[T], falseObserv
 	})
 }
 
-// Splits the source Observable into two, one with values that satisfy a predicate,
-// and another with values that don't satisfy the predicate.
+// Splits the source Observable into two, one with values that satisfy a predicate, and another with values that don't satisfy the predicate.
 // FIXME: redesign the API
 func Partition[T any](source Observable[T], predicate PredicateFunc[T]) {
 	newObservable(func(subscriber Subscriber[Tuple[Observable[T], Observable[T]]]) {
