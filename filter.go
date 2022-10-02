@@ -1,6 +1,7 @@
 package rxgo
 
 import (
+	"log"
 	"reflect"
 	"sync"
 	"sync/atomic"
@@ -119,6 +120,7 @@ func Debounce[T any, R any](durationSelector DurationFunc[T, R]) OperatorFunc[T,
 			wg.Add(1)
 
 			var (
+				hasValue    bool
 				upStream    = source.SubscribeOn(wg.Done)
 				downStream  Subscriber[R]
 				notifyCh    <-chan Notification[R]
@@ -130,7 +132,7 @@ func Debounce[T any, R any](durationSelector DurationFunc[T, R]) OperatorFunc[T,
 				notifyCh = make(<-chan Notification[R])
 			}
 
-			unsubscribeStream := func() {
+			unsubscribeAll := func() {
 				if downStream != nil {
 					downStream.Stop()
 				}
@@ -161,9 +163,10 @@ func Debounce[T any, R any](durationSelector DurationFunc[T, R]) OperatorFunc[T,
 						break observe
 					}
 
-					// The notification is emitted only when the duration Observable emits a next notification, and if no other notification was emitted on the source Observable since the duration Observable was spawned. If a new notification appears before the duration Observable emits, the previous notification will not be emitted and a new duration is scheduled from durationSelector is scheduled.
+					// the notification is emitted only when the duration Observable emits a next notification, and if no other notification was emitted on the source Observable since the duration Observable was spawned. If a new notification appears before the duration Observable emits, the previous notification will not be emitted and a new duration is scheduled from durationSelector is scheduled.
+					hasValue = true
 					latestValue = item.Value()
-					unsubscribeStream()
+					unsubscribeAll()
 					if downStream == nil {
 						wg.Add(1)
 						downStream = durationSelector(latestValue).SubscribeOn(wg.Done)
@@ -184,15 +187,17 @@ func Debounce[T any, R any](durationSelector DurationFunc[T, R]) OperatorFunc[T,
 						break observe
 					}
 
-					Next(latestValue).Send(subscriber)
+					if hasValue {
+						Next(latestValue).Send(subscriber)
+					}
 
 					// reset
-					unsubscribeStream()
+					unsubscribeAll()
 				}
 			}
 
 			// prevent leaking
-			unsubscribeStream()
+			unsubscribeAll()
 
 			wg.Wait()
 		})
@@ -442,18 +447,19 @@ func IgnoreElements[T any]() OperatorFunc[T, T] {
 	}
 }
 
-// Emits the most recently emitted value from the source Observable whenever
-// another Observable, the notifier, emits.
+// Emits the most recently emitted value from the source Observable whenever another Observable, the notifier, emits.
 func Sample[T any, R any](notifier Observable[R]) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {
 			var (
+				mu = new(sync.RWMutex)
 				wg = new(sync.WaitGroup)
 			)
 
 			wg.Add(2)
 
 			var (
+				hasValue     bool
 				latestValue  Notification[T]
 				upStream     = source.SubscribeOn(wg.Done)
 				notifyStream = notifier.SubscribeOn(wg.Done)
@@ -464,36 +470,54 @@ func Sample[T any, R any](notifier Observable[R]) OperatorFunc[T, T] {
 				notifyStream.Stop()
 			}
 
-		observe:
+			observeStream := func(stream Subscriber[R]) {
+			innerLoop:
+				for {
+					select {
+					case <-stream.Closed():
+						break innerLoop
+
+					case item, ok := <-stream.ForEach():
+						log.Println(item, ok)
+						mu.RLock()
+						if hasValue {
+							latestValue.Send(subscriber)
+						}
+						mu.RUnlock()
+					}
+				}
+			}
+
+			go observeStream(notifyStream)
+
+		outerLoop:
 			for {
 				select {
 				case <-subscriber.Closed():
 					unsubscribeAll()
-					break observe
+					break outerLoop
 
 				case item, ok := <-upStream.ForEach():
 					if !ok {
-						unsubscribeAll()
-						break observe
+						break outerLoop
 					}
 
 					if err := item.Err(); err != nil {
+						notifyStream.Stop()
 						item.Send(subscriber)
-						unsubscribeAll()
-						break observe
+						break outerLoop
 					}
 
 					if item.Done() {
+						notifyStream.Stop()
 						item.Send(subscriber)
-						unsubscribeAll()
-						break observe
+						break outerLoop
 					}
-					latestValue = item
 
-				case <-notifyStream.ForEach():
-					if latestValue != nil {
-						latestValue.Send(subscriber)
-					}
+					mu.Lock()
+					hasValue = true
+					latestValue = item
+					mu.Unlock()
 				}
 			}
 
@@ -636,8 +660,7 @@ func SkipUntil[T any, R any](notifier Observable[R]) OperatorFunc[T, T] {
 						break loop
 					}
 
-					ended := item.Err() != nil || item.Done()
-					if ended {
+					if item.IsEnd() {
 						notifyStream.Stop()
 						item.Send(subscriber)
 						break loop
@@ -779,9 +802,8 @@ func TakeUntil[T any, R any](notifier Observable[R]) OperatorFunc[T, T] {
 						break loop
 					}
 
-					ended := item.Err() != nil || item.Done()
 					item.Send(subscriber)
-					if ended {
+					if item.IsEnd() {
 						notifyStream.Stop()
 						break loop
 					}
@@ -901,8 +923,7 @@ func Throttle[T any, R any](durationSelector func(value T) Observable[R]) Operat
 						break outerLoop
 					}
 
-					ended := item.Err() != nil || item.Done()
-					if ended {
+					if item.IsEnd() {
 						unsubscribeStream()
 						item.Send(subscriber)
 						break outerLoop

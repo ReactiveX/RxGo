@@ -36,7 +36,6 @@ func Defer[T any](factory func() Observable[T]) Observable[T] {
 
 		var (
 			upStream = stream.SubscribeOn(wg.Done)
-			ended    bool
 		)
 
 	loop:
@@ -51,9 +50,8 @@ func Defer[T any](factory func() Observable[T]) Observable[T] {
 					break loop
 				}
 
-				ended = item.Done() || item.Err() != nil
 				item.Send(subscriber)
-				if ended {
+				if item.IsEnd() {
 					break loop
 				}
 			}
@@ -221,9 +219,8 @@ func Iif[T any](condition func() bool, trueObservable Observable[T], falseObserv
 					break loop
 				}
 
-				ended := item.Err() != nil || item.Done()
 				item.Send(subscriber)
-				if ended {
+				if item.IsEnd() {
 					break loop
 				}
 			}
@@ -262,14 +259,13 @@ func Partition[T any](source Observable[T], predicate PredicateFunc[T]) {
 					break loop
 				}
 
-				ended := item.Err() != nil || item.Done()
 				if predicate(item.Value(), index) {
 					item.Send(trueStream)
 				} else {
 					item.Send(falseStream)
 				}
 
-				if ended {
+				if item.IsEnd() {
 					break loop
 				}
 

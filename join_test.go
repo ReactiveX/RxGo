@@ -365,32 +365,69 @@ func TestPartition(t *testing.T) {
 }
 
 func TestRaceWith(t *testing.T) {
-	t.Run("RaceWith with Empty", func(t *testing.T) {
-		// checkObservableResults(t, Pipe1(
-		// 	Empty[any](),
-		// 	RaceWith(Empty[any](), Empty[any]()),
-		// ), nil, nil, true)
+	t.Run("RaceWith with one Empty", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			Interval(time.Millisecond*100),
+			RaceWith(Empty[uint]()),
+		), nil, nil, true)
 	})
 
-	t.Run("RaceWith with error", func(t *testing.T) {})
+	t.Run("RaceWith with all Empty", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			Empty[any](),
+			RaceWith(Empty[any](), Empty[any]()),
+		), nil, nil, true)
+	})
+
+	t.Run("RaceWith with error", func(t *testing.T) {
+		var err = errors.New("failed")
+		checkObservableResults(t, Pipe1(
+			Interval(time.Millisecond*100),
+			RaceWith(Throw[uint](func() error {
+				return err
+			}), Interval(time.Millisecond*500)),
+		), nil, err, false)
+	})
+
+	t.Run("RaceWith with all error", func(t *testing.T) {
+		var err = errors.New("failed")
+		checkObservableResults(t, Pipe1(
+			Throw[uint](func() error {
+				return err
+			}),
+			RaceWith(
+				Throw[uint](func() error {
+					return err
+				}),
+				Throw[uint](func() error {
+					return err
+				}),
+				Throw[uint](func() error {
+					return err
+				}),
+			),
+		), nil, err, false)
+	})
 
 	t.Run("RaceWith with Interval", func(t *testing.T) {
-		//		checkObservableResults(t, Pipe2(
-		//			Pipe1(Interval(time.Millisecond*7), Map(func(v uint, _ uint) (string, error) {
-		//				return fmt.Sprintf("slowest -> %v", v), nil
-		//			})),
-		//			RaceWith(
-		//				Pipe1(Interval(time.Millisecond*3), Map(func(v uint, _ uint) (string, error) {
-		//					return fmt.Sprintf("fastest -> %v", v), nil
-		//				})),
-		//				Pipe1(Interval(time.Millisecond*5), Map(func(v uint, _ uint) (string, error) {
-		//					return fmt.Sprintf("average -> %v", v), nil
-		//				})),
-		//			),
-		//			Take[string](5),
-		//		),
-		//			[]string{"fastest -> 0"}, // "fastest -> 1", "fastest -> 2", "fastest -> 3", "fastest -> 4"
-		//			nil, true)
+		checkObservableResults(t, Pipe2(
+			Pipe1(
+				Interval(time.Millisecond*7),
+				Map(func(v uint, _ uint) (string, error) {
+					return fmt.Sprintf("slowest -> %v", v), nil
+				}),
+			),
+			RaceWith(
+				Pipe1(Interval(time.Millisecond*3), Map(func(v uint, _ uint) (string, error) {
+					return fmt.Sprintf("fastest -> %v", v), nil
+				})),
+				Pipe1(Interval(time.Millisecond*5), Map(func(v uint, _ uint) (string, error) {
+					return fmt.Sprintf("average -> %v", v), nil
+				})),
+			),
+			Take[string](5),
+		), []string{"fastest -> 0", "fastest -> 1", "fastest -> 2", "fastest -> 3", "fastest -> 4"},
+			nil, true)
 	})
 }
 

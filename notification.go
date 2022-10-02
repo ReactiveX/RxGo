@@ -17,6 +17,7 @@ type ObservableNotification[T any] interface {
 	Kind() NotificationKind
 	Value() T // returns the underlying value if it's a "Next" notification
 	Err() error
+	IsEnd() bool
 }
 
 type Notification[T any] interface {
@@ -48,6 +49,10 @@ func (d notification[T]) Err() error {
 
 func (d notification[T]) Done() bool {
 	return d.done
+}
+
+func (d notification[T]) IsEnd() bool {
+	return d.err != nil || d.done
 }
 
 func (d *notification[T]) Send(sub Subscriber[T]) bool {

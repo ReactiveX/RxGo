@@ -406,35 +406,74 @@ func TestIgnoreElements(t *testing.T) {
 }
 
 func TestSample(t *testing.T) {
-	t.Run("Sample with Empty", func(t *testing.T) {
-		checkObservableHasResults(t, Pipe1(
-			Empty[any](),
-			Sample[any](Interval(time.Millisecond*2)),
-		), false, nil, true)
-	})
+	// t.Run("Sample with Empty", func(t *testing.T) {
+	// 	checkObservableHasResults(t, Pipe1(
+	// 		Empty[any](),
+	// 		Sample[any](Interval(time.Millisecond*2)),
+	// 	), false, nil, true)
+	// })
 
-	t.Run("Sample with error", func(t *testing.T) {
-		checkObservableHasResults(t, Pipe2(
-			Empty[any](),
-			Sample[any](Interval(time.Millisecond*2)),
-			ThrowIfEmpty[any](),
-		), false, ErrEmpty, false)
-	})
+	// t.Run("Sample with error", func(t *testing.T) {
+	// 	checkObservableHasResults(t, Pipe2(
+	// 		Empty[any](),
+	// 		Sample[any](Interval(time.Millisecond*2)),
+	// 		ThrowIfEmpty[any](),
+	// 	), false, ErrEmpty, false)
+	// })
 
-	t.Run("Sample with Range(1,100)", func(t *testing.T) {
-		checkObservableHasResults(t, Pipe1(
-			Range[uint](1, 100),
-			Sample[uint](Interval(time.Millisecond*100)),
-		), false, nil, true)
-	})
+	// t.Run(`Sample with "nil" values`, func(t *testing.T) {
+	// 	checkObservableResults(t, Pipe2(
+	// 		Pipe1(
+	// 			Interval(time.Millisecond),
+	// 			Map(func(v, _ uint) (any, error) {
+	// 				return nil, nil
+	// 			}),
+	// 		),
+	// 		Sample[any](Interval(time.Millisecond)),
+	// 		Take[any](3),
+	// 	), []any{nil, nil, nil}, nil, true)
+	// })
 
-	t.Run("Sample with Interval", func(t *testing.T) {
-		checkObservableHasResults(t, Pipe2(
-			Interval(time.Millisecond),
-			Sample[uint](Interval(time.Millisecond*5)),
-			Take[uint](3),
-		), true, nil, true)
-	})
+	// t.Run("Sample with inner error", func(t *testing.T) {
+	// 	var err = errors.New("failed")
+	// 	checkObservableResults(t, Pipe1(
+	// 		Interval(time.Millisecond),
+	// 		Sample[uint](Pipe1(
+	// 			Interval(time.Millisecond),
+	// 			Map(func(v, _ uint) (any, error) {
+	// 				if v > 3 {
+	// 					return nil, err
+	// 				}
+	// 				return v, nil
+	// 			}),
+	// 		)),
+	// 	), []uint{}, err, false)
+	// })
+
+	// t.Run("Sample with error observable", func(t *testing.T) {
+	// 	var err = errors.New("failed")
+	// 	checkObservableHasResults(t, Pipe1(
+	// 		Of2[any]("a", 1, false, nil),
+	// 		Sample[any](Throw[any](func() error {
+	// 			return err
+	// 		})),
+	// 	), false, err, false)
+	// })
+
+	// t.Run("Sample with Range(1,100)", func(t *testing.T) {
+	// 	checkObservableHasResults(t, Pipe1(
+	// 		Range[uint](1, 100),
+	// 		Sample[uint](Interval(time.Millisecond*100)),
+	// 	), false, nil, true)
+	// })
+
+	// t.Run("Sample with Interval", func(t *testing.T) {
+	// 	checkObservableHasResults(t, Pipe2(
+	// 		Interval(time.Millisecond),
+	// 		Sample[uint](Interval(time.Millisecond*5)),
+	// 		Take[uint](3),
+	// 	), true, nil, true)
+	// })
 }
 
 func TestSingle(t *testing.T) {

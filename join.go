@@ -55,9 +55,7 @@ func CombineLatestAll[T any, R any](project func(values []T) R) OperatorFunc[Obs
 				latestValues = make([]T, noOfBuffer)
 			)
 
-			// To ensure the output array always has the same length,
-			// combineLatest will actually wait for all input Observables
-			// to emit at least once, before it starts emitting results.
+			// to ensure the output array always has the same length,`CombineLatest` will actually wait for all input Observables to emit at least once, before it starts emitting results.
 			onNext := func() {
 				if emitCount.Load() == uint32(noOfBuffer) {
 					mu.RLock()
@@ -99,7 +97,7 @@ func CombineLatestAll[T any, R any](project func(values []T) R) OperatorFunc[Obs
 								break loop
 							}
 
-							//  Passing an empty array will result in an Observable that completes immediately.
+							// passing an empty array will result in an Observable that completes immediately.
 							if !emitted {
 								emitCount.Add(1)
 								emitted = true
@@ -142,9 +140,7 @@ func CombineLatestWith[T any](sources ...Observable[T]) OperatorFunc[T, []T] {
 				latestValues = make([]T, noOfSource)
 			)
 
-			// To ensure the output array always has the same length,
-			// combineLatest will actually wait for all input Observables
-			// to emit at least once, before it starts emitting results.
+			// to ensure the output array always has the same length,`CombineLatest` will actually wait for all input Observables to emit at least once, before it starts emitting results.
 			onNext := func() {
 				if emitCount.Load() == uint32(noOfSource) {
 					mu.RLock()
@@ -184,7 +180,7 @@ func CombineLatestWith[T any](sources ...Observable[T]) OperatorFunc[T, []T] {
 								break loop
 							}
 
-							//  Passing an empty array will result in an Observable that completes immediately.
+							// passing an empty array will result in an Observable that completes immediately.
 							if !emitted {
 								emitCount.Add(1)
 								emitted = true
@@ -212,6 +208,7 @@ func CombineLatestWith[T any](sources ...Observable[T]) OperatorFunc[T, []T] {
 				return
 			}
 
+			// don't complete if it's not complete signal
 			Complete[[]T]().Send(subscriber)
 		})
 	}
@@ -248,7 +245,7 @@ func ConcatAll[T any]() OperatorFunc[Observable[T], T] {
 					break outerLoop
 
 				case item, ok := <-upStream.ForEach():
-					// If the upstream closed, we break
+					// if the upstream closed, we break
 					if !ok {
 						break outerLoop
 					}
@@ -357,6 +354,13 @@ func ConcatWith[T any](sources ...Observable[T]) OperatorFunc[T, T] {
 	}
 }
 
+// Converts a higher-order Observable into a first-order Observable by dropping inner Observables while the previous inner Observable has not yet completed.
+func ExhaustAll[T any]() OperatorFunc[Observable[T], T] {
+	return ExhaustMap(func(value Observable[T], _ uint) Observable[T] {
+		return value
+	})
+}
+
 // Accepts an Array of ObservableInput or a dictionary Object of ObservableInput and returns an Observable that emits either an array of values in the exact same order as the passed array, or a dictionary of values in the same shape as the passed dictionary.
 func ForkJoin[T any](sources ...Observable[T]) Observable[[]T] {
 	return newObservable(func(subscriber Subscriber[[]T]) {
@@ -364,7 +368,7 @@ func ForkJoin[T any](sources ...Observable[T]) Observable[[]T] {
 			noOfSource = len(sources)
 		)
 
-		// forkJoin is an operator that takes any number of input observables which can be passed either as an array or a dictionary of input observables. If no input observables are provided (e.g. an empty array is passed), then the resulting stream will complete immediately.
+		// `ForkJoin` is an operator that takes any number of input observables which can be passed either as an array or a dictionary of input observables. If no input observables are provided (e.g. an empty array is passed), then the resulting stream will complete immediately.
 		if noOfSource < 1 {
 			Complete[[]T]().Send(subscriber)
 			return
@@ -377,7 +381,7 @@ func ForkJoin[T any](sources ...Observable[T]) Observable[[]T] {
 			latestValues = make([]T, noOfSource)
 		)
 
-		// In order for the resulting array to have the same length as the number of input observables, whenever any of the given observables completes without emitting any value, forkJoin will complete at that moment as well and it will not emit anything either, even if it already has some last values from other observables.
+		// in order for the resulting array to have the same length as the number of input observables, whenever any of the given observables completes without emitting any value, forkJoin will complete at that moment as well and it will not emit anything either, even if it already has some last values from other observables.
 		onNext := func(index int, v T) {
 			mu.Lock()
 			latestValues[index] = v
@@ -421,7 +425,7 @@ func ForkJoin[T any](sources ...Observable[T]) Observable[[]T] {
 							emitted = true
 						}
 
-						// forkJoin will wait for all passed observables to emit and complete and then it will emit an array or an object with last values from corresponding observables.
+						// `ForkJoin` will wait for all passed observables to emit and complete and then it will emit an array or an object with last values from corresponding observables.
 						onNext(index, item.Value())
 					}
 				}
@@ -446,13 +450,6 @@ func ForkJoin[T any](sources ...Observable[T]) Observable[[]T] {
 		}
 
 		Complete[[]T]().Send(subscriber)
-	})
-}
-
-// Converts a higher-order Observable into a first-order Observable by dropping inner Observables while the previous inner Observable has not yet completed.
-func ExhaustAll[T any]() OperatorFunc[Observable[T], T] {
-	return ExhaustMap(func(value Observable[T], _ uint) Observable[T] {
-		return value
 	})
 }
 
@@ -537,17 +534,17 @@ func MergeWith[T any](input Observable[T], inputs ...Observable[T]) OperatorFunc
 
 			wg.Wait()
 
-			// Remove dangling go-routine
+			// remove dangling go-routine
 			select {
 			case <-errCh:
 			default:
 				mu.Lock()
-				// Close error channel gracefully
+				// close error channel gracefully
 				close(errCh)
 				mu.Unlock()
 			}
 
-			// Stop all stream
+			// stop all stream
 			for _, sub := range activeSubscriptions {
 				sub.Stop()
 			}
@@ -562,12 +559,90 @@ func MergeWith[T any](input Observable[T], inputs ...Observable[T]) OperatorFunc
 	}
 }
 
-// FIXME: Creates an Observable that mirrors the first source Observable to emit a next, error or complete notification from the combination of the Observable to which the operator is applied and supplied Observables.
+// Creates an Observable that mirrors the first source Observable to emit a next, error or complete notification from the combination of the Observable to which the operator is applied and supplied Observables.
 func RaceWith[T any](sources ...Observable[T]) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
 		sources = append([]Observable[T]{source}, sources...)
 		return newObservable(func(subscriber Subscriber[T]) {
+			var (
+				wg            = new(sync.WaitGroup)
+				mu            = new(sync.RWMutex)
+				forEach       = make(chan Notification[T])
+				noOfSources   = len(sources)
+				fastest       = -1
+				subscriptions = make([]Subscriber[T], noOfSources)
+			)
 
+			observeStream := func(index int, stream Subscriber[T]) {
+			innerLoop:
+				for {
+					select {
+					case <-stream.Closed():
+						break innerLoop
+
+					case item, ok := <-stream.ForEach():
+						if !ok {
+							break innerLoop
+						}
+
+						mu.Lock()
+						// if there have empty stream, we should set the fastest stream
+						if fastest < 0 {
+							fastest = index
+							for i, s := range subscriptions {
+								if i == index {
+									continue
+								}
+								s.Stop()
+							}
+						} else if fastest != index {
+							mu.Unlock()
+							break innerLoop
+						}
+						mu.Unlock()
+
+						forEach <- item
+						if item.IsEnd() {
+							break innerLoop
+						}
+					}
+				}
+			}
+
+			wg.Add(noOfSources)
+
+			mu.Lock()
+			for idx, source := range sources {
+				stream := source.SubscribeOn(wg.Done)
+				subscriptions[idx] = stream
+				go observeStream(idx, stream)
+			}
+			mu.Unlock()
+
+		outerLoop:
+			for {
+				select {
+				case <-subscriber.Closed():
+					mu.RLock()
+					for _, s := range subscriptions {
+						s.Stop()
+					}
+					mu.RUnlock()
+					break outerLoop
+
+				case item, ok := <-forEach:
+					if !ok {
+						break outerLoop
+					}
+
+					item.Send(subscriber)
+					if item.IsEnd() {
+						break outerLoop
+					}
+				}
+			}
+
+			wg.Wait()
 		})
 	}
 }
@@ -620,9 +695,7 @@ func ZipAll[T any]() OperatorFunc[Observable[T], []T] {
 				observables = make([]Observable[T], 0)
 			)
 
-			// Collects all observable inner sources from the source, once the
-			// source completes, it will subscribe to all inner sources,
-			// combining their values by index and emitting them.
+			// collects all observable inner sources from the source, once the source completes, it will subscribe to all inner sources, combining their values by index and emitting them.
 		loop:
 			for {
 				select {

@@ -72,9 +72,8 @@ func Catch[T any](catch func(err error, caught Observable[T]) Observable[T]) Ope
 							break catchLoop
 						}
 
-						ended := item.Err() != nil || item.Done()
 						item.Send(subscriber)
-						if ended {
+						if item.IsEnd() {
 							break catchLoop
 						}
 					}

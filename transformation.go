@@ -183,24 +183,30 @@ func BufferTime[T any](bufferTimeSpan time.Duration) OperatorFunc[T, []T] {
 			wg.Add(1)
 
 			var (
-				buffer   = make([]T, 0)
+				buffer   []T
 				upStream = source.SubscribeOn(wg.Done)
 				timer    *time.Timer
 			)
 
-			setTimer := func() {
+			stopTimer := func() {
 				if timer != nil {
 					timer.Stop()
 				}
+			}
+
+			setValues := func() {
+				buffer = make([]T, 0)
+				stopTimer()
 				timer = time.NewTimer(bufferTimeSpan)
 			}
 
-			setTimer()
+			setValues()
 
 		observe:
 			for {
 				select {
 				case <-subscriber.Closed():
+					stopTimer()
 					upStream.Stop()
 					break observe
 
@@ -224,12 +230,13 @@ func BufferTime[T any](bufferTimeSpan time.Duration) OperatorFunc[T, []T] {
 
 				case <-timer.C:
 					Next(buffer).Send(subscriber)
-					setTimer()
+					setValues()
 				}
 			}
 
-			// FIXME: I don't know how to stop timer
-			timer.Stop()
+			// prevent memory leak
+			upStream.Stop()
+			stopTimer()
 
 			wg.Wait()
 		})
@@ -270,7 +277,7 @@ func BufferToggle[T any, O any](openings Observable[O], closingSelector func(val
 
 			setupValues()
 
-			// Buffers values from the source by opening the buffer via signals from an Observable provided to openings, and closing and sending the buffers when a Subscribable or Promise returned by the closingSelector function emits.
+			// buffers values from the source by opening the buffer via signals from an Observable provided to openings, and closing and sending the buffers when a Subscribable or Promise returned by the closingSelector function emits.
 		observe:
 			for {
 				select {
@@ -343,18 +350,18 @@ func BufferWhen[T any, R any](closingSelector func() Observable[R]) OperatorFunc
 				closingStream = closingSelector().SubscribeOn(wg.Done)
 			)
 
-			stopStreams := func() {
+			unsubscribeAll := func() {
 				upStream.Stop()
 				closingStream.Stop()
 			}
 
 			onError := func(err error) {
-				stopStreams()
+				unsubscribeAll()
 				Error[[]T](err).Send(subscriber)
 			}
 
 			onComplete := func() {
-				stopStreams()
+				unsubscribeAll()
 				if len(buffer) > 0 {
 					Next(buffer).Send(subscriber)
 				}
@@ -365,13 +372,12 @@ func BufferWhen[T any, R any](closingSelector func() Observable[R]) OperatorFunc
 			for {
 				select {
 				case <-subscriber.Closed():
-					stopStreams()
+					unsubscribeAll()
 					break observe
 
 				case item, ok := <-upStream.ForEach():
 					// if the upstream closed, we break
 					if !ok {
-						stopStreams()
 						break observe
 					}
 
@@ -390,7 +396,6 @@ func BufferWhen[T any, R any](closingSelector func() Observable[R]) OperatorFunc
 
 				case item, ok := <-closingStream.ForEach():
 					if !ok {
-						stopStreams()
 						break observe
 					}
 
@@ -410,6 +415,8 @@ func BufferWhen[T any, R any](closingSelector func() Observable[R]) OperatorFunc
 				}
 			}
 
+			unsubscribeAll()
+
 			wg.Wait()
 		})
 	}
@@ -426,69 +433,73 @@ func ConcatMap[T any, R any](project ProjectionFunc[T, R]) OperatorFunc[T, R] {
 			wg.Add(1)
 
 			var (
-				index    uint
-				upStream = source.SubscribeOn(wg.Done)
+				index       uint
+				upStream    = source.SubscribeOn(wg.Done)
+				innerStream Subscriber[R]
 			)
 
-		observe:
+		outerLoop:
 			for {
 				select {
 				case <-subscriber.Closed():
 					upStream.Stop()
-					break observe
+					break outerLoop
 
 				case item, ok := <-upStream.ForEach():
 					// if the upstream closed, we break
 					if !ok {
-						break observe
+						break outerLoop
 					}
 
 					if err := item.Err(); err != nil {
 						Error[R](err).Send(subscriber)
-						break observe
+						break outerLoop
 					}
 
 					if item.Done() {
 						Complete[R]().Send(subscriber)
-						break observe
+						break outerLoop
 					}
 
 					wg.Add(1)
 					// we should wait the projection to complete
-					stream := project(item.Value(), index).SubscribeOn(wg.Done)
-				observeInner:
+					innerStream = project(item.Value(), index).SubscribeOn(wg.Done)
+
+				innerLoop:
 					for {
 						select {
 						case <-subscriber.Closed():
 							upStream.Stop()
-							stream.Stop()
-							break observe
+							innerStream.Stop()
+							break outerLoop
 
-						case item, ok := <-stream.ForEach():
+						case item, ok := <-innerStream.ForEach():
 							if !ok {
 								upStream.Stop()
-								break observeInner
+								break innerLoop
 							}
 
 							if err := item.Err(); err != nil {
 								upStream.Stop()
-								stream.Stop()
+								innerStream.Stop()
 								item.Send(subscriber)
-								break observe
+								break outerLoop
 							}
 
 							if item.Done() {
-								stream.Stop()
-								break observeInner
+								innerStream.Stop()
+								break innerLoop
 							}
 
 							item.Send(subscriber)
 						}
 					}
 
+					innerStream.Stop()
 					index++
 				}
 			}
+
 			wg.Wait()
 		})
 	}
@@ -521,6 +532,9 @@ func ExhaustMap[T any, R any](project ProjectionFunc[T, R]) OperatorFunc[T, R] {
 				innerLoop:
 					for {
 						select {
+						case <-ctx.Done():
+							return nil
+
 						case <-subscriber.Closed():
 							stream.Stop()
 							return nil
@@ -552,7 +566,8 @@ func ExhaustMap[T any, R any](project ProjectionFunc[T, R]) OperatorFunc[T, R] {
 			for {
 				select {
 				case <-subscriber.Closed():
-					return
+					upStream.Stop()
+					break outerLoop
 
 				case item, ok := <-upStream.ForEach():
 					if !ok {
@@ -674,44 +689,47 @@ func Map[T any, R any](mapper func(T, uint) (R, error)) OperatorFunc[T, R] {
 
 // Projects each source value to an Observable which is merged in the output Observable.
 func MergeMap[T any, R any](project ProjectionFunc[T, R], concurrent ...uint) OperatorFunc[T, R] {
+	// maxGoroutine := -1
+	// if len(concurrent) > 0 {
+	// 	maxGoroutine = int(concurrent[0])
+	// }
 	return func(source Observable[T]) Observable[R] {
 		return newObservable(func(subscriber Subscriber[R]) {
 			var (
+				mu = new(sync.RWMutex)
 				wg = new(sync.WaitGroup)
 			)
 
-			wg.Add(1)
+			wg.Add(2)
 
 			var (
-				index    uint
-				errCh    = make(chan error)
-				upStream = source.SubscribeOn(wg.Done)
+				index         uint
+				errCh         = make(chan error, 1)
+				upStream      = source.SubscribeOn(wg.Done)
+				subscriptions = make([]Subscriber[R], 0)
 			)
 
-			observeStream := func(index uint, v T) {
-				var (
-					downStream = project(v, index).SubscribeOn(wg.Done)
-				)
-
-			loop:
+			observeStream := func(stream Subscriber[R]) {
+			innerLoop:
 				for {
 					select {
-					case <-subscriber.Closed():
-						downStream.Stop()
-						break loop
+					case <-stream.Closed():
+						break innerLoop
 
-					case item, ok := <-downStream.ForEach():
+					case item, ok := <-stream.ForEach():
 						if !ok {
-							break loop
-						}
-
-						if item.Done() {
-							break loop
+							break innerLoop
 						}
 
 						if err := item.Err(); err != nil {
-							sendNonBlock(err, errCh)
-							break loop
+							log.Println("Send non block, omg ->", err)
+							errCh <- err
+							log.Println("Send non after, omg ->", err)
+							break innerLoop
+						}
+
+						if item.Done() {
+							break innerLoop
 						}
 
 						item.Send(subscriber)
@@ -719,38 +737,60 @@ func MergeMap[T any, R any](project ProjectionFunc[T, R], concurrent ...uint) Op
 				}
 			}
 
-		observe:
-			for {
-				select {
-				case <-subscriber.Closed():
-					upStream.Stop()
-					break observe
-
-				case <-errCh:
-
-				case item, ok := <-upStream.ForEach():
-					// if the upstream closed, we break
-					if !ok {
-						break observe
-					}
-
-					if err := item.Err(); err != nil {
-						Error[R](err).Send(subscriber)
-						break observe
-					}
-
-					if item.Done() {
-						// even upstream is done, we need to wait
-						// downstream done as well
-						break observe
-					}
-
-					// every stream
-					wg.Add(1)
-					go observeStream(index, item.Value())
-					index++
+			unsubscribeInnerStreams := func() {
+				mu.RLock()
+				for _, sub := range subscriptions {
+					sub.Stop()
 				}
+				mu.RUnlock()
 			}
+
+			go func() {
+				defer wg.Done()
+
+			outerLoop:
+				for {
+					select {
+					case <-subscriber.Closed():
+						upStream.Stop()
+						// unsubscribeInnerStreams()
+						break outerLoop
+
+					case err, ok := <-errCh:
+						log.Println("Error ->", err, ok)
+						// unsubscribeInnerStreams()
+						break outerLoop
+
+					case item, ok := <-upStream.ForEach():
+						log.Println("upStream ->")
+						// if the upstream closed, we break
+						if !ok {
+							break outerLoop
+						}
+
+						if err := item.Err(); err != nil {
+							unsubscribeInnerStreams()
+							Error[R](err).Send(subscriber)
+							break outerLoop
+						}
+
+						if item.Done() {
+							// even upstream is done, we need to wait
+							// downstream done as well
+							break outerLoop
+						}
+
+						// every stream
+						mu.Lock()
+						wg.Add(1)
+						subscription := project(item.Value(), index).SubscribeOn(wg.Done)
+						go observeStream(subscription)
+						subscriptions = append(subscriptions, subscription)
+						mu.Unlock()
+						index++
+					}
+				}
+			}()
 
 			wg.Wait()
 
