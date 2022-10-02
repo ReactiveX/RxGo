@@ -337,6 +337,13 @@ func TestFirst(t *testing.T) {
 		), nil, ErrEmpty, false)
 	})
 
+	t.Run("First with error", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(
+			Empty[any](),
+			First[any](nil),
+		), nil, ErrEmpty, false)
+	})
+
 	t.Run("First with default value", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(
 			Empty[any](),

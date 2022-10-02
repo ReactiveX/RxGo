@@ -2,7 +2,7 @@
 
 > Creates an Observable that emits a sequence of numbers within a specified range.
 
-## Overview
+## Description
 
 ![](https://rxjs.dev/assets/images/marble-diagrams/range.png)
 
@@ -11,7 +11,8 @@
 ## Example
 
 ```go
-rxgo.Range(1, 10).SubscribeSync(func(v string) {
+rxgo.Range[uint8](1, 10).
+SubscribeSync(func(v uint8) {
     log.Println("Next ->", v)
 }, func(err error) {
     log.Println("Error ->", err)
