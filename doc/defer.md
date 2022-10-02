@@ -1,4 +1,4 @@
-# Defer Operator
+# Defer
 
 > Creates an Observable that, on subscribe, calls an Observable factory to make an Observable for each new Observer.
 

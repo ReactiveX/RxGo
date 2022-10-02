@@ -451,6 +451,8 @@ How to use the [assert API](doc/assert.md) to write unit tests while using RxGo.
 ### Transforming Observables
 
 - [Buffer](doc/buffer.md) — periodically gather items from an Observable into bundles and emit these bundles rather than emitting the items one at a time
+- [BufferCount](doc/buffer-count.md) — buffers the source Observable values until the size hits the maximum bufferSize given.
+- [BufferTime](doc/buffer-time.md) — buffers the source Observable values for a specific time period.
 - [FlatMap](doc/flatmap.md) — transform the items emitted by an Observable into Observables, then flatten the emissions from those into a single Observable
 - [GroupBy](doc/groupby.md) — divide an Observable into a set of Observables that each emit a different group of items from the original Observable, organized by key
 - [GroupByDynamic](doc/groupbydynamic.md) — divide an Observable into a dynamic set of Observables that each emit GroupedObservables from the original Observable, organized by key
@@ -481,6 +483,7 @@ How to use the [assert API](doc/assert.md) to write unit tests while using RxGo.
 - [CombineLatest](doc/combinelatest.md) — when an item is emitted by either of two Observables, combine the latest item emitted by each Observable via a specified function and emit items based on the results of this function
 - [Join](doc/join.md) — combine items emitted by two Observables whenever an item from one Observable is emitted during a time window defined according to an item emitted by the other Observable
 - [Merge](doc/merge.md) — combine multiple Observables into one by merging their emissions
+- [RaceWith](doc/race-with.md) — creates an Observable that mirrors the first source Observable to emit a next, error or complete notification from the combination of the Observable to which the operator is applied and supplied Observables.
 - [StartWithIterable](doc/startwithiterable.md) — emit a specified sequence of items before beginning to emit the items from the source Iterable
 - [ZipFromIterable](doc/zipfromiterable.md) — combine the emissions of multiple Observables together via a specified function and emit single items for each combination based on the results of this function
 

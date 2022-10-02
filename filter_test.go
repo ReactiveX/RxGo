@@ -270,6 +270,13 @@ func TestElementAt(t *testing.T) {
 		), 10, nil, true)
 	})
 
+	t.Run("ElementAt with default value when it missing value", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(
+			Range[uint](1, 10),
+			ElementAt[uint](88, 688),
+		), 688, nil, true)
+	})
+
 	t.Run("ElementAt position 2", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(
 			Range[uint](1, 100),

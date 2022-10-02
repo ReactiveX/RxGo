@@ -13,7 +13,8 @@ Wait 3 seconds and start another observable
 You might want to use timer to delay subscription to an observable by a set amount of time.
 
 ```go
-rxgo.Timer[uint](time.Second * 3).SubscribeSync(func(v uint) {
+rxgo.Timer[uint](time.Second * 3).
+SubscribeSync(func(v uint) {
     log.Println("Timer ->", v)
 }, nil, func() {
     log.Println("Complete!")

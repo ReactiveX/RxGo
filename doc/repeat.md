@@ -1,4 +1,4 @@
-# Repeat Operator
+# Repeat
 
 ## Overview
 
@@ -9,36 +9,23 @@ Create an Observable that emits a particular item multiple times at a particular
 ## Example
 
 ```go
-observable := rxgo.Just(1, 2, 3)().
-	Repeat(3, rxgo.WithDuration(time.Second))
+rxgo.Pipe1(
+    rxgo.Range[uint](1, 3),
+    rxgo.Repeat[uint, uint8](2),
+).SubscribeSync(func(v []uint) {
+    log.Println("Next ->", v)
+}, func(err error) {
+    log.Println("Error ->", err)
+}, func() {
+    log.Println("Complete!")
+})
+
+// Output:
+// Next -> 1
+// Next -> 2
+// Next -> 3
+// Next -> 1
+// Next -> 2
+// Next -> 3
+// Complete!
 ```
-
-Output:
-
-```
-// Immediately
-1
-2
-3
-// After 1 second
-1
-2
-3
-// After 2 seconds
-1
-2
-3
-...
-```
-
-## Options
-
-* [WithBufferedChannel](options.md#withbufferedchannel)
-
-* [WithContext](options.md#withcontext)
-
-* [WithObservationStrategy](options.md#withobservationstrategy)
-
-* [WithErrorStrategy](options.md#witherrorstrategy)
-
-* [WithPublishStrategy](options.md#withpublishstrategy)

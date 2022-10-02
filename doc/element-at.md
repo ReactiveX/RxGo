@@ -1,31 +1,47 @@
-# ElementAt Operator
+# ElementAt
 
-## Overview
+> Emits the single value at the specified index in a sequence of emissions from the source Observable.
 
-Emit only item n emitted by an Observable.
+## Description
 
-![](http://reactivex.io/documentation/operators/images/elementAt.png)
+![](https://rxjs.dev/assets/images/marble-diagrams/elementAt.png)
 
-## Example
+`ElementAt` returns an Observable that emits the item at the specified index in the source Observable, or a default value if that index is out of range and the default argument is provided. If the default argument is not given and the index is out of range, the output Observable will emit an `ErrArgumentOutOfRange` error.
+
+## Example 1
 
 ```go
-observable := rxgo.Just(0, 1, 2, 3, 4)().ElementAt(2)
+rxgo.Pipe1(
+    rxgo.Range[uint](1, 100),
+    rxgo.ElementAt[uint](2),
+).SubscribeSync(func(v uint) {
+    log.Println("Next ->", v)
+}, func(err error) {
+    log.Println("Error ->", err)
+}, func() {
+    log.Println("Complete!")
+})
+
+// Output :
+// Next -> 3
+// Complete!
 ```
 
-Output:
+## Example 2
 
+```go
+rxgo.Pipe1(
+    rxgo.Range[uint](1, 10),
+    rxgo.ElementAt[uint](88),
+).SubscribeSync(func(v uint) {
+    log.Println("Next ->", v)
+}, func(err error) {
+    // it will throws `rxgo.ErrArgumentOutOfRange`
+    log.Println("Error ->", err)
+}, func() {
+    log.Println("Complete!")
+})
+
+// Output :
+// Error -> rxgo: argument out of range
 ```
-2
-```
-
-## Options
-
-* [WithBufferedChannel](options.md#withbufferedchannel)
-
-* [WithContext](options.md#withcontext)
-
-* [WithObservationStrategy](options.md#withobservationstrategy)
-
-* [WithErrorStrategy](options.md#witherrorstrategy)
-
-* [WithPublishStrategy](options.md#withpublishstrategy)
