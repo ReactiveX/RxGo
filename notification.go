@@ -88,7 +88,7 @@ func Dematerialize[T any]() OperatorFunc[ObservableNotification[T], T] {
 
 			var (
 				upStream = source.SubscribeOn(wg.Done)
-				notice   ObservableNotification[T]
+				msg      ObservableNotification[T]
 			)
 
 		observe:
@@ -107,16 +107,14 @@ func Dematerialize[T any]() OperatorFunc[ObservableNotification[T], T] {
 						break observe
 					}
 
-					notice = item.Value()
+					msg = item.Value()
 
-					switch notice.Kind() {
+					switch msg.Kind() {
 					case NextKind:
-						Next(notice.Value()).Send(subscriber)
+						Next(msg.Value()).Send(subscriber)
 
 					case ErrorKind:
-						if err := notice.Err(); err != nil {
-							Error[T](notice.Err()).Send(subscriber)
-						}
+						Error[T](msg.Err()).Send(subscriber)
 						break observe
 
 					case CompleteKind:
@@ -146,7 +144,7 @@ func Materialize[T any]() OperatorFunc[T, ObservableNotification[T]] {
 			var (
 				upStream  = source.SubscribeOn(wg.Done)
 				completed bool
-				notice    Notification[ObservableNotification[T]]
+				msg       Notification[ObservableNotification[T]]
 			)
 
 		observe:
@@ -163,9 +161,9 @@ func Materialize[T any]() OperatorFunc[T, ObservableNotification[T]] {
 
 					// When the source Observable emits complete, the output Observable will emit next as a Notification of type "Complete", and then it will emit complete as well. When the source Observable emits error, the output will emit next as a Notification of type "Error", and then complete.
 					completed = item.Err() != nil || item.Done()
-					notice = Next(item.(ObservableNotification[T]))
+					msg = Next(item.(ObservableNotification[T]))
 
-					if !notice.Send(subscriber) {
+					if !msg.Send(subscriber) {
 						upStream.Stop()
 						break observe
 					}
