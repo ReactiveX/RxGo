@@ -412,7 +412,7 @@ func TestRaceWith(t *testing.T) {
 	t.Run("RaceWith with Interval", func(t *testing.T) {
 		checkObservableResults(t, Pipe2(
 			Pipe1(
-				Interval(time.Millisecond*70),
+				Interval(time.Millisecond*700),
 				Map(func(v uint, _ uint) (string, error) {
 					return fmt.Sprintf("slowest -> %v", v), nil
 				}),
@@ -421,7 +421,7 @@ func TestRaceWith(t *testing.T) {
 				Pipe1(Interval(time.Millisecond), Map(func(v uint, _ uint) (string, error) {
 					return fmt.Sprintf("fastest -> %v", v), nil
 				})),
-				Pipe1(Interval(time.Millisecond*50), Map(func(v uint, _ uint) (string, error) {
+				Pipe1(Interval(time.Millisecond*500), Map(func(v uint, _ uint) (string, error) {
 					return fmt.Sprintf("average -> %v", v), nil
 				})),
 			),
