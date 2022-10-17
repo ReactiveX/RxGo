@@ -115,7 +115,7 @@ func TestReduce(t *testing.T) {
 			Reduce(func(acc, cur, idx uint) (uint, error) {
 				return acc + cur, nil
 			}, 0),
-		), uint(0), nil, true)
+		), uint(171), nil, true)
 	})
 
 	t.Run("Reduce with zero default value", func(t *testing.T) {
