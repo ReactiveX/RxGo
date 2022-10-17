@@ -33,7 +33,8 @@ Since interval waits for the passed delay before starting, sometimes that's not 
 Note that this observable will never complete.
 
 ```go
-rxgo.Timer[uint](0, time.Second).SubscribeSync(func(v uint) {
+rxgo.Timer[uint](0, time.Second).
+SubscribeSync(func(v uint) {
     log.Println("Timer ->", v)
 }, nil, func() {
     log.Println("Complete!")
@@ -43,7 +44,8 @@ rxgo.Timer[uint](0, time.Second).SubscribeSync(func(v uint) {
 // 2 - after 2s
 // ...
 
-rxgo.Interval(time.Second).SubscribeSync(func(v uint) {
+rxgo.Interval(time.Second).
+SubscribeSync(func(v uint) {
     log.Println("Interval ->", v)
 }, nil, nil)
 // 0 - after 1s

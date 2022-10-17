@@ -359,6 +359,15 @@ func TestFirst(t *testing.T) {
 			}),
 		), uint8(88), nil, true)
 	})
+
+	t.Run("First with value but not matched", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(
+			Range[uint8](1, 10),
+			First(func(value uint8, _ uint) bool {
+				return value > 10
+			}),
+		), uint8(0), ErrEmpty, false)
+	})
 }
 
 func TestLast(t *testing.T) {

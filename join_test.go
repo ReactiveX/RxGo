@@ -209,6 +209,52 @@ func TestConcatWith(t *testing.T) {
 	})
 }
 
+func TestExhaustAll(t *testing.T) {
+	t.Run("ExhaustAll with Empty", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			Pipe1(
+				Range[uint8](1, 3),
+				Map(func(v uint8, _ uint) (Observable[any], error) {
+					return Empty[any](), nil
+				}),
+			),
+			ExhaustAll[any](),
+		), []any{}, nil, true)
+	})
+
+	// t.Run("ExhaustAll with Throw", func(t *testing.T) {
+	// 	var err = errors.New("failed")
+	// 	checkObservableResults(t, Pipe1(
+	// 		Pipe1(
+	// 			Range[uint8](1, 3),
+	// 			Map(func(v uint8, _ uint) (Observable[any], error) {
+	// 				if v == 0 {
+	// 					return Throw[any](func() error {
+	// 						return err
+	// 					}), nil
+	// 				}
+	// 				return Empty[any](), nil
+	// 			}),
+	// 		),
+	// 		ExhaustAll[any](),
+	// 	), []any{}, err, false)
+	// })
+
+	t.Run("ExhaustAll with Interval", func(t *testing.T) {
+		// 	checkObservableResults(t, Pipe3(
+		// 		Interval(time.Millisecond*100),
+		// 		Map(func(v uint, _ uint) (Observable[uint], error) {
+		// 			return Range[uint](88, 10), nil
+		// 		}),
+		// 		ExhaustAll[uint](),
+		// 		Take[uint](15),
+		// 	), []uint{
+		// 		88, 89, 90, 91, 92, 93, 94, 95, 96, 97,
+		// 		88, 89, 90, 91, 92,
+		// 	}, nil, true)
+	})
+}
+
 // ForkJoin only capture all latest value from every stream
 func TestForkJoin(t *testing.T) {
 	t.Run("ForkJoin with one Empty", func(t *testing.T) {

@@ -33,7 +33,7 @@ rxgo.Pipe1(
 rxgo.Pipe1(
     rxgo.Empty[string](),
     rxgo.First[string](nil, "defaultValue"),
-).SubscribeSync(func(v uint) {
+).SubscribeSync(func(v string) {
     log.Println("Next ->", v)
 }, func(err error) {
     log.Println("Error ->", err)
@@ -52,7 +52,27 @@ rxgo.Pipe1(
 rxgo.Pipe1(
     rxgo.Empty[string](),
     rxgo.First[string](nil),
-).SubscribeSync(func(v uint) {
+).SubscribeSync(func(v string) {
+    log.Println("Next ->", v)
+}, func(err error) {
+    log.Println("Error ->", err)
+}, func() {
+    log.Println("Complete!")
+})
+
+// Output :
+// Error -> rxgo: empty value
+```
+
+## Example 4
+
+```go
+rxgo.Pipe1(
+    rxgo.Range[uint8](1, 10),
+    rxgo.First[uint8](func(v uint8, _ uint) bool {
+        return v > 50
+    }),
+).SubscribeSync(func(v uint8) {
     log.Println("Next ->", v)
 }, func(err error) {
     log.Println("Error ->", err)

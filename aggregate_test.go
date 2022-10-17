@@ -28,24 +28,33 @@ type human struct {
 
 func TestMax(t *testing.T) {
 	t.Run("Max with Empty", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(Empty[any](), Max[any]()), nil, nil, true)
+		checkObservableResult(t, Pipe1(
+			Empty[any](),
+			Max[any](),
+		), nil, nil, true)
 	})
 
 	t.Run("Max with numbers", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(Scheduled[uint](5, 4, 7, 2, 8), Max[uint]()), uint(8), nil, true)
+		checkObservableResult(t, Pipe1(
+			Of2[uint](5, 4, 7, 2, 8),
+			Max[uint](),
+		), uint(8), nil, true)
 	})
 
 	t.Run("Max with struct", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(Scheduled(
-			human{age: 7, name: "Foo"},
-			human{age: 5, name: "Bar"},
-			human{age: 9, name: "Beer"},
-		), Max(func(a, b human) int8 {
-			if a.age < b.age {
-				return -1
-			}
-			return 1
-		})), human{age: 9, name: "Beer"}, nil, true)
+		checkObservableResult(t, Pipe1(
+			Scheduled(
+				human{age: 7, name: "Foo"},
+				human{age: 5, name: "Bar"},
+				human{age: 9, name: "Beer"},
+			),
+			Max(func(a, b human) int8 {
+				if a.age < b.age {
+					return -1
+				}
+				return 1
+			}),
+		), human{age: 9, name: "Beer"}, nil, true)
 	})
 }
 
@@ -98,6 +107,15 @@ func TestReduce(t *testing.T) {
 				return acc + cur, nil
 			}, 0),
 		), uint(0), err, false)
+	})
+
+	t.Run("Reduce with values", func(t *testing.T) {
+		checkObservableResult(t, Pipe1(
+			Range[uint](1, 18),
+			Reduce(func(acc, cur, idx uint) (uint, error) {
+				return acc + cur, nil
+			}, 0),
+		), uint(0), nil, true)
 	})
 
 	t.Run("Reduce with zero default value", func(t *testing.T) {

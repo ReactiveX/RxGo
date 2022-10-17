@@ -346,22 +346,6 @@ func TestExhaustMap(t *testing.T) {
 	// })
 }
 
-func TestExhaustAll(t *testing.T) {
-	// t.Run("ExhaustAll with Interval", func(t *testing.T) {
-	// 	checkObservableResults(t, Pipe3(
-	// 		Interval(time.Millisecond*100),
-	// 		Map(func(v uint, _ uint) (Observable[uint], error) {
-	// 			return Range[uint](88, 10), nil
-	// 		}),
-	// 		ExhaustAll[uint](),
-	// 		Take[uint](15),
-	// 	), []uint{
-	// 		88, 89, 90, 91, 92, 93, 94, 95, 96, 97,
-	// 		88, 89, 90, 91, 92,
-	// 	}, nil, true)
-	// })
-}
-
 func TestGroupBy(t *testing.T) {
 	// t.Run("GroupBy with Empty", func(t *testing.T) {
 	// 	checkObservableResults(t, Pipe1(
