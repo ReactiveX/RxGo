@@ -1,4 +1,4 @@
-# TimeInterval Operator
+# TimeInterval
 
 ## Overview
 
@@ -23,12 +23,12 @@ Output:
 
 ## Options
 
-* [WithBufferedChannel](options.md#withbufferedchannel)
+- [WithBufferedChannel](options.md#withbufferedchannel)
 
-* [WithContext](options.md#withcontext)
+- [WithContext](options.md#withcontext)
 
-* [WithObservationStrategy](options.md#withobservationstrategy)
+- [WithObservationStrategy](options.md#withobservationstrategy)
 
-* [WithErrorStrategy](options.md#witherrorstrategy)
+- [WithErrorStrategy](options.md#witherrorstrategy)
 
-* [WithPublishStrategy](options.md#withpublishstrategy)
+- [WithPublishStrategy](options.md#withpublishstrategy)
