@@ -140,7 +140,7 @@ func TestFindIndex(t *testing.T) {
 
 	t.Run("FindIndex with value", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(
-			Scheduled("a", "b", "c", "d", "e"),
+			Of2("a", "b", "c", "d", "e"),
 			FindIndex(func(v string, u uint) bool {
 				return v == "c"
 			}),

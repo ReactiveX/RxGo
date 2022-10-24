@@ -20,10 +20,14 @@ type subscriber[T any] struct {
 	closed bool
 }
 
-func NewSubscriber[T any]() *subscriber[T] {
+func NewSubscriber[T any](bufferCount ...uint) *subscriber[T] {
+	ch := make(chan Notification[T])
+	if len(bufferCount) > 0 {
+		ch = make(chan Notification[T], bufferCount[0])
+	}
 	return &subscriber[T]{
 		mu:   new(sync.RWMutex),
-		ch:   make(chan Notification[T]),
+		ch:   ch,
 		stop: make(chan struct{}),
 	}
 }

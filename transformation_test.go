@@ -360,12 +360,25 @@ func TestGroupBy(t *testing.T) {
 	// }
 
 	// t.Run("GroupBy with objects", func(t *testing.T) {
-	// 	checkObservableResults(t, Pipe1(
-	// 		Scheduled(js{1, "JavaScript"}, js{2, "Parcel"}),
-	// 		GroupBy[js](func(v js) string {
+	// 	checkObservableResults(t, Pipe2(
+	// 		Of2(js{1, "JavaScript"}, js{2, "Parcel"}, js{2, "Webpack"}, js{1, "TypeScript"}, js{3, "TSLint"}),
+	// 		GroupBy(func(v js) string {
 	// 			return v.name
 	// 		}),
-	// 	), []GroupedObservable[js]{}, nil, true)
+	// 		MergeMap(func(group GroupedObservable[string, js], index uint) Observable[[]js] {
+	// 			return Pipe1(
+	// 				group.(Observable[js]),
+	// 				Reduce(func(acc []js, value js, _ uint) ([]js, error) {
+	// 					acc = append(acc, value)
+	// 					return acc, nil
+	// 				}, []js{}),
+	// 			)
+	// 		}),
+	// 	), [][]js{
+	// 		{{1, "JavaScript"}, {1, "TypeScript"}},
+	// 		{{2, "Parcel"}, {2, "Webpack"}},
+	// 		{{3, "TSLint"}},
+	// 	}, nil, true)
 	// })
 }
 

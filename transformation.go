@@ -638,17 +638,26 @@ func GroupBy[T any, K comparable](keySelector func(value T) K) OperatorFunc[T, G
 						break loop
 					}
 
-					newObservable(func(subscriber Subscriber[T]) {})
+					if err := item.Err(); err != nil {
+						break loop
+					}
 
-					log.Println(item)
+					if item.Done() {
+						for k, kv := range keySet {
+							Next(NewGroupedObservable(k, func() Subject[T] {
+								return kv
+							})).Send(subscriber)
+						}
+						Complete[GroupedObservable[K, T]]().Send(subscriber)
+						break loop
+					}
+
 					key = keySelector(item.Value())
 					if _, exists := keySet[key]; !exists {
-						keySet[key] = NewSubscriber[T]()
-					} else {
-						log.Println("HELLO")
-						keySet[key].Send() <- item
-						log.Println("HELLO END")
+						keySet[key] = NewSubscriber[T](10000)
 					}
+
+					item.Send(keySet[key])
 				}
 			}
 

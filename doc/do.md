@@ -1,68 +1,45 @@
-# Do Operator
+# Do
 
-## Overview
+> Used to perform side-effects for notifications from the source observable.
 
-Register an action to take upon a variety of Observable lifecycle events.
+## Description
 
-![](http://reactivex.io/documentation/operators/images/do.c.png)
+![](https://rxjs.dev/assets/images/marble-diagrams/tap.png)
 
-## Instances
+**Do** is designed to allow the developer a designated place to perform side effects. While you could perform side-effects inside of a map or a mergeMap, that would make their mapping functions impure, which isn't always a big deal, but will make it so you can't do things like memoize those functions. The **Do** operator is designed solely for such side-effects to help you remove side-effects from other operations.
 
-* `DoOnNext`
-* `DoOnError`
-* `DoOnCompleted`
+For any notification, next, error, or complete, **Do** will call the appropriate callback you have provided to it, via a function reference, or a partial observer, then pass that notification down the stream.
 
-Each one returns a `<-chan struct{}` that closes once the Observable terminates.
+The observable returned by **Do** is an exact mirror of the source, with one exception: Any error that occurs -- synchronously -- in a handler provided to **Do** will be emitted as an error from the returned observable.
+
+**Be careful! You can mutate objects as they pass through the Do operator's handlers.**
 
 ## Example
 
-### DoOnNext
-
 ```go
-<-rxgo.Just(1, 2, 3)().
-	DoOnNext(func(i interface{}) {
-		fmt.Println(i)
-	})
+rxgo.Pipe1(
+	rxgo.Range[uint](1, 5),
+	rxgo.Do(NewObserver(func(v uint) {
+		log.Println("Debug ->", v)
+	}, nil, nil)),
+).SubscribeSync(func(v uint) {
+    log.Println("Next ->", v)
+}, func(err error) {
+    log.Println("Error ->", err)
+}, func() {
+    log.Println("Complete!")
+})
+
+// Output:
+// Debug -> 1
+// Next -> 1
+// Debug -> 2
+// Next -> 2
+// Debug -> 3
+// Next -> 3
+// Debug -> 4
+// Next -> 4
+// Debug -> 5
+// Next -> 5
+// Complete!
 ```
-
-Output:
-
-```
-1
-2
-3
-```
-
-### DoOnError
-
-```go
-<-rxgo.Just(1, 2, errors.New("foo"))().
-	DoOnError(func(err error) {
-		fmt.Println(err)
-	})
-```
-
-Output:
-
-```
-foo
-```
-
-### DoOnCompleted
-
-```go
-<-rxgo.Just(1, 2, 3)().
-	DoOnCompleted(func() {
-		fmt.Println("done")
-	})
-```
-
-Output:
-
-```
-done
-```
-
-## Options
-
-* [WithContext](options.md#withcontext)

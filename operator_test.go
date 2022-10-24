@@ -99,7 +99,12 @@ func TestDo(t *testing.T) {
 }
 
 func TestDelay(t *testing.T) {
-
+	t.Run("Delay", func(t *testing.T) {
+		checkObservableResults(t, Pipe1(
+			Range[uint8](1, 5),
+			Delay[uint8](time.Millisecond*50),
+		), []uint8{1, 2, 3, 4, 5}, nil, true)
+	})
 }
 
 func TestDelayWhen(t *testing.T) {
