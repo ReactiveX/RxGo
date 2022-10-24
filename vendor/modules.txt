@@ -11,9 +11,9 @@ github.com/emirpasic/gods/trees/binaryheap
 github.com/emirpasic/gods/utils
 # github.com/pmezard/go-difflib v1.0.0
 github.com/pmezard/go-difflib/difflib
-# github.com/stretchr/objx v0.4.0
+# github.com/stretchr/objx v0.5.0
 github.com/stretchr/objx
-# github.com/stretchr/testify v1.8.0
+# github.com/stretchr/testify v1.8.1
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/mock
 # github.com/teivah/onecontext v0.0.0-20200513185103-40f981bfd775
