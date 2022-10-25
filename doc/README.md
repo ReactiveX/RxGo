@@ -8,7 +8,7 @@ There are operators for different purposes, and they may be categorized as: crea
 <!-- - fromEventPattern -->
 <!-- - generate -->
 
-- Of ✅
+- [Of] ✅
 - [Defer](./defer.md) ✅ 📝
 - [Empty](./empty.md) ✅ 📝
 - [Interval](./interval.md) ✅ 📝
@@ -65,8 +65,8 @@ There are operators for different purposes, and they may be categorized as: crea
 
 ## Filtering Operators
 
-- Audit ✅
-- AuditTime ✅
+- [Audit] ✅
+- [AuditTime] ✅
 - [Debounce](./debounce.md) ✅
 - [DebounceTime](./debounce-time.md) ✅
 - [Distinct](./distinct.md) ✅
@@ -85,19 +85,19 @@ There are operators for different purposes, and they may be categorized as: crea
 - [SkipWhile](./skip-while.md) ✅ 📝
 - [Take](./take.md) ✅ 📝
 - [TakeLast](./takelast.md) ✅ 📝
-- TakeUntil ✅
-- TakeWhile ✅
-- Throttle 🚧
-- ThrottleTime 🚧
+- [TakeUntil] ✅
+- [TakeWhile] ✅
+- [Throttle] 🚧
+- [ThrottleTime] 🚧
 
 ## Multicasting Operators
 
-- Multicast
-- Publish
-- PublishBehavior
-- PublishLast
-- PublishReplay
-- Share
+- [Multicast]
+- [Publish]
+- [PublishBehavior]
+- [PublishLast]
+- [PublishReplay]
+- [Share]
 
 ## Error Handling Operators
 
@@ -112,8 +112,8 @@ There are operators for different purposes, and they may be categorized as: crea
 - [DelayWhen](./delay-when.md) 🚧
 - [Dematerialize](./dematerialize.md) ✅ 📝
 - [Materialize](./materialize.md) ✅ 📝
-- ObserveOn
-- SubscribeOn
+- [ObserveOn]
+- [SubscribeOn]
 - [Repeat](./repeat.md) ✅ 📝
 - ~~RepeatWhen~~
 - [TimeInterval](./time-interval.md) ✅ 📝

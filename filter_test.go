@@ -186,7 +186,7 @@ func TestDistinct(t *testing.T) {
 }
 
 func TestDistinctUntilChanged(t *testing.T) {
-	t.Run("DistinctUntilChanged with empty", func(t *testing.T) {
+	t.Run("DistinctUntilChanged with Empty", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(
 			Empty[any](),
 			DistinctUntilChanged[any](),
@@ -371,7 +371,7 @@ func TestFirst(t *testing.T) {
 }
 
 func TestLast(t *testing.T) {
-	t.Run("Last with empty value", func(t *testing.T) {
+	t.Run("Last with Empty", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(
 			Empty[any](),
 			Last[any](nil),

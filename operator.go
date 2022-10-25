@@ -22,6 +22,7 @@ func Repeat[T any, C repeatConfig](config ...C) OperatorFunc[T, T] {
 		maxRepeatCount = int64(-1)
 		delay          = time.Duration(0)
 	)
+
 	if len(config) > 0 {
 		switch v := any(config[0]).(type) {
 		case RepeatConfig:
@@ -43,6 +44,7 @@ func Repeat[T any, C repeatConfig](config ...C) OperatorFunc[T, T] {
 			maxRepeatCount = int64(v)
 		}
 	}
+
 	return func(source Observable[T]) Observable[T] {
 		return newObservable(func(subscriber Subscriber[T]) {
 			var (
@@ -63,21 +65,21 @@ func Repeat[T any, C repeatConfig](config ...C) OperatorFunc[T, T] {
 
 			setupStream(true)
 
-		observe:
+		loop:
 			for {
 				select {
 				case <-subscriber.Closed():
 					upStream.Stop()
-					break observe
+					break loop
 
 				case item, ok := <-forEach:
 					if !ok {
-						break observe
+						break loop
 					}
 
 					if err := item.Err(); err != nil {
 						Error[T](err).Send(subscriber)
-						break observe
+						break loop
 					}
 
 					if item.Done() {
@@ -88,7 +90,7 @@ func Repeat[T any, C repeatConfig](config ...C) OperatorFunc[T, T] {
 						}
 
 						Complete[T]().Send(subscriber)
-						break observe
+						break loop
 					}
 
 					item.Send(subscriber)

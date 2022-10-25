@@ -13,7 +13,7 @@ If the delay argument is a Number, this operator time shifts the source Observab
 ```go
 rxgo.Pipe1(
     rxgo.Range[uint8](1, 5),
-	rxgo.Delay[uint8](time.Second),
+    rxgo.Delay[uint8](time.Second),
 ).SubscribeSync(func(v uint8) {
     log.Println("Next ->", v)
 }, func(err error) {

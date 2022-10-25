@@ -6,7 +6,7 @@ Create an Observable that emits a particular item multiple times at a particular
 
 ![](http://reactivex.io/documentation/operators/images/repeat.png)
 
-## Example
+## Example 1
 
 ```go
 rxgo.Pipe1(
@@ -27,5 +27,34 @@ rxgo.Pipe1(
 // Next -> 1
 // Next -> 2
 // Next -> 3
+// Complete!
+```
+
+## Example 2
+
+```go
+rxgo.Pipe1(
+    rxgo.Range[uint8](2, 4),
+    rxgo.Repeat[uint8](rxgo.RepeatConfig{
+        Count: 2,
+        Delay: time.Second,
+    }),
+).SubscribeSync(func(v uint8) {
+    log.Println("Next ->", v)
+}, func(err error) {
+    log.Println("Error ->", err)
+}, func() {
+    log.Println("Complete!")
+})
+
+// Output:
+// Next -> 2
+// Next -> 3
+// Next -> 4
+// Next -> 5
+// Next -> 2
+// Next -> 3
+// Next -> 4
+// Next -> 5
 // Complete!
 ```

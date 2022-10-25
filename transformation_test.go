@@ -209,6 +209,7 @@ func TestBufferWhen(t *testing.T) {
 func TestConcatMap(t *testing.T) {
 	t.Run("ConcatMap with error on upstream", func(t *testing.T) {
 		var err = fmt.Errorf("throw")
+
 		checkObservableResults(t, Pipe1(
 			Scheduled[any]("z", err, "q"),
 			ConcatMap(func(x any, i uint) Observable[string] {
