@@ -33,35 +33,35 @@ There are operators for different purposes, and they may be categorized as: crea
 - [MergeAll](./merge.md) 🚧
 - [MergeWith](./merge-with.md) 🚧
 - [RaceWith](./race-with.md) 🚧
+- [StartWith]
+- [SwitchAll]
+- [WithLatestFrom]
 - [ZipAll](./zip-all.md) ✅
 - [ZipWith](./zip-with.md) ✅
-- SwitchAll
-- StartWith
-- WithLatestFrom
 
 ## Transformation Operators
 
 - [Buffer](./buffer.md) ✅
 - [BufferCount](./buffer-count.md) ✅ 📝
-- [BufferTime](./buffer-time.md) ✅
-- BufferToggle ✅
-- BufferWhen ✅
+- [BufferTime](./buffer-time.md) ✅ 📝
+- [BufferToggle] ✅
+- [BufferWhen] ✅
 - [ConcatMap](./concat-map.md) ✅
-- ExhaustMap ✅
-- Expand
-- GroupBy 🚧
+- [ExhaustMap] ✅
+- [Expand]
+- [GroupBy](./group-by.md) 🚧
 - [Map](./map.md) ✅ 📝
-- MergeMap 🚧
-- MergeScan
-- Pairwise ✅
+- [MergeMap] 🚧
+- [MergeScan] ✅
+- [Pairwise] ✅
 - [Scan](./scan.md) ✅
-- SwitchScan
-- SwitchMap
-- Window
-- WindowCount
-- WindowTime
-- WindowToggle
-- WindowWhen
+- [SwitchScan]
+- [SwitchMap]
+- [Window]
+- [WindowCount]
+- [WindowTime]
+- [WindowToggle]
+- [WindowWhen]
 
 ## Filtering Operators
 
@@ -101,8 +101,8 @@ There are operators for different purposes, and they may be categorized as: crea
 
 ## Error Handling Operators
 
-- Catch ✅
-- Retry ✅ 📝
+- [Catch](./catch.md) ✅
+- [Retry](./retry.md) ✅ 📝
 - ~~RetryWhen~~
 
 ## Utility Operators

@@ -7,41 +7,41 @@ import (
 )
 
 func TestAudit(t *testing.T) {
-	t.Run("Audit with Empty", func(t *testing.T) {
-		checkObservableResult(t, Pipe1(
-			Empty[any](),
-			Audit(func(v any) Observable[uint] {
-				return Interval(time.Millisecond * 10)
-			}),
-		), nil, nil, true)
-	})
+	// t.Run("Audit with Empty", func(t *testing.T) {
+	// 	checkObservableResult(t, Pipe1(
+	// 		Empty[any](),
+	// 		Audit(func(v any) Observable[uint] {
+	// 			return Interval(time.Millisecond * 10)
+	// 		}),
+	// 	), nil, nil, true)
+	// })
 
-	t.Run("Audit with outer error", func(t *testing.T) {
-		var err = errors.New("failed")
-		checkObservableResult(t, Pipe1(
-			Throw[any](func() error {
-				return err
-			}),
-			Audit(func(v any) Observable[uint] {
-				return Interval(time.Millisecond * 10)
-			}),
-		), nil, err, false)
-	})
+	// t.Run("Audit with outer error", func(t *testing.T) {
+	// 	var err = errors.New("failed")
+	// 	checkObservableResult(t, Pipe1(
+	// 		Throw[any](func() error {
+	// 			return err
+	// 		}),
+	// 		Audit(func(v any) Observable[uint] {
+	// 			return Interval(time.Millisecond * 10)
+	// 		}),
+	// 	), nil, err, false)
+	// })
 
-	t.Run("Audit with inner error", func(t *testing.T) {
-		var err = errors.New("failed")
-		checkObservableHasResults(t, Pipe1(
-			Range[uint](1, 100),
-			Audit(func(v uint) Observable[any] {
-				if v < 5 {
-					return Of2[any](v)
-				}
-				return Throw[any](func() error {
-					return err
-				})
-			}),
-		), true, err, false)
-	})
+	// t.Run("Audit with inner error", func(t *testing.T) {
+	// 	var err = errors.New("failed")
+	// 	checkObservableHasResults(t, Pipe1(
+	// 		Range[uint](1, 100),
+	// 		Audit(func(v uint) Observable[any] {
+	// 			if v < 5 {
+	// 				return Of2[any](v)
+	// 			}
+	// 			return Throw[any](func() error {
+	// 				return err
+	// 			})
+	// 		}),
+	// 	), true, err, false)
+	// })
 }
 
 func TestDebounce(t *testing.T) {

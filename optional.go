@@ -15,7 +15,7 @@ type optional[T any] struct {
 var _ Optional[any] = (*optional[any])(nil)
 
 func (o optional[T]) MustGet() T {
-	if !o.none {
+	if o.none {
 		panic("rxgo: option has no value")
 	}
 
@@ -34,7 +34,7 @@ func (o optional[T]) IsNone() bool {
 }
 
 func (o optional[T]) Get() (T, bool) {
-	if !o.none {
+	if o.none {
 		return *new(T), false
 	}
 

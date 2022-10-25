@@ -16,14 +16,14 @@ func NewGroupedObservable[K comparable, T any](key K, connector func() Subject[T
 	return obs
 }
 
-func newGroupedObservable[K comparable, T any](key K) GroupedObservable[K, T] {
-	obs := &groupedObservable[K, T]{}
-	obs.key = key
-	obs.connector = func() Subject[T] {
-		return NewSubscriber[T]()
-	}
-	return obs
-}
+// func newGroupedObservable[K comparable, T any](key K) GroupedObservable[K, T] {
+// 	obs := &groupedObservable[K, T]{}
+// 	obs.key = key
+// 	obs.connector = func() Subject[T] {
+// 		return NewSubscriber[T]()
+// 	}
+// 	return obs
+// }
 
 func (g *groupedObservable[K, T]) Key() K {
 	return g.key

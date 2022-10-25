@@ -346,6 +346,24 @@ func TestExhaustMap(t *testing.T) {
 	// })
 }
 
+func TestExpand(t *testing.T) {
+	// t.Run("Expand with Empty", func(t *testing.T) {
+	// 	checkObservableResults(t, Pipe2(
+	// 		Range[uint8](1, 5),
+	// 		Expand(func(v uint8, _ uint) Observable[string] {
+	// 			return Of2(fmt.Sprintf("Number(%d)", v))
+	// 		}),
+	// 		Take[Either[uint8, string]](5),
+	// 	), []Either[uint8, string]{
+	// 		Left[uint8, string](1),
+	// 		Left[uint8, string](2),
+	// 		Left[uint8, string](3),
+	// 		Left[uint8, string](4),
+	// 		Left[uint8, string](5),
+	// 	}, nil, true)
+	// })
+}
+
 func TestGroupBy(t *testing.T) {
 	// t.Run("GroupBy with Empty", func(t *testing.T) {
 	// 	checkObservableResults(t, Pipe1(
@@ -500,6 +518,63 @@ func TestMergeMap(t *testing.T) {
 	// 	// 	require.Equal(t, failed, err)
 	// 	// 	require.False(t, done)
 	// })
+}
+
+func TestMergeScan(t *testing.T) {
+	t.Run("MergeScan with Empty", func(t *testing.T) {
+		checkObservableHasResults(t, Pipe1(
+			Empty[any](),
+			MergeScan(func(acc string, v any, _ uint) Observable[string] {
+				return Of2(fmt.Sprintf("%v %s", v, acc))
+			}, "hello ->"),
+		), false, nil, true)
+	})
+
+	t.Run("MergeScan with outer error", func(t *testing.T) {
+		var err = errors.New("failed")
+		checkObservableHasResults(t, Pipe1(
+			Throw[any](func() error {
+				return err
+			}),
+			MergeScan(func(acc string, v any, _ uint) Observable[string] {
+				return Of2(fmt.Sprintf("%v %s", v, acc))
+			}, "hello ->"),
+		), false, err, false)
+	})
+
+	t.Run("MergeScan with inner error", func(t *testing.T) {
+		var err = errors.New("cannot more than 5")
+		checkObservableHasResults(t, Pipe1(
+			Interval(time.Millisecond*5),
+			MergeScan(func(acc string, v uint, _ uint) Observable[string] {
+				if v > 5 {
+					return Throw[string](func() error {
+						return err
+					})
+				}
+				return Of2(fmt.Sprintf("%v %s", v, acc))
+			}, "hello ->"),
+		), true, err, false)
+	})
+
+	t.Run("MergeScan with Range(1, 5)", func(t *testing.T) {
+		checkObservableHasResults(t, Pipe1(
+			Range[uint8](1, 5),
+			MergeScan(func(acc uint, v uint8, _ uint) Observable[uint] {
+				return Of2(acc + uint(v))
+			}, uint(88)),
+		), true, nil, true)
+	})
+
+	t.Run("MergeScan with Range(1, 5) and Interval", func(t *testing.T) {
+		checkObservableHasResults(t, Pipe2(
+			Range[uint8](1, 5),
+			MergeScan(func(acc uint, v uint8, _ uint) Observable[uint] {
+				return Interval(time.Millisecond)
+			}, uint(88)),
+			Take[uint](2),
+		), true, nil, true)
+	})
 }
 
 func TestScan(t *testing.T) {

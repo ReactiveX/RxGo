@@ -606,6 +606,87 @@ func ExhaustMap[T any, R any](project ProjectionFunc[T, R]) OperatorFunc[T, R] {
 	}
 }
 
+// Recursively projects each source value to an Observable which is merged in the output Observable.
+func Expand[T any, R any](project ProjectionFunc[T, R]) OperatorFunc[T, Either[T, R]] {
+	return func(source Observable[T]) Observable[Either[T, R]] {
+		return newObservable(func(subscriber Subscriber[Either[T, R]]) {
+			var (
+				wg = new(sync.WaitGroup)
+			)
+
+			wg.Add(1)
+
+			var (
+				index    uint
+				streams  []Observable[R]
+				upStream = source.SubscribeOn(wg.Done)
+			)
+
+			reset := func() {
+				streams = make([]Observable[R], 0)
+			}
+
+			reset()
+
+		innerLoop:
+			for {
+				select {
+				case <-subscriber.Closed():
+					upStream.Stop()
+					reset()
+					break innerLoop
+
+				case item, ok := <-upStream.ForEach():
+					if !ok {
+						break innerLoop
+					}
+
+					if err := item.Err(); err != nil {
+						Error[Either[T, R]](err).Send(subscriber)
+						reset()
+						break innerLoop
+					}
+
+					if item.Done() {
+						break innerLoop
+					}
+
+					Next(Left[T, R](item.Value())).Send(subscriber)
+					streams = append(streams, project(item.Value(), index))
+					index++
+				}
+			}
+
+			for len(streams) > 0 {
+				log.Println(streams[0])
+				wg.Add(1)
+				stream := streams[0].SubscribeOn(wg.Done)
+
+			outerLoop:
+				for {
+					select {
+					case <-subscriber.Closed():
+						break outerLoop
+
+					case item, ok := <-stream.ForEach():
+						if !ok {
+							break outerLoop
+						}
+
+						log.Println(item)
+					}
+				}
+
+				streams = streams[1:]
+			}
+
+			log.Println(streams)
+
+			wg.Wait()
+		})
+	}
+}
+
 // Groups the items emitted by an Observable according to a specified criterion, and emits these grouped items as GroupedObservables, one GroupedObservable per group.
 // FIXME: maybe we should have a buffer channel
 func GroupBy[T any, K comparable](keySelector func(value T) K) OperatorFunc[T, GroupedObservable[K, T]] {
@@ -813,40 +894,112 @@ func MergeScan[V any, A any](accumulator func(acc A, value V, index uint) Observ
 	return func(source Observable[V]) Observable[A] {
 		return newObservable(func(subscriber Subscriber[A]) {
 			var (
-				wg = new(sync.WaitGroup)
+				exception   error
+				errOnce     = new(sync.Once)
+				wg          = new(sync.WaitGroup)
+				ctx, cancel = context.WithCancel(context.TODO())
 			)
 
 			wg.Add(1)
 
 			var (
 				index      uint
-				finalValue = seed
+				finalValue = new(atomic.Pointer[A])
 				upStream   = source.SubscribeOn(wg.Done)
 			)
 
-			// MergeScan internally keeps the value of the acc parameter: as long as the source Observable emits without inner Observable emitting, the acc will be set to seed.
-
-			observeStream := func() {
-				Next(finalValue).Send(subscriber)
+			onError := func(err error) {
+				errOnce.Do(func() {
+					exception = err
+					cancel()
+				})
 			}
 
-		loop:
+			finalValue.Store(&seed)
+
+			// MergeScan internally keeps the value of the acc parameter: as long as the source Observable emits without inner Observable emitting, the acc will be set to seed.
+
+			observeStream := func(stream Subscriber[A]) {
+				var (
+					value A
+				)
+
+			innerLoop:
+				for {
+					select {
+					case <-ctx.Done():
+						stream.Stop()
+						cancel()
+						break innerLoop
+
+					case <-subscriber.Closed():
+						stream.Stop()
+						cancel()
+						break innerLoop
+
+					case item, ok := <-stream.ForEach():
+						if !ok {
+							break innerLoop
+						}
+
+						if err := item.Err(); err != nil {
+							onError(err)
+							break innerLoop
+						}
+
+						if item.Done() {
+							break innerLoop
+						}
+
+						value = item.Value()
+						finalValue.Store(&value)
+						item.Send(subscriber)
+					}
+				}
+			}
+
+		outerLoop:
 			for {
 				select {
+				case <-ctx.Done():
+					upStream.Stop()
+					cancel()
+					break outerLoop
+
 				case <-subscriber.Closed():
+					upStream.Stop()
+					cancel()
+					break outerLoop
+
 				case item, ok := <-upStream.ForEach():
 					if !ok {
-						break loop
+						break outerLoop
+					}
+
+					if err := item.Err(); err != nil {
+						onError(err)
+						break outerLoop
+					}
+
+					if item.Done() {
+						break outerLoop
 					}
 
 					wg.Add(1)
-					accumulator(finalValue, item.Value(), index).SubscribeOn(wg.Done)
-					observeStream()
+					stream := accumulator(*finalValue.Load(), item.Value(), index).SubscribeOn(wg.Done)
+					go observeStream(stream)
 					index++
 				}
 			}
 
 			wg.Wait()
+
+			if exception != nil {
+				Error[A](exception).Send(subscriber)
+				return
+			}
+
+			Complete[A]().Send(subscriber)
 		})
 	}
 }

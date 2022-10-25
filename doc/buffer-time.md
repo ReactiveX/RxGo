@@ -23,12 +23,12 @@ rxgo.Pipe1(
 })
 
 // Output:
-// Next -> [0, 1, 2]
-// Next -> [1, 2, 3]
-// Next -> [2, 3, 4]
-// Next -> [3, 4, 5]
-// Next -> [4, 5, 6]
-// Next -> [5, 6]
-// Next -> [6]
+// Next -> [0, 1, 2] // after 1s
+// Next -> [1, 2, 3] // after 2s
+// Next -> [2, 3, 4] // after 3s
+// Next -> [3, 4, 5] // after 1s
+// Next -> [4, 5, 6] // after 1s
+// Next -> [5, 6]    // after 1s
+// Next -> [6]       // after 1s
 // Complete!
 ```
