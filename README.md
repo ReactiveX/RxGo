@@ -463,7 +463,6 @@ An Iterable can be either:
 - [Merge](doc/merge.md) — combine multiple Observables into one by merging their emissions
 - [RaceWith](doc/race-with.md) — creates an Observable that mirrors the first source Observable to emit a next, error or complete notification from the combination of the Observable to which the operator is applied and supplied Observables.
 - [StartWithIterable](doc/startwithiterable.md) — emit a specified sequence of items before beginning to emit the items from the source Iterable
-- [ZipFromIterable](doc/zipfromiterable.md) — combine the emissions of multiple Observables together via a specified function and emit single items for each combination based on the results of this function
 
 ### Observable Utility Operators
 

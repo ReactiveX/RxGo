@@ -647,14 +647,14 @@ func TestSwitchMap(t *testing.T) {
 	t.Run("SwitchMap with inner error", func(t *testing.T) {
 		var err = errors.New("throw")
 
-		checkObservableHasResults(t, Pipe1(
+		checkObservable(t, Pipe1(
 			Range[uint](1, 88),
 			SwitchMap(func(_, _ uint) Observable[any] {
 				return Throw[any](func() error {
 					return err
 				})
 			}),
-		), false, err, false)
+		), err, false)
 	})
 
 	t.Run("SwitchMap with outer & inner error", func(t *testing.T) {

@@ -6,6 +6,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func checkObservable[T any](t *testing.T, obs Observable[T], err error, isCompleted bool) {
+	var (
+		hasCompleted bool
+		collectedErr error
+	)
+	obs.SubscribeSync(func(v T) {
+		// do nothing
+	}, func(err error) {
+		collectedErr = err
+	}, func() {
+		hasCompleted = true
+	})
+	require.Equal(t, hasCompleted, isCompleted)
+	require.Equal(t, collectedErr, err)
+}
+
 func checkObservableHasResults[T any](t *testing.T, obs Observable[T], hasResult bool, err error, isCompleted bool) {
 	var (
 		hasCompleted  bool
