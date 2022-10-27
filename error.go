@@ -150,24 +150,24 @@ func Retry[T any, C retryConfig](config ...C) OperatorFunc[T, T] {
 
 			setupStream(true)
 
-		observe:
+		loop:
 			//  If count is omitted, retry will try to resubscribe on errors infinite number of times.
 			for {
 				select {
 				case <-subscriber.Closed():
 					upStream.Stop()
-					break observe
+					break loop
 
 				case item, ok := <-forEach:
 					if !ok {
-						break observe
+						break loop
 					}
 
 					if err := item.Err(); err != nil {
 						errCount++
 						if errCount > maxRetryCount {
 							item.Send(subscriber)
-							break observe
+							break loop
 						}
 
 						setupStream(false)
@@ -180,7 +180,7 @@ func Retry[T any, C retryConfig](config ...C) OperatorFunc[T, T] {
 
 					item.Send(subscriber)
 					if item.Done() {
-						break observe
+						break loop
 					}
 				}
 			}

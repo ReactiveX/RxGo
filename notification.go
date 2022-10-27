@@ -91,20 +91,20 @@ func Dematerialize[T any]() OperatorFunc[ObservableNotification[T], T] {
 				msg      ObservableNotification[T]
 			)
 
-		observe:
+		loop:
 			for {
 				select {
 				case <-subscriber.Closed():
 					upStream.Stop()
-					break observe
+					break loop
 
 				case item, ok := <-upStream.ForEach():
 					if !ok {
-						break observe
+						break loop
 					}
 
 					if item.Done() {
-						break observe
+						break loop
 					}
 
 					msg = item.Value()
@@ -115,11 +115,11 @@ func Dematerialize[T any]() OperatorFunc[ObservableNotification[T], T] {
 
 					case ErrorKind:
 						Error[T](msg.Err()).Send(subscriber)
-						break observe
+						break loop
 
 					case CompleteKind:
 						Complete[T]().Send(subscriber)
-						break observe
+						break loop
 					}
 				}
 			}
@@ -147,16 +147,16 @@ func Materialize[T any]() OperatorFunc[T, ObservableNotification[T]] {
 				msg       Notification[ObservableNotification[T]]
 			)
 
-		observe:
+		loop:
 			for {
 				select {
 				case <-subscriber.Closed():
 					upStream.Stop()
-					break observe
+					break loop
 
 				case item, ok := <-upStream.ForEach():
 					if !ok {
-						break observe
+						break loop
 					}
 
 					// When the source Observable emits complete, the output Observable will emit next as a Notification of type "Complete", and then it will emit complete as well. When the source Observable emits error, the output will emit next as a Notification of type "Error", and then complete.
@@ -165,13 +165,13 @@ func Materialize[T any]() OperatorFunc[T, ObservableNotification[T]] {
 
 					if !msg.Send(subscriber) {
 						upStream.Stop()
-						break observe
+						break loop
 					}
 
 					if completed {
 						upStream.Stop()
 						Complete[ObservableNotification[T]]().Send(subscriber)
-						break observe
+						break loop
 					}
 				}
 			}

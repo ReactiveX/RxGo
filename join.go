@@ -395,20 +395,20 @@ func ForkJoin[T any](sources ...Observable[T]) Observable[[]T] {
 					upStream = obs.SubscribeOn()
 				)
 
-			observe:
+			loop:
 				for {
 					select {
 					case <-ctx.Done():
 						upStream.Stop()
-						break observe
+						break loop
 
 					case <-subscriber.Closed():
 						upStream.Stop()
-						break observe
+						break loop
 
 					case item, ok := <-upStream.ForEach():
 						if !ok {
-							break observe
+							break loop
 						}
 
 						// if one error, everything error
@@ -417,7 +417,7 @@ func ForkJoin[T any](sources ...Observable[T]) Observable[[]T] {
 						}
 
 						if item.Done() {
-							break observe
+							break loop
 						}
 
 						if !emitted {

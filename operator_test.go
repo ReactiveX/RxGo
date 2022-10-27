@@ -162,9 +162,9 @@ func TestToSlice(t *testing.T) {
 	t.Run("ToSlice with alphaberts", func(t *testing.T) {
 		checkObservableResult(t, Pipe1(newObservable(func(subscriber Subscriber[string]) {
 			for i := 1; i <= 5; i++ {
-				subscriber.Send() <- Next(string(rune('A' - 1 + i)))
+				Next(string(rune('A' - 1 + i))).Send(subscriber)
 			}
-			subscriber.Send() <- Complete[string]()
+			Complete[string]().Send(subscriber)
 		}), ToSlice[string]()), []string{"A", "B", "C", "D", "E"}, nil, true)
 	})
 }
