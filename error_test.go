@@ -56,6 +56,7 @@ func TestCatch(t *testing.T) {
 
 	t.Run("Catch with same observable", func(t *testing.T) {
 		var err = fmt.Errorf("throw four")
+
 		checkObservableResults(t, Pipe2(
 			Of2[any](1, 2, 3, 4, 5),
 			Map(func(v any, _ uint) (any, error) {
@@ -65,9 +66,9 @@ func TestCatch(t *testing.T) {
 				return v, nil
 			}),
 			Catch(func(err error, caught Observable[any]) Observable[any] {
-				return caught
+				return Empty[any]()
 			}),
-		), []any{1, 2, 3, 1, 2, 3}, err, false)
+		), []any{1, 2, 3}, nil, true)
 	})
 }
 
