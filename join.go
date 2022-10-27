@@ -679,6 +679,93 @@ func SwitchAll[T any]() OperatorFunc[Observable[T], T] {
 	}
 }
 
+// Combines the source Observable with other Observables to create an Observable whose values are calculated from the latest values of each, only when the source emits.
+func WithLatestFrom[A any, B any](input Observable[B]) OperatorFunc[A, Tuple[A, B]] {
+	return func(source Observable[A]) Observable[Tuple[A, B]] {
+		return newObservable(func(subscriber Subscriber[Tuple[A, B]]) {
+			var (
+				allOk       [2]bool
+				errOnce     = new(atomic.Pointer[error])
+				mu          = new(sync.RWMutex)
+				wg          = new(sync.WaitGroup)
+				latestA     = new(atomic.Pointer[A])
+				latestB     = new(atomic.Pointer[B])
+				ctx, cancel = context.WithCancel(context.TODO())
+			)
+
+			wg.Add(2)
+
+			var (
+				upStream    = source.SubscribeOn(wg.Done)
+				notifySteam = input.SubscribeOn(wg.Done)
+			)
+
+			log.Println(notifySteam)
+
+			stop := func() {
+				upStream.Stop()
+				notifySteam.Stop()
+			}
+
+			onError := func(err error) {
+
+				cancel()
+			}
+
+			onNext := func() {
+				mu.RLock()
+				defer mu.RUnlock()
+				if allOk[0] && allOk[1] {
+					Next(NewTuple(*latestA.Load(), *latestB.Load())).Send(subscriber)
+				}
+			}
+
+			// All input Observables must emit at least one value before the output Observable will emit a value.
+		outerLoop:
+			for {
+				select {
+				case <-ctx.Done():
+					stop()
+					break outerLoop
+
+				case <-subscriber.Closed():
+					stop()
+					break outerLoop
+
+				case item, ok := <-upStream.ForEach():
+					if !ok {
+						break outerLoop
+					}
+
+					if err := item.Err(); err != nil {
+						onError(err)
+						break outerLoop
+					}
+
+					if item.Done() {
+						break outerLoop
+					}
+
+					mu.Lock()
+					allOk[0] = true
+					mu.Unlock()
+
+					value := item.Value()
+					latestA.Store(&value)
+					onNext()
+				}
+			}
+
+			wg.Wait()
+
+			if err := errOnce.Load(); err != nil {
+				Error[Tuple[A, B]](*err).Send(subscriber)
+				return
+			}
+		})
+	}
+}
+
 // Collects all observable inner sources from the source, once the source completes, it will subscribe to all inner sources, combining their values by index and emitting them.
 func ZipAll[T any]() OperatorFunc[Observable[T], []T] {
 	return func(source Observable[Observable[T]]) Observable[[]T] {

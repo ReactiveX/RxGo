@@ -32,16 +32,16 @@ There are operators for different purposes, and they may be categorized as: crea
 - [ForkJoin](./fork-join.md) ✅ 📝
 - [MergeAll](./merge.md) 🚧
 - [MergeWith](./merge-with.md) 🚧
-- [RaceWith](./race-with.md) 🚧
+- [RaceWith](./race-with.md) ✅ 📝
 - [StartWith]
 - [SwitchAll]
 - [WithLatestFrom]
 - [ZipAll](./zip-all.md) ✅
-- [ZipWith](./zip-with.md) ✅
+- [ZipWith](./zip-with.md) ✅ 📝
 
 ## Transformation Operators
 
-- [Buffer](./buffer.md) ✅
+- [Buffer](./buffer.md) 🚧
 - [BufferCount](./buffer-count.md) ✅ 📝
 - [BufferTime](./buffer-time.md) ✅ 📝
 - [BufferToggle] ✅
@@ -51,12 +51,12 @@ There are operators for different purposes, and they may be categorized as: crea
 - [Expand]
 - [GroupBy](./group-by.md) 🚧
 - [Map](./map.md) ✅ 📝
-- [MergeMap] 🚧
+- [MergeMap] ✅ 📝
 - [MergeScan] ✅
 - [Pairwise] ✅
 - [Scan](./scan.md) ✅
 - [SwitchScan]
-- [SwitchMap]
+- [SwitchMap](./switch-map.md) ✅ 📝
 - [Window]
 - [WindowCount]
 - [WindowTime]

@@ -477,8 +477,22 @@ func TestRaceWith(t *testing.T) {
 	})
 }
 
+func TestWithLatestFrom(t *testing.T) {
+	// t.Run("WithLatestFrom", func(t *testing.T) {
+	// 	checkObservableResults(t, Pipe2(
+	// 		Interval(time.Millisecond*500),
+	// 		WithLatestFrom[uint](Scheduled("a", "v")),
+	// 		Take[Tuple[uint, string]](3),
+	// 	), []Tuple[uint, string]{
+	// 		NewTuple[uint](0, "v"),
+	// 		NewTuple[uint](1, "v"),
+	// 		NewTuple[uint](2, "v"),
+	// 	}, nil, true)
+	// })
+}
+
 func TestZipWith(t *testing.T) {
-	t.Run("Zip with all Empty", func(t *testing.T) {
+	t.Run("ZipWith with all Empty", func(t *testing.T) {
 		checkObservableResults(t, Pipe1(
 			Empty[any](),
 			ZipWith(
@@ -488,7 +502,7 @@ func TestZipWith(t *testing.T) {
 		), [][]any{}, nil, true)
 	})
 
-	t.Run("Zip with Throw", func(t *testing.T) {
+	t.Run("ZipWith with Throw", func(t *testing.T) {
 		var err = errors.New("stop")
 		checkObservableResults(t, Pipe1(
 			Throw[any](func() error {
@@ -501,7 +515,7 @@ func TestZipWith(t *testing.T) {
 		), [][]any{}, err, false)
 	})
 
-	t.Run("Zip with error", func(t *testing.T) {
+	t.Run("ZipWith with error", func(t *testing.T) {
 		var err = errors.New("stop")
 		checkObservableResults(t, Pipe2(
 			Of2[any](27, 25, 29),
@@ -521,7 +535,7 @@ func TestZipWith(t *testing.T) {
 		}, err, false)
 	})
 
-	t.Run("Zip with Empty and Of", func(t *testing.T) {
+	t.Run("ZipWith with Empty and Of", func(t *testing.T) {
 		checkObservableResults(t, Pipe1(
 			Empty[any](),
 			ZipWith(
@@ -531,7 +545,7 @@ func TestZipWith(t *testing.T) {
 		), [][]any{}, nil, true)
 	})
 
-	t.Run("Zip with Of (not tally)", func(t *testing.T) {
+	t.Run("ZipWith with Of (not tally)", func(t *testing.T) {
 		checkObservableResults(t, Pipe1(
 			Of2[any](27, 25, 29),
 			ZipWith(
@@ -544,7 +558,7 @@ func TestZipWith(t *testing.T) {
 		}, nil, true)
 	})
 
-	t.Run("Zip with Of (tally)", func(t *testing.T) {
+	t.Run("ZipWith with Of (tally)", func(t *testing.T) {
 		checkObservableResults(t, Pipe1(
 			Of2[any](27, 25, 29),
 			ZipWith(

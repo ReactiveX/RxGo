@@ -15,20 +15,32 @@ func Buffer[T any, R any](closingNotifier Observable[R]) OperatorFunc[T, []T] {
 	return func(source Observable[T]) Observable[[]T] {
 		return newObservable(func(subscriber Subscriber[[]T]) {
 			var (
-				wg     = new(sync.WaitGroup)
-				mu     = new(sync.RWMutex)
-				errCh  = make(chan error, 1)
-				buffer = make([]T, 0)
+				wg          = new(sync.WaitGroup)
+				mu          = new(sync.RWMutex)
+				errOnce     = new(atomic.Pointer[error])
+				ctx, cancel = context.WithCancel(context.TODO())
+				buffer      = make([]T, 0)
 			)
 
-			defer close(errCh)
-
 			wg.Add(2)
+
+			onError := func(err error) {
+				errOnce.CompareAndSwap(nil, &err)
+				cancel()
+			}
 
 			observeStream := func(stream Subscriber[R]) {
 			innerLoop:
 				for {
 					select {
+					case <-ctx.Done():
+						stream.Stop()
+						break innerLoop
+
+					case <-subscriber.Closed():
+						stream.Stop()
+						break innerLoop
+
 					case <-stream.Closed():
 						break innerLoop
 
@@ -38,7 +50,7 @@ func Buffer[T any, R any](closingNotifier Observable[R]) OperatorFunc[T, []T] {
 						}
 
 						if err := item.Err(); err != nil {
-							sendNonBlock(err, errCh)
+							onError(err)
 							break innerLoop
 						}
 
@@ -46,8 +58,9 @@ func Buffer[T any, R any](closingNotifier Observable[R]) OperatorFunc[T, []T] {
 							break innerLoop
 						}
 
-						mu.Lock()
 						Next(buffer).Send(subscriber)
+
+						mu.Lock()
 						// reset buffer
 						buffer = make([]T, 0)
 						mu.Unlock()
@@ -65,15 +78,14 @@ func Buffer[T any, R any](closingNotifier Observable[R]) OperatorFunc[T, []T] {
 		outerLoop:
 			for {
 				select {
-				case <-subscriber.Closed():
+				case <-ctx.Done():
 					upStream.Stop()
 					notifyStream.Stop()
 					break outerLoop
 
-				case err := <-errCh:
+				case <-subscriber.Closed():
 					upStream.Stop()
 					notifyStream.Stop()
-					Error[[]T](err).Send(subscriber)
 					break outerLoop
 
 				case item, ok := <-upStream.ForEach():
@@ -84,7 +96,7 @@ func Buffer[T any, R any](closingNotifier Observable[R]) OperatorFunc[T, []T] {
 
 					if err := item.Err(); err != nil {
 						notifyStream.Stop()
-						Error[[]T](err).Send(subscriber)
+						onError(err)
 						break outerLoop
 					}
 
@@ -101,6 +113,11 @@ func Buffer[T any, R any](closingNotifier Observable[R]) OperatorFunc[T, []T] {
 			}
 
 			wg.Wait()
+
+			if err := errOnce.Load(); err != nil {
+				Error[[]T](*err).Send(subscriber)
+				return
+			}
 		})
 	}
 }
@@ -210,6 +227,10 @@ func BufferTime[T any](bufferTimeSpan time.Duration) OperatorFunc[T, []T] {
 					upStream.Stop()
 					break observe
 
+				case <-timer.C:
+					Next(buffer).Send(subscriber)
+					setValues()
+
 				case item, ok := <-upStream.ForEach():
 					if !ok {
 						break observe
@@ -227,18 +248,14 @@ func BufferTime[T any](bufferTimeSpan time.Duration) OperatorFunc[T, []T] {
 					}
 
 					buffer = append(buffer, item.Value())
-
-				case <-timer.C:
-					Next(buffer).Send(subscriber)
-					setValues()
 				}
 			}
+
+			wg.Wait()
 
 			// prevent memory leak
 			upStream.Stop()
 			stopTimer()
-
-			wg.Wait()
 		})
 	}
 }
@@ -415,9 +432,9 @@ func BufferWhen[T any, R any](closingSelector func() Observable[R]) OperatorFunc
 				}
 			}
 
-			unsubscribeAll()
-
 			wg.Wait()
+
+			unsubscribeAll()
 		})
 	}
 }
@@ -779,31 +796,37 @@ func Map[T any, R any](mapper func(T, uint) (R, error)) OperatorFunc[T, R] {
 
 // Projects each source value to an Observable which is merged in the output Observable.
 func MergeMap[T any, R any](project ProjectionFunc[T, R], concurrent ...uint) OperatorFunc[T, R] {
-	// maxGoroutine := -1
-	// if len(concurrent) > 0 {
-	// 	maxGoroutine = int(concurrent[0])
-	// }
+	// TODO: support concurrent
 	return func(source Observable[T]) Observable[R] {
 		return newObservable(func(subscriber Subscriber[R]) {
 			var (
-				mu = new(sync.RWMutex)
-				wg = new(sync.WaitGroup)
+				errOnce     = new(atomic.Pointer[error])
+				wg          = new(sync.WaitGroup)
+				ctx, cancel = context.WithCancel(context.TODO())
 			)
 
-			wg.Add(2)
+			wg.Add(1)
 
 			var (
-				index         uint
-				errCh         = make(chan error, 1)
-				upStream      = source.SubscribeOn(wg.Done)
-				subscriptions = make([]Subscriber[R], 0)
+				index    uint
+				upStream = source.SubscribeOn(wg.Done)
 			)
+
+			onError := func(err error) {
+				errOnce.CompareAndSwap(nil, &err)
+				cancel()
+			}
 
 			observeStream := func(stream Subscriber[R]) {
 			innerLoop:
 				for {
 					select {
+					case <-ctx.Done():
+						stream.Stop()
+						break innerLoop
+
 					case <-stream.Closed():
+						stream.Stop()
 						break innerLoop
 
 					case item, ok := <-stream.ForEach():
@@ -812,9 +835,7 @@ func MergeMap[T any, R any](project ProjectionFunc[T, R], concurrent ...uint) Op
 						}
 
 						if err := item.Err(); err != nil {
-							log.Println("Send non block, omg ->", err)
-							errCh <- err
-							log.Println("Send non after, omg ->", err)
+							onError(err)
 							break innerLoop
 						}
 
@@ -827,62 +848,42 @@ func MergeMap[T any, R any](project ProjectionFunc[T, R], concurrent ...uint) Op
 				}
 			}
 
-			unsubscribeInnerStreams := func() {
-				mu.RLock()
-				for _, sub := range subscriptions {
-					sub.Stop()
+		outerLoop:
+			for {
+				select {
+				case <-subscriber.Closed():
+					upStream.Stop()
+					cancel()
+					break outerLoop
+
+				case item, ok := <-upStream.ForEach():
+					if !ok {
+						break outerLoop
+					}
+
+					if err := item.Err(); err != nil {
+						onError(err)
+						break outerLoop
+					}
+
+					if item.Done() {
+						// even upstream is done, we need to wait downstream done as well
+						break outerLoop
+					}
+
+					wg.Add(1)
+					subscription := project(item.Value(), index).SubscribeOn(wg.Done)
+					go observeStream(subscription)
+					index++
 				}
-				mu.RUnlock()
 			}
 
-			go func() {
-				defer wg.Done()
-
-			outerLoop:
-				for {
-					select {
-					case <-subscriber.Closed():
-						upStream.Stop()
-						// unsubscribeInnerStreams()
-						break outerLoop
-
-					case err, ok := <-errCh:
-						log.Println("Error ->", err, ok)
-						// unsubscribeInnerStreams()
-						break outerLoop
-
-					case item, ok := <-upStream.ForEach():
-						log.Println("upStream ->")
-						// if the upstream closed, we break
-						if !ok {
-							break outerLoop
-						}
-
-						if err := item.Err(); err != nil {
-							unsubscribeInnerStreams()
-							Error[R](err).Send(subscriber)
-							break outerLoop
-						}
-
-						if item.Done() {
-							// even upstream is done, we need to wait
-							// downstream done as well
-							break outerLoop
-						}
-
-						// every stream
-						mu.Lock()
-						wg.Add(1)
-						subscription := project(item.Value(), index).SubscribeOn(wg.Done)
-						go observeStream(subscription)
-						subscriptions = append(subscriptions, subscription)
-						mu.Unlock()
-						index++
-					}
-				}
-			}()
-
 			wg.Wait()
+
+			if err := errOnce.Load(); err != nil {
+				Error[R](*err).Send(subscriber)
+				return
+			}
 
 			Complete[R]().Send(subscriber)
 		})
@@ -1063,14 +1064,21 @@ func Scan[V any, A any](accumulator AccumulatorFunc[A, V], seed A) OperatorFunc[
 	}
 }
 
+// Applies an accumulator function over the source Observable where the accumulator function itself returns an Observable, emitting values only from the most recently returned Observable.
+func SwitchScan() {
+
+}
+
 // Projects each source value to an Observable which is merged in the output Observable, emitting values only from the most recently projected Observable.
 func SwitchMap[T any, R any](project func(value T, index uint) Observable[R]) OperatorFunc[T, R] {
 	return func(source Observable[T]) Observable[R] {
 		return newObservable(func(subscriber Subscriber[R]) {
 			var (
-				wg      = new(sync.WaitGroup)
-				errOnce = new(atomic.Pointer[error])
-				index   uint
+				wg           = new(sync.WaitGroup)
+				errOnce      = new(atomic.Pointer[error])
+				completeOnce = new(sync.Once)
+				ctx, cancel  = context.WithCancel(context.TODO())
+				index        uint
 			)
 
 			wg.Add(1)
@@ -1080,44 +1088,63 @@ func SwitchMap[T any, R any](project func(value T, index uint) Observable[R]) Op
 				downStream Subscriber[R]
 			)
 
+			onError := func(err error) {
+				errOnce.CompareAndSwap(nil, &err)
+				cancel()
+			}
+
+			onComplete := func() {
+				completeOnce.Do(func() {
+					Complete[R]().Send(subscriber)
+				})
+			}
+
 			observeStream := func(stream Subscriber[R]) {
-			loop:
+			innerLoop:
 				for {
 					select {
+					case <-ctx.Done():
+						stream.Stop()
+						break innerLoop
+
 					case <-subscriber.Closed():
 						stream.Stop()
-						break loop
+						break innerLoop
+
+					case <-stream.Closed():
+						stream.Stop()
+						break innerLoop
 
 					case item, ok := <-stream.ForEach():
 						if !ok {
-							break loop
+							break innerLoop
 						}
 
 						if err := item.Err(); err != nil {
-							errOnce.CompareAndSwap(nil, &err)
-							break loop
+							onError(err)
+							break innerLoop
+						}
+
+						if item.Done() {
+							break innerLoop
 						}
 
 						item.Send(subscriber)
-						if item.Done() {
-							break loop
-						}
 					}
-				}
-			}
-
-			unsubscribeStream := func() {
-				if downStream != nil {
-					downStream.Stop()
 				}
 			}
 
 		outerLoop:
 			for {
 				select {
-				case <-subscriber.Closed():
-					unsubscribeStream()
+				case <-ctx.Done():
 					upStream.Stop()
+					break outerLoop
+
+				case <-subscriber.Closed():
+					upStream.Stop()
+					cancel()
+					break outerLoop
 
 				case item, ok := <-upStream.ForEach():
 					if !ok {
@@ -1127,20 +1154,21 @@ func SwitchMap[T any, R any](project func(value T, index uint) Observable[R]) Op
 					// if the previous stream are still being processed while a new change is already made, it will cancel the previous subscription and start a new subscription on the latest change.
 
 					if err := item.Err(); err != nil {
-						unsubscribeStream()
-						errOnce.CompareAndSwap(nil, &err)
+						onError(err)
 						break outerLoop
 					}
 
 					if item.Done() {
 						if downStream == nil {
-							Complete[R]().Send(subscriber)
+							onComplete()
 						}
 						break outerLoop
 					}
 
 					// stop the previous stream
-					unsubscribeStream()
+					if downStream != nil {
+						downStream.Stop()
+					}
 
 					wg.Add(1)
 					downStream = project(item.Value(), index).SubscribeOn(wg.Done)
@@ -1155,6 +1183,8 @@ func SwitchMap[T any, R any](project func(value T, index uint) Observable[R]) Op
 				Error[R](*err).Send(subscriber)
 				return
 			}
+
+			onComplete()
 		})
 	}
 }
