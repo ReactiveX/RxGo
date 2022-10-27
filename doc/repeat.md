@@ -1,10 +1,16 @@
 # Repeat
 
-## Overview
+> Returns an Observable that will resubscribe to the source stream when the source stream completes.
 
-Create an Observable that emits a particular item multiple times at a particular frequency.
+## Description
 
 ![](http://reactivex.io/documentation/operators/images/repeat.png)
+
+`Repeat` will output values from a source until the source completes, then it will resubscribe to the source a specified number of times, with a specified delay. Repeat can be particularly useful in combination with closing operators like `Take`, `TakeUntil`, `First`, or `TakeWhile`, as it can be used to restart a source again from scratch.
+
+Repeat is very similar to retry, where retry will resubscribe to the source in the error case, but repeat will resubscribe if the source completes.
+
+Note that `Repeat` will not catch errors. Use `Retry` for that.
 
 ## Example 1
 

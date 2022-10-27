@@ -1,4 +1,4 @@
-# Debounce Operator
+# Debounce
 
 ## Overview
 
@@ -12,20 +12,20 @@ Only emit an item from an Observable if a particular timespan has passed without
 observable.Debounce(rxgo.WithDuration(250 * time.Millisecond))
 ```
 
-Output: each item emitted by the Observable if not item has been emitted after 250 milliseconds. 
+Output: each item emitted by the Observable if not item has been emitted after 250 milliseconds.
 
 ## Options
 
-* [WithBufferedChannel](options.md#withbufferedchannel)
+- [WithBufferedChannel](options.md#withbufferedchannel)
 
-* [WithContext](options.md#withcontext)
+- [WithContext](options.md#withcontext)
 
-* [WithObservationStrategy](options.md#withobservationstrategy)
+- [WithObservationStrategy](options.md#withobservationstrategy)
 
-* [WithErrorStrategy](options.md#witherrorstrategy)
+- [WithErrorStrategy](options.md#witherrorstrategy)
 
-* [WithPool](options.md#withpool)
+- [WithPool](options.md#withpool)
 
-* [WithCPUPool](options.md#withcpupool)
+- [WithCPUPool](options.md#withcpupool)
 
-* [WithPublishStrategy](options.md#withpublishstrategy)
+- [WithPublishStrategy](options.md#withpublishstrategy)

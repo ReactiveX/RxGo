@@ -20,8 +20,12 @@ The observable returned by **Do** is an exact mirror of the source, with one exc
 rxgo.Pipe1(
 	rxgo.Range[uint](1, 5),
 	rxgo.Do(NewObserver(func(v uint) {
-		log.Println("Debug ->", v)
-	}, nil, nil)),
+		log.Println("DoNext ->", v)
+	}, func(err error) {
+		log.Println("DoError ->", err)
+	}, func() {
+		log.Println("DoComplete!")
+	})),
 ).SubscribeSync(func(v uint) {
     log.Println("Next ->", v)
 }, func(err error) {

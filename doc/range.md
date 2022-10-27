@@ -6,7 +6,7 @@
 
 ![](https://rxjs.dev/assets/images/marble-diagrams/range.png)
 
-`Range` operator emits a range of sequential integers, in order, where you select the start of the range and its length.
+**Range** operator emits a range of sequential integers, in order, where you select the start of the range and its length.
 
 ## Example
 

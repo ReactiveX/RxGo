@@ -130,7 +130,7 @@ There are operators for different purposes, and they may be categorized as: crea
 - [FindIndex](./find-index.md) ✅ 📝
 - [IsEmpty](./is-empty.md) ✅ 📝
 - [SequenceEqual](./sequence-equal.md) ✅ 📝
-- [ThrowIfEmpty] ✅ 📝
+- [ThrowIfEmpty](./throw-if-empty.md) ✅ 📝
 
 ## Mathematical and Aggregate Operators
 
