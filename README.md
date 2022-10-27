@@ -8,11 +8,11 @@ Reactive Extensions for the Go Language
 
 ## ReactiveX
 
-[ReactiveX](http://reactivex.io/), or Rx for short, is an API for programming with Observable streams. This is the official ReactiveX API for the Go language.
+[ReactiveX](http://reactivex.io/), or **Rx** for short, is an API for programming with Observable streams. This is the official ReactiveX API for the **Go** language.
 
 ReactiveX is a new, alternative way of asynchronous programming to callbacks, promises, and deferred. It is about processing streams of events or items, with events being any occurrences or changes within the system. A stream of events is called an [Observable](http://reactivex.io/documentation/contract.html).
 
-An operator is a function that defines an Observable, how and when it should emit data. The list of operators covered is available [here](README.md#supported-operators-in-rxgo).
+An operator is a function that defines an Observable, how and when it should emit data. The list of operators covered is available [here](./doc/README.md).
 
 ## RxGo
 
@@ -55,7 +55,7 @@ observable.SubscribeSync(func(v uint) {
 })
 ```
 
-The `Just` operator creates an Observable from a static list of items. `Of(value)` creates an item from a given value. If we want to create an item from an error, we have to use `Error(err)`.
+<!-- The `Just` operator creates an Observable from a static list of items. `Of(value)` creates an item from a given value. If we want to create an item from an error, we have to use `Error(err)`.
 
 By the way, the `Just` operator uses currying as syntactic sugar. This way, it accepts multiple items in the first parameter list and multiple options in the second parameter list. We'll see below how to specify options.
 
@@ -210,8 +210,8 @@ The result of this execution is:
 2
 ```
 
-It means the first Observer already consumed all items. And nothing left for others.  
-Though this behavior can be altered with [Connectable](#connectable-observable) Observables.  
+It means the first Observer already consumed all items. And nothing left for others.
+Though this behavior can be altered with [Connectable](#connectable-observable) Observables.
 The main point here is the goroutine produced those items.
 
 On the other hand, let's create a **cold** Observable using `Defer` operator:
@@ -249,8 +249,8 @@ Now, the result is:
 
 In the case of a cold observable, the stream was created independently for every Observer.
 
-Again, **hot** vs **cold** Observables are not about how you consume items, it's about where data is produced.  
-Good example for hot Observable are price ticks from a trading exchange.  
+Again, **hot** vs **cold** Observables are not about how you consume items, it's about where data is produced.
+Good example for hot Observable are price ticks from a trading exchange.
 And if you teach an Observable to fetch products from a database, then yield them one by one, you will create the **cold** Observable.
 
 ### Backpressure
@@ -421,13 +421,6 @@ An Iterable can be either:
 - A Single: emit 1 item
 - An Optional Single: emit 0 or 1 item
 
-## Documentation
-
-Package documentation: [https://pkg.go.dev/github.com/reactivex/rxgo/v2](https://pkg.go.dev/github.com/reactivex/rxgo/v2)
-
-### Assert API
-
-How to use the [assert API](doc/assert.md) to write unit tests while using RxGo.
 
 ### Operator Options
 
@@ -436,27 +429,19 @@ How to use the [assert API](doc/assert.md) to write unit tests while using RxGo.
 ### Creating Observables
 
 - [Create](doc/create.md) — create an Observable from scratch by calling Observer methods programmatically
-- [Defer](doc/defer.md) — do not create the Observable until the Observer subscribes, and create a fresh Observable for each Observer
-- [Empty](doc/empty.md)/[Never](doc/never.md)/[Thrown](doc/thrown.md) — create Observables that have very precise and limited behaviour
 - [FromChannel](doc/fromchannel.md) — create an Observable based on a lazy channel
 - [FromEventSource](doc/fromeventsource.md) — create an Observable based on an eager channel
-- [Interval](doc/interval.md) — create an Observable that emits a sequence of integers spaced by a particular time interval
 - [Just](doc/just.md) — convert a set of objects into an Observable that emits that or those objects
 - [JustItem](doc/justitem.md) — convert one object into a Single that emits this object
-- [Range](doc/range.md) — create an Observable that emits a range of sequential integers
-- [Repeat](doc/repeat.md) — create an Observable that emits a particular item or sequence of items repeatedly
 - [Start](doc/start.md) — create an Observable that emits the return value of a function
-- [Timer](doc/timer.md) — create an Observable that completes after a specified delay
 
 ### Transforming Observables
 
 - [Buffer](doc/buffer.md) — periodically gather items from an Observable into bundles and emit these bundles rather than emitting the items one at a time
-- [BufferCount](doc/buffer-count.md) — buffers the source Observable values until the size hits the maximum bufferSize given.
 - [BufferTime](doc/buffer-time.md) — buffers the source Observable values for a specific time period.
 - [FlatMap](doc/flatmap.md) — transform the items emitted by an Observable into Observables, then flatten the emissions from those into a single Observable
 - [GroupBy](doc/groupby.md) — divide an Observable into a set of Observables that each emit a different group of items from the original Observable, organized by key
 - [GroupByDynamic](doc/groupbydynamic.md) — divide an Observable into a dynamic set of Observables that each emit GroupedObservables from the original Observable, organized by key
-- [Map](doc/map.md) — transform the items emitted by an Observable by applying a function to each item
 - [Marshal](doc/marshal.md) — transform the items emitted by an Observable by applying a marshalling function to each item
 - [Scan](doc/scan.md) — apply a function to each item emitted by an Observable, sequentially, and emit each successive value
 - [Unmarshal](doc/unmarshal.md) — transform the items emitted by an Observable by applying an unmarshalling function to each item
@@ -465,13 +450,6 @@ How to use the [assert API](doc/assert.md) to write unit tests while using RxGo.
 ### Filtering Observables
 
 - [Debounce](doc/debounce.md) — only emit an item from an Observable if a particular timespan has passed without it emitting another item
-- [Distinct](doc/distinct.md)/[DistinctUntilChanged](doc/distinctuntilchanged.md) — suppress duplicate items emitted by an Observable
-- [ElementAt](doc/element-at.md) — emit only item n emitted by an Observable
-- [Filter](doc/filter.md) — emit only those items from an Observable that pass a predicate test
-- [Find](doc/find.md) — emit the first item passing a predicate, then complete
-- [First](doc/first.md) — emit only the first item or the first item that meets a condition from an Observable
-- [IgnoreElements](doc/ignoreelements.md) — do not emit any items from an Observable but mirror its termination notification
-- [Last](doc/last.md) — emit only the last item emitted by an Observable
 - [Sample](doc/sample.md) — emit the most recent item emitted by an Observable within periodic time intervals
 - [Skip](doc/skip.md) — suppress the first n items emitted by an Observable
 - [SkipLast](doc/skiplast.md) — suppress the last n items emitted by an Observable
@@ -487,46 +465,26 @@ How to use the [assert API](doc/assert.md) to write unit tests while using RxGo.
 - [StartWithIterable](doc/startwithiterable.md) — emit a specified sequence of items before beginning to emit the items from the source Iterable
 - [ZipFromIterable](doc/zipfromiterable.md) — combine the emissions of multiple Observables together via a specified function and emit single items for each combination based on the results of this function
 
-### Error Handling Operators
-
-- [Catch](doc/catch.md) — recover from an onError notification by continuing the sequence without error
-- [Retry](doc/retry.md)/[BackOffRetry](doc/backoffretry.md) — if a source Observable sends an onError notification, resubscribe to it in the hopes that it will complete without error
-
 ### Observable Utility Operators
 
-- [Do](doc/do.md) - register an action to take upon a variety of Observable lifecycle events
 - [Run](doc/run.md) — create an Observer without consuming the emitted items
 - [Send](doc/send.md) — send the Observable items in a specific channel
 - [Serialize](doc/serialize.md) — force an Observable to make serialized calls and to be well-behaved
-- [TimeInterval](doc/timeinterval.md) — convert an Observable that emits items into one that emits indications of the amount of time elapsed between those emissions
-- [Timestamp](doc/timestamp.md) — attach a timestamp to each item emitted by an Observable
 
 ### Conditional and Boolean Operators
 
-- [All](doc/all.md) — determine whether all items emitted by an Observable meet some criteria
 - [Amb](doc/amb.md) — given two or more source Observables, emit all of the items from only the first of these Observables to emit an item
 - [Contains](doc/contains.md) — determine whether an Observable emits a particular item or not
-- [DefaultIfEmpty](doc/defaultifempty.md) — emit items from the source Observable, or a default item if the source Observable emits nothing
-- [SequenceEqual](doc/sequenceequal.md) — determine whether two Observables emit the same sequence of items
-- [SkipWhile](doc/skipwhile.md) — discard items emitted by an Observable until a specified condition becomes false
 - [TakeUntil](doc/takeuntil.md) — discard items emitted by an Observable after a second Observable emits an item or terminates
-- [TakeWhile](doc/takewhile.md) — discard items emitted by an Observable after a specified condition becomes false
 
 ### Mathematical and Aggregate Operators
 
 - [Average](doc/average.md) — calculates the average of numbers emitted by an Observable and emits this average
-- [Concat](doc/concat.md) — emit the emissions from two or more Observables without interleaving them
-- [Count](doc/count.md) — count the number of items emitted by the source Observable and emit only this value
-- [Max](doc/max.md) — determine, and emit, the maximum-valued item emitted by an Observable
-- [Min](doc/min.md) — determine, and emit, the minimum-valued item emitted by an Observable
-- [Reduce](doc/reduce.md) — apply a function to each item emitted by an Observable, sequentially, and emit the final value
-- [Sum](doc/sum.md) — calculate the sum of numbers emitted by an Observable and emit this sum
+-->
 
-### Operators to Convert Observables
+## Documentation
 
-- [Error](doc/error.md) — return the first error thrown by an observable
-- [Errors](doc/errors.md) — return all the errors thrown by an observable
-- [ToMap](doc/tomap.md)/[ToMapWithValueSelector](doc/tomapwithvalueselector.md)/[ToSlice](doc/toslice.md) — convert an Observable into another object or data structure
+Package documentation: [https://pkg.go.dev/github.com/reactivex/rxgo/v3](https://pkg.go.dev/github.com/reactivex/rxgo/v3)
 
 ## Contributing
 
