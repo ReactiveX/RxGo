@@ -808,8 +808,7 @@ func TakeUntil[T any, R any](notifier Observable[R]) OperatorFunc[T, T] {
 						break loop
 					}
 
-				// Lets values pass until notifier Observable emits a value.
-				// Then, it completes.
+				// Lets values pass until notifier Observable emits a value. Then, it completes.
 				case <-notifyStream.ForEach():
 					upStream.Stop()
 					notifyStream.Stop()

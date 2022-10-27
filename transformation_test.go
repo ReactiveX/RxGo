@@ -209,6 +209,21 @@ func TestBufferWhen(t *testing.T) {
 }
 
 func TestConcatMap(t *testing.T) {
+	t.Run("ConcatMap with Empty", func(t *testing.T) {
+		checkObservableHasResults(t, Pipe1(
+			Empty[any](),
+			ConcatMap(func(x any, i uint) Observable[string] {
+				return Pipe2(
+					Interval(time.Millisecond),
+					Map(func(y, _ uint) (string, error) {
+						return fmt.Sprintf("%v[%d]", x, y), nil
+					}),
+					Take[string](2),
+				)
+			}),
+		), false, nil, true)
+	})
+
 	t.Run("ConcatMap with error on upstream", func(t *testing.T) {
 		var err = fmt.Errorf("throw")
 

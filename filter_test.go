@@ -77,6 +77,7 @@ func TestDebounce(t *testing.T) {
 
 	// t.Run("Debounce with inner error", func(t *testing.T) {
 	// 	var err = errors.New("failed")
+	//
 	// 	checkObservableHasResults(t, Pipe1(
 	// 		Range[uint](1, 100),
 	// 		Debounce(func(v uint) Observable[uint] {
@@ -647,11 +648,34 @@ func TestTakeUntil(t *testing.T) {
 }
 
 func TestTakeWhile(t *testing.T) {
+	t.Run("TakeWhile with Empty", func(t *testing.T) {
+		checkObservableHasResults(t, Pipe1(
+			Empty[any](),
+			TakeWhile(func(v any, _ uint) bool {
+				return v != nil
+			}),
+		), false, nil, true)
+	})
+
+	t.Run("TakeWhile with error", func(t *testing.T) {
+		var err = errors.New("failed now")
+
+		checkObservableHasResults(t, Pipe1(
+			Throw[any](func() error {
+				return err
+			}),
+			TakeWhile(func(v any, _ uint) bool {
+				return v != nil
+			}),
+		), false, err, false)
+	})
+
 	t.Run("TakeWhile with Interval", func(t *testing.T) {
 		result := make([]uint, 0)
 		for i := uint(0); i <= 5; i++ {
 			result = append(result, i)
 		}
+
 		checkObservableResults(t, Pipe1(
 			Interval(time.Millisecond),
 			TakeWhile(func(v uint, _ uint) bool {
@@ -701,6 +725,7 @@ func TestThrottle(t *testing.T) {
 
 	t.Run("Throttle with outer error", func(t *testing.T) {
 		var err = errors.New("failed now")
+
 		checkObservableResult(t, Pipe1(
 			Throw[uint](func() error {
 				return err

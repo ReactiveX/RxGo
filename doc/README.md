@@ -46,8 +46,8 @@ There are operators for different purposes, and they may be categorized as: crea
 - [BufferTime](./buffer-time.md) ✅ 📝
 - [BufferToggle] ✅
 - [BufferWhen] ✅
-- [ConcatMap](./concat-map.md) ✅
-- [ExhaustMap] ✅
+- [ConcatMap](./concat-map.md) ✅ 📝
+- [ExhaustMap] 🚧
 - [Expand]
 - [GroupBy](./group-by.md) 🚧
 - [Map](./map.md) ✅ 📝
@@ -65,11 +65,11 @@ There are operators for different purposes, and they may be categorized as: crea
 
 ## Filtering Operators
 
-- [Audit] ✅
-- [AuditTime] ✅
-- [Debounce](./debounce.md) ✅
-- [DebounceTime](./debounce-time.md) ✅
-- [Distinct](./distinct.md) ✅
+- [Audit] 🚧
+- [AuditTime] 🚧
+- [Debounce](./debounce.md) 🚧
+- [DebounceTime](./debounce-time.md) 🚧
+- [Distinct](./distinct.md) ✅ 📝
 - [DistinctUntilChanged](./distinct-until-changed.md) ✅ 📝
 - [ElementAt](./element-at.md) ✅ 📝
 - [Filter](./filter.md) ✅ 📝
@@ -86,7 +86,7 @@ There are operators for different purposes, and they may be categorized as: crea
 - [Take](./take.md) ✅ 📝
 - [TakeLast](./takelast.md) ✅ 📝
 - [TakeUntil] ✅
-- [TakeWhile] ✅
+- [TakeWhile] ✅ 📝
 - [Throttle] 🚧
 - [ThrottleTime] 🚧
 
@@ -101,7 +101,7 @@ There are operators for different purposes, and they may be categorized as: crea
 
 ## Error Handling Operators
 
-- [Catch](./catch.md) ✅
+- [Catch](./catch.md) ✅ 📝
 - [Retry](./retry.md) ✅ 📝
 - ~~RetryWhen~~
 

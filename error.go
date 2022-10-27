@@ -72,6 +72,12 @@ func Catch[T any](catch func(err error, caught Observable[T]) Observable[T]) Ope
 							break catchLoop
 						}
 
+						if err := item.Err(); err != nil {
+							wg.Add(1)
+							catchStream = catch(err, source).SubscribeOn(wg.Done)
+							continue
+						}
+
 						item.Send(subscriber)
 						if item.IsEnd() {
 							break catchLoop
