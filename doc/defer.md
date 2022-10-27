@@ -33,8 +33,8 @@ rxgo.Defer(func() rxgo.Observable[uint] {
 // Complete!
 //
 // Output 2:
-// Next -> 0 # after 1s
-// Next -> 1 # after 1s
-// Next -> 2 # after 1s
+// Next -> 0 // after 1s
+// Next -> 1 // after 2s
+// Next -> 2 // after 3s
 // ...
 ```

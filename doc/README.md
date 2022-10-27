@@ -4,11 +4,11 @@ There are operators for different purposes, and they may be categorized as: crea
 
 ## Creation Operators
 
-<!-- - from -->
 <!-- - fromEventPattern -->
 <!-- - generate -->
 
-- [Of] ✅
+- [Just] ✅
+- [From]
 - [Defer](./defer.md) ✅ 📝
 - [Empty](./empty.md) ✅ 📝
 - [Interval](./interval.md) ✅ 📝
@@ -25,9 +25,9 @@ There are operators for different purposes, and they may be categorized as: crea
 <!-- - Partition -->
 
 - [ConcatAll](./concat-all.md) ✅
-- [ConcatWith](./concat-with.md) ✅
+- [ConcatWith](./concat-with.md) ✅ 📝
 - [CombineLatestAll](./combinelatest.md) ✅
-- [CombineLatestWith](./combinelatest.md) ✅
+- [CombineLatestWith](./combine-latest-with.md) ✅ 📝
 - [ExhaustAll](./exhaust-all.md)
 - [ForkJoin](./fork-join.md) ✅ 📝
 - [MergeAll](./merge.md) 🚧
@@ -44,15 +44,15 @@ There are operators for different purposes, and they may be categorized as: crea
 - [Buffer](./buffer.md) 🚧
 - [BufferCount](./buffer-count.md) ✅ 📝
 - [BufferTime](./buffer-time.md) ✅ 📝
-- [BufferToggle] ✅
-- [BufferWhen] ✅
+- [BufferToggle](./buffer-toggle.md) ✅
+- [BufferWhen](./buffer-when.md) ✅
 - [ConcatMap](./concat-map.md) ✅ 📝
 - [ExhaustMap] 🚧
 - [Expand]
 - [GroupBy](./group-by.md) 🚧
 - [Map](./map.md) ✅ 📝
-- [MergeMap] ✅ 📝
-- [MergeScan] ✅
+- [MergeMap](./merge-map.md) ✅ 📝
+- [MergeScan](./merge-scan.md) ✅
 - [Pairwise] ✅
 - [Scan](./scan.md) ✅
 - [SwitchScan]
@@ -80,15 +80,15 @@ There are operators for different purposes, and they may be categorized as: crea
 - [SampleTime](./sample-time.md) ✅
 - [Single](./single.md) ✅ 📝
 - [Skip](./skip.md) ✅ 📝
-- [SkipLast](./skiplast.md) ✅ 📝
+- [SkipLast](./skip-last.md) ✅ 📝
 - [SkipUntil](./skip-until.md) ✅
 - [SkipWhile](./skip-while.md) ✅ 📝
 - [Take](./take.md) ✅ 📝
-- [TakeLast](./takelast.md) ✅ 📝
-- [TakeUntil] ✅
-- [TakeWhile] ✅ 📝
-- [Throttle] 🚧
-- [ThrottleTime] 🚧
+- [TakeLast](./take-last.md) ✅ 📝
+- [TakeUntil](./take-until.md) ✅
+- [TakeWhile](./take-while.md) ✅ 📝
+- [Throttle](./throttle.md) 🚧
+- [ThrottleTime](./throttle-time.md) 🚧
 
 ## Multicasting Operators
 

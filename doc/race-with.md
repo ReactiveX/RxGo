@@ -2,12 +2,6 @@
 
 > Creates an Observable that mirrors the first source Observable to emit a next, error or complete notification from the combination of the Observable to which the operator is applied and supplied Observables.
 
-## Description
-
-![](https://rxjs.dev/assets/images/marble-diagrams/bufferCount.png)
-
-Buffers a number of values from the source Observable by `bufferSize` then emits the buffer and clears it, and starts a new buffer each `startBufferEvery` values. If `startBufferEvery` is not provided, then new buffers are started immediately at the start of the source and when each buffer closes and is emitted.
-
 ## Example
 
 ```go
