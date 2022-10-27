@@ -1,43 +1,33 @@
-# Filter Operator
+# Filter
 
-## Overview
+> Filter items emitted by the source Observable by only emitting those that satisfy a specified predicate.
 
-Emit only those items from an Observable that pass a predicate test.
+## Description
 
-![](http://reactivex.io/documentation/operators/images/filter.png)
+![](https://rxjs.dev/assets/images/marble-diagrams/filter.png)
+
+Takes values from the source Observable, passes them through a predicate function and only emits those values that yielded true.
 
 ## Example
 
 ```go
-observable := rxgo.Just(1, 2, 3)().
-	Filter(func(i interface{}) bool {
-		return i != 2
-	})
+rxgo.Pipe1(
+    rxgo.Range[uint](1, 5),
+    rxgo.Filter(func(v uint, index uint) bool {
+		return v != 2
+	}),
+).SubscribeSync(func(v uint) {
+    log.Println("Next ->", v)
+}, func(err error) {
+    log.Println("Error ->", err)
+}, func() {
+    log.Println("Complete!")
+})
+
+// Output :
+// Next -> 1
+// Next -> 3
+// Next -> 4
+// Next -> 5
+// Complete!
 ```
-
-Output:
-
-```
-1
-3
-```
-
-## Options
-
-* [WithBufferedChannel](options.md#withbufferedchannel)
-
-* [WithContext](options.md#withcontext)
-
-* [WithObservationStrategy](options.md#withobservationstrategy)
-
-* [WithErrorStrategy](options.md#witherrorstrategy)
-
-* [WithPool](options.md#withpool)
-
-* [WithCPUPool](options.md#withcpupool)
-
-### Serialize
-
-[Detail](options.md#serialize)
-
-* [WithPublishStrategy](options.md#withpublishstrategy)

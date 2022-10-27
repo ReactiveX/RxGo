@@ -1,77 +1,75 @@
-# Catch Operator
+# Catch
 
-## Overview
+> Catches errors on the observable to be handled by returning a new observable or throwing an error.
 
-Recover from an error by continuing the sequence without error.
+## Description
 
-## Instances
+![](https://rxjs.dev/assets/images/marble-diagrams/catch.png)
 
-* `OnErrorResumeNext`: instructs an Observable to pass control to another Observable rather than invoking onError if it encounters an error.
-* `OnErrorReturn`: instructs an Observable to emit an item (returned by a specified function) rather than invoking onError if it encounters an error.
-* `OnErrorReturnItem`: instructs on Observable to emit an item if it encounters an error.
+This operator handles errors, but forwards along all other events to the resulting observable. If the source observable terminates with an error, it will map that error to a new observable, subscribe to it, and forward all of its events to the resulting observable.
 
-## Example
-
-### OnErrorResumeNext
+## Example 1
 
 ```go
-observable := rxgo.Just(1, 2, errors.New("foo"))().
-	OnErrorResumeNext(func(e error) rxgo.Observable {
-		return rxgo.Just(3, 4)()
-	})
+rxgo.Pipe2(
+    rxgo.Range[uint](1, 5),
+    rxgo.Map(func(v, _ uint) (uint, error) {
+        if v == 4 {
+            return 0, errors.New("four")
+        }
+        return v, nil
+    }),
+    rxgo.Catch(func(err error, caught rxgo.Observable[uint]) rxgo.Observable[uint] {
+        return rxgo.Range[uint](1, 5)
+    }),
+).SubscribeSync(func(v uint) {
+    log.Println("Next ->", v)
+}, func(err error) {
+    log.Println("Error ->", err)
+}, func() {
+    log.Println("Complete!")
+})
+
+// Output:
+// Next -> 1
+// Next -> 2
+// Next -> 3
+// Next -> 1
+// Next -> 2
+// Next -> 3
+// Next -> 4
+// Next -> 5
+// Complete!
 ```
 
-Output:
-
-```
-1
-2
-3
-4
-```
-
-### OnErrorReturn
+## Example 2
 
 ```go
-observable := rxgo.Just(1, errors.New("2"), 3, errors.New("4"), 5)().
-	OnErrorReturn(func(err error) interface{} {
-		return err.Error()
-	})
+rxgo.Pipe3(
+    rxgo.Range[uint](1, 5),
+    rxgo.Map(func(v, _ uint) (uint, error) {
+        if v == 4 {
+            return 0, errors.New("four")
+        }
+        return v, nil
+    }),
+    rxgo.Catch(func(err error, caught rxgo.Observable[uint]) rxgo.Observable[uint] {
+        return rxgo.Range[uint](1, 5)
+    }),
+    rxgo.Take[uint](5),
+).SubscribeSync(func(v uint) {
+    log.Println("Next ->", v)
+}, func(err error) {
+    log.Println("Error ->", err)
+}, func() {
+    log.Println("Complete!")
+})
+
+// Output:
+// Next -> 1
+// Next -> 2
+// Next -> 3
+// Next -> 1
+// Next -> 2
+// Complete!
 ```
-
-Output:
-
-```
-1
-2
-3
-4
-5
-```
-
-### OnErrorReturnItem
-
-```go
-observable := rxgo.Just(1, errors.New("2"), 3, errors.New("4"), 5)().
-	OnErrorReturnItem("foo")
-```
-
-Output:
-
-```
-1
-foo
-3
-foo
-5
-```
-
-## Options
-
-* [WithBufferedChannel](options.md#withbufferedchannel)
-
-* [WithContext](options.md#withcontext)
-
-* [WithObservationStrategy](options.md#withobservationstrategy)
-
-* [WithErrorStrategy](options.md#witherrorstrategy)

@@ -43,6 +43,6 @@ observable := rxgo.Just(externalCh)()
 
 ## Options
 
-* [WithBufferedChannel](options.md#withbufferedchannel)
+- [WithBufferedChannel](options.md#withbufferedchannel)
 
-* [WithPublishStrategy](options.md#withpublishstrategy)
+- [WithPublishStrategy](options.md#withpublishstrategy)

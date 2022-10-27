@@ -1,493 +1,279 @@
-// Package rxgo is the main RxGo package.
 package rxgo
 
 import (
-	"context"
 	"sync"
-	"sync/atomic"
 	"time"
 
-	"github.com/cenkalti/backoff/v4"
-	"github.com/emirpasic/gods/trees/binaryheap"
+	"golang.org/x/exp/constraints"
 )
 
-// Observable is the standard interface for Observables.
-type Observable interface {
-	Iterable
-	All(predicate Predicate, opts ...Option) Single
-	AverageFloat32(opts ...Option) Single
-	AverageFloat64(opts ...Option) Single
-	AverageInt(opts ...Option) Single
-	AverageInt8(opts ...Option) Single
-	AverageInt16(opts ...Option) Single
-	AverageInt32(opts ...Option) Single
-	AverageInt64(opts ...Option) Single
-	BackOffRetry(backOffCfg backoff.BackOff, opts ...Option) Observable
-	BufferWithCount(count int, opts ...Option) Observable
-	BufferWithTime(timespan Duration, opts ...Option) Observable
-	BufferWithTimeOrCount(timespan Duration, count int, opts ...Option) Observable
-	Connect(ctx context.Context) (context.Context, Disposable)
-	Contains(equal Predicate, opts ...Option) Single
-	Count(opts ...Option) Single
-	Debounce(timespan Duration, opts ...Option) Observable
-	DefaultIfEmpty(defaultValue interface{}, opts ...Option) Observable
-	Distinct(apply Func, opts ...Option) Observable
-	DistinctUntilChanged(apply Func, opts ...Option) Observable
-	DoOnCompleted(completedFunc CompletedFunc, opts ...Option) Disposed
-	DoOnError(errFunc ErrFunc, opts ...Option) Disposed
-	DoOnNext(nextFunc NextFunc, opts ...Option) Disposed
-	ElementAt(index uint, opts ...Option) Single
-	Error(opts ...Option) error
-	Errors(opts ...Option) []error
-	Filter(apply Predicate, opts ...Option) Observable
-	Find(find Predicate, opts ...Option) OptionalSingle
-	First(opts ...Option) OptionalSingle
-	FirstOrDefault(defaultValue interface{}, opts ...Option) Single
-	FlatMap(apply ItemToObservable, opts ...Option) Observable
-	ForEach(nextFunc NextFunc, errFunc ErrFunc, completedFunc CompletedFunc, opts ...Option) Disposed
-	GroupBy(length int, distribution func(Item) int, opts ...Option) Observable
-	GroupByDynamic(distribution func(Item) string, opts ...Option) Observable
-	IgnoreElements(opts ...Option) Observable
-	Join(joiner Func2, right Observable, timeExtractor func(interface{}) time.Time, window Duration, opts ...Option) Observable
-	Last(opts ...Option) OptionalSingle
-	LastOrDefault(defaultValue interface{}, opts ...Option) Single
-	Map(apply Func, opts ...Option) Observable
-	Marshal(marshaller Marshaller, opts ...Option) Observable
-	Max(comparator Comparator, opts ...Option) OptionalSingle
-	Min(comparator Comparator, opts ...Option) OptionalSingle
-	OnErrorResumeNext(resumeSequence ErrorToObservable, opts ...Option) Observable
-	OnErrorReturn(resumeFunc ErrorFunc, opts ...Option) Observable
-	OnErrorReturnItem(resume interface{}, opts ...Option) Observable
-	Reduce(apply Func2, opts ...Option) OptionalSingle
-	Repeat(count int64, frequency Duration, opts ...Option) Observable
-	Retry(count int, shouldRetry func(error) bool, opts ...Option) Observable
-	Run(opts ...Option) Disposed
-	Sample(iterable Iterable, opts ...Option) Observable
-	Scan(apply Func2, opts ...Option) Observable
-	SequenceEqual(iterable Iterable, opts ...Option) Single
-	Send(output chan<- Item, opts ...Option)
-	Serialize(from int, identifier func(interface{}) int, opts ...Option) Observable
-	Skip(nth uint, opts ...Option) Observable
-	SkipLast(nth uint, opts ...Option) Observable
-	SkipWhile(apply Predicate, opts ...Option) Observable
-	StartWith(iterable Iterable, opts ...Option) Observable
-	SumFloat32(opts ...Option) OptionalSingle
-	SumFloat64(opts ...Option) OptionalSingle
-	SumInt64(opts ...Option) OptionalSingle
-	Take(nth uint, opts ...Option) Observable
-	TakeLast(nth uint, opts ...Option) Observable
-	TakeUntil(apply Predicate, opts ...Option) Observable
-	TakeWhile(apply Predicate, opts ...Option) Observable
-	TimeInterval(opts ...Option) Observable
-	Timestamp(opts ...Option) Observable
-	ToMap(keySelector Func, opts ...Option) Single
-	ToMapWithValueSelector(keySelector, valueSelector Func, opts ...Option) Single
-	ToSlice(initialCapacity int, opts ...Option) ([]interface{}, error)
-	Unmarshal(unmarshaller Unmarshaller, factory func() interface{}, opts ...Option) Observable
-	WindowWithCount(count int, opts ...Option) Observable
-	WindowWithTime(timespan Duration, opts ...Option) Observable
-	WindowWithTimeOrCount(timespan Duration, count int, opts ...Option) Observable
-	ZipFromIterable(iterable Iterable, zipper Func2, opts ...Option) Observable
+// An Observable that emits no items to the Observer and never completes.
+func Never[T any]() Observable[T] {
+	return newObservable(func(sub Subscriber[T]) {})
 }
 
-// ObservableImpl implements Observable.
-type ObservableImpl struct {
-	parent   context.Context
-	iterable Iterable
-}
-
-func defaultErrorFuncOperator(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions) {
-	item.SendContext(ctx, dst)
-	operatorOptions.stop()
-}
-
-func customObservableOperator(parent context.Context, f func(ctx context.Context, next chan Item, option Option, opts ...Option), opts ...Option) Observable {
-	option := parseOptions(opts...)
-	next := option.buildChannel()
-	ctx := option.buildContext(parent)
-
-	if option.isEagerObservation() {
-		go f(ctx, next, option, opts...)
-		return &ObservableImpl{iterable: newChannelIterable(next)}
-	}
-
-	return &ObservableImpl{
-		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
-			mergedOptions := append(opts, propagatedOptions...)
-			go f(ctx, next, option, mergedOptions...)
-			return next
-		}),
-	}
-}
-
-type operator interface {
-	next(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions)
-	err(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions)
-	end(ctx context.Context, dst chan<- Item)
-	gatherNext(ctx context.Context, item Item, dst chan<- Item, operatorOptions operatorOptions)
-}
-
-func observable(parent context.Context, iterable Iterable, operatorFactory func() operator, forceSeq, bypassGather bool, opts ...Option) Observable {
-	option := parseOptions(opts...)
-	parallel, _ := option.getPool()
-
-	if option.isEagerObservation() {
-		next := option.buildChannel()
-		ctx := option.buildContext(parent)
-		if forceSeq || !parallel {
-			runSequential(ctx, next, iterable, operatorFactory, option, opts...)
-		} else {
-			runParallel(ctx, next, iterable.Observe(opts...), operatorFactory, bypassGather, option, opts...)
-		}
-		return &ObservableImpl{iterable: newChannelIterable(next)}
-	}
-
-	if forceSeq || !parallel {
-		return &ObservableImpl{
-			iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
-				mergedOptions := append(opts, propagatedOptions...)
-				option := parseOptions(mergedOptions...)
-
-				next := option.buildChannel()
-				ctx := option.buildContext(parent)
-				runSequential(ctx, next, iterable, operatorFactory, option, mergedOptions...)
-				return next
-			}),
-		}
-	}
-
-	if serialized, f := option.isSerialized(); serialized {
-		firstItemIDCh := make(chan Item, 1)
-		fromCh := make(chan Item, 1)
-		obs := &ObservableImpl{
-			iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
-				mergedOptions := append(opts, propagatedOptions...)
-				option := parseOptions(mergedOptions...)
-
-				next := option.buildChannel()
-				ctx := option.buildContext(parent)
-				observe := iterable.Observe(opts...)
-				go func() {
-					select {
-					case <-ctx.Done():
-						return
-					case firstItemID := <-firstItemIDCh:
-						if firstItemID.Error() {
-							firstItemID.SendContext(ctx, fromCh)
-							return
-						}
-						Of(firstItemID.V.(int)).SendContext(ctx, fromCh)
-						runParallel(ctx, next, observe, operatorFactory, bypassGather, option, mergedOptions...)
-					}
-				}()
-				runFirstItem(ctx, f, firstItemIDCh, observe, next, operatorFactory, option, mergedOptions...)
-				return next
-			}),
-		}
-		return obs.serialize(parent, fromCh, f)
-	}
-
-	return &ObservableImpl{
-		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
-			mergedOptions := append(opts, propagatedOptions...)
-			option := parseOptions(mergedOptions...)
-
-			next := option.buildChannel()
-			ctx := option.buildContext(parent)
-			runParallel(ctx, next, iterable.Observe(mergedOptions...), operatorFactory, bypassGather, option, mergedOptions...)
-			return next
-		}),
-	}
-}
-
-func single(parent context.Context, iterable Iterable, operatorFactory func() operator, forceSeq, bypassGather bool, opts ...Option) Single {
-	option := parseOptions(opts...)
-	parallel, _ := option.getPool()
-	next := option.buildChannel()
-	ctx := option.buildContext(parent)
-
-	if option.isEagerObservation() {
-		if forceSeq || !parallel {
-			runSequential(ctx, next, iterable, operatorFactory, option, opts...)
-		} else {
-			runParallel(ctx, next, iterable.Observe(opts...), operatorFactory, bypassGather, option, opts...)
-		}
-		return &SingleImpl{iterable: newChannelIterable(next)}
-	}
-
-	return &SingleImpl{
-		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
-			mergedOptions := append(opts, propagatedOptions...)
-			option = parseOptions(mergedOptions...)
-
-			if forceSeq || !parallel {
-				runSequential(ctx, next, iterable, operatorFactory, option, mergedOptions...)
-			} else {
-				runParallel(ctx, next, iterable.Observe(mergedOptions...), operatorFactory, bypassGather, option, mergedOptions...)
-			}
-			return next
-		}),
-	}
-}
-
-func optionalSingle(parent context.Context, iterable Iterable, operatorFactory func() operator, forceSeq, bypassGather bool, opts ...Option) OptionalSingle {
-	option := parseOptions(opts...)
-	ctx := option.buildContext(parent)
-	parallel, _ := option.getPool()
-
-	if option.isEagerObservation() {
-		next := option.buildChannel()
-		if forceSeq || !parallel {
-			runSequential(ctx, next, iterable, operatorFactory, option, opts...)
-		} else {
-			runParallel(ctx, next, iterable.Observe(opts...), operatorFactory, bypassGather, option, opts...)
-		}
-		return &OptionalSingleImpl{iterable: newChannelIterable(next)}
-	}
-
-	return &OptionalSingleImpl{
-		parent: ctx,
-		iterable: newFactoryIterable(func(propagatedOptions ...Option) <-chan Item {
-			mergedOptions := append(opts, propagatedOptions...)
-			option = parseOptions(mergedOptions...)
-
-			next := option.buildChannel()
-			ctx := option.buildContext(parent)
-			if forceSeq || !parallel {
-				runSequential(ctx, next, iterable, operatorFactory, option, mergedOptions...)
-			} else {
-				runParallel(ctx, next, iterable.Observe(mergedOptions...), operatorFactory, bypassGather, option, mergedOptions...)
-			}
-			return next
-		}),
-	}
-}
-
-func runSequential(ctx context.Context, next chan Item, iterable Iterable, operatorFactory func() operator, option Option, opts ...Option) {
-	observe := iterable.Observe(opts...)
-	go func() {
-		op := operatorFactory()
-		stopped := false
-		operator := operatorOptions{
-			stop: func() {
-				if option.getErrorStrategy() == StopOnError {
-					stopped = true
-				}
-			},
-			resetIterable: func(newIterable Iterable) {
-				observe = newIterable.Observe(opts...)
-			},
-		}
-
-	loop:
-		for !stopped {
-			select {
-			case <-ctx.Done():
-				break loop
-			case i, ok := <-observe:
-				if !ok {
-					break loop
-				}
-				if i.Error() {
-					op.err(ctx, i, next, operator)
-				} else {
-					op.next(ctx, i, next, operator)
-				}
-			}
-		}
-		op.end(ctx, next)
-		close(next)
-	}()
-}
-
-func runParallel(ctx context.Context, next chan Item, observe <-chan Item, operatorFactory func() operator, bypassGather bool, option Option, opts ...Option) {
-	wg := sync.WaitGroup{}
-	_, pool := option.getPool()
-	wg.Add(pool)
-
-	var gather chan Item
-	if bypassGather {
-		gather = next
-	} else {
-		gather = make(chan Item, 1)
-
-		// Gather
-		go func() {
-			op := operatorFactory()
-			stopped := false
-			operator := operatorOptions{
-				stop: func() {
-					if option.getErrorStrategy() == StopOnError {
-						stopped = true
-					}
-				},
-				resetIterable: func(newIterable Iterable) {
-					observe = newIterable.Observe(opts...)
-				},
-			}
-			for item := range gather {
-				if stopped {
-					break
-				}
-				if item.Error() {
-					op.err(ctx, item, next, operator)
-				} else {
-					op.gatherNext(ctx, item, next, operator)
-				}
-			}
-			op.end(ctx, next)
-			close(next)
-		}()
-	}
-
-	// Scatter
-	for i := 0; i < pool; i++ {
-		go func() {
-			op := operatorFactory()
-			stopped := false
-			operator := operatorOptions{
-				stop: func() {
-					if option.getErrorStrategy() == StopOnError {
-						stopped = true
-					}
-				},
-				resetIterable: func(newIterable Iterable) {
-					observe = newIterable.Observe(opts...)
-				},
-			}
-			defer wg.Done()
-			for !stopped {
-				select {
-				case <-ctx.Done():
-					return
-				case item, ok := <-observe:
-					if !ok {
-						if !bypassGather {
-							Of(op).SendContext(ctx, gather)
-						}
-						return
-					}
-					if item.Error() {
-						op.err(ctx, item, gather, operator)
-					} else {
-						op.next(ctx, item, gather, operator)
-					}
-				}
-			}
-		}()
-	}
-
-	go func() {
-		wg.Wait()
-		close(gather)
-	}()
-}
-
-func runFirstItem(ctx context.Context, f func(interface{}) int, notif chan Item, observe <-chan Item, next chan Item, operatorFactory func() operator, option Option, opts ...Option) {
-	go func() {
-		op := operatorFactory()
-		stopped := false
-		operator := operatorOptions{
-			stop: func() {
-				if option.getErrorStrategy() == StopOnError {
-					stopped = true
-				}
-			},
-			resetIterable: func(newIterable Iterable) {
-				observe = newIterable.Observe(opts...)
-			},
-		}
-
-	loop:
-		for !stopped {
-			select {
-			case <-ctx.Done():
-				break loop
-			case i, ok := <-observe:
-				if !ok {
-					break loop
-				}
-				if i.Error() {
-					op.err(ctx, i, next, operator)
-					i.SendContext(ctx, notif)
-				} else {
-					op.next(ctx, i, next, operator)
-					Of(f(i.V)).SendContext(ctx, notif)
-				}
-			}
-		}
-		op.end(ctx, next)
-	}()
-}
-
-func (o *ObservableImpl) serialize(parent context.Context, fromCh chan Item, identifier func(interface{}) int, opts ...Option) Observable {
-	option := parseOptions(opts...)
-	next := option.buildChannel()
-
-	ctx := option.buildContext(parent)
-	minHeap := binaryheap.NewWith(func(a, b interface{}) int {
-		return a.(int) - b.(int)
+// A simple Observable that emits no items to the Observer and immediately emits a complete notification.
+func Empty[T any]() Observable[T] {
+	return newObservable(func(subscriber Subscriber[T]) {
+		Complete[T]().Send(subscriber)
 	})
-	items := make(map[int]interface{})
+}
 
-	var from int
-	var counter int64
-	src := o.Observe(opts...)
-	go func() {
-		select {
-		case <-ctx.Done():
-			close(next)
-			return
-		case item := <-fromCh:
-			if item.Error() {
-				item.SendContext(ctx, next)
-				close(next)
+// Creates an Observable that, on subscribe, calls an Observable factory to make an Observable for each new Observer.
+func Defer[T any](factory func() Observable[T]) Observable[T] {
+	// `Defer` allows you to create an Observable only when the Observer subscribes. It waits until an Observer subscribes to it, calls the given factory function to get an Observable -- where a factory function typically generates a new Observable -- and subscribes the Observer to this Observable. In case the factory function returns a falsy value, then Empty is used as Observable instead. Last but not least, an exception during the factory function call is transferred to the Observer by calling error.
+	return newObservable(func(subscriber Subscriber[T]) {
+		var (
+			wg     = new(sync.WaitGroup)
+			stream = factory()
+		)
+
+		if stream == nil {
+			stream = Empty[T]()
+		}
+
+		wg.Add(1)
+
+		var (
+			upStream = stream.SubscribeOn(wg.Done)
+		)
+
+	loop:
+		for {
+			select {
+			case <-subscriber.Closed():
+				upStream.Stop()
+				break loop
+
+			case item, ok := <-upStream.ForEach():
+				if !ok {
+					break loop
+				}
+
+				item.Send(subscriber)
+				if item.IsEnd() {
+					break loop
+				}
+			}
+		}
+
+		wg.Wait()
+	})
+}
+
+// Creates an Observable that emits a sequence of numbers within a specified range.
+func Range[T constraints.Unsigned](start, count T) Observable[T] {
+	return newObservable(func(subscriber Subscriber[T]) {
+		var (
+			end    = start + count
+			closed bool
+		)
+
+	loop:
+		for i := start; i < end; i++ {
+			select {
+			case <-subscriber.Closed():
+				closed = true
+				break loop
+
+			case subscriber.Send() <- Next(i):
+			}
+		}
+
+		if !closed {
+			Complete[T]().Send(subscriber)
+		}
+	})
+}
+
+// Interval creates an Observable emitting incremental integers infinitely between each given time interval.
+func Interval(duration time.Duration) Observable[uint] {
+	return newObservable(func(subscriber Subscriber[uint]) {
+		var (
+			index uint
+		)
+
+	loop:
+		for {
+			select {
+			// If receiver notify stop, we should terminate the operation
+			case <-subscriber.Closed():
+				break loop
+			case <-time.After(duration):
+				if Next(index).Send(subscriber) {
+					index++
+				}
+			}
+		}
+	})
+}
+
+// FIXME: rename me to `Of`
+func Of2[T any](item T, items ...T) Observable[T] {
+	items = append([]T{item}, items...)
+	return newObservable(func(subscriber Subscriber[T]) {
+		for _, item := range items {
+			select {
+			// If receiver notify stop, we should terminate the operation
+			case <-subscriber.Closed():
+				return
+			case subscriber.Send() <- Next(item):
+			}
+		}
+
+		Complete[T]().Send(subscriber)
+	})
+}
+
+func Scheduled[T any](item T, items ...T) Observable[T] {
+	items = append([]T{item}, items...)
+	return newObservable(func(subscriber Subscriber[T]) {
+		for _, item := range items {
+			notice := Next(item)
+			switch vi := any(item).(type) {
+			case error:
+				notice = Error[T](vi)
+			}
+
+			select {
+			// If receiver notify stop, we should terminate the operation
+			case <-subscriber.Closed():
+				return
+			case subscriber.Send() <- notice:
+			}
+
+			if err := notice.Err(); err != nil {
 				return
 			}
-			from = item.V.(int)
-			counter = int64(from)
-
-			go func() {
-				defer close(next)
-
-				for {
-					select {
-					case <-ctx.Done():
-						return
-					case item, ok := <-src:
-						if !ok {
-							return
-						}
-						if item.Error() {
-							next <- item
-							return
-						}
-
-						id := identifier(item.V)
-						minHeap.Push(id)
-						items[id] = item.V
-
-						for !minHeap.Empty() {
-							v, _ := minHeap.Peek()
-							id := v.(int)
-							if atomic.LoadInt64(&counter) == int64(id) {
-								if itemValue, contains := items[id]; contains {
-									minHeap.Pop()
-									delete(items, id)
-									Of(itemValue).SendContext(ctx, next)
-									counter++
-									continue
-								}
-							}
-							break
-						}
-					}
-				}
-			}()
 		}
-	}()
 
-	return &ObservableImpl{
-		iterable: newChannelIterable(next),
-	}
+		Complete[T]().Send(subscriber)
+	})
+}
+
+// Creates an observable that will create an error instance and push it to the consumer as an error immediately upon subscription. This creation function is useful for creating an observable that will create an error and error every time it is subscribed to. Generally, inside of most operators when you might want to return an errored observable, this is unnecessary. In most cases, such as in the inner return of `ConcatMap`, `MergeMap`, `Defer`, and many others, you can simply throw the error, and RxGo will pick that up and notify the consumer of the error.
+func Throw[T any](factory ErrorFunc) Observable[T] {
+	return newObservable(func(subscriber Subscriber[T]) {
+		Error[T](factory()).Send(subscriber)
+	})
+}
+
+// Creates an observable that will wait for a specified time period before emitting the number 0.
+func Timer[N constraints.Unsigned](startDue time.Duration, intervalDuration ...time.Duration) Observable[N] {
+	return newObservable(func(subscriber Subscriber[N]) {
+		var (
+			index = N(0)
+		)
+
+		time.Sleep(startDue)
+		Next(index).Send(subscriber)
+		index++
+
+		if len(intervalDuration) > 0 {
+			startDue = intervalDuration[0]
+			timeout := time.After(startDue)
+
+			for {
+				select {
+				case <-subscriber.Closed():
+					return
+				case <-timeout:
+					Next(index).Send(subscriber)
+					index++
+					timeout = time.After(startDue)
+				}
+			}
+		}
+
+		Complete[N]().Send(subscriber)
+	})
+}
+
+// Checks a boolean at subscription time, and chooses between one of two observable sources
+func Iif[T any](condition func() bool, trueObservable Observable[T], falseObservable Observable[T]) Observable[T] {
+	return newObservable(func(subscriber Subscriber[T]) {
+		var (
+			wg         = new(sync.WaitGroup)
+			observable = falseObservable
+		)
+
+		if condition() {
+			observable = trueObservable
+		}
+
+		wg.Add(1)
+
+		var (
+			upStream = observable.SubscribeOn(wg.Done)
+		)
+
+	loop:
+		for {
+			select {
+			case <-subscriber.Closed():
+				upStream.Stop()
+				break loop
+
+			case item, ok := <-upStream.ForEach():
+				if !ok {
+					break loop
+				}
+
+				item.Send(subscriber)
+				if item.IsEnd() {
+					break loop
+				}
+			}
+		}
+
+		wg.Wait()
+	})
+}
+
+// Splits the source Observable into two, one with values that satisfy a predicate, and another with values that don't satisfy the predicate.
+// FIXME: redesign the API
+func Partition[T any](source Observable[T], predicate PredicateFunc[T]) {
+	newObservable(func(subscriber Subscriber[Tuple[Observable[T], Observable[T]]]) {
+		var (
+			wg          = new(sync.WaitGroup)
+			trueStream  = NewSubscriber[T]()
+			falseStream = NewSubscriber[T]()
+		)
+
+		wg.Add(1)
+
+		var (
+			index    uint
+			upStream = source.SubscribeOn(wg.Done)
+		)
+
+	loop:
+		for {
+			select {
+			case <-subscriber.Closed():
+				upStream.Stop()
+				break loop
+
+			case item, ok := <-upStream.ForEach():
+				if !ok {
+					break loop
+				}
+
+				if predicate(item.Value(), index) {
+					item.Send(trueStream)
+				} else {
+					item.Send(falseStream)
+				}
+
+				if item.IsEnd() {
+					break loop
+				}
+
+				index++
+			}
+		}
+
+		wg.Wait()
+		// Next(NewTuple(trueStream, falseStream)).Send(subscriber)
+	})
 }

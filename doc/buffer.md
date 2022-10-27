@@ -1,4 +1,4 @@
-# Buffer Operator
+# Buffer
 
 ## Overview
 
@@ -8,7 +8,7 @@ Periodically gather items emitted by an Observable into bundles and emit these b
 
 ## Instances
 
-* `BufferWithCount`:
+- `BufferWithCount`:
 
 ![](http://reactivex.io/documentation/operators/images/bufferWithCount3.png)
 
@@ -23,7 +23,7 @@ Output:
 4
 ```
 
-* `BufferWithTime`:
+- `BufferWithTime`:
 
 ![](http://reactivex.io/documentation/operators/images/bufferWithTime5.png)
 
@@ -51,7 +51,7 @@ Output:
 ...
 ```
 
-* `BufferWithTimeOrCount`:
+- `BufferWithTimeOrCount`:
 
 ![](http://reactivex.io/documentation/operators/images/bufferWithTimeOrCount6.png)
 
@@ -81,12 +81,12 @@ Output:
 
 ## Options
 
-* [WithBufferedChannel](options.md#withbufferedchannel)
+- [WithBufferedChannel](options.md#withbufferedchannel)
 
-* [WithContext](options.md#withcontext)
+- [WithContext](options.md#withcontext)
 
-* [WithObservationStrategy](options.md#withobservationstrategy)
+- [WithObservationStrategy](options.md#withobservationstrategy)
 
-* [WithErrorStrategy](options.md#witherrorstrategy)
+- [WithErrorStrategy](options.md#witherrorstrategy)
 
-* [WithPublishStrategy](options.md#withpublishstrategy)
+- [WithPublishStrategy](options.md#withpublishstrategy)

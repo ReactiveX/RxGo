@@ -3,10 +3,10 @@ package rxgo
 import "context"
 
 type (
-	operatorOptions struct {
-		stop          func()
-		resetIterable func(Iterable)
-	}
+	// operatorOptions struct {
+	// 	stop          func()
+	// 	resetIterable func(Iterable)
+	// }
 
 	// Comparator defines a func that returns an int:
 	// - 0 if two elements are equals
@@ -14,9 +14,9 @@ type (
 	// - A positive value if the first argument is greater than the second
 	Comparator func(interface{}, interface{}) int
 	// ItemToObservable defines a function that computes an observable from an item.
-	ItemToObservable func(Item) Observable
+	// ItemToObservable func(Item) Observable
 	// ErrorToObservable defines a function that transforms an observable from an error.
-	ErrorToObservable func(error) Observable
+	// ErrorToObservable func(error) Observable
 	// Func defines a function that computes a value from an input value.
 	Func func(context.Context, interface{}) (interface{}, error)
 	// Func2 defines a function that computes a value from two input values.
@@ -24,7 +24,7 @@ type (
 	// FuncN defines a function that computes a value from N input values.
 	FuncN func(...interface{}) interface{}
 	// ErrorFunc defines a function that computes a value from an error.
-	ErrorFunc func(error) interface{}
+	// ErrorFunc func(error) interface{}
 	// Predicate defines a func that returns a bool from an input value.
 	Predicate func(interface{}) bool
 	// Marshaller defines a marshaller type (interface{} to []byte).

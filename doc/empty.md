@@ -1,18 +1,25 @@
-# Empty Operator
+# Empty
 
-## Overview
+> A simple Observable that emits no items to the Observer and immediately emits a complete notification.
 
-Create an Observable that emits no items but terminates normally.
+## Description
 
-![](http://reactivex.io/documentation/operators/images/empty.png)
+![](https://rxjs.dev/assets/images/marble-diagrams/empty.png)
+
+A simple Observable that only emits the complete notification. It can be used for composing with other Observables, such as in a `MergeMap`.
 
 ## Example
 
 ```go
-observable := rxgo.Empty()
-```
+rxgo.Empty[any]().
+SubscribeSync(func(v any) {
+    log.Println("Next ->", v)
+}, func(err error) {
+    log.Println("Error ->", err)
+}, func() {
+    log.Println("Complete!")
+})
 
-Output:
-
-```
+// Output :
+// Complete!
 ```

@@ -1,38 +1,26 @@
-# Min Operator
+# Min
 
-## Overview
+> The Min operator operates on an Observable that emits numbers (or items that can be compared with a provided function), and when source Observable completes it emits a single item: the item with the smallest value.
 
-Determine, and emit, the minimum-valued item emitted by an Observable.
+## Description
 
-![](http://reactivex.io/documentation/operators/images/min.png)
+![](https://rxjs.dev/assets/images/marble-diagrams/min.png)
 
 ## Example
 
 ```go
-observable := rxgo.Just(2, 5, 1, 6, 3, 4)().
-	Min(func(i1 interface{}, i2 interface{}) int {
-		return i1.(int) - i2.(int)
-	})
+rxgo.Pipe1(
+	rxgo.Of2[uint](5, 4, 8, 2, 0),
+	rxgo.Min[uint](),
+).SubscribeSync(func(v uint) {
+    log.Println("Next ->", v)
+}, func(err error) {
+    log.Println("Error ->", err)
+}, func() {
+    log.Println("Complete!")
+})
+
+// Output :
+// Next -> 0
+// Complete!
 ```
-
-Output:
-
-```
-1
-```
-
-## Options
-
-* [WithBufferedChannel](options.md#withbufferedchannel)
-
-* [WithContext](options.md#withcontext)
-
-* [WithObservationStrategy](options.md#withobservationstrategy)
-
-* [WithErrorStrategy](options.md#witherrorstrategy)
-
-* [WithPool](options.md#withpool)
-
-* [WithCPUPool](options.md#withcpupool)
-
-* [WithPublishStrategy](options.md#withpublishstrategy)

@@ -1,42 +1,46 @@
-# Retry Operator
+# Retry
 
-## Overview
+> Returns an Observable that mirrors the source Observable with the exception of an error.
 
-Implements a retry if a source Observable sends an error, resubscribe to it in the hopes that it will complete without error.
+## Description
 
-It accepts a `shouldRetry func(error) bool` function to determine whether an error should by retried.
+![](https://rxjs.dev/assets/images/marble-diagrams/retry.png)
 
-![](http://reactivex.io/documentation/operators/images/retry.png)
+If the source Observable calls error, this method will resubscribe to the source Observable for a maximum of count resubscriptions rather than propagating the error call.
+
+Any and all items emitted by the source Observable will be emitted by the resulting Observable, even those emitted during failed subscriptions. For example, if an Observable fails at first but emits [1, 2] then succeeds the second time and emits: [1, 2, 3, 4, 5, complete] then the complete stream of emissions and notifications would be: [1, 2, 1, 2, 3, 4, 5, complete].
 
 ## Example
 
 ```go
-observable := rxgo.Just(1, 2, errors.New("foo"))().
-	Retry(2, func(err error) bool {
-		return err.Error() == "foo"
-	})
+var err = errors.New("failed")
+
+rxgo.Pipe2(
+	rxgo.Range[uint8](1, 5),
+	rxgo.Map(func(v uint8, _ uint) (uint8, error) {
+		if v == 4 {
+			return 0, err
+		}
+		return v, nil
+	}),
+	rxgo.Retry[uint8, uint](2),
+).SubscribeSync(func(v uint8) {
+    log.Println("Next ->", v)
+}, func(err error) {
+    log.Println("Error ->", err)
+}, func() {
+    log.Println("Complete!")
+})
+
+// Output:
+// Next -> 1
+// Next -> 2
+// Next -> 3
+// Next -> 1
+// Next -> 2
+// Next -> 3
+// Next -> 1
+// Next -> 2
+// Next -> 3
+// Error -> failed
 ```
-
-Output:
-
-```
-1
-2
-1
-2
-1
-2
-foo
-```
-
-## Options
-
-* [WithBufferedChannel](options.md#withbufferedchannel)
-
-* [WithContext](options.md#withcontext)
-
-* [WithObservationStrategy](options.md#withobservationstrategy)
-
-* [WithErrorStrategy](options.md#witherrorstrategy)
-
-* [WithPublishStrategy](options.md#withpublishstrategy)

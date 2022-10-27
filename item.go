@@ -36,7 +36,7 @@ func Of(i interface{}) Item {
 }
 
 // Error creates an item from an error.
-func Error(err error) Item {
+func Errors(err error) Item {
 	return Item{E: err}
 }
 
@@ -69,7 +69,7 @@ func send(ctx context.Context, ch chan<- Item, items ...interface{}) {
 					default:
 						Of(item).SendContext(ctx, ch)
 					case error:
-						Error(item).SendContext(ctx, ch)
+						Errors(item).SendContext(ctx, ch)
 					}
 				}
 			case reflect.Slice:
@@ -79,7 +79,7 @@ func send(ctx context.Context, ch chan<- Item, items ...interface{}) {
 				}
 			}
 		case error:
-			Error(item).SendContext(ctx, ch)
+			Errors(item).SendContext(ctx, ch)
 		}
 	}
 }
