@@ -126,43 +126,6 @@ func Do[T any](cb Observer[T]) OperatorFunc[T, T] {
 	}
 }
 
-// Returns an observable that asserts that only one value is emitted from the observable that matches the predicate. If no predicate is provided, then it will assert that the observable only emits one value.
-// FIXME: should rename `Single2` to `Single`
-func Single2[T any](predicate func(v T, index uint) bool) OperatorFunc[T, T] {
-	return func(source Observable[T]) Observable[T] {
-		return newObservable(func(subscriber Subscriber[T]) {
-			// var (
-			// 	index    uint
-			// 	found    bool
-			// 	matches  uint
-			// 	hasValue bool
-			// )
-			// source.SubscribeSync(
-			// 	func(v T) {
-			// 		result := predicate(v, index)
-			// 		if result {
-			// 			found = result
-			// 			matches++
-			// 		}
-			// 		hasValue = true
-			// 		index++
-			// 	},
-			// 	subscriber.Error,
-			// 	func() {
-			// 		if !hasValue {
-			// 			subscriber.Error(ErrEmpty)
-			// 		} else if !found {
-			// 			subscriber.Error(ErrNotFound)
-			// 		} else if matches > 1 {
-			// 			subscriber.Error(ErrSequence)
-			// 		}
-			// 		subscriber.Complete()
-			// 	},
-			// )
-		})
-	}
-}
-
 // Delays the emission of items from the source Observable by a given timeout.
 func Delay[T any](duration time.Duration) OperatorFunc[T, T] {
 	return func(source Observable[T]) Observable[T] {
