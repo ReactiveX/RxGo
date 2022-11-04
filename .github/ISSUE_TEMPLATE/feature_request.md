@@ -3,7 +3,6 @@ name: Feature request
 about: Suggest an idea for RxGo.
 title: ''
 labels: enhancement
-assignees: teivah
 
 ---
 
