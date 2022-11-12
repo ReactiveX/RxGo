@@ -1,6 +1,8 @@
 package rxgo
 
-import "context"
+import (
+	"context"
+)
 
 // Single is a observable with a single element.
 type Single interface {
