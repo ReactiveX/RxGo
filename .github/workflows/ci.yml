@@ -20,3 +20,24 @@ jobs:
           version: v1.29
       - name: test
         run: make test
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16.x
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Calc coverage
+        run: |
+          go clean -testcache ./...
+          go test -v -covermode=count -coverprofile=coverage.out -timeout 10s ./... --tags=all
+      - name: Convert coverage.out to coverage.lcov
+        uses: jandelgado/gcov2lcov-action@v1.0.6
+      - name: Coveralls
+        uses: coverallsapp/github-action@v1.1.2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path-to-lcov: coverage.lcov
