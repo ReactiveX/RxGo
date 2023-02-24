@@ -8,5 +8,5 @@ require (
 	github.com/stretchr/testify v1.8.0
 	github.com/teivah/onecontext v0.0.0-20200513185103-40f981bfd775
 	go.uber.org/goleak v1.1.12
-	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	golang.org/x/sync v0.1.0
 )
