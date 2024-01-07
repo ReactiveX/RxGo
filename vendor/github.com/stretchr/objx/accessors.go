@@ -37,11 +37,11 @@ var mapAccessRegex = regexp.MustCompile(mapAccessRegexString)
 //
 // Get can only operate directly on map[string]interface{} and []interface.
 //
-// Example
+// # Example
 //
 // To access the title of the third chapter of the second book, do:
 //
-//    o.Get("books[1].chapters[2].title")
+//	o.Get("books[1].chapters[2].title")
 func (m Map) Get(selector string) *Value {
 	rawObj := access(m, selector, nil, false)
 	return &Value{data: rawObj}
@@ -52,11 +52,11 @@ func (m Map) Get(selector string) *Value {
 //
 // Set can only operate directly on map[string]interface{} and []interface
 //
-// Example
+// # Example
 //
 // To set the title of the third chapter of the second book, do:
 //
-//    o.Set("books[1].chapters[2].title","Time to Go")
+//	o.Set("books[1].chapters[2].title","Time to Go")
 func (m Map) Set(selector string, value interface{}) Map {
 	access(m, selector, value, true)
 	return m

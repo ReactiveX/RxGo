@@ -1,4 +1,4 @@
-# RxGo
+# RxGo (Fork with Reactive Subjects)
 ![CI](https://github.com/ReactiveX/RxGo/actions/workflows/ci.yml/badge.svg)
 [![Go Report Card](https://goreportcard.com/badge/github.com/reactivex/rxgo)](https://goreportcard.com/report/github.com/reactivex/rxgo)
 [![Join the chat at https://gitter.im/ReactiveX/RxGo](https://badges.gitter.im/ReactiveX/RxGo.svg)](https://gitter.im/ReactiveX/RxGo?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
@@ -501,6 +501,9 @@ How to use the [assert API](doc/assert.md) to write unit tests while using RxGo.
 * [Error](doc/error.md) — return the first error thrown by an observable
 * [Errors](doc/errors.md) — return all the errors thrown by an observable
 * [ToMap](doc/tomap.md)/[ToMapWithValueSelector](doc/tomapwithvalueselector.md)/[ToSlice](doc/toslice.md) — convert an Observable into another object or data structure
+
+## Subjects
+This Fork contains an implementation of Reactive Subjects. Details see [Subjects](doc/subjects.md).
 
 ## Contributing
 
