@@ -2,9 +2,10 @@ package rxgo
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // TestReplaySubject verifies that a new subscriber receives the entire history

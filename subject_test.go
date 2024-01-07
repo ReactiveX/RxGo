@@ -3,15 +3,15 @@ package rxgo
 import (
 	"errors"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // TestDefaultOptions verifies that multiple observers receive the same number of items
 func TestDefaultOptions(t *testing.T) {
-
 	subject := NewSubject()
 
 	itemCount1 := 0
@@ -40,7 +40,6 @@ func TestDefaultOptions(t *testing.T) {
 
 // TestBackPressure verifies messages are dropped with a blocked observer
 func TestBackPressure(t *testing.T) {
-
 	subject := NewSubject(WithBackPressureStrategy(Drop))
 	_, obs1 := subject.Subscribe()
 	_, obs2 := subject.Subscribe()
@@ -101,7 +100,6 @@ func TestBackPressure(t *testing.T) {
 
 // TestSubscriberBuffer verify no messages dropped with buffer attached
 func TestSubscriberBuffer(t *testing.T) {
-
 	subject := NewSubject(WithBufferedChannel(10), WithBackPressureStrategy(Drop))
 	_, obs := subject.Subscribe()
 
@@ -147,7 +145,6 @@ func TestUnsubscribe(t *testing.T) {
 }
 
 func TestReceiveError(t *testing.T) {
-
 	subject := NewSubject()
 	_, obs := subject.Subscribe()
 
@@ -170,7 +167,6 @@ func TestReceiveError(t *testing.T) {
 }
 
 func TestCompletion(t *testing.T) {
-
 	subject := NewSubject()
 	_, obs := subject.Subscribe()
 

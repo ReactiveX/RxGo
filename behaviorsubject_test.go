@@ -1,9 +1,10 @@
 package rxgo
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // TestBehaviorSubject verifies that two subscribers started at different times receive the same result
