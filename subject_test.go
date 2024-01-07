@@ -1,7 +1,6 @@
 package rxgo
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"github.com/stretchr/testify/assert"
@@ -14,31 +13,25 @@ import (
 func TestDefaultOptions(t *testing.T) {
 
 	subject := NewSubject()
-	_, obs1 := subject.Subscribe()
-	_, obs2 := subject.Subscribe()
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	items := 10
-	go func() {
-		for i := 0; i < items; i++ {
-			subject.Next(i)
-		}
-		wg.Done()
-	}()
 
 	itemCount1 := 0
+	_, obs1 := subject.Subscribe()
 	obs1.DoOnNext(func(i interface{}) {
 		itemCount1++
 	})
 
 	itemCount2 := 0
+	_, obs2 := subject.Subscribe()
 	obs2.DoOnNext(func(i interface{}) {
 		itemCount2++
 	})
 
-	wg.Wait()
-	// short delay to give go routines time to process last element
+	items := 10
+	for i := 0; i < items; i++ {
+		subject.Next(i)
+	}
+
+	// short delay to give subscribers time to process last element
 	time.Sleep(10 * time.Millisecond)
 
 	assert.Equal(t, items, itemCount1)
@@ -190,51 +183,4 @@ func TestCompletion(t *testing.T) {
 	})
 
 	subject.Complete()
-}
-
-// TestConnectableSubject subscriber only starts receiving after connecting
-func xTestConnectableSubject(t *testing.T) {
-	subject := NewSubject(WithPublishStrategy())
-	_, obs := subject.Subscribe()
-
-	items := 5
-	itemCount := 0
-	var lastItem interface{}
-	var wg sync.WaitGroup
-
-	obs.DoOnNext(func(i interface{}) {
-		fmt.Printf("received item %v\n", i)
-		itemCount++
-		lastItem = i
-	})
-
-	// before connect will be lost
-	wg.Add(1)
-	go func() {
-		for i := 0; i < 5; i++ {
-			subject.Next(i)
-		}
-		wg.Done()
-	}()
-	wg.Wait()
-
-	time.Sleep(10 * time.Millisecond)
-	assert.Equal(t, 0, itemCount)
-	// after connect counter shall go up
-	obs.Connect(context.Background())
-
-	wg.Add(1)
-	go func() {
-		for i := 0; i < items; i++ {
-			subject.Next(i + items)
-		}
-		wg.Done()
-	}()
-	wg.Wait()
-
-	// short delay to give go routines time to process last element
-	time.Sleep(10 * time.Millisecond)
-
-	assert.Equal(t, items, itemCount)
-	assert.Equal(t, lastItem, 10)
 }

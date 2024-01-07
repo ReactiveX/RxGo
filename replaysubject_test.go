@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+// TestReplaySubject verifies that a new subscriber receives the entire history
 func TestReplaySubject(t *testing.T) {
 	subject := NewReplaySubject(10)
 
@@ -33,6 +34,7 @@ func TestReplaySubject(t *testing.T) {
 	fmt.Printf("values: %v", values)
 }
 
+// TestMaxItemsReplay verifies only the last n elements are kept in replay buffer
 func TestMaxItemsReplay(t *testing.T) {
 	subject := NewReplaySubject(2)
 
