@@ -115,3 +115,21 @@ rxgo.Assert(ctx, t, observable, rxgo.CustomPredicate(func(items []interface{}) e
 	return nil
 }))
 ```
+
+### CustomErrorPredicate
+
+Implement a custom error predicate
+
+```go
+errorPredicate := func(observedErrors []error) error {
+	if len(observedErrors) != 1 {
+		return errors.New("expecting one error only")
+	}
+	var expected *json.SyntaxError
+	if errors.As(observedErrors[0], &expected) {
+		return nil
+	}
+	return fmt.Errorf("Expected error %v but found %v", json.SyntaxError{}, observedErrors[0])
+}
+rxgo.Assert(ctx, t, obs, rxgo.CustomErrorPredicate(errorPredicate))
+```
