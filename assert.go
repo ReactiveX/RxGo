@@ -10,6 +10,9 @@ import (
 // AssertPredicate is a custom predicate based on the items.
 type AssertPredicate func(items []interface{}) error
 
+// ErrorPredicate is a custom predicate based on the errors.
+type ErrorPredicate func(errors []error) error
+
 // RxAssert lists the Observable assertions.
 type RxAssert interface {
 	apply(*rxAssert)
@@ -24,27 +27,30 @@ type RxAssert interface {
 	itemToBeChecked() (bool, interface{})
 	noItemToBeChecked() (bool, interface{})
 	customPredicatesToBeChecked() (bool, []AssertPredicate)
+	customErrorsPredicatesToBeChecked() (bool, []ErrorPredicate)
 }
 
 type rxAssert struct {
-	f                       func(*rxAssert)
-	checkHasItems           bool
-	checkHasNoItems         bool
-	checkHasSomeItems       bool
-	items                   []interface{}
-	checkHasItemsNoOrder    bool
-	itemsNoOrder            []interface{}
-	checkHasRaisedError     bool
-	err                     error
-	checkHasRaisedErrors    bool
-	errs                    []error
-	checkHasRaisedAnError   bool
-	checkHasNotRaisedError  bool
-	checkHasItem            bool
-	item                    interface{}
-	checkHasNoItem          bool
-	checkHasCustomPredicate bool
-	customPredicates        []AssertPredicate
+	f                             func(*rxAssert)
+	checkHasItems                 bool
+	checkHasNoItems               bool
+	checkHasSomeItems             bool
+	items                         []interface{}
+	checkHasItemsNoOrder          bool
+	itemsNoOrder                  []interface{}
+	checkHasRaisedError           bool
+	err                           error
+	checkHasRaisedErrors          bool
+	errs                          []error
+	checkHasRaisedAnError         bool
+	checkHasNotRaisedError        bool
+	checkHasItem                  bool
+	item                          interface{}
+	checkHasNoItem                bool
+	checkHasCustomPredicate       bool
+	customPredicates              []AssertPredicate
+	checkHasCustomErrorPredicates bool
+	customErrorPredicates         []ErrorPredicate
 }
 
 func (ass *rxAssert) apply(do *rxAssert) {
@@ -93,6 +99,10 @@ func (ass *rxAssert) noItemToBeChecked() (bool, interface{}) {
 
 func (ass *rxAssert) customPredicatesToBeChecked() (bool, []AssertPredicate) {
 	return ass.checkHasCustomPredicate, ass.customPredicates
+}
+
+func (ass *rxAssert) customErrorsPredicatesToBeChecked() (bool, []ErrorPredicate) {
+	return ass.checkHasCustomErrorPredicates, ass.customErrorPredicates
 }
 
 func newAssertion(f func(*rxAssert)) *rxAssert {
@@ -180,6 +190,17 @@ func CustomPredicate(predicate AssertPredicate) RxAssert {
 	})
 }
 
+// CustomErrorPredicate checks a custom error predicate.
+func CustomErrorPredicate(predicate ErrorPredicate) RxAssert {
+	return newAssertion(func(a *rxAssert) {
+		if !a.checkHasCustomPredicate {
+			a.checkHasCustomErrorPredicates = true
+			a.customErrorPredicates = make([]ErrorPredicate, 0)
+		}
+		a.customErrorPredicates = append(a.customErrorPredicates, predicate)
+	})
+}
+
 func parseAssertions(assertions ...RxAssert) RxAssert {
 	ass := new(rxAssert)
 	for _, assertion := range assertions {
@@ -260,6 +281,15 @@ loop:
 			assert.Equal(t, expectedError, errs[0])
 		}
 	}
+	if checkHasRaisedError, predicates := ass.customErrorsPredicatesToBeChecked(); checkHasRaisedError {
+		for _, predicate := range predicates {
+			err := predicate(errs)
+			if err != nil {
+				assert.FailNow(t, "custom error assertion failed %v", err)
+			}
+		}
+	}
+
 	if checkHasRaisedErrors, expectedErrors := ass.raisedErrorsToBeChecked(); checkHasRaisedErrors {
 		assert.Equal(t, expectedErrors, errs)
 	}
