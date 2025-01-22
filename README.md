@@ -1,9 +1,17 @@
 # RxGo
-[![Maintenance](https://img.shields.io/maintenance/new%20%F0%9F%91%8B/2025?color=blue&style=for-the-badge)](https://github.com/ReactiveX/RxGo/issues/363)
+As the creator, I'm resuming my maintainership
+
 [![Go Report Card](https://goreportcard.com/badge/github.com/reactivex/rxgo?style=for-the-badge)](https://goreportcard.com/report/github.com/reactivex/rxgo)
 [![Gitter Chat](https://img.shields.io/gitter/room/reactivex/rxgo.svg?style=for-the-badge&color=yellowgreen)](https://gitter.im/reactivex/rxgo)
+[![Maintenance](https://img.shields.io/maintenance/new%20%F0%9F%91%8B/2025?color=blue&style=for-the-badge)](https://github.com/ReactiveX/RxGo/issues/363)
+[![Open Collective](https://img.shields.io/opencollective/sponsors/rxgo?style=for-the-badge&logo=opencollective&color=B7178C)](https://opencollective.com/rxgo)
 
-Reactive Extensions for the Go Language
+Reactive Extensions for the Go Language.
+
+## Support Us
+
+Learn about our [stories and mission](https://opencollective.com/rxgo).
+All subscribers will receive the original [Otaku Ugly Gopher Decal](https://media2.dev.to/dynamic/image/width=800%2Cheight=%2Cfit=scale-down%2Cgravity=auto%2Cformat=auto/https%3A%2F%2Fdev-to-uploads.s3.amazonaws.com%2Fi%2F6iaakoij20yua2xa4k94.png).
 
 ## ReactiveX
 
