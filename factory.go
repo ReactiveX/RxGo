@@ -93,10 +93,10 @@ func CombineLatest(f FuncN, observables []Observable, opts ...Option) Observable
 						errCh <- struct{}{}
 						return
 					}
+					mutex.Lock()
 					if s[i] == nil {
 						atomic.AddUint32(&counter, 1)
 					}
-					mutex.Lock()
 					s[i] = item.V
 					if atomic.LoadUint32(&counter) == size {
 						next <- Of(f(s...))
