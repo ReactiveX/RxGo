@@ -2239,6 +2239,27 @@ func Test_Observable_Unmarshal_Error(t *testing.T) {
 	Assert(ctx, t, obs, HasAnError())
 }
 
+func Test_Observable_Unmarshal_CustomErrorError(t *testing.T) {
+	defer goleak.VerifyNone(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	obs := testObservable(ctx, []byte(`{"id":1`), []byte(`{"id":2}`)).Unmarshal(json.Unmarshal,
+		func() interface{} {
+			return &testStruct{}
+		})
+	errorPredicate := func(observedErrors []error) error {
+		if len(observedErrors) != 1 {
+			return errors.New("expecting one error only")
+		}
+		var expected *json.SyntaxError
+		if errors.As(observedErrors[0], &expected) {
+			return nil
+		}
+		return fmt.Errorf("Expected error %v but found %v", json.SyntaxError{}, observedErrors[0])
+	}
+	Assert(ctx, t, obs, CustomErrorPredicate(errorPredicate))
+}
+
 func Test_Observable_Unmarshal_Parallel(t *testing.T) {
 	defer goleak.VerifyNone(t)
 	ctx, cancel := context.WithCancel(context.Background())
