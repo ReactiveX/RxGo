@@ -16,7 +16,7 @@ github.com/stretchr/objx
 # github.com/stretchr/testify v1.8.0
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/mock
-# github.com/teivah/onecontext v0.0.0-20200513185103-40f981bfd775
+# github.com/teivah/onecontext v1.3.0
 github.com/teivah/onecontext
 # go.uber.org/goleak v1.1.12
 go.uber.org/goleak
