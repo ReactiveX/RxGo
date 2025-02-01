@@ -84,6 +84,39 @@ func send(ctx context.Context, ch chan<- Item, items ...interface{}) {
 	}
 }
 
+func sendSingleItem(ctx context.Context, ch chan<- Item, strategy CloseChannelStrategy, items ...interface{}) {
+	if strategy == CloseChannel {
+		defer close(ch)
+	}
+	for _, currentItem := range items {
+		switch item := currentItem.(type) {
+		default:
+			rt := reflect.TypeOf(item)
+			switch rt.Kind() {
+			default:
+				Of(item).SendContext(ctx, ch)
+			case reflect.Chan:
+				in := reflect.ValueOf(currentItem)
+				for {
+					v, ok := in.Recv()
+					if !ok {
+						return
+					}
+					currentItem := v.Interface()
+					switch item := currentItem.(type) {
+					default:
+						Of(item).SendContext(ctx, ch)
+					case error:
+						Error(item).SendContext(ctx, ch)
+					}
+				}
+			}
+		case error:
+			Error(item).SendContext(ctx, ch)
+		}
+	}
+}
+
 // Error checks if an item is an error.
 func (i Item) Error() bool {
 	return i.E != nil
