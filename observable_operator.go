@@ -1153,6 +1153,7 @@ func (o *ObservableImpl) FlatMap(apply ItemToObservable, opts ...Option) Observa
 // ForEach subscribes to the Observable and receives notifications for each element.
 func (o *ObservableImpl) ForEach(nextFunc NextFunc, errFunc ErrFunc, completedFunc CompletedFunc, opts ...Option) Disposed {
 	dispose := make(chan struct{})
+	option := parseOptions(opts...)
 	handler := func(ctx context.Context, src <-chan Item) {
 		defer close(dispose)
 		for {
@@ -1167,7 +1168,9 @@ func (o *ObservableImpl) ForEach(nextFunc NextFunc, errFunc ErrFunc, completedFu
 				}
 				if i.Error() {
 					errFunc(i.E)
-					break
+					if option.getErrorStrategy() == StopOnError {
+						return
+					}
 				}
 				nextFunc(i.V)
 			}
